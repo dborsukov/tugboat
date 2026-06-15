@@ -1,8 +1,9 @@
 <script lang="ts">
-  import UserPlusIcon from "@lucide/svelte/icons/user-plus";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
+
+  import UserPlusIcon from "@lucide/svelte/icons/user-plus";
 
   import { commands } from "$lib/bindings";
 

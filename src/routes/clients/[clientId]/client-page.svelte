@@ -1,10 +1,11 @@
 <script lang="ts">
-  import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
-  import SquarePenIcon from "@lucide/svelte/icons/square-pen";
-  import TrashIcon from "@lucide/svelte/icons/trash-2";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
+
+  import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
+  import SquarePenIcon from "@lucide/svelte/icons/square-pen";
+  import TrashIcon from "@lucide/svelte/icons/trash-2";
 
   import { goto } from "$app/navigation";
 

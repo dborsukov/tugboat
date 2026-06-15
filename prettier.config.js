@@ -11,6 +11,8 @@ export default {
     "",
     "<THIRD_PARTY_MODULES>",
     "",
+    "^\\@lucide/(.*)$",
+    "",
     "^\\$app/(.*)$",
     "",
     "^\\$lib/bindings(.*)$",
