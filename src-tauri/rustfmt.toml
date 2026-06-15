@@ -1,0 +1,10 @@
+unstable_features = true
+
+# Sort imports lexicographically
+reorder_imports = true
+
+# Automatically merge multiple imports from the same crate into a single braced list
+imports_granularity = "Crate"
+
+# Separate imports into distinct groups (std, external crates, local crate)
+group_imports = "StdExternalCrate"
