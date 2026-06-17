@@ -1,18 +1,12 @@
 <script lang="ts">
+  import { prettifyIsoDateString } from "$lib/utils";
+
   import DateIcon from "@lucide/svelte/icons/calendar-plus";
   import PhoneIcon from "@lucide/svelte/icons/phone";
 
-  let {
-    name,
-    phone,
-    date,
-  }: { name: string; phone: string | null; date: Date } = $props();
+  import type { Client } from "$lib/bindings";
 
-  const date_formatter = new Intl.DateTimeFormat("uk-UA", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  let { client }: { client: Client } = $props();
 </script>
 
 <!-- TODO: add colored avatars based on name -->
@@ -22,9 +16,9 @@
   <div class="space-y-1.5">
     <div class="flex items-start gap-2.5">
       <h3
-        class="font-semibold leading-none tracking-tight text-base text-nowrap truncate text-ellipsis"
+        class="text-xl font-semibold leading-none tracking-tight text-nowrap truncate text-ellipsis"
       >
-        {name}
+        {client.name}
       </h3>
     </div>
   </div>
@@ -34,7 +28,7 @@
     title="Мобільний номер"
   >
     <PhoneIcon class="size-4 shrink-0" />
-    <p class="text-base text-nowrap truncate text-ellipsis">{phone}</p>
+    <p class="text-base text-nowrap truncate text-ellipsis">{client.phone}</p>
   </div>
 
   <div
@@ -43,7 +37,7 @@
   >
     <DateIcon class="size-4 shrink-0" />
     <p class="text-base text-nowrap truncate text-ellipsis">
-      {date_formatter.format(date)}
+      {prettifyIsoDateString(client.created_at, "long")}
     </p>
   </div>
 </div>

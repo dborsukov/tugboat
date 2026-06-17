@@ -17,9 +17,14 @@ pub struct AppState {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let specta_builder = Builder::<tauri::Wry>::new().commands(collect_commands![
+        database::create_car,
         database::create_client,
         database::delete_client,
+        database::delete_car,
+        database::fetch_car_brands,
+        database::fetch_cars,
         database::fetch_clients,
+        database::update_car,
         database::update_client,
         utils::get_app_version
     ]);

@@ -2,9 +2,14 @@
 export default {
   tabWidth: 2,
 
-  plugins: ["prettier-plugin-svelte", "@ianvs/prettier-plugin-sort-imports"],
+  plugins: [
+    "prettier-plugin-svelte",
+    "@ianvs/prettier-plugin-sort-imports",
+    "prettier-plugin-sql",
+  ],
 
   overrides: [{ files: "*.svelte", options: { parser: "svelte" } }],
+  overrides: [{ files: "*.sql", options: { tabWidth: 4 } }],
 
   importOrder: [
     "<BUILTIN_MODULES>",

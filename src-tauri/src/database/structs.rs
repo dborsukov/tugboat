@@ -40,13 +40,7 @@ pub enum InvoiceStatus {
 pub struct Client {
     #[specta(type = specta_typescript::Number)]
     pub id: i64,
-    pub name: String,
-    pub phone: Option<String>,
     pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Deserialize, specta::Type)]
-pub struct UpdateClientPayload {
     pub name: String,
     pub phone: Option<String>,
 }
@@ -55,6 +49,31 @@ pub struct UpdateClientPayload {
 pub struct CreateClientPayload {
     pub name: String,
     pub phone: Option<String>,
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+pub struct UpdateClientPayload {
+    pub name: String,
+    pub phone: Option<String>,
+}
+
+#[derive(
+    // Builtins
+    Debug,
+    Clone,
+    // Thrid-party: Serde
+    Serialize,
+    Deserialize,
+    // Thrid-party: Sqlx
+    FromRow,
+    // Thrid-party: Specta
+    specta::Type,
+)]
+pub struct CarBrand {
+    #[specta(type = specta_typescript::Number)]
+    pub id: i64,
+    pub name: String,
+    pub icon_slug: String,
 }
 
 #[derive(
@@ -74,7 +93,38 @@ pub struct Car {
     pub id: i64,
     #[specta(type = specta_typescript::Number)]
     pub client_id: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub brand_id: i64,
+    pub created_at: DateTime<Utc>,
     pub model: String,
+    #[specta(type = specta_typescript::Number)]
+    pub year: i64,
+    pub registration: Option<String>,
+    pub vin: Option<String>,
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+pub struct CreateCarPayload {
+    #[specta(type = specta_typescript::Number)]
+    pub client_id: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub brand_id: i64,
+    pub model: String,
+    #[specta(type = specta_typescript::Number)]
+    pub year: i64,
+    pub registration: Option<String>,
+    pub vin: Option<String>,
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+pub struct UpdateCarPayload {
+    #[specta(type = specta_typescript::Number)]
+    pub client_id: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub brand_id: i64,
+    pub model: String,
+    #[specta(type = specta_typescript::Number)]
+    pub year: i64,
     pub registration: Option<String>,
     pub vin: Option<String>,
 }

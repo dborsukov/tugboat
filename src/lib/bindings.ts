@@ -4,24 +4,64 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
 /** Commands */
 export const commands = {
+	createCar: (payload: CreateCarPayload) => typedError<Car, string>(__TAURI_INVOKE("create_car", { payload })),
 	createClient: (payload: CreateClientPayload) => typedError<Client, string>(__TAURI_INVOKE("create_client", { payload })),
 	deleteClient: (id: number) => typedError<null, string>(__TAURI_INVOKE("delete_client", { id })),
+	deleteCar: (id: number) => typedError<null, string>(__TAURI_INVOKE("delete_car", { id })),
+	fetchCarBrands: () => typedError<CarBrand[], null>(__TAURI_INVOKE("fetch_car_brands")),
+	fetchCars: () => typedError<Car[], null>(__TAURI_INVOKE("fetch_cars")),
 	fetchClients: () => typedError<Client[], null>(__TAURI_INVOKE("fetch_clients")),
+	updateCar: (id: number, payload: UpdateCarPayload) => typedError<Car, string>(__TAURI_INVOKE("update_car", { id, payload })),
 	updateClient: (id: number, payload: UpdateClientPayload) => typedError<Client, string>(__TAURI_INVOKE("update_client", { id, payload })),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
 };
 
 /* Types */
-export type Client = {
+export type Car = {
+	id: number,
+	client_id: number,
+	brand_id: number,
+	created_at: string,
+	model: string,
+	year: number,
+	registration: string | null,
+	vin: string | null,
+};
+
+export type CarBrand = {
 	id: number,
 	name: string,
-	phone: string | null,
+	icon_slug: string,
+};
+
+export type Client = {
+	id: number,
 	created_at: string,
+	name: string,
+	phone: string | null,
+};
+
+export type CreateCarPayload = {
+	client_id: number,
+	brand_id: number,
+	model: string,
+	year: number,
+	registration: string | null,
+	vin: string | null,
 };
 
 export type CreateClientPayload = {
 	name: string,
 	phone: string | null,
+};
+
+export type UpdateCarPayload = {
+	client_id: number,
+	brand_id: number,
+	model: string,
+	year: number,
+	registration: string | null,
+	vin: string | null,
 };
 
 export type UpdateClientPayload = {

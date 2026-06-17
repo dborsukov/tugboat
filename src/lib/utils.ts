@@ -15,3 +15,25 @@ export type WithoutChildrenOrChild<T> = WithoutChildren<WithoutChild<T>>;
 export type WithElementRef<T, U extends HTMLElement = HTMLElement> = T & {
   ref?: U | null;
 };
+
+let date_locale = "uk-UA";
+
+export function prettifyIsoDateString(
+  iso_string: string,
+  type: "short" | "long",
+) {
+  if (type === "short") {
+    return new Date(iso_string).toLocaleDateString(date_locale, {
+      month: "numeric",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+  if (type === "long") {
+    return new Date(iso_string).toLocaleDateString(date_locale, {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+  }
+}
