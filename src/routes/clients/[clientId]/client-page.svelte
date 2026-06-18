@@ -4,45 +4,22 @@
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
   import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
   import PhoneIcon from "@lucide/svelte/icons/phone";
-  import SquarePenIcon from "@lucide/svelte/icons/square-pen";
-  import TrashIcon from "@lucide/svelte/icons/trash-2";
 
   import { goto } from "$app/navigation";
 
-  import { commands, type Client } from "$lib/bindings";
+  import { type Client } from "$lib/bindings";
 
   import { appStore } from "$lib/stores/app.svelte";
 
-  import ButtonGroup from "$lib/components/ui/button-group/button-group.svelte";
   import Button from "$lib/components/ui/button/button.svelte";
 
-  import DeleteDialog from "$lib/components/delete-dialog.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import CarCard from "../../cars/car-card.svelte";
-  import ClientMutationSheet from "../client-mutation-sheet.svelte";
+  import DropdownMenu from "./dropdown-menu.svelte";
 
   let { client }: { client: Client } = $props();
   let cars = $derived(appStore.cars.filter((c) => c.client_id === client.id));
-
-  let isSheetOpen = $state(false);
-  let isDeleteDialogOpen = $state(false);
-
-  async function handleDelete() {
-    try {
-      let res = await commands.deleteClient(client.id);
-      if (res.status === "ok") {
-        appStore.removeClient(client.id);
-        await goto("/clients");
-      } else {
-        // TODO: show error to user
-        alert(res.error);
-      }
-    } catch (err) {
-      // TODO: show error to user
-      alert(`Critical Tauri panic or IPC error: ${err}`);
-    }
-  }
 </script>
 
 <PageLayout>
@@ -51,29 +28,7 @@
       <Button variant="secondary" onclick={() => goto("/clients")}>
         <ChevronLeftIcon /> Список
       </Button>
-      <ButtonGroup>
-        <Button
-          onclick={() => {
-            isSheetOpen = !isSheetOpen;
-          }}
-        >
-          <SquarePenIcon /> Редагувати
-        </Button>
-        <Button
-          variant="destructive"
-          onclick={() => {
-            isDeleteDialogOpen = !isDeleteDialogOpen;
-          }}
-        >
-          <TrashIcon /> Видалити
-        </Button>
-        <ClientMutationSheet bind:open={isSheetOpen} {client} />
-        <DeleteDialog
-          bind:open={isDeleteDialogOpen}
-          onDelete={handleDelete}
-          description="Цю дію неможливо відмінити. Усі пов'язані з цим клієнтом дані будуть видалені."
-        />
-      </ButtonGroup>
+      <DropdownMenu {client} />
     </div>
   {/snippet}
   <div class="h-full w-full p-4">

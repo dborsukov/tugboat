@@ -24,6 +24,7 @@
 
   import CarMutationSheet from "../car-mutation-sheet.svelte";
   import LogoLoader from "../logo-loader.svelte";
+  import DropdownMenu from "./dropdown-menu.svelte";
 
   let { car }: { car: Car } = $props();
   let owner = $derived(appStore.clients.find((c) => c.id === car.client_id));
@@ -56,29 +57,7 @@
       <Button variant="secondary" onclick={() => goto("/cars")}>
         <ChevronLeftIcon /> Список
       </Button>
-      <ButtonGroup>
-        <Button
-          onclick={() => {
-            isSheetOpen = !isSheetOpen;
-          }}
-        >
-          <SquarePenIcon /> Редагувати
-        </Button>
-        <Button
-          variant="destructive"
-          onclick={() => {
-            isDeleteDialogOpen = !isDeleteDialogOpen;
-          }}
-        >
-          <TrashIcon /> Видалити
-        </Button>
-        <CarMutationSheet bind:open={isSheetOpen} {car} />
-        <DeleteDialog
-          bind:open={isDeleteDialogOpen}
-          onDelete={handleDelete}
-          description="Цю дію неможливо відмінити. Усі пов'язані з цим клієнтом автомобілі будуть видалені."
-        />
-      </ButtonGroup>
+      <DropdownMenu {car} />
     </div>
   {/snippet}
   <div class="p-4">
