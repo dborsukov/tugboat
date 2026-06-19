@@ -54,7 +54,7 @@
         <span class="flex items-center gap-2 text-muted-foreground">
           <CalendarPlusIcon class="size-4 text-muted-foreground/70" /> Створено
         </span>
-        <span class="tracking-wide max-w-45 truncate select-all">
+        <span class="tracking-wide max-w-45 truncate">
           {prettifyIsoDateString(client.created_at, "long")}
         </span>
       </div>

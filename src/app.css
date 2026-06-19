@@ -126,4 +126,18 @@
   html {
     @apply font-sans;
   }
+  html,
+  body {
+    /* Prevents text selection across the entire app by default */
+    @apply select-none;
+    /* Disables the default webview long-press context menus */
+    -webkit-touch-callout: none;
+  }
+
+  /* Make some elements selectable */
+  input,
+  textarea,
+  [contenteditable="true"] {
+    @apply select-text;
+  }
 }

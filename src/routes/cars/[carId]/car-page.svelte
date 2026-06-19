@@ -92,7 +92,7 @@
           <UserIcon class="size-4 text-muted-foreground/70" /> Власник
         </span>
         {#if owner != undefined}
-          <span class="max-w-45 truncate" title={owner.name}>
+          <span class="max-w-45 truncate select-all" title={owner.name}>
             {owner.name}
           </span>
         {:else}
@@ -106,7 +106,7 @@
         </span>
         {#if car.registration}
           <span
-            class="font-mono font-bold uppercase tracking-wider bg-muted px-2 py-0.5 rounded text-sm border"
+            class="font-mono font-bold uppercase tracking-wider bg-muted px-2 py-0.5 rounded text-sm border select-all"
           >
             {car.registration}
           </span>
@@ -121,7 +121,7 @@
         </span>
         {#if car.vin}
           <span
-            class="font-mono font-bold uppercase tracking-wider bg-muted px-2 py-0.5 rounded text-sm border"
+            class="font-mono font-bold uppercase tracking-wider bg-muted px-2 py-0.5 rounded text-sm border select-all"
           >
             {car.vin}
           </span>
@@ -134,7 +134,7 @@
         <span class="flex items-center gap-2 text-muted-foreground">
           <CalendarPlusIcon class="size-4 text-muted-foreground/70" /> Створено
         </span>
-        <span class="max-w-45 truncate select-all">
+        <span class="max-w-45 truncate">
           {prettifyIsoDateString(car.created_at, "long")}
         </span>
       </div>
