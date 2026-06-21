@@ -34,14 +34,7 @@ CREATE TABLE cars (
     FOREIGN KEY (brand_id) REFERENCES car_brands (id) ON DELETE RESTRICT
 );
 
-CREATE TABLE services (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    unit_price INTEGER NOT NULL,
-    is_archived INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE TABLE invoices (
+CREATE TABLE work_orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     car_id INTEGER NOT NULL,
     created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
@@ -49,16 +42,23 @@ CREATE TABLE invoices (
     FOREIGN KEY (car_id) REFERENCES cars (id) ON DELETE RESTRICT
 );
 
-CREATE TABLE invoice_items (
+CREATE TABLE work_order_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    invoice_id INTEGER NOT NULL,
+    work_order_id INTEGER NOT NULL,
     -- Nullable for custom/one-off items
     service_id INTEGER,
     name TEXT NOT NULL,
     quantity INTEGER NOT NULL DEFAULT 1,
     unit_price INTEGER NOT NULL,
-    FOREIGN KEY (invoice_id) REFERENCES invoices (id) ON DELETE CASCADE,
+    FOREIGN KEY (work_order_id) REFERENCES work_oders (id) ON DELETE CASCADE,
     FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE SET NULL
+);
+
+CREATE TABLE services (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    unit_price INTEGER NOT NULL,
+    is_archived INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX idx_cars_client_id ON cars (client_id);
@@ -67,6 +67,6 @@ CREATE INDEX idx_cars_brand_id ON cars (brand_id);
 
 CREATE INDEX idx_model_suggestions_lookup ON car_model_suggestions (brand_id, model_name);
 
-CREATE INDEX idx_invoices_car_id ON invoices (car_id);
+CREATE INDEX idx_work_orders_car_id ON work_orders (car_id);
 
-CREATE INDEX idx_invoice_items_invoice_id ON invoice_items (invoice_id);
+CREATE INDEX idx_work_order_items_work_order_id ON work_order_items (work_order_id);
