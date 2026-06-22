@@ -36,6 +36,16 @@ pub async fn fetch_car_brands(state: State<'_, crate::AppState>) -> Result<Vec<C
 
 #[tauri::command]
 #[specta::specta]
+pub async fn fetch_services(state: State<'_, crate::AppState>) -> Result<Vec<Service>, ()> {
+    let services: Vec<Service> = sqlx::query_as("SELECT * FROM services")
+        .fetch_all(&state.db_pool)
+        .await
+        .unwrap();
+    Ok(services)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn create_client(
     state: State<'_, crate::AppState>,
     payload: CreateClientPayload,
@@ -125,6 +135,51 @@ pub async fn update_car(
 #[specta::specta]
 pub async fn delete_car(state: State<'_, crate::AppState>, id: i32) -> Result<(), String> {
     sqlx::query("DELETE FROM cars WHERE id = $1")
+        .bind(id)
+        .execute(&state.db_pool)
+        .await
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn create_service(
+    state: State<'_, crate::AppState>,
+    payload: CreateServicePayload,
+) -> Result<Service, String> {
+    let service: Service =
+        sqlx::query_as("INSERT INTO services (name, unit_price) VALUES ($1, $2) RETURNING *")
+            .bind(payload.name)
+            .bind(payload.unit_price)
+            .fetch_one(&state.db_pool)
+            .await
+            .map_err(|e| e.to_string())?;
+    Ok(service)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_service(
+    state: State<'_, crate::AppState>,
+    id: i32,
+    payload: UpdateServicePayload,
+) -> Result<Service, String> {
+    let service: Service =
+        sqlx::query_as("UPDATE services SET name = $1, unit_price = $2 WHERE id = $3 RETURNING *")
+            .bind(payload.name)
+            .bind(payload.unit_price)
+            .bind(id)
+            .fetch_one(&state.db_pool)
+            .await
+            .map_err(|e| e.to_string())?;
+    Ok(service)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn archive_service(state: State<'_, crate::AppState>, id: i32) -> Result<(), String> {
+    sqlx::query("UPDATE services SET is_archived = 1 WHERE id = $1")
         .bind(id)
         .execute(&state.db_pool)
         .await

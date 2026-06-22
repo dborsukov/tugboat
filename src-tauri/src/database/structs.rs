@@ -191,6 +191,21 @@ pub struct Service {
     #[specta(type = specta_typescript::Number)]
     pub id: i64,
     pub name: String,
+    #[specta(type = specta_typescript::Number)]
     pub unit_price: i64,
     pub is_archived: bool,
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+pub struct CreateServicePayload {
+    pub name: String,
+    #[specta(type = specta_typescript::Number)]
+    pub unit_price: i64,
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+pub struct UpdateServicePayload {
+    pub name: String,
+    #[specta(type = specta_typescript::Number)]
+    pub unit_price: i64,
 }

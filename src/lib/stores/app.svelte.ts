@@ -1,10 +1,17 @@
-import { commands, type Car, type CarBrand, type Client } from "$lib/bindings";
+import {
+  commands,
+  type Car,
+  type CarBrand,
+  type Client,
+  type Service,
+} from "$lib/bindings";
 
 class AppStore {
   version: string = $state("0.0.0");
   clients: Client[] = $state([]);
   cars: Car[] = $state([]);
   car_brands: CarBrand[] = $state([]);
+  services: Service[] = $state([]);
   documents = $state([]);
   loading = $state(false);
   error: string | null = $state(null);
@@ -30,6 +37,12 @@ class AppStore {
         this.cars = res3.data;
       } else {
         this.error = String(res3.error);
+      }
+      let res4 = await commands.fetchServices();
+      if (res4.status === "ok") {
+        this.services = res4.data;
+      } else {
+        this.error = String(res4.error);
       }
       commands.getAppVersion().then((res) => {
         this.version = res;
