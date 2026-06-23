@@ -57,29 +57,25 @@
         unit_price: $formData.unit_price,
       };
 
-      try {
-        if (isEdit && id) {
-          let res = await commands.updateService(id, payload);
-          if (res.status === "ok") {
-            appStore.updateService(res.data);
-          } else {
-            // TODO: show error to user
-            alert(res.error);
-          }
+      if (isEdit && id) {
+        let res = await commands.updateService(id, payload);
+        if (res.status === "ok") {
+          appStore.updateService(res.data);
         } else {
-          let res = await commands.createService(payload);
-          if (res.status === "ok") {
-            appStore.createService(res.data);
-          } else {
-            // TODO: show error to user
-            alert(res.error);
-          }
+          // TODO: show error to user
+          alert(res.error);
         }
-        open = false;
-        form.reset();
-      } catch (err) {
-        alert(`Critical IPC error: ${err}`);
+      } else {
+        let res = await commands.createService(payload);
+        if (res.status === "ok") {
+          appStore.createService(res.data);
+        } else {
+          // TODO: show error to user
+          alert(res.error);
+        }
       }
+      open = false;
+      form.reset();
     },
   });
 

@@ -49,29 +49,25 @@
         phone: $formData.phone,
       };
 
-      try {
-        if (isEdit) {
-          let res = await commands.updateClient(client.id, payload);
-          if (res.status === "ok") {
-            appStore.updateClient(res.data);
-          } else {
-            // TODO: show error to user
-            alert(res.error);
-          }
+      if (isEdit) {
+        let res = await commands.updateClient(client.id, payload);
+        if (res.status === "ok") {
+          appStore.updateClient(res.data);
         } else {
-          let res = await commands.createClient(payload);
-          if (res.status === "ok") {
-            appStore.createClient(res.data);
-          } else {
-            // TODO: show error to user
-            alert(res.error);
-          }
+          // TODO: show error to user
+          alert(res.error);
         }
-        open = false;
-        form.reset();
-      } catch (err) {
-        alert(`Critical IPC error: ${err}`);
+      } else {
+        let res = await commands.createClient(payload);
+        if (res.status === "ok") {
+          appStore.createClient(res.data);
+        } else {
+          // TODO: show error to user
+          alert(res.error);
+        }
       }
+      open = false;
+      form.reset();
     },
   });
 

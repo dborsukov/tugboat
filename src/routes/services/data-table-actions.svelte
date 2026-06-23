@@ -19,19 +19,14 @@
   let isDeleteDialogOpen: boolean = $state(false);
 
   async function handleDelete() {
-    try {
-      let res = await commands.archiveService(id);
-      if (res.status === "ok") {
-        appStore.removeService(id);
-      } else {
-        // TODO: show error to user
-        alert(res.error);
-      }
-      isDeleteDialogOpen = false;
-    } catch (err) {
+    let res = await commands.archiveService(id);
+    if (res.status === "ok") {
+      appStore.removeService(id);
+    } else {
       // TODO: show error to user
-      alert(`Critical Tauri panic or IPC error: ${err}`);
+      alert(res.error);
     }
+    isDeleteDialogOpen = false;
   }
 </script>
 

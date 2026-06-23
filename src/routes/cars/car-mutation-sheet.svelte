@@ -105,29 +105,25 @@
         vin: $formData.vin,
       };
 
-      try {
-        if (isEdit) {
-          let res = await commands.updateCar(car.id, payload);
-          if (res.status === "ok") {
-            appStore.updateCar(res.data);
-          } else {
-            // TODO: show error to user
-            alert(res.error);
-          }
+      if (isEdit) {
+        let res = await commands.updateCar(car.id, payload);
+        if (res.status === "ok") {
+          appStore.updateCar(res.data);
         } else {
-          let res = await commands.createCar(payload);
-          if (res.status === "ok") {
-            appStore.createCar(res.data);
-          } else {
-            // TODO: show error to user
-            alert(res.error);
-          }
+          // TODO: show error to user
+          alert(res.error);
         }
-        open = false;
-        form.reset();
-      } catch (err) {
-        alert(`Critical IPC error: ${err}`);
+      } else {
+        let res = await commands.createCar(payload);
+        if (res.status === "ok") {
+          appStore.createCar(res.data);
+        } else {
+          // TODO: show error to user
+          alert(res.error);
+        }
       }
+      open = false;
+      form.reset();
     },
   });
 

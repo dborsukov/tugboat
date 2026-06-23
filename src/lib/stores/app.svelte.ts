@@ -7,10 +7,14 @@ import {
 } from "$lib/bindings";
 
 function unwrap<T>(
-  res: { status: "ok"; data: T } | { status: "error"; error: unknown },
+  res: { status: "ok"; data: T } | { status: "error"; error: any },
 ): T {
   if (res.status === "ok") return res.data;
-  throw new Error(String(res.error));
+  const msg =
+    res.error && typeof res.error === "object" && "message" in res.error
+      ? res.error.message
+      : String(res.error);
+  throw new Error(msg);
 }
 
 class AppStore {
@@ -26,28 +30,22 @@ class AppStore {
   async loadAll() {
     this.loading = true;
     this.error = null;
-    try {
-      const [clients, brands, cars, services, version] = await Promise.all([
-        commands.fetchClients().then(unwrap),
-        commands.fetchCarBrands().then(unwrap),
-        commands.fetchCars().then(unwrap),
-        commands.fetchServices().then(unwrap),
-        commands.getAppVersion(),
-      ]);
 
-      this.clients = clients;
-      this.car_brands = brands;
-      this.cars = cars;
-      this.services = services;
-      this.version = version;
-    } catch (e) {
-      this.error =
-        e instanceof Error
-          ? e.message
-          : "Помилка комунікації з фоновим процесом.";
-    } finally {
-      this.loading = false;
-    }
+    const [clients, brands, cars, services, version] = await Promise.all([
+      commands.fetchClients().then(unwrap),
+      commands.fetchCarBrands().then(unwrap),
+      commands.fetchCars().then(unwrap),
+      commands.fetchServices().then(unwrap),
+      commands.getAppVersion(),
+    ]);
+
+    this.clients = clients;
+    this.car_brands = brands;
+    this.cars = cars;
+    this.services = services;
+    this.version = version;
+
+    this.loading = false;
   }
 
   createClient(client: Client) {
