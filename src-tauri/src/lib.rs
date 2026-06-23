@@ -2,6 +2,7 @@ use std::{fs, path::PathBuf};
 
 use sqlx::{Pool, Sqlite};
 use tauri::Manager;
+use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 use tauri_specta::{collect_commands, Builder};
 
 pub mod database;
@@ -59,6 +60,17 @@ pub fn run() {
                 sqlx::migrate!("./migrations").run(&pool).await.unwrap();
                 pool
             });
+
+            app.handle().plugin(
+                tauri_plugin_log::Builder::new()
+                    .level(tauri_plugin_log::log::LevelFilter::Debug)
+                    .target(Target::new(TargetKind::Folder {
+                        path: app_dir.clone(),
+                        file_name: Some("main.log".to_string()),
+                    }))
+                    .rotation_strategy(RotationStrategy::KeepAll)
+                    .build(),
+            )?;
 
             app.manage(AppState {
                 data_dir: app_dir,
