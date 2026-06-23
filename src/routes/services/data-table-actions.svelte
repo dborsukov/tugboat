@@ -3,13 +3,36 @@
   import EditIcon from "@lucide/svelte/icons/square-pen";
   import TrashIcon from "@lucide/svelte/icons/trash";
 
+  import { commands } from "$lib/bindings";
+
+  import { appStore } from "$lib/stores/app.svelte";
+
   import { Button } from "$lib/components/ui/button/index.js";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
+
+  import DeleteDialog from "$lib/components/delete-dialog.svelte";
 
   import ServiceMutationSheet from "./service-mutation-sheet.svelte";
 
   let { id }: { id: number } = $props();
   let isSheetOpen: boolean = $state(false);
+  let isDeleteDialogOpen: boolean = $state(false);
+
+  async function handleDelete() {
+    try {
+      let res = await commands.archiveService(id);
+      if (res.status === "ok") {
+        appStore.removeService(id);
+      } else {
+        // TODO: show error to user
+        alert(res.error);
+      }
+      isDeleteDialogOpen = false;
+    } catch (err) {
+      // TODO: show error to user
+      alert(`Critical Tauri panic or IPC error: ${err}`);
+    }
+  }
 </script>
 
 <DropdownMenu.Root>
@@ -32,7 +55,9 @@
         <EditIcon class="ml-auto" />
       </DropdownMenu.Item>
       <DropdownMenu.Item
-        onclick={() => navigator.clipboard.writeText(id.toString())}
+        onclick={() => {
+          isDeleteDialogOpen = !isDeleteDialogOpen;
+        }}
       >
         Видалити
         <TrashIcon class="ml-auto" />
@@ -42,3 +67,8 @@
 </DropdownMenu.Root>
 
 <ServiceMutationSheet bind:open={isSheetOpen} {id} />
+<DeleteDialog
+  bind:open={isDeleteDialogOpen}
+  onDelete={handleDelete}
+  description="Цю дію неможливо відмінити."
+/>

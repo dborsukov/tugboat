@@ -61,6 +61,10 @@ class AppStore {
   removeCar(id: number) {
     this.cars = this.cars.filter((car) => car.id !== id);
   }
+
+  removeService(id: number) {
+    this.services = this.services.filter((service) => service.id !== id);
+  }
 }
 
 export const appStore = new AppStore();

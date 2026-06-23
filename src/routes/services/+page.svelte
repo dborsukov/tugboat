@@ -14,8 +14,9 @@
 
   import { columns } from "./columns";
   import DataTable from "./data-table.svelte";
+  import ServiceMutationSheet from "./service-mutation-sheet.svelte";
 
-  // let table: Table<Service>;
+  let isSheetOpen: boolean = false;
 </script>
 
 <PageLayout>
@@ -33,10 +34,14 @@
         // }}
         class="w-full"
       />
-      <Button>
+      <Button
+        onclick={() => {
+          isSheetOpen = !isSheetOpen;
+        }}
+      >
         <UserPlusIcon /> Додати
       </Button>
-      <!-- <ClientMutationSheet bind:open={isSheetOpen} /> -->
+      <ServiceMutationSheet bind:open={isSheetOpen} />
     </div>
   {/snippet}
   <DataTable data={appStore.services} {columns} />

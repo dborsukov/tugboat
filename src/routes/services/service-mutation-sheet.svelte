@@ -30,6 +30,9 @@
       ? "Змініть параметри сервісу тут."
       : "Внесіть дані нового сервісу тут.",
   );
+  const form_id = $derived(
+    isEdit ? `service-mutation-form-${id}` : "service-mutation-form-create",
+  );
 
   export const userSchema = z.object({
     name: z.string().nonempty("Назва не може бути пустою"),
@@ -45,7 +48,7 @@
     validationMethod: "oninput",
     resetForm: false,
     // svelte-ignore state_referenced_locally
-    id: `service-{id}-mutation-form`,
+    id: form_id,
     async onUpdate({ form: nativeForm }) {
       if (!nativeForm.valid) return;
 
@@ -62,12 +65,9 @@
           });
           if (res.status === "ok") {
             let updated_service = res.data;
-            const index = appStore.services.findIndex(
-              (c) => c.id === updated_service.id,
+            appStore.services = appStore.services.map((service) =>
+              service.id === updated_service.id ? updated_service : service,
             );
-            if (index !== -1) {
-              appStore.services[index] = updated_service;
-            }
             open = false;
             form.reset();
           } else {
@@ -81,7 +81,7 @@
           });
           if (res.status === "ok") {
             let new_service = res.data;
-            appStore.services.push(new_service);
+            appStore.services = [...appStore.services, new_service];
             open = false;
             form.reset();
           } else {
@@ -128,7 +128,7 @@
 
     <form
       use:enhance
-      id="service-{id}-mutation-form"
+      id={form_id}
       class="flex flex-col p-6 gap-4 overflow-y-auto h-full"
     >
       <Form.Field {form} name="name">
@@ -151,11 +151,7 @@
       </Form.Field>
     </form>
     <Sheet.Footer>
-      <Button
-        type="submit"
-        disabled={$submitting}
-        form="service-{id}-mutation-form"
-      >
+      <Button type="submit" disabled={$submitting} form={form_id}>
         {#if $submitting}<Spinner />{/if}
         {isEdit ? "Зберегти зміни" : "Додати"}
       </Button>
