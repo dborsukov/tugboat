@@ -37,6 +37,7 @@
       ? "Змініть дані автомобіля тут."
       : "Внесіть дані нового автомобіля тут.",
   );
+  const formID = "car-mutation-form";
 
   let clientComboOpen = $state(false);
   let clientComboTriggerRef = $state<HTMLButtonElement>(null!);
@@ -50,28 +51,48 @@
     appStore.car_brands.find((b) => b.id === $formData.brand_id)?.name,
   );
 
-  const userSchema = z.object({
-    client_id: z.number().min(0, "Вкажіть власника").default(-1),
-    brand_id: z.number().min(0, "Вкажіть марку").default(-1),
-    model: z.string().nonempty("Вкажіть модель"),
+  const vehicleSchema = z.object({
+    client_id: z
+      .number({ error: "Вкажіть власника" })
+      .min(1, { error: "Вкажіть власника" })
+      .default(-1),
+
+    brand_id: z
+      .number({ error: "Вкажіть марку" })
+      .min(1, { error: "Вкажіть марку" })
+      .default(-1),
+
+    model: z.string().min(1, { error: "Вкажіть модель" }),
+
     year: z
       .number({ error: "Вкажіть рік" })
-      .min(1885, "Неправильний рік")
-      .default(new Date().getFullYear()),
-    registration: z.string().trim().toUpperCase(),
+      .min(1885, { error: "Неправильний рік" })
+      .max(new Date().getFullYear() + 1, {
+        error: "Рік не може бути в далекому майбутньому",
+      })
+      .default(() => new Date().getFullYear()),
+
+    registration: z
+      .string()
+      .trim()
+      .toUpperCase()
+      .min(1, { error: "Вкажіть реєстраційний номер" }),
+
     vin: z
       .string()
       .trim()
-      .length(17, "VIN-код має складатись з 17 символів")
-      .toUpperCase(),
+      .toUpperCase()
+      .regex(/^[A-HJ-NPR-Z0-9]{17}$/, {
+        error: "VIN-код має складатись з 17 правильних символів",
+      }),
   });
 
-  const form = superForm(defaults(zod4(userSchema)), {
+  const form = superForm(defaults(zod4(vehicleSchema)), {
     SPA: true,
-    validators: zod4Client(userSchema),
+    validators: zod4Client(vehicleSchema),
     validationMethod: "oninput",
     resetForm: false,
-    id: "car-mutation-form",
+    id: formID,
     async onUpdate({ form: nativeForm }) {
       if (!nativeForm.valid) return;
 
@@ -84,52 +105,25 @@
         vin: $formData.vin,
       };
 
-      try {
-        if (isEdit) {
-          let res = await commands.updateCar(car.id, {
-            client_id: payload.client_id,
-            brand_id: payload.brand_id,
-            model: payload.model,
-            year: payload.year,
-            registration: payload.registration,
-            vin: payload.vin,
-          });
-          if (res.status === "ok") {
-            let updated_car = res.data;
-            const index = appStore.cars.findIndex(
-              (c) => c.id === updated_car.id,
-            );
-            if (index !== -1) {
-              appStore.cars[index] = updated_car;
-            }
-            open = false;
-            form.reset();
-          } else {
-            // TODO: show error to user
-            alert(res.error);
-          }
+      if (isEdit) {
+        let res = await commands.updateCar(car.id, payload);
+        if (res.status === "ok") {
+          appStore.updateCar(res.data);
         } else {
-          let res = await commands.createCar({
-            client_id: payload.client_id,
-            brand_id: payload.brand_id,
-            model: payload.model,
-            year: payload.year,
-            registration: payload.registration,
-            vin: payload.vin,
-          });
-          if (res.status === "ok") {
-            let new_car = res.data;
-            appStore.cars.push(new_car);
-            form.reset();
-            open = false;
-          } else {
-            // TODO: show error to user
-            alert(res.error);
-          }
+          // TODO: show error to user
+          alert(res.error);
         }
-      } catch (err) {
-        alert(`Critical IPC error: ${err}`);
+      } else {
+        let res = await commands.createCar(payload);
+        if (res.status === "ok") {
+          appStore.createCar(res.data);
+        } else {
+          // TODO: show error to user
+          alert(res.error);
+        }
       }
+      open = false;
+      form.reset();
     },
   });
 
@@ -180,7 +174,7 @@
 
     <form
       use:enhance
-      id="car-mutation-form"
+      id={formID}
       class="flex flex-col p-6 gap-4 overflow-y-auto h-full"
     >
       <Form.Field {form} name="client_id">
@@ -338,7 +332,7 @@
       </Form.Field>
     </form>
     <Sheet.Footer>
-      <Button type="submit" disabled={$submitting} form="car-mutation-form">
+      <Button type="submit" disabled={$submitting} form={formID}>
         {#if $submitting}<Spinner />{/if}
         {isEdit ? "Зберегти зміни" : "Створити"}
       </Button>

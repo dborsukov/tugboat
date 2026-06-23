@@ -18,7 +18,7 @@ use sqlx::FromRow;
     specta::Type,
 )]
 #[sqlx(type_name = "TEXT", rename_all = "lowercase")]
-pub enum InvoiceStatus {
+pub enum WorkOrderStatus {
     New,
     WaitingForParts,
     Working,
@@ -141,33 +141,13 @@ pub struct UpdateCarPayload {
     // Thrid-party: Specta
     specta::Type,
 )]
-pub struct Service {
-    #[specta(type = specta_typescript::Number)]
-    pub id: i64,
-    pub name: String,
-    pub unit_price: i64,
-    pub is_archived: bool,
-}
-
-#[derive(
-    // Builtins
-    Debug,
-    Clone,
-    // Thrid-party: Serde
-    Serialize,
-    Deserialize,
-    // Thrid-party: Sqlx
-    FromRow,
-    // Thrid-party: Specta
-    specta::Type,
-)]
-pub struct Invoice {
+pub struct WorkOrder {
     #[specta(type = specta_typescript::Number)]
     pub id: i64,
     #[specta(type = specta_typescript::Number)]
     pub car_id: i64,
     pub created_at: String,
-    pub status: InvoiceStatus,
+    pub status: WorkOrderStatus,
 }
 
 #[derive(
@@ -182,15 +162,50 @@ pub struct Invoice {
     // Thrid-party: Specta
     specta::Type,
 )]
-pub struct InvoiceItem {
+pub struct WorkOrderItem {
     #[specta(type = specta_typescript::Number)]
     pub id: i64,
     #[specta(type = specta_typescript::Number)]
-    pub invoice_id: i64,
+    pub work_order_id: i64,
     pub service_id: Option<i64>,
     pub name: String,
     #[specta(type = specta_typescript::Number)]
     pub quantity: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub unit_price: i64,
+}
+
+#[derive(
+    // Builtins
+    Debug,
+    Clone,
+    // Thrid-party: Serde
+    Serialize,
+    Deserialize,
+    // Thrid-party: Sqlx
+    FromRow,
+    // Thrid-party: Specta
+    specta::Type,
+)]
+pub struct Service {
+    #[specta(type = specta_typescript::Number)]
+    pub id: i64,
+    pub name: String,
+    #[specta(type = specta_typescript::Number)]
+    pub unit_price: i64,
+    pub is_archived: bool,
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+pub struct CreateServicePayload {
+    pub name: String,
+    #[specta(type = specta_typescript::Number)]
+    pub unit_price: i64,
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+pub struct UpdateServicePayload {
+    pub name: String,
     #[specta(type = specta_typescript::Number)]
     pub unit_price: i64,
 }

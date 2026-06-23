@@ -1,3 +1,48 @@
-<main>
-  <h1 class="text-purple-400 text-2xl font-bold">Сервіси</h1>
-</main>
+<script lang="ts">
+  import type { Table } from "@tanstack/table-core";
+
+  import UserPlusIcon from "@lucide/svelte/icons/circle-plus";
+
+  import type { Service } from "$lib/bindings";
+
+  import { appStore } from "$lib/stores/app.svelte";
+
+  import { Button } from "$lib/components/ui/button";
+  import { Input } from "$lib/components/ui/input";
+
+  import PageLayout from "$lib/components/page-layout.svelte";
+
+  import { columns } from "./columns";
+  import DataTable from "./data-table.svelte";
+  import ServiceMutationSheet from "./service-mutation-sheet.svelte";
+
+  let isSheetOpen: boolean = false;
+</script>
+
+<PageLayout>
+  {#snippet header()}
+    <div class="h-full px-4 flex items-center gap-2">
+      <!-- TODO: implement fuzzy search with highlight -->
+      <Input
+        placeholder="Пошук за назвою..."
+        // value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
+        // onchange={(e) => {
+        //   table.getColumn("name")?.setFilterValue(e.currentTarget.value);
+        // }}
+        // oninput={(e) => {
+        //   table.getColumn("name")?.setFilterValue(e.currentTarget.value);
+        // }}
+        class="w-full"
+      />
+      <Button
+        onclick={() => {
+          isSheetOpen = !isSheetOpen;
+        }}
+      >
+        <UserPlusIcon /> Додати
+      </Button>
+      <ServiceMutationSheet bind:open={isSheetOpen} />
+    </div>
+  {/snippet}
+  <DataTable data={appStore.services} {columns} />
+</PageLayout>

@@ -1,22 +1,16 @@
 <script lang="ts">
-  import { cn } from "$lib/utils";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
-
-  import CheckIcon from "@lucide/svelte/icons/check";
-  import ChevronsUpDownIcon from "@lucide/svelte/icons/chevrons-up-down";
 
   import { commands } from "$lib/bindings";
 
   import { appStore } from "$lib/stores/app.svelte";
 
   import { Button } from "$lib/components/ui/button";
-  import * as Command from "$lib/components/ui/command";
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
-  import * as Popover from "$lib/components/ui/popover";
   import * as Sheet from "$lib/components/ui/sheet";
   import { Spinner } from "$lib/components/ui/spinner";
 
@@ -34,18 +28,19 @@
   const descText = $derived(
     isEdit ? "Змініть дані клієнта тут." : "Внесіть дані нового клієнта тут.",
   );
+  const formID = "client-mutation-form";
 
-  export const userSchema = z.object({
+  export const clientSchema = z.object({
     name: z.string().nonempty("Ім'я не може бути пустим"),
     phone: z.string().nonempty("Мобільний номер не може бути пустим"),
   });
 
-  const form = superForm(defaults(zod4(userSchema)), {
+  const form = superForm(defaults(zod4(clientSchema)), {
     SPA: true,
-    validators: zod4Client(userSchema),
+    validators: zod4Client(clientSchema),
     validationMethod: "oninput",
     resetForm: false,
-    id: "client-mutation-form",
+    id: formID,
     async onUpdate({ form: nativeForm }) {
       if (!nativeForm.valid) return;
 
@@ -54,44 +49,25 @@
         phone: $formData.phone,
       };
 
-      try {
-        if (isEdit) {
-          let res = await commands.updateClient(client.id, {
-            name: payload.name,
-            phone: payload.phone,
-          });
-          if (res.status === "ok") {
-            let updated_client = res.data;
-            const index = appStore.clients.findIndex(
-              (c) => c.id === updated_client.id,
-            );
-            if (index !== -1) {
-              appStore.clients[index] = updated_client;
-            }
-            open = false;
-            form.reset();
-          } else {
-            // TODO: show error to user
-            alert(res.error);
-          }
+      if (isEdit) {
+        let res = await commands.updateClient(client.id, payload);
+        if (res.status === "ok") {
+          appStore.updateClient(res.data);
         } else {
-          let res = await commands.createClient({
-            name: payload.name,
-            phone: payload.phone,
-          });
-          if (res.status === "ok") {
-            let new_client = res.data;
-            appStore.clients.push(new_client);
-            open = false;
-            form.reset();
-          } else {
-            // TODO: show error to user
-            alert(res.error);
-          }
+          // TODO: show error to user
+          alert(res.error);
         }
-      } catch (err) {
-        alert(`Critical IPC error: ${err}`);
+      } else {
+        let res = await commands.createClient(payload);
+        if (res.status === "ok") {
+          appStore.createClient(res.data);
+        } else {
+          // TODO: show error to user
+          alert(res.error);
+        }
       }
+      open = false;
+      form.reset();
     },
   });
 
@@ -128,7 +104,7 @@
 
     <form
       use:enhance
-      id="client-mutation-form"
+      id={formID}
       class="flex flex-col p-6 gap-4 overflow-y-auto h-full"
     >
       <Form.Field {form} name="name">
@@ -151,7 +127,7 @@
       </Form.Field>
     </form>
     <Sheet.Footer>
-      <Button type="submit" disabled={$submitting} form="client-mutation-form">
+      <Button type="submit" disabled={$submitting} form={formID}>
         {#if $submitting}<Spinner />{/if}
         {isEdit ? "Зберегти зміни" : "Створити"}
       </Button>

@@ -38,13 +38,14 @@
       badge: appStore.documents.length,
     },
   ]);
-  const sidebar2 = [
+  const sidebar2 = $derived([
     {
       title: "Сервіси",
       url: "/services",
       icon: WrenchIcon,
+      badge: appStore.services.length,
     },
-  ];
+  ]);
   const footer = [
     {
       title: "Налаштування",
@@ -140,6 +141,7 @@
                   </a>
                 {/snippet}
               </Sidebar.MenuButton>
+              <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>
             </Sidebar.MenuItem>
           {/each}
         </Sidebar.Menu>

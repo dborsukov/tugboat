@@ -1,10 +1,28 @@
-import { commands, type Car, type CarBrand, type Client } from "$lib/bindings";
+import {
+  commands,
+  type Car,
+  type CarBrand,
+  type Client,
+  type Service,
+} from "$lib/bindings";
+
+function unwrap<T>(
+  res: { status: "ok"; data: T } | { status: "error"; error: any },
+): T {
+  if (res.status === "ok") return res.data;
+  const msg =
+    res.error && typeof res.error === "object" && "message" in res.error
+      ? res.error.message
+      : String(res.error);
+  throw new Error(msg);
+}
 
 class AppStore {
   version: string = $state("0.0.0");
   clients: Client[] = $state([]);
-  cars: Car[] = $state([]);
   car_brands: CarBrand[] = $state([]);
+  cars: Car[] = $state([]);
+  services: Service[] = $state([]);
   documents = $state([]);
   loading = $state(false);
   error: string | null = $state(null);
@@ -12,33 +30,50 @@ class AppStore {
   async loadAll() {
     this.loading = true;
     this.error = null;
-    try {
-      let res1 = await commands.fetchClients();
-      if (res1.status === "ok") {
-        this.clients = res1.data;
-      } else {
-        this.error = String(res1.error);
-      }
-      let res2 = await commands.fetchCarBrands();
-      if (res2.status === "ok") {
-        this.car_brands = res2.data;
-      } else {
-        this.error = String(res2.error);
-      }
-      let res3 = await commands.fetchCars();
-      if (res3.status === "ok") {
-        this.cars = res3.data;
-      } else {
-        this.error = String(res3.error);
-      }
-      commands.getAppVersion().then((res) => {
-        this.version = res;
-      });
-    } catch (e) {
-      this.error = "Failed to communicate with backend process.";
-    } finally {
-      this.loading = false;
-    }
+
+    const [clients, brands, cars, services, version] = await Promise.all([
+      commands.fetchClients().then(unwrap),
+      commands.fetchCarBrands().then(unwrap),
+      commands.fetchCars().then(unwrap),
+      commands.fetchServices().then(unwrap),
+      commands.getAppVersion(),
+    ]);
+
+    this.clients = clients;
+    this.car_brands = brands;
+    this.cars = cars;
+    this.services = services;
+    this.version = version;
+
+    this.loading = false;
+  }
+
+  createClient(client: Client) {
+    this.clients = [...this.clients, client];
+  }
+
+  createCar(car: Car) {
+    this.cars = [...this.cars, car];
+  }
+
+  createService(service: Service) {
+    this.services = [...this.services, service];
+  }
+
+  updateClient(updated: Client) {
+    this.clients = this.clients.map((client) =>
+      client.id === updated.id ? updated : client,
+    );
+  }
+
+  updateCar(updated: Car) {
+    this.cars = this.cars.map((car) => (car.id === updated.id ? updated : car));
+  }
+
+  updateService(updated: Service) {
+    this.services = this.services.map((service) =>
+      service.id === updated.id ? updated : service,
+    );
   }
 
   removeClient(id: number) {
@@ -47,6 +82,10 @@ class AppStore {
 
   removeCar(id: number) {
     this.cars = this.cars.filter((car) => car.id !== id);
+  }
+
+  removeService(id: number) {
+    this.services = this.services.filter((service) => service.id !== id);
   }
 }
 
