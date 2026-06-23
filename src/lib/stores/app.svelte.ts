@@ -6,11 +6,18 @@ import {
   type Service,
 } from "$lib/bindings";
 
+function unwrap<T>(
+  res: { status: "ok"; data: T } | { status: "error"; error: unknown },
+): T {
+  if (res.status === "ok") return res.data;
+  throw new Error(String(res.error));
+}
+
 class AppStore {
   version: string = $state("0.0.0");
   clients: Client[] = $state([]);
-  cars: Car[] = $state([]);
   car_brands: CarBrand[] = $state([]);
+  cars: Car[] = $state([]);
   services: Service[] = $state([]);
   documents = $state([]);
   loading = $state(false);
@@ -20,35 +27,24 @@ class AppStore {
     this.loading = true;
     this.error = null;
     try {
-      let res1 = await commands.fetchClients();
-      if (res1.status === "ok") {
-        this.clients = res1.data;
-      } else {
-        this.error = String(res1.error);
-      }
-      let res2 = await commands.fetchCarBrands();
-      if (res2.status === "ok") {
-        this.car_brands = res2.data;
-      } else {
-        this.error = String(res2.error);
-      }
-      let res3 = await commands.fetchCars();
-      if (res3.status === "ok") {
-        this.cars = res3.data;
-      } else {
-        this.error = String(res3.error);
-      }
-      let res4 = await commands.fetchServices();
-      if (res4.status === "ok") {
-        this.services = res4.data;
-      } else {
-        this.error = String(res4.error);
-      }
-      commands.getAppVersion().then((res) => {
-        this.version = res;
-      });
+      const [clients, brands, cars, services, version] = await Promise.all([
+        commands.fetchClients().then(unwrap),
+        commands.fetchCarBrands().then(unwrap),
+        commands.fetchCars().then(unwrap),
+        commands.fetchServices().then(unwrap),
+        commands.getAppVersion(),
+      ]);
+
+      this.clients = clients;
+      this.car_brands = brands;
+      this.cars = cars;
+      this.services = services;
+      this.version = version;
     } catch (e) {
-      this.error = "Failed to communicate with backend process.";
+      this.error =
+        e instanceof Error
+          ? e.message
+          : "Помилка комунікації з фоновим процесом.";
     } finally {
       this.loading = false;
     }
