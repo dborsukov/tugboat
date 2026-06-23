@@ -51,6 +51,7 @@ pub fn run() {
 
             let app_dir = app.path().app_data_dir().unwrap();
             fs::create_dir_all(&app_dir).unwrap();
+
             let db_path = app_dir.join("main.db");
             let options = sqlx::sqlite::SqliteConnectOptions::new()
                 .filename(db_path)
@@ -61,14 +62,21 @@ pub fn run() {
                 pool
             });
 
+            let log_level = if cfg!(debug_assertions) {
+                log::LevelFilter::Debug
+            } else {
+                log::LevelFilter::Info
+            };
+
             app.handle().plugin(
                 tauri_plugin_log::Builder::new()
-                    .level(tauri_plugin_log::log::LevelFilter::Debug)
+                    .level(log_level)
                     .target(Target::new(TargetKind::Folder {
-                        path: app_dir.clone(),
-                        file_name: Some("main.log".to_string()),
+                        path: app_dir.join("logs"),
+                        file_name: None,
                     }))
-                    .rotation_strategy(RotationStrategy::KeepAll)
+                    .rotation_strategy(RotationStrategy::KeepSome(50))
+                    .max_file_size(500_000 /* bytes */)
                     .build(),
             )?;
 
