@@ -30,11 +30,11 @@
       ? "Змініть параметри сервісу тут."
       : "Внесіть дані нового сервісу тут.",
   );
-  const form_id = $derived(
+  const formID = $derived(
     isEdit ? `service-mutation-form-${id}` : "service-mutation-form-create",
   );
 
-  export const userSchema = z.object({
+  export const serviceSchema = z.object({
     name: z.string().nonempty("Назва не може бути пустою"),
     unit_price: z
       .number({ error: "Вкажіть ціну" })
@@ -42,13 +42,13 @@
       .default(0),
   });
 
-  const form = superForm(defaults(zod4(userSchema)), {
+  const form = superForm(defaults(zod4(serviceSchema)), {
     SPA: true,
-    validators: zod4Client(userSchema),
+    validators: zod4Client(serviceSchema),
     validationMethod: "oninput",
     resetForm: false,
     // svelte-ignore state_referenced_locally
-    id: form_id,
+    id: formID,
     async onUpdate({ form: nativeForm }) {
       if (!nativeForm.valid) return;
 
@@ -59,36 +59,24 @@
 
       try {
         if (isEdit && id) {
-          let res = await commands.updateService(id, {
-            name: payload.name,
-            unit_price: payload.unit_price,
-          });
+          let res = await commands.updateService(id, payload);
           if (res.status === "ok") {
-            let updated_service = res.data;
-            appStore.services = appStore.services.map((service) =>
-              service.id === updated_service.id ? updated_service : service,
-            );
-            open = false;
-            form.reset();
+            appStore.updateService(res.data);
           } else {
             // TODO: show error to user
             alert(res.error);
           }
         } else {
-          let res = await commands.createService({
-            name: payload.name,
-            unit_price: payload.unit_price,
-          });
+          let res = await commands.createService(payload);
           if (res.status === "ok") {
-            let new_service = res.data;
-            appStore.services = [...appStore.services, new_service];
-            open = false;
-            form.reset();
+            appStore.createService(res.data);
           } else {
             // TODO: show error to user
             alert(res.error);
           }
         }
+        open = false;
+        form.reset();
       } catch (err) {
         alert(`Critical IPC error: ${err}`);
       }
@@ -128,7 +116,7 @@
 
     <form
       use:enhance
-      id={form_id}
+      id={formID}
       class="flex flex-col p-6 gap-4 overflow-y-auto h-full"
     >
       <Form.Field {form} name="name">
@@ -151,7 +139,7 @@
       </Form.Field>
     </form>
     <Sheet.Footer>
-      <Button type="submit" disabled={$submitting} form={form_id}>
+      <Button type="submit" disabled={$submitting} form={formID}>
         {#if $submitting}<Spinner />{/if}
         {isEdit ? "Зберегти зміни" : "Додати"}
       </Button>

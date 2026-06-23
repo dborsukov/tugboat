@@ -54,6 +54,34 @@ class AppStore {
     }
   }
 
+  createClient(client: Client) {
+    this.clients = [...this.clients, client];
+  }
+
+  createCar(car: Car) {
+    this.cars = [...this.cars, car];
+  }
+
+  createService(service: Service) {
+    this.services = [...this.services, service];
+  }
+
+  updateClient(updated: Client) {
+    this.clients = this.clients.map((client) =>
+      client.id === updated.id ? updated : client,
+    );
+  }
+
+  updateCar(updated: Car) {
+    this.cars = this.cars.map((car) => (car.id === updated.id ? updated : car));
+  }
+
+  updateService(updated: Service) {
+    this.services = this.services.map((service) =>
+      service.id === updated.id ? updated : service,
+    );
+  }
+
   removeClient(id: number) {
     this.clients = this.clients.filter((client) => client.id !== id);
   }

@@ -5,8 +5,6 @@
   import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
   import FingerprintIcon from "@lucide/svelte/icons/fingerprint-pattern";
   import HashIcon from "@lucide/svelte/icons/hash";
-  import SquarePenIcon from "@lucide/svelte/icons/square-pen";
-  import TrashIcon from "@lucide/svelte/icons/trash-2";
   import UserIcon from "@lucide/svelte/icons/user";
 
   import { goto } from "$app/navigation";
@@ -16,13 +14,10 @@
   import { appStore } from "$lib/stores/app.svelte";
 
   import { Badge } from "$lib/components/ui/badge";
-  import ButtonGroup from "$lib/components/ui/button-group/button-group.svelte";
   import Button from "$lib/components/ui/button/button.svelte";
 
-  import DeleteDialog from "$lib/components/delete-dialog.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
-  import CarMutationSheet from "../car-mutation-sheet.svelte";
   import LogoLoader from "../logo-loader.svelte";
   import DropdownMenu from "./dropdown-menu.svelte";
 
@@ -30,25 +25,6 @@
   let owner = $derived(appStore.clients.find((c) => c.id === car.client_id));
   let brand = $derived(appStore.car_brands.find((b) => b.id === car.brand_id));
   let slug = $derived(brand != undefined ? brand.icon_slug : "");
-
-  let isSheetOpen = $state(false);
-  let isDeleteDialogOpen = $state(false);
-
-  async function handleDelete() {
-    try {
-      let res = await commands.deleteCar(car.id);
-      if (res.status === "ok") {
-        appStore.removeCar(car.id);
-        await goto("/cars");
-      } else {
-        // TODO: show error to user
-        alert(res.error);
-      }
-    } catch (err) {
-      // TODO: show error to user
-      alert(`Critical Tauri panic or IPC error: ${err}`);
-    }
-  }
 </script>
 
 <PageLayout>
