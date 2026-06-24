@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { cn } from "$lib/utils";
   import { tick } from "svelte";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
@@ -11,6 +10,8 @@
   import { commands } from "$lib/bindings";
 
   import { appStore } from "$lib/stores/app.svelte";
+
+  import { cn } from "$lib/utils";
 
   import { Button } from "$lib/components/ui/button";
   import * as Command from "$lib/components/ui/command";

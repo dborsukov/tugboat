@@ -24,6 +24,8 @@ export default {
     "",
     "^\\$lib/stores/(.*)$",
     "",
+    "^\\$lib/utils(.*)$",
+    "",
     "^\\$lib/components/ui/(.*)$",
     "",
     "^\\$lib/components/(.*)$",
