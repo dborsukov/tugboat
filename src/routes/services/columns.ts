@@ -6,18 +6,17 @@ import type { Service } from "$lib/bindings";
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
 import DataTableActions from "./data-table-actions.svelte";
+import DataTableNameButton from "./data-table-name-button.svelte";
 import DataTablePriceButton from "./data-table-price-button.svelte";
 
 export const columns: ColumnDef<Service>[] = [
   {
     accessorKey: "name",
-    header: () => {
-      const nameHeaderSnippet = createRawSnippet(() => {
-        return {
-          render: () => `<div class="px-2">Назва</div>`,
-        };
+    header: ({ column }) => {
+      return renderComponent(DataTableNameButton, {
+        onclick: column.getToggleSortingHandler(),
+        sortStatus: column.getIsSorted(),
       });
-      return renderSnippet(nameHeaderSnippet);
     },
     cell: ({ row }) => {
       const nameCellSnippet = createRawSnippet(() => {
@@ -33,6 +32,7 @@ export const columns: ColumnDef<Service>[] = [
     header: ({ column }) => {
       return renderComponent(DataTablePriceButton, {
         onclick: column.getToggleSortingHandler(),
+        sortStatus: column.getIsSorted(),
       });
     },
     cell: ({ row }) => {

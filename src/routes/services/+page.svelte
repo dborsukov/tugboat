@@ -16,22 +16,16 @@
   import DataTable from "./data-table.svelte";
   import ServiceMutationSheet from "./service-mutation-sheet.svelte";
 
-  let isSheetOpen: boolean = false;
+  let inputValue: string = $state("");
+  let isSheetOpen: boolean = $state(false);
 </script>
 
 <PageLayout>
   {#snippet header()}
     <div class="h-full px-4 flex items-center gap-2">
-      <!-- TODO: implement fuzzy search with highlight -->
       <Input
-        placeholder="Пошук за назвою..."
-        // value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-        // onchange={(e) => {
-        //   table.getColumn("name")?.setFilterValue(e.currentTarget.value);
-        // }}
-        // oninput={(e) => {
-        //   table.getColumn("name")?.setFilterValue(e.currentTarget.value);
-        // }}
+        placeholder="Пошук за назвою або ціною..."
+        bind:value={inputValue}
         class="w-full"
       />
       <Button
@@ -44,5 +38,5 @@
       <ServiceMutationSheet bind:open={isSheetOpen} />
     </div>
   {/snippet}
-  <DataTable data={appStore.services} {columns} />
+  <DataTable data={appStore.services} {columns} bind:searchTerm={inputValue} />
 </PageLayout>
