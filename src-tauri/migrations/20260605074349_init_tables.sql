@@ -50,7 +50,7 @@ CREATE TABLE work_order_items (
     name TEXT NOT NULL,
     quantity INTEGER NOT NULL DEFAULT 1,
     unit_price INTEGER NOT NULL,
-    FOREIGN KEY (work_order_id) REFERENCES work_oders (id) ON DELETE CASCADE,
+    FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE,
     FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE SET NULL
 );
 
