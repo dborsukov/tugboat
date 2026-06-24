@@ -8,6 +8,7 @@
   import Button from "$lib/components/ui/button/button.svelte";
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
   import SidebarInset from "$lib/components/ui/sidebar/sidebar-inset.svelte";
+  import { Toaster } from "$lib/components/ui/sonner/index.js";
   import { Spinner } from "$lib/components/ui/spinner";
 
   import AppSidebar from "$lib/components/app-sidebar.svelte";
@@ -37,6 +38,7 @@
     >
   </div>
 {:else}
+  <Toaster position="bottom-center" richColors />
   <Sidebar.Provider>
     <AppSidebar />
     <SidebarInset class="h-screen flex flex-col overflow-hidden">

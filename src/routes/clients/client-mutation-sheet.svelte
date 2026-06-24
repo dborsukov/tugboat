@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { toast } from "svelte-sonner";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
@@ -35,9 +36,24 @@
     phone: z.string().nonempty("Мобільний номер не може бути пустим"),
   });
 
-  const form = superForm(defaults(zod4(clientSchema)), {
+  const extendedSchema = clientSchema.refine(
+    (data) => {
+      const clientsList = appStore.clients || [];
+      const duplicateClient = clientsList.find((c) => c.phone === data.phone);
+      if (!duplicateClient) return true;
+      // Avoid record matching with itself (when editing)
+      if (isEdit && duplicateClient.id === client?.id) return true;
+      return false;
+    },
+    {
+      message: "Клієнт з таким номером вже існує",
+      path: ["phone"],
+    },
+  );
+
+  const form = superForm(defaults(zod4(extendedSchema)), {
     SPA: true,
-    validators: zod4Client(clientSchema),
+    validators: zod4Client(extendedSchema),
     validationMethod: "oninput",
     resetForm: false,
     id: formID,
@@ -54,16 +70,20 @@
         if (res.status === "ok") {
           appStore.updateClient(res.data);
         } else {
-          // TODO: show error to user
-          alert(res.error);
+          return toast.error("Виникла помилка", {
+            description: res.error.message,
+            position: "bottom-left",
+          });
         }
       } else {
         let res = await commands.createClient(payload);
         if (res.status === "ok") {
           appStore.createClient(res.data);
         } else {
-          // TODO: show error to user
-          alert(res.error);
+          return toast.error("Виникла помилка", {
+            description: res.error.message,
+            position: "bottom-left",
+          });
         }
       }
       open = false;
@@ -71,7 +91,7 @@
     },
   });
 
-  const { form: formData, errors, enhance, submitting } = form;
+  const { form: formData, enhance, submitting } = form;
 
   $effect(() => {
     if (open) {

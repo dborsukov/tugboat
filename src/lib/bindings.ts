@@ -4,23 +4,25 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
 /** Commands */
 export const commands = {
-	archiveService: (id: number) => typedError<null, string>(__TAURI_INVOKE("archive_service", { id })),
-	createCar: (payload: CreateCarPayload) => typedError<Car, string>(__TAURI_INVOKE("create_car", { payload })),
-	createClient: (payload: CreateClientPayload) => typedError<Client, string>(__TAURI_INVOKE("create_client", { payload })),
-	createService: (payload: CreateServicePayload) => typedError<Service, string>(__TAURI_INVOKE("create_service", { payload })),
-	deleteCar: (id: number) => typedError<null, string>(__TAURI_INVOKE("delete_car", { id })),
-	deleteClient: (id: number) => typedError<null, string>(__TAURI_INVOKE("delete_client", { id })),
-	fetchCarBrands: () => typedError<CarBrand[], null>(__TAURI_INVOKE("fetch_car_brands")),
-	fetchCars: () => typedError<Car[], null>(__TAURI_INVOKE("fetch_cars")),
-	fetchClients: () => typedError<Client[], null>(__TAURI_INVOKE("fetch_clients")),
-	fetchServices: () => typedError<Service[], null>(__TAURI_INVOKE("fetch_services")),
-	updateCar: (id: number, payload: UpdateCarPayload) => typedError<Car, string>(__TAURI_INVOKE("update_car", { id, payload })),
-	updateClient: (id: number, payload: UpdateClientPayload) => typedError<Client, string>(__TAURI_INVOKE("update_client", { id, payload })),
-	updateService: (id: number, payload: UpdateServicePayload) => typedError<Service, string>(__TAURI_INVOKE("update_service", { id, payload })),
+	archiveService: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("archive_service", { id })),
+	createCar: (payload: CreateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("create_car", { payload })),
+	createClient: (payload: CreateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("create_client", { payload })),
+	createService: (payload: CreateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("create_service", { payload })),
+	deleteCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_car", { id })),
+	deleteClient: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_client", { id })),
+	fetchCarBrands: () => typedError<CarBrand[], AppError>(__TAURI_INVOKE("fetch_car_brands")),
+	fetchCars: () => typedError<Car[], AppError>(__TAURI_INVOKE("fetch_cars")),
+	fetchClients: () => typedError<Client[], AppError>(__TAURI_INVOKE("fetch_clients")),
+	fetchServices: () => typedError<Service[], AppError>(__TAURI_INVOKE("fetch_services")),
+	updateCar: (id: number, payload: UpdateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("update_car", { id, payload })),
+	updateClient: (id: number, payload: UpdateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("update_client", { id, payload })),
+	updateService: (id: number, payload: UpdateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("update_service", { id, payload })),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
 };
 
 /* Types */
+export type AppError = { type: "NotFound"; message: string } | { type: "ConstraintViolation"; message: string } | { type: "Sqlx"; message: string } | { type: "Generic"; message: string };
+
 export type Car = {
 	id: number,
 	client_id: number,

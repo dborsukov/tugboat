@@ -84,7 +84,7 @@ class AppStore {
     this.cars = this.cars.filter((car) => car.id !== id);
   }
 
-  removeService(id: number) {
+  archiveService(id: number) {
     this.services = this.services.filter((service) => service.id !== id);
   }
 }

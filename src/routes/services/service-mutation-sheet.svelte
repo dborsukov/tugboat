@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { toast } from "svelte-sonner";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
@@ -42,9 +43,26 @@
       .default(0),
   });
 
-  const form = superForm(defaults(zod4(serviceSchema)), {
+  const extendedSchema = serviceSchema.refine(
+    (data) => {
+      const servicesList = appStore.services || [];
+      const duplicateService = servicesList.find(
+        (c) => c.name.toLowerCase() === data.name.toLowerCase(),
+      );
+      if (!duplicateService) return true;
+      // Avoid record matching with itself (when editing)
+      if (isEdit && duplicateService.id === service?.id) return true;
+      return false;
+    },
+    {
+      message: "Сервіс з такою назвою вже існує",
+      path: ["name"],
+    },
+  );
+
+  const form = superForm(defaults(zod4(extendedSchema)), {
     SPA: true,
-    validators: zod4Client(serviceSchema),
+    validators: zod4Client(extendedSchema),
     validationMethod: "oninput",
     resetForm: false,
     // svelte-ignore state_referenced_locally
@@ -62,16 +80,20 @@
         if (res.status === "ok") {
           appStore.updateService(res.data);
         } else {
-          // TODO: show error to user
-          alert(res.error);
+          return toast.error("Виникла помилка", {
+            description: res.error.message,
+            position: "bottom-left",
+          });
         }
       } else {
         let res = await commands.createService(payload);
         if (res.status === "ok") {
           appStore.createService(res.data);
         } else {
-          // TODO: show error to user
-          alert(res.error);
+          return toast.error("Виникла помилка", {
+            description: res.error.message,
+            position: "bottom-left",
+          });
         }
       }
       open = false;
@@ -79,7 +101,7 @@
     },
   });
 
-  const { form: formData, errors, enhance, submitting } = form;
+  const { form: formData, enhance, submitting } = form;
 
   $effect(() => {
     if (open) {

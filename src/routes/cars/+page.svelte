@@ -59,7 +59,6 @@
     </div>
   {/snippet}
   {#if paginatedCars.length === 0}
-    <!-- TODO: center this or replace with shadcn's Empty -->
     <div class="flex h-40 items-center justify-center text-muted-foreground">
       Автомобілей не знайдено
     </div>

@@ -30,6 +30,7 @@ tauri = { version = "2", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-opener = "2"
 tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
+thiserror = "2.0.18"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

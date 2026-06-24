@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { toast } from "svelte-sonner";
+
   import EllipsisIcon from "@lucide/svelte/icons/ellipsis";
   import EditIcon from "@lucide/svelte/icons/square-pen";
   import TrashIcon from "@lucide/svelte/icons/trash";
@@ -29,9 +31,12 @@
     if (res.status === "ok") {
       appStore.removeClient(client.id);
       await goto("/clients");
+      toast.success("Клієнта видалено");
     } else {
-      // TODO: show error to user
-      alert(res.error);
+      toast.error("Виникла помилка", {
+        description: res.error.message,
+        position: "bottom-center",
+      });
     }
   }
 </script>

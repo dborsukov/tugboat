@@ -4,7 +4,7 @@ CREATE TABLE clients (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
     name TEXT NOT NULL,
-    phone TEXT
+    phone TEXT UNIQUE
 );
 
 CREATE TABLE car_brands (
@@ -28,8 +28,8 @@ CREATE TABLE cars (
     created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
     model TEXT NOT NULL,
     year INTEGER NOT NULL,
-    registration TEXT,
-    vin TEXT,
+    registration TEXT UNIQUE,
+    vin TEXT UNIQUE,
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
     FOREIGN KEY (brand_id) REFERENCES car_brands (id) ON DELETE RESTRICT
 );

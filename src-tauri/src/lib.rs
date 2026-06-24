@@ -6,6 +6,7 @@ use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 use tauri_specta::{collect_commands, Builder};
 
 pub mod database;
+pub mod error;
 pub mod utils;
 
 #[derive(Debug)]

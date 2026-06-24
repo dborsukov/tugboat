@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from "svelte";
+  import { toast } from "svelte-sonner";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
@@ -52,7 +53,7 @@
     appStore.car_brands.find((b) => b.id === $formData.brand_id)?.name,
   );
 
-  const vehicleSchema = z.object({
+  const carSchema = z.object({
     client_id: z
       .number({ error: "Вкажіть власника" })
       .min(1, { error: "Вкажіть власника" })
@@ -88,9 +89,41 @@
       }),
   });
 
-  const form = superForm(defaults(zod4(vehicleSchema)), {
+  const extendedSchema = carSchema
+    .refine(
+      (data) => {
+        const carsList = appStore.cars || [];
+        const duplicateCar = carsList.find(
+          (c) => c.registration === data.registration,
+        );
+        if (!duplicateCar) return true;
+        // Avoid record matching with itself (when editing)
+        if (isEdit && duplicateCar.id === car?.id) return true;
+        return false;
+      },
+      {
+        message: "Автомобіль з таким реєстраційним номером вже існує",
+        path: ["registration"],
+      },
+    )
+    .refine(
+      (data) => {
+        const carsList = appStore.cars || [];
+        const duplicateCar = carsList.find((c) => c.vin === data.vin);
+        if (!duplicateCar) return true;
+        // Avoid record matching with itself (when editing)
+        if (isEdit && duplicateCar.id === car?.id) return true;
+        return false;
+      },
+      {
+        message: "Автомобіль з таким VIN-кодом вже існує",
+        path: ["vin"],
+      },
+    );
+
+  const form = superForm(defaults(zod4(extendedSchema)), {
     SPA: true,
-    validators: zod4Client(vehicleSchema),
+    validators: zod4Client(extendedSchema),
     validationMethod: "oninput",
     resetForm: false,
     id: formID,
@@ -111,16 +144,20 @@
         if (res.status === "ok") {
           appStore.updateCar(res.data);
         } else {
-          // TODO: show error to user
-          alert(res.error);
+          return toast.error("Виникла помилка", {
+            description: res.error.message,
+            position: "bottom-left",
+          });
         }
       } else {
         let res = await commands.createCar(payload);
         if (res.status === "ok") {
           appStore.createCar(res.data);
         } else {
-          // TODO: show error to user
-          alert(res.error);
+          return toast.error("Виникла помилка", {
+            description: res.error.message,
+            position: "bottom-left",
+          });
         }
       }
       open = false;
@@ -128,7 +165,7 @@
     },
   });
 
-  const { form: formData, errors, enhance, submitting } = form;
+  const { form: formData, enhance, submitting } = form;
 
   $effect(() => {
     if (open) {
