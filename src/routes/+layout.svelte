@@ -3,8 +3,6 @@
 
   import { onMount } from "svelte";
 
-  import { goto } from "$app/navigation";
-
   import { appStore } from "$lib/stores/app.svelte";
 
   import Button from "$lib/components/ui/button/button.svelte";
