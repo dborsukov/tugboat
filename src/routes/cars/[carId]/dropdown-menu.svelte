@@ -43,7 +43,7 @@
 
 <DropdownMenu.Root>
   <DropdownMenu.Trigger
-    class={buttonVariants({ variant: "outline", size: "icon-sm" })}
+    class={buttonVariants({ variant: "outline", size: "icon" })}
   >
     <EllipsisIcon />
   </DropdownMenu.Trigger>
