@@ -1,7 +1,7 @@
 <script lang="ts">
+  import WorkOrdersIcon from "@lucide/svelte/icons/briefcase-business";
   import CarsIcon from "@lucide/svelte/icons/car";
   import CustomerIcon from "@lucide/svelte/icons/circle-user";
-  import DocumentsIcon from "@lucide/svelte/icons/file";
   import SettingsIcon from "@lucide/svelte/icons/settings";
   import WrenchIcon from "@lucide/svelte/icons/wrench";
 
@@ -32,10 +32,10 @@
       badge: appStore.cars.length,
     },
     {
-      title: "Документи",
-      url: "/documents",
-      icon: DocumentsIcon,
-      badge: appStore.documents.length,
+      title: "Замовлення",
+      url: "/work_orders",
+      icon: WorkOrdersIcon,
+      badge: appStore.work_orders.length,
     },
   ]);
   const sidebar2 = $derived([

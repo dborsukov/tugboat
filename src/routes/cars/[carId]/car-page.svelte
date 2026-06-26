@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { prettifyIsoDateString } from "$lib/utils";
+  import { toast } from "svelte-sonner";
 
+  import WorkOrderIcon from "@lucide/svelte/icons/briefcase-business";
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
   import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
   import FingerprintIcon from "@lucide/svelte/icons/fingerprint-pattern";
@@ -12,6 +13,8 @@
   import { commands, type Car } from "$lib/bindings";
 
   import { appStore } from "$lib/stores/app.svelte";
+
+  import { prettifyIsoDateString, sqidsEncode } from "$lib/utils";
 
   import { Badge } from "$lib/components/ui/badge";
   import Button from "$lib/components/ui/button/button.svelte";
@@ -29,9 +32,37 @@
 
 <PageLayout>
   {#snippet header()}
-    <div class="h-full px-4 flex items-center justify-between">
+    <div class="h-full px-4 flex items-center">
       <Button variant="secondary" onclick={() => goto("/cars")}>
         <ChevronLeftIcon /> Список
+      </Button>
+      <Button
+        class="ml-auto mr-2"
+        onclick={async () => {
+          let new_id = `WO-${sqidsEncode([Date.now()])}`;
+          let res = await commands.createWorkOrder({
+            id: new_id,
+            car_id: car.id,
+            created_at: new Date().toISOString(),
+            odometer_in: 666,
+            status: "New",
+            customer_complaint: null,
+            mechanic_notes: null,
+          });
+          if (res.status === "ok") {
+            appStore.createWorkOrder(res.data);
+            return toast.success(`Створив замовлення ${new_id}`, {
+              position: "bottom-left",
+            });
+          } else {
+            return toast.error("Виникла помилка", {
+              description: res.error.message,
+              position: "bottom-left",
+            });
+          }
+        }}
+      >
+        <WorkOrderIcon /> Нове замовлення
       </Button>
       <DropdownMenu {car} />
     </div>

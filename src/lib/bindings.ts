@@ -5,18 +5,22 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 /** Commands */
 export const commands = {
 	archiveService: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("archive_service", { id })),
+	archiveWorkOrder: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("archive_work_order", { id })),
 	createCar: (payload: CreateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("create_car", { payload })),
 	createClient: (payload: CreateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("create_client", { payload })),
 	createService: (payload: CreateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("create_service", { payload })),
+	createWorkOrder: (payload: CreateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("create_work_order", { payload })),
 	deleteCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_car", { id })),
 	deleteClient: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_client", { id })),
 	fetchCarBrands: () => typedError<CarBrand[], AppError>(__TAURI_INVOKE("fetch_car_brands")),
 	fetchCars: () => typedError<Car[], AppError>(__TAURI_INVOKE("fetch_cars")),
 	fetchClients: () => typedError<Client[], AppError>(__TAURI_INVOKE("fetch_clients")),
 	fetchServices: () => typedError<Service[], AppError>(__TAURI_INVOKE("fetch_services")),
+	fetchWorkOrders: () => typedError<WorkOrder[], AppError>(__TAURI_INVOKE("fetch_work_orders")),
 	updateCar: (id: number, payload: UpdateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("update_car", { id, payload })),
 	updateClient: (id: number, payload: UpdateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("update_client", { id, payload })),
 	updateService: (id: number, payload: UpdateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("update_service", { id, payload })),
+	updateWorkOrder: (payload: UpdateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("update_work_order", { payload })),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
 };
 
@@ -66,6 +70,16 @@ export type CreateServicePayload = {
 	unit_price: number,
 };
 
+export type CreateWorkOrderPayload = {
+	id: string,
+	car_id: number,
+	created_at: string,
+	odometer_in: number,
+	customer_complaint: string | null,
+	mechanic_notes: string | null,
+	status: WorkOrderStatus,
+};
+
 export type Service = {
 	id: number,
 	name: string,
@@ -91,6 +105,32 @@ export type UpdateServicePayload = {
 	name: string,
 	unit_price: number,
 };
+
+export type UpdateWorkOrderPayload = {
+	id: string,
+	car_id: number,
+	started_at: string | null,
+	completed_at: string | null,
+	odometer_in: number,
+	customer_complaint: string | null,
+	mechanic_notes: string | null,
+	status: WorkOrderStatus,
+};
+
+export type WorkOrder = {
+	id: string,
+	car_id: number,
+	created_at: string,
+	started_at: string | null,
+	completed_at: string | null,
+	odometer_in: number,
+	customer_complaint: string | null,
+	mechanic_notes: string | null,
+	status: WorkOrderStatus,
+	is_archived: boolean,
+};
+
+export type WorkOrderStatus = "New" | "WaitingForParts" | "Working" | "Paid";
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

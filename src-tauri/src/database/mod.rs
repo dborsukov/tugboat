@@ -44,6 +44,15 @@ pub async fn fetch_services(state: State<'_, crate::AppState>) -> AppResult<Vec<
 
 #[tauri::command]
 #[specta::specta]
+pub async fn fetch_work_orders(state: State<'_, crate::AppState>) -> AppResult<Vec<WorkOrder>> {
+    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT * FROM work_orders")
+        .fetch_all(&state.db_pool)
+        .await?;
+    Ok(work_orders)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn create_client(
     state: State<'_, crate::AppState>,
     payload: CreateClientPayload,
@@ -186,6 +195,62 @@ pub async fn archive_service(state: State<'_, crate::AppState>, id: i32) -> AppR
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound(
             "Сервіса з таким ID не знайдено в базі даних".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn create_work_order(
+    state: State<'_, crate::AppState>,
+    payload: CreateWorkOrderPayload,
+) -> AppResult<WorkOrder> {
+    let work_order: WorkOrder =
+        sqlx::query_as("INSERT INTO work_orders (id, car_id, created_at, odometer_in, customer_complaint, mechanic_notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *")
+            .bind(payload.id)
+            .bind(payload.car_id)
+            .bind(payload.created_at)
+            .bind(payload.odometer_in)
+            .bind(payload.customer_complaint)
+            .bind(payload.mechanic_notes)
+            .bind(payload.status)
+            .fetch_one(&state.db_pool)
+            .await?;
+    Ok(work_order)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_work_order(
+    state: State<'_, crate::AppState>,
+    payload: UpdateWorkOrderPayload,
+) -> AppResult<WorkOrder> {
+    let work_order: WorkOrder = sqlx::query_as(
+        "UPDATE work_orders SET car_id = $2, completed_at = $3, odometer_in = $4, customer_complaint = $5, mechanic_notes = $5, status = $6 WHERE id = $1 RETURNING *",
+    )
+    .bind(payload.id)
+    .bind(payload.car_id)
+    .bind(payload.completed_at)
+    .bind(payload.odometer_in)
+    .bind(payload.customer_complaint)
+    .bind(payload.mechanic_notes)
+    .bind(payload.status)
+    .fetch_one(&state.db_pool)
+    .await?;
+    Ok(work_order)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn archive_work_order(state: State<'_, crate::AppState>, id: String) -> AppResult<()> {
+    let result = sqlx::query("UPDATE work_orders SET is_archived = 1 WHERE id = $1")
+        .bind(id)
+        .execute(&state.db_pool)
+        .await?;
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound(
+            "Замовлення з таким ID не знайдено в базі даних".to_string(),
         ));
     }
     Ok(())

@@ -142,11 +142,41 @@ pub struct UpdateCarPayload {
     specta::Type,
 )]
 pub struct WorkOrder {
-    #[specta(type = specta_typescript::Number)]
-    pub id: i64,
+    pub id: String,
     #[specta(type = specta_typescript::Number)]
     pub car_id: i64,
     pub created_at: String,
+    pub started_at: Option<String>,
+    pub completed_at: Option<String>,
+    pub odometer_in: i32,
+    pub customer_complaint: Option<String>,
+    pub mechanic_notes: Option<String>,
+    pub status: WorkOrderStatus,
+    pub is_archived: bool,
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+pub struct CreateWorkOrderPayload {
+    pub id: String,
+    #[specta(type = specta_typescript::Number)]
+    pub car_id: i64,
+    pub created_at: String,
+    pub odometer_in: i32,
+    pub customer_complaint: Option<String>,
+    pub mechanic_notes: Option<String>,
+    pub status: WorkOrderStatus,
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+pub struct UpdateWorkOrderPayload {
+    pub id: String,
+    #[specta(type = specta_typescript::Number)]
+    pub car_id: i64,
+    pub started_at: Option<String>,
+    pub completed_at: Option<String>,
+    pub odometer_in: i32,
+    pub customer_complaint: Option<String>,
+    pub mechanic_notes: Option<String>,
     pub status: WorkOrderStatus,
 }
 

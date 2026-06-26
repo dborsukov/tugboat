@@ -4,6 +4,7 @@ import {
   type CarBrand,
   type Client,
   type Service,
+  type WorkOrder,
 } from "$lib/bindings";
 
 function unwrap<T>(
@@ -23,7 +24,7 @@ class AppStore {
   car_brands: CarBrand[] = $state([]);
   cars: Car[] = $state([]);
   services: Service[] = $state([]);
-  documents = $state([]);
+  work_orders: WorkOrder[] = $state([]);
   loading = $state(false);
   error: string | null = $state(null);
 
@@ -31,18 +32,21 @@ class AppStore {
     this.loading = true;
     this.error = null;
 
-    const [clients, brands, cars, services, version] = await Promise.all([
-      commands.fetchClients().then(unwrap),
-      commands.fetchCarBrands().then(unwrap),
-      commands.fetchCars().then(unwrap),
-      commands.fetchServices().then(unwrap),
-      commands.getAppVersion(),
-    ]);
+    const [clients, brands, cars, services, work_orders, version] =
+      await Promise.all([
+        commands.fetchClients().then(unwrap),
+        commands.fetchCarBrands().then(unwrap),
+        commands.fetchCars().then(unwrap),
+        commands.fetchServices().then(unwrap),
+        commands.fetchWorkOrders().then(unwrap),
+        commands.getAppVersion(),
+      ]);
 
     this.clients = clients;
     this.car_brands = brands;
     this.cars = cars;
     this.services = services;
+    this.work_orders = work_orders;
     this.version = version;
 
     this.loading = false;
@@ -58,6 +62,10 @@ class AppStore {
 
   createService(service: Service) {
     this.services = [...this.services, service];
+  }
+
+  createWorkOrder(work_order: WorkOrder) {
+    this.work_orders = [...this.work_orders, work_order];
   }
 
   updateClient(updated: Client) {
@@ -76,6 +84,12 @@ class AppStore {
     );
   }
 
+  updateWorkOrder(updated: WorkOrder) {
+    this.work_orders = this.work_orders.map((work_order) =>
+      work_order.id === updated.id ? updated : work_order,
+    );
+  }
+
   removeClient(id: number) {
     this.clients = this.clients.filter((client) => client.id !== id);
   }
@@ -84,8 +98,16 @@ class AppStore {
     this.cars = this.cars.filter((car) => car.id !== id);
   }
 
+  // FIXME: actually change is_archive instead of removing
   archiveService(id: number) {
     this.services = this.services.filter((service) => service.id !== id);
+  }
+
+  // FIXME: actually change is_archive instead of removing
+  archiveWorkOrder(id: string) {
+    this.work_orders = this.work_orders.filter(
+      (work_order) => work_order.id !== id,
+    );
   }
 }
 

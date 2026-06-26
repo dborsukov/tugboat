@@ -35,10 +35,16 @@ CREATE TABLE cars (
 );
 
 CREATE TABLE work_orders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     car_id INTEGER NOT NULL,
     created_at TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
-    status TEXT NOT NULL DEFAULT 'draft',
+    started_at TEXT,
+    completed_at TEXT,
+    odometer_in INTEGER NOT NULL,
+    customer_complaint TEXT,
+    mechanic_notes TEXT,
+    status TEXT NOT NULL,
+    is_archived INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (car_id) REFERENCES cars (id) ON DELETE RESTRICT
 );
 
