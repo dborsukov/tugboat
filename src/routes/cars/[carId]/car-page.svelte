@@ -19,9 +19,9 @@
   import { Badge } from "$lib/components/ui/badge";
   import Button from "$lib/components/ui/button/button.svelte";
 
+  import LogoLoader from "$lib/components/car-logo-loader.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
-  import LogoLoader from "../logo-loader.svelte";
   import DropdownMenu from "./dropdown-menu.svelte";
 
   let { car }: { car: Car } = $props();

@@ -10,7 +10,7 @@
   import { Badge } from "$lib/components/ui/badge";
   import * as Card from "$lib/components/ui/card";
 
-  import LogoLoader from "./logo-loader.svelte";
+  import LogoLoader from "$lib/components/car-logo-loader.svelte";
 
   let { car, short = false }: { car: Car; short?: boolean } = $props();
   let owner = $derived(appStore.clients.find((c) => c.id === car.client_id));
