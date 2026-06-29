@@ -10,6 +10,8 @@
 </script>
 
 <!-- TODO: add colored avatars based on name -->
+<!-- TODO: use shacn Card instead of custom div-->
+<!-- TODO: add nav_from prop to add easy reverse navigation -->
 <div
   class="rounded-xl border bg-card text-card-foreground shadow-sm p-5 flex flex-col justify-between gap-4 transition-all hover:shadow-lg hover:border-accent-foreground/20 hover:cursor-pointer"
 >
@@ -31,14 +33,14 @@
     <p class="text-base text-nowrap truncate text-ellipsis">{client.phone}</p>
   </div>
   {#if !short}
-  <div
-    class="flex items-center gap-2.5 text-sm text-muted-foreground"
-    title="Дата додавання"
-  >
-    <DateIcon class="size-4 shrink-0" />
-    <p class="text-base text-nowrap truncate text-ellipsis">
-      {prettifyIsoDateString(client.created_at, "long")}
-    </p>
-  </div>
+    <div
+      class="flex items-center gap-2.5 text-sm text-muted-foreground"
+      title="Дата додавання"
+    >
+      <DateIcon class="size-4 shrink-0" />
+      <p class="text-base text-nowrap truncate text-ellipsis">
+        {prettifyIsoDateString(client.created_at, "long")}
+      </p>
+    </div>
   {/if}
 </div>

@@ -18,6 +18,7 @@
   let slug = $derived(brand != undefined ? brand.icon_slug : "");
 </script>
 
+<!-- TODO: add nav_from prop to add easy reverse navigation -->
 <Card.Root
   class="w-full max-w-full overflow-hidden transition-all duration-200 rounded hover:shadow-lg hover:border-muted-foreground/30"
 >

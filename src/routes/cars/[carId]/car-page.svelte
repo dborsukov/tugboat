@@ -30,6 +30,7 @@
   let slug = $derived(brand != undefined ? brand.icon_slug : "");
 </script>
 
+<!-- TODO: extract item list into composable components -->
 <PageLayout>
   {#snippet header()}
     <div class="h-full px-4 flex items-center">
