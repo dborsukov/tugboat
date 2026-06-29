@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { prettifyIsoDateString } from "$lib/utils";
-
   import DateIcon from "@lucide/svelte/icons/calendar-plus";
   import PhoneIcon from "@lucide/svelte/icons/phone";
 
   import type { Client } from "$lib/bindings";
 
-  let { client }: { client: Client } = $props();
+  import { prettifyIsoDateString } from "$lib/utils";
+
+  let { client, short }: { client: Client; short?: boolean } = $props();
 </script>
 
 <!-- TODO: add colored avatars based on name -->
@@ -30,7 +30,7 @@
     <PhoneIcon class="size-4 shrink-0" />
     <p class="text-base text-nowrap truncate text-ellipsis">{client.phone}</p>
   </div>
-
+  {#if !short}
   <div
     class="flex items-center gap-2.5 text-sm text-muted-foreground"
     title="Дата додавання"
@@ -40,4 +40,5 @@
       {prettifyIsoDateString(client.created_at, "long")}
     </p>
   </div>
+  {/if}
 </div>
