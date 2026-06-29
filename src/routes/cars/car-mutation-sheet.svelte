@@ -56,12 +56,12 @@
   const carSchema = z.object({
     client_id: z
       .number({ error: "Вкажіть власника" })
-      .min(1, { error: "Вкажіть власника" })
+      .min(0, { error: "Вкажіть власника" })
       .default(-1),
 
     brand_id: z
       .number({ error: "Вкажіть марку" })
-      .min(1, { error: "Вкажіть марку" })
+      .min(0, { error: "Вкажіть марку" })
       .default(-1),
 
     model: z.string().min(1, { error: "Вкажіть модель" }),
