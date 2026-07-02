@@ -1,4 +1,6 @@
 <script lang="ts">
+  import type { ComponentProps } from "svelte";
+
   import FingerprintIcon from "@lucide/svelte/icons/fingerprint-pattern";
   import HashIcon from "@lucide/svelte/icons/hash";
   import UserIcon from "@lucide/svelte/icons/user";
@@ -7,12 +9,19 @@
 
   import { appStore } from "$lib/stores/app.svelte";
 
+  import { cn } from "$lib/utils";
+
   import { Badge } from "$lib/components/ui/badge";
   import * as Card from "$lib/components/ui/card";
 
   import LogoLoader from "$lib/components/car-logo-loader.svelte";
 
-  let { car, short = false }: { car: Car; short?: boolean } = $props();
+  interface Props extends ComponentProps<typeof Card.Root> {
+    car: Car;
+    short?: boolean;
+  }
+  let { car, short = false, class: className, ...restProps }: Props = $props();
+
   let owner = $derived(appStore.clients.find((c) => c.id === car.client_id));
   let brand = $derived(appStore.car_brands.find((b) => b.id === car.brand_id));
   let slug = $derived(brand != undefined ? brand.icon_slug : "");
@@ -20,7 +29,11 @@
 
 <!-- TODO: add nav_from prop to add easy reverse navigation -->
 <Card.Root
-  class="w-full max-w-full overflow-hidden transition-all duration-200 rounded hover:shadow-lg hover:border-muted-foreground/30"
+  class={cn(
+    "overflow-hidden transition-all duration-200 rounded hover:shadow-lg hover:border-muted-foreground/30",
+    className,
+  )}
+  {...restProps}
 >
   <Card.Header
     class="flex flex-row h-15 justify-center items-center gap-4 space-y-0"
