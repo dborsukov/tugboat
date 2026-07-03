@@ -130,7 +130,7 @@ export type WorkOrder = {
 	is_archived: boolean,
 };
 
-export type WorkOrderStatus = "New" | "WaitingForParts" | "Working" | "Paid";
+export type WorkOrderStatus = "Received" | "InDiagnostics" | "AwaitingApproval" | "AwaitingParts" | "Working" | "ReadyForPickup" | "Paid" | "Canceled";
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

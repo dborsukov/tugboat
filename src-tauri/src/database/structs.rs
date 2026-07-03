@@ -19,10 +19,14 @@ use sqlx::FromRow;
 )]
 #[sqlx(type_name = "TEXT", rename_all = "lowercase")]
 pub enum WorkOrderStatus {
-    New,
-    WaitingForParts,
+    Received,
+    InDiagnostics,
+    AwaitingApproval,
+    AwaitingParts,
     Working,
+    ReadyForPickup,
     Paid,
+    Canceled,
 }
 
 #[derive(

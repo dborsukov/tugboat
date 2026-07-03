@@ -46,7 +46,7 @@
             car_id: car.id,
             created_at: new Date().toISOString(),
             odometer_in: 666,
-            status: "New",
+            status: "Received",
             customer_complaint: null,
             mechanic_notes: null,
           });
