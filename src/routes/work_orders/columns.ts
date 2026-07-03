@@ -7,7 +7,9 @@ import { prettifyIsoDateString } from "$lib/utils";
 
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
+import CarDisplay from "./car-display.svelte";
 import DataTableClientButton from "./data-table-client-button.svelte";
+import StatusSelector from "./status-selector.svelte";
 
 export type WorkOrderTableData = WorkOrder & {
   car: Car;
@@ -60,21 +62,25 @@ export const columns: ColumnDef<WorkOrderTableData>[] = [
       `${row.carBrand.name} ${row.car.model} ${row.car.year}`,
     header: "Автомобіль",
     cell: ({ row }) => {
-      const nameCellSnippet = createRawSnippet(() => {
-        const fullCar = `${row.original.carBrand.name} ${row.original.car.model} ${row.original.car.year}`;
-        return {
-          render: () => `<div>${fullCar}</div>`,
-        };
+      return renderComponent(CarDisplay, {
+        car: row.original.car,
+        carBrand: row.original.carBrand,
       });
-      return renderSnippet(nameCellSnippet);
     },
   },
   {
     accessorKey: "status",
     header: "Статус",
+    cell: ({ row }) => {
+      return renderComponent(StatusSelector, {
+        status: row.original.status,
+        interactive: false,
+      });
+    },
   },
   {
-    accessorKey: "created_at",
+    id: "created_at",
+    accessorFn: (row) => prettifyIsoDateString(row.created_at, "datetime"),
     header: () => {
       const createdHeaderSnippet = createRawSnippet(() => {
         return {

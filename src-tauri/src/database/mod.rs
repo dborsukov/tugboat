@@ -227,7 +227,7 @@ pub async fn update_work_order(
     payload: UpdateWorkOrderPayload,
 ) -> AppResult<WorkOrder> {
     let work_order: WorkOrder = sqlx::query_as(
-        "UPDATE work_orders SET car_id = $2, completed_at = $3, odometer_in = $4, customer_complaint = $5, mechanic_notes = $5, status = $6 WHERE id = $1 RETURNING *",
+        "UPDATE work_orders SET car_id = $2, completed_at = $3, odometer_in = $4, customer_complaint = $5, mechanic_notes = $6, status = $7 WHERE id = $1 RETURNING *",
     )
     .bind(payload.id)
     .bind(payload.car_id)
