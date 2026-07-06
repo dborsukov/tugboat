@@ -41,20 +41,14 @@ export const columns: ColumnDef<Service>[] = [
         currency: "UAH",
       });
 
-      const priceCellSnippet = createRawSnippet<[{ amount: number }]>(
-        (getPrice) => {
-          const { amount: price } = getPrice();
-          const formatted = formatter.format(price);
-          return {
-            render: () =>
-              `<div class="text-end font-medium px-4">${formatted}</div>`,
-          };
-        },
-      );
+      const formatted = formatter.format(row.original.unit_price);
 
-      return renderSnippet(priceCellSnippet, {
-        amount: row.original.unit_price,
-      });
+      const priceCellSnippet = createRawSnippet(() => ({
+        render: () =>
+          `<div class="text-end font-medium px-4">${formatted}</div>`,
+      }));
+
+      return renderSnippet(priceCellSnippet);
     },
   },
   {
