@@ -7,9 +7,29 @@ import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
 import DataTableActions from "./data-table-actions.svelte";
 import DataTableNameButton from "./data-table-name-button.svelte";
-import DataTablePriceButton from "./data-table-price-button.svelte";
 
 export const columns: ColumnDef<Service>[] = [
+  {
+    accessorKey: "code",
+    header: () => {
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () => `<div class="px-2">Код</div>`,
+          };
+        }),
+      );
+    },
+    cell: ({ row }) => {
+      const nameCellSnippet = createRawSnippet(() => {
+        return {
+          render: () =>
+            `<div class="px-2 font-mono">${row.original.code}</div>`,
+        };
+      });
+      return renderSnippet(nameCellSnippet);
+    },
+  },
   {
     accessorKey: "name",
     header: ({ column }) => {
@@ -28,27 +48,24 @@ export const columns: ColumnDef<Service>[] = [
     },
   },
   {
-    accessorKey: "unit_price",
-    header: ({ column }) => {
-      return renderComponent(DataTablePriceButton, {
-        onclick: column.getToggleSortingHandler(),
-        sortStatus: column.getIsSorted(),
-      });
+    accessorKey: "labor_hours",
+    header: () => {
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () => `<div class="text-end">Нормо-години</div>`,
+          };
+        }),
+      );
     },
     cell: ({ row }) => {
-      const formatter = new Intl.NumberFormat("uk-UA", {
-        style: "currency",
-        currency: "UAH",
+      const nameCellSnippet = createRawSnippet(() => {
+        return {
+          render: () =>
+            `<div class="text-end">${row.original.labor_hours}</div>`,
+        };
       });
-
-      const formatted = formatter.format(row.original.unit_price);
-
-      const priceCellSnippet = createRawSnippet(() => ({
-        render: () =>
-          `<div class="text-end font-medium px-4">${formatted}</div>`,
-      }));
-
-      return renderSnippet(priceCellSnippet);
+      return renderSnippet(nameCellSnippet);
     },
   },
   {

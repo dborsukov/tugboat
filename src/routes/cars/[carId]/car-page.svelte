@@ -22,12 +22,15 @@
   import LogoLoader from "$lib/components/car-logo-loader.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
+  import WorkOrderMutationSheet from "../../work_orders/work-order-mutation-sheet.svelte";
   import DropdownMenu from "./dropdown-menu.svelte";
 
   let { car }: { car: Car } = $props();
   let owner = $derived(appStore.clients.find((c) => c.id === car.client_id));
   let brand = $derived(appStore.car_brands.find((b) => b.id === car.brand_id));
   let slug = $derived(brand != undefined ? brand.icon_slug : "");
+
+  let isSheetOpen: boolean = $state(false);
 </script>
 
 <!-- TODO: extract item list into composable components -->
@@ -37,35 +40,11 @@
       <Button variant="secondary" onclick={() => goto("/cars")}>
         <ChevronLeftIcon /> Список
       </Button>
-      <Button
-        class="ml-auto mr-2"
-        onclick={async () => {
-          let new_id = `WO-${sqidsEncode([Date.now()])}`;
-          let res = await commands.createWorkOrder({
-            id: new_id,
-            car_id: car.id,
-            created_at: new Date().toISOString(),
-            odometer_in: 666,
-            status: "Received",
-            customer_complaint: null,
-            mechanic_notes: null,
-          });
-          if (res.status === "ok") {
-            appStore.createWorkOrder(res.data);
-            return toast.success(`Створив замовлення ${new_id}`, {
-              position: "bottom-left",
-            });
-          } else {
-            return toast.error("Виникла помилка", {
-              description: res.error.message,
-              position: "bottom-left",
-            });
-          }
-        }}
-      >
+      <Button class="ml-auto mr-2" onclick={() => (isSheetOpen = !isSheetOpen)}>
         <WorkOrderIcon /> Нове замовлення
       </Button>
       <DropdownMenu {car} />
+      <WorkOrderMutationSheet bind:open={isSheetOpen} car_id={car.id} />
     </div>
   {/snippet}
   <div class="p-4">

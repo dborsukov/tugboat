@@ -10,17 +10,21 @@ export const commands = {
 	createClient: (payload: CreateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("create_client", { payload })),
 	createService: (payload: CreateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("create_service", { payload })),
 	createWorkOrder: (payload: CreateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("create_work_order", { payload })),
+	createWorkOrderLaborItem: (payload: CreateWorkOrderLaborItemPayload) => typedError<WorkOrderLaborItem, AppError>(__TAURI_INVOKE("create_work_order_labor_item", { payload })),
 	deleteCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_car", { id })),
 	deleteClient: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_client", { id })),
+	deleteWorkOrderLaborItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order_labor_item", { id })),
 	fetchCarBrands: () => typedError<CarBrand[], AppError>(__TAURI_INVOKE("fetch_car_brands")),
 	fetchCars: () => typedError<Car[], AppError>(__TAURI_INVOKE("fetch_cars")),
 	fetchClients: () => typedError<Client[], AppError>(__TAURI_INVOKE("fetch_clients")),
 	fetchServices: () => typedError<Service[], AppError>(__TAURI_INVOKE("fetch_services")),
+	fetchWorkOrderLaborItems: () => typedError<WorkOrderLaborItem[], AppError>(__TAURI_INVOKE("fetch_work_order_labor_items")),
 	fetchWorkOrders: () => typedError<WorkOrder[], AppError>(__TAURI_INVOKE("fetch_work_orders")),
 	updateCar: (id: number, payload: UpdateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("update_car", { id, payload })),
 	updateClient: (id: number, payload: UpdateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("update_client", { id, payload })),
 	updateService: (id: number, payload: UpdateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("update_service", { id, payload })),
 	updateWorkOrder: (payload: UpdateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("update_work_order", { payload })),
+	updateWorkOrderLaborItem: (id: number, payload: UpdateWorkOrderLaborItemPayload) => typedError<WorkOrderLaborItem, AppError>(__TAURI_INVOKE("update_work_order_labor_item", { id, payload })),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
 };
 
@@ -66,8 +70,17 @@ export type CreateClientPayload = {
 };
 
 export type CreateServicePayload = {
+	code: string | null,
 	name: string,
-	unit_price: number,
+	labor_hours: number,
+};
+
+export type CreateWorkOrderLaborItemPayload = {
+	work_order_id: string,
+	service_id: number | null,
+	code: string | null,
+	name: string,
+	labor_hours: number,
 };
 
 export type CreateWorkOrderPayload = {
@@ -78,13 +91,14 @@ export type CreateWorkOrderPayload = {
 	customer_complaint: string | null,
 	mechanic_notes: string | null,
 	status: WorkOrderStatus,
+	rate: number,
 };
 
 export type Service = {
 	id: number,
+	code: string | null,
 	name: string,
-	unit_price: number,
-	is_archived: boolean,
+	labor_hours: number,
 };
 
 export type UpdateCarPayload = {
@@ -102,8 +116,16 @@ export type UpdateClientPayload = {
 };
 
 export type UpdateServicePayload = {
+	code: string | null,
 	name: string,
-	unit_price: number,
+	labor_hours: number,
+};
+
+export type UpdateWorkOrderLaborItemPayload = {
+	service_id: number | null,
+	code: string | null,
+	name: string,
+	labor_hours: number,
 };
 
 export type UpdateWorkOrderPayload = {
@@ -115,6 +137,7 @@ export type UpdateWorkOrderPayload = {
 	customer_complaint: string | null,
 	mechanic_notes: string | null,
 	status: WorkOrderStatus,
+	rate: number,
 };
 
 export type WorkOrder = {
@@ -127,7 +150,17 @@ export type WorkOrder = {
 	customer_complaint: string | null,
 	mechanic_notes: string | null,
 	status: WorkOrderStatus,
+	rate: number,
 	is_archived: boolean,
+};
+
+export type WorkOrderLaborItem = {
+	id: number,
+	work_order_id: string,
+	service_id: number | null,
+	code: string | null,
+	name: string,
+	labor_hours: number,
 };
 
 export type WorkOrderStatus = "Received" | "InDiagnostics" | "AwaitingApproval" | "AwaitingParts" | "Working" | "ReadyForPickup" | "Paid" | "Canceled";

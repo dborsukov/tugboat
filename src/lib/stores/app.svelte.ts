@@ -5,6 +5,7 @@ import {
   type Client,
   type Service,
   type WorkOrder,
+  type WorkOrderLaborItem,
 } from "$lib/bindings";
 
 function unwrap<T>(
@@ -25,6 +26,7 @@ class AppStore {
   cars: Car[] = $state([]);
   services: Service[] = $state([]);
   work_orders: WorkOrder[] = $state([]);
+  work_order_labor_items: WorkOrderLaborItem[] = $state([]);
   loading = $state(false);
   error: string | null = $state(null);
 
@@ -32,21 +34,30 @@ class AppStore {
     this.loading = true;
     this.error = null;
 
-    const [clients, brands, cars, services, work_orders, version] =
-      await Promise.all([
-        commands.fetchClients().then(unwrap),
-        commands.fetchCarBrands().then(unwrap),
-        commands.fetchCars().then(unwrap),
-        commands.fetchServices().then(unwrap),
-        commands.fetchWorkOrders().then(unwrap),
-        commands.getAppVersion(),
-      ]);
+    const [
+      clients,
+      brands,
+      cars,
+      services,
+      work_orders,
+      work_order_labor_items,
+      version,
+    ] = await Promise.all([
+      commands.fetchClients().then(unwrap),
+      commands.fetchCarBrands().then(unwrap),
+      commands.fetchCars().then(unwrap),
+      commands.fetchServices().then(unwrap),
+      commands.fetchWorkOrders().then(unwrap),
+      commands.fetchWorkOrderLaborItems().then(unwrap),
+      commands.getAppVersion(),
+    ]);
 
     this.clients = clients;
     this.car_brands = brands;
     this.cars = cars;
     this.services = services;
     this.work_orders = work_orders;
+    this.work_order_labor_items = work_order_labor_items;
     this.version = version;
 
     this.loading = false;
@@ -66,6 +77,13 @@ class AppStore {
 
   createWorkOrder(work_order: WorkOrder) {
     this.work_orders = [...this.work_orders, work_order];
+  }
+
+  createWorkOrderLaborItem(work_order_item: WorkOrderLaborItem) {
+    this.work_order_labor_items = [
+      ...this.work_order_labor_items,
+      work_order_item,
+    ];
   }
 
   updateClient(updated: Client) {
@@ -90,12 +108,25 @@ class AppStore {
     );
   }
 
+  updateWorkOrderLaborItem(updated: WorkOrderLaborItem) {
+    this.work_order_labor_items = this.work_order_labor_items.map(
+      (work_order_item) =>
+        work_order_item.id === updated.id ? updated : work_order_item,
+    );
+  }
+
   removeClient(id: number) {
     this.clients = this.clients.filter((client) => client.id !== id);
   }
 
   removeCar(id: number) {
     this.cars = this.cars.filter((car) => car.id !== id);
+  }
+
+  removeWorkOrderLaborItem(id: number) {
+    this.work_order_labor_items = this.work_order_labor_items.filter(
+      (item) => item.id !== id,
+    );
   }
 
   // FIXME: actually change is_archive instead of removing

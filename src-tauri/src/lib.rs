@@ -25,17 +25,21 @@ pub fn run() {
         database::create_client,
         database::create_service,
         database::create_work_order,
+        database::create_work_order_labor_item,
         database::delete_car,
         database::delete_client,
+        database::delete_work_order_labor_item,
         database::fetch_car_brands,
         database::fetch_cars,
         database::fetch_clients,
         database::fetch_services,
+        database::fetch_work_order_labor_items,
         database::fetch_work_orders,
         database::update_car,
         database::update_client,
         database::update_service,
         database::update_work_order,
+        database::update_work_order_labor_item,
         utils::get_app_version
     ]);
 

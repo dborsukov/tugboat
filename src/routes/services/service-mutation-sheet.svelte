@@ -36,29 +36,49 @@
   );
 
   export const serviceSchema = z.object({
-    name: z.string().nonempty("Назва не може бути пустою"),
-    unit_price: z
-      .number({ error: "Вкажіть ціну" })
-      .nonnegative("Неправильна ціна")
+    code: z.string().nullable(),
+    name: z.string().min(1, { error: "Вкажіть назву" }),
+    labor_hours: z
+      .number({ error: "Вкажіть кількість норм-годин" })
+      .nonnegative("Неправильна кількість")
       .default(0),
   });
 
-  const extendedSchema = serviceSchema.refine(
-    (data) => {
-      const servicesList = appStore.services || [];
-      const duplicateService = servicesList.find(
-        (c) => c.name.toLowerCase() === data.name.toLowerCase(),
-      );
-      if (!duplicateService) return true;
-      // Avoid record matching with itself (when editing)
-      if (isEdit && duplicateService.id === service?.id) return true;
-      return false;
-    },
-    {
-      message: "Сервіс з такою назвою вже існує",
-      path: ["name"],
-    },
-  );
+  const extendedSchema = serviceSchema
+    .refine(
+      (data) => {
+        if (data.code == null) return true;
+        const servicesList = appStore.services || [];
+        const duplicateService = servicesList.find(
+          (c) =>
+            c.code?.trim().toLowerCase() === data.code?.trim().toLowerCase(),
+        );
+        if (!duplicateService) return true;
+        // Avoid record matching with itself (when editing)
+        if (isEdit && duplicateService.id === service?.id) return true;
+        return false;
+      },
+      {
+        message: "Сервіс з таким кодом вже існує",
+        path: ["code"],
+      },
+    )
+    .refine(
+      (data) => {
+        const servicesList = appStore.services || [];
+        const duplicateService = servicesList.find(
+          (c) => c.name.toLowerCase() === data.name.toLowerCase(),
+        );
+        if (!duplicateService) return true;
+        // Avoid record matching with itself (when editing)
+        if (isEdit && duplicateService.id === service?.id) return true;
+        return false;
+      },
+      {
+        message: "Сервіс з такою назвою вже існує",
+        path: ["name"],
+      },
+    );
 
   const form = superForm(defaults(zod4(extendedSchema)), {
     SPA: true,
@@ -71,8 +91,9 @@
       if (!nativeForm.valid) return;
 
       const payload = {
+        code: $formData.code,
         name: $formData.name,
-        unit_price: $formData.unit_price,
+        labor_hours: $formData.labor_hours,
       };
 
       if (isEdit && id) {
@@ -106,8 +127,9 @@
   $effect(() => {
     if (open) {
       if (service) {
+        $formData.code = service.code;
         $formData.name = service.name;
-        $formData.unit_price = service.unit_price;
+        $formData.labor_hours = service.labor_hours;
       } else {
         form.reset();
       }
@@ -137,6 +159,15 @@
       id={formID}
       class="flex flex-col p-6 gap-4 overflow-y-auto h-full"
     >
+      <Form.Field {form} name="code">
+        <Form.Control>
+          {#snippet children({ props })}
+            <Label>Код</Label>
+            <Input {...props} bind:value={$formData.code} />
+          {/snippet}
+        </Form.Control>
+        <Form.FieldErrors />
+      </Form.Field>
       <Form.Field {form} name="name">
         <Form.Control>
           {#snippet children({ props })}
@@ -146,11 +177,16 @@
         </Form.Control>
         <Form.FieldErrors />
       </Form.Field>
-      <Form.Field {form} name="unit_price">
+      <Form.Field {form} name="labor_hours">
         <Form.Control>
           {#snippet children({ props })}
-            <Label>Ціна</Label>
-            <Input {...props} type="number" bind:value={$formData.unit_price} />
+            <Label>Норм-години</Label>
+            <Input
+              {...props}
+              type="number"
+              step="0.1"
+              bind:value={$formData.labor_hours}
+            />
           {/snippet}
         </Form.Control>
         <Form.FieldErrors />

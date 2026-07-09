@@ -53,6 +53,18 @@ pub async fn fetch_work_orders(state: State<'_, crate::AppState>) -> AppResult<V
 
 #[tauri::command]
 #[specta::specta]
+pub async fn fetch_work_order_labor_items(
+    state: State<'_, crate::AppState>,
+) -> AppResult<Vec<WorkOrderLaborItem>> {
+    let work_order_labor_items: Vec<WorkOrderLaborItem> =
+        sqlx::query_as("SELECT * FROM work_order_labor_items")
+            .fetch_all(&state.db_pool)
+            .await?;
+    Ok(work_order_labor_items)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn create_client(
     state: State<'_, crate::AppState>,
     payload: CreateClientPayload,
@@ -159,12 +171,14 @@ pub async fn create_service(
     state: State<'_, crate::AppState>,
     payload: CreateServicePayload,
 ) -> AppResult<Service> {
-    let service: Service =
-        sqlx::query_as("INSERT INTO services (name, unit_price) VALUES ($1, $2) RETURNING *")
-            .bind(payload.name)
-            .bind(payload.unit_price)
-            .fetch_one(&state.db_pool)
-            .await?;
+    let service: Service = sqlx::query_as(
+        "INSERT INTO services (code, name, labor_hours) VALUES ($1, $2, $3) RETURNING *",
+    )
+    .bind(payload.code)
+    .bind(payload.name)
+    .bind(payload.labor_hours)
+    .fetch_one(&state.db_pool)
+    .await?;
     Ok(service)
 }
 
@@ -175,13 +189,15 @@ pub async fn update_service(
     id: i32,
     payload: UpdateServicePayload,
 ) -> AppResult<Service> {
-    let service: Service =
-        sqlx::query_as("UPDATE services SET name = $1, unit_price = $2 WHERE id = $3 RETURNING *")
-            .bind(payload.name)
-            .bind(payload.unit_price)
-            .bind(id)
-            .fetch_one(&state.db_pool)
-            .await?;
+    let service: Service = sqlx::query_as(
+        "UPDATE services SET code = $2, name = $3, labor_hours = $4 WHERE id = $1 RETURNING *",
+    )
+    .bind(id)
+    .bind(payload.code)
+    .bind(payload.name)
+    .bind(payload.labor_hours)
+    .fetch_one(&state.db_pool)
+    .await?;
     Ok(service)
 }
 
@@ -207,7 +223,7 @@ pub async fn create_work_order(
     payload: CreateWorkOrderPayload,
 ) -> AppResult<WorkOrder> {
     let work_order: WorkOrder =
-        sqlx::query_as("INSERT INTO work_orders (id, car_id, created_at, odometer_in, customer_complaint, mechanic_notes, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *")
+        sqlx::query_as("INSERT INTO work_orders (id, car_id, created_at, odometer_in, customer_complaint, mechanic_notes, status, rate) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *")
             .bind(payload.id)
             .bind(payload.car_id)
             .bind(payload.created_at)
@@ -215,6 +231,7 @@ pub async fn create_work_order(
             .bind(payload.customer_complaint)
             .bind(payload.mechanic_notes)
             .bind(payload.status)
+            .bind(payload.rate)
             .fetch_one(&state.db_pool)
             .await?;
     Ok(work_order)
@@ -227,7 +244,7 @@ pub async fn update_work_order(
     payload: UpdateWorkOrderPayload,
 ) -> AppResult<WorkOrder> {
     let work_order: WorkOrder = sqlx::query_as(
-        "UPDATE work_orders SET car_id = $2, completed_at = $3, odometer_in = $4, customer_complaint = $5, mechanic_notes = $6, status = $7 WHERE id = $1 RETURNING *",
+        "UPDATE work_orders SET car_id = $2, completed_at = $3, odometer_in = $4, customer_complaint = $5, mechanic_notes = $6, status = $7, rate = $8 WHERE id = $1 RETURNING *",
     )
     .bind(payload.id)
     .bind(payload.car_id)
@@ -236,6 +253,7 @@ pub async fn update_work_order(
     .bind(payload.customer_complaint)
     .bind(payload.mechanic_notes)
     .bind(payload.status)
+    .bind(payload.rate)
     .fetch_one(&state.db_pool)
     .await?;
     Ok(work_order)
@@ -251,6 +269,62 @@ pub async fn archive_work_order(state: State<'_, crate::AppState>, id: String) -
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound(
             "Замовлення з таким ID не знайдено в базі даних".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn create_work_order_labor_item(
+    state: State<'_, crate::AppState>,
+    payload: CreateWorkOrderLaborItemPayload,
+) -> AppResult<WorkOrderLaborItem> {
+    let work_order_labor_item: WorkOrderLaborItem =
+        sqlx::query_as("INSERT INTO work_order_labor_items (work_order_id, service_id, code, name, labor_hours) VALUES ($1, $2, $3, $4, $5) RETURNING *")
+            .bind(payload.work_order_id)
+            .bind(payload.service_id)
+            .bind(payload.code)
+            .bind(payload.name)
+            .bind(payload.labor_hours)
+            .fetch_one(&state.db_pool)
+            .await?;
+    Ok(work_order_labor_item)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_work_order_labor_item(
+    state: State<'_, crate::AppState>,
+    id: i32,
+    payload: UpdateWorkOrderLaborItemPayload,
+) -> AppResult<WorkOrderLaborItem> {
+    let work_order_labor_item: WorkOrderLaborItem = sqlx::query_as(
+        "UPDATE work_order_labor_items SET service_id = $2, code = $3, name = $4, labor_hours = $5 WHERE id = $1 RETURNING *",
+    )
+        .bind(id)
+        .bind(payload.service_id)
+        .bind(payload.code)
+        .bind(payload.name)
+        .bind(payload.labor_hours)
+        .fetch_one(&state.db_pool)
+        .await?;
+    Ok(work_order_labor_item)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_work_order_labor_item(
+    state: State<'_, crate::AppState>,
+    id: i32,
+) -> AppResult<()> {
+    let result = sqlx::query("DELETE FROM work_order_labor_items WHERE id = $1")
+        .bind(id)
+        .execute(&state.db_pool)
+        .await?;
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound(
+            "Автомобіля з таким ID не знайдено в базі даних".to_string(),
         ));
     }
     Ok(())

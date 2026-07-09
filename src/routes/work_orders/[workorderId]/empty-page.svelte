@@ -5,7 +5,7 @@
 </script>
 
 <div class="w-full h-full flex flex-col items-center justify-center gap-4">
-  <h2 class="text-2xl">Клієнта не знайдено</h2>
+  <h2 class="text-2xl">Замовлення не знайдено</h2>
   <Button variant="outline" onclick={() => goto("/clients")}
     >Повернутись до списку</Button
   >

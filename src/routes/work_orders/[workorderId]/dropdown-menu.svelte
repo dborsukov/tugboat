@@ -16,7 +16,7 @@
 
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
 
-  // import CarMutationSheet from "../car-mutation-sheet.svelte";
+  import WorkOrderMutationSheet from "../work-order-mutation-sheet.svelte";
 
   interface Props {
     work_order: WorkOrder;
@@ -65,7 +65,7 @@
   </DropdownMenu.Content>
 </DropdownMenu.Root>
 
-<!-- <CarMutationSheet bind:open={isSheetOpen} {car} /> -->
+<WorkOrderMutationSheet bind:open={isSheetOpen} {work_order} />
 <DeleteDialog
   bind:open={isDeleteDialogOpen}
   onDelete={handleDelete}
