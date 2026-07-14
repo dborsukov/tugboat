@@ -3,11 +3,8 @@
 
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
-  import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
   import GaugeIcon from "@lucide/svelte/icons/gauge";
   import RateIcon from "@lucide/svelte/icons/hand-coins";
-
-  import { goto } from "$app/navigation";
 
   import { commands, type WorkOrder } from "$lib/bindings";
 
@@ -21,12 +18,12 @@
   import * as Details from "$lib/components/ui/details/index";
   import * as Popover from "$lib/components/ui/popover/index.js";
 
+  import DataTable from "$lib/components/data-table.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import CarCard from "../../cars/car-card.svelte";
   import ClientCard from "../../clients/client-card.svelte";
   import StatusSelector from "../status-selector.svelte";
-  import DataTable from "./data-table.svelte";
   import DropdownMenu from "./dropdown-menu.svelte";
   import { columns as laborColumns } from "./labor-columns";
   import { columns as partsColumns } from "./parts-columns";
@@ -189,8 +186,15 @@
         </Popover.Root>
       </ButtonGroup.Root>
     </div>
+
     <div class="border rounded mt-4">
-      <DataTable columns={laborColumns} data={labor_data} />
+      <DataTable
+        columns={laborColumns}
+        data={labor_data}
+        emptyMessage="Сервісів не знайдено..."
+        showPagination={false}
+        headerClasses={{ name: "w-full" }}
+      />
     </div>
     <div class="flex gap-4 my-4">
       <h2 class="text-xl font-semibold mr-auto">Запчастини</h2>
@@ -198,9 +202,17 @@
         >Створити</Button
       >
     </div>
+
     <div class="border rounded mt-4">
-      <DataTable columns={partsColumns} data={appStore.work_order_part_items} />
+      <DataTable
+        columns={partsColumns}
+        data={appStore.work_order_part_items}
+        emptyMessage="Запчастин не знайдено..."
+        showPagination={false}
+        headerClasses={{ name: "w-full" }}
+      />
     </div>
+
     <WorkOrderLaborItemMutationSheet
       bind:open={isLaborSheetOpen}
       work_order_id={work_order.id}

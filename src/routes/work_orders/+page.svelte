@@ -1,13 +1,14 @@
 <script lang="ts">
+  import { goto } from "$app/navigation";
+
   import { appStore } from "$lib/stores/app.svelte";
 
   import { Input } from "$lib/components/ui/input";
 
+  import DataTable from "$lib/components/data-table.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
-  import DropdownMenu from "./[workorderId]/dropdown-menu.svelte";
   import { columns } from "./columns";
-  import DataTable from "./data-table.svelte";
 
   const data = appStore.work_orders.map((order) => {
     const car = appStore.cars.find((c) => c.id === order.car_id);
@@ -33,5 +34,11 @@
       <Input placeholder="Пошук..." bind:value={inputValue} class="w-full" />
     </div>
   {/snippet}
-  <DataTable {data} {columns} bind:searchTerm={inputValue} />
+  <DataTable
+    {data}
+    {columns}
+    bind:searchTerm={inputValue}
+    emptyMessage="Замовлень не знайдено..."
+    onRowClick={(row) => goto(`/work_orders/${row.id}`)}
+  />
 </PageLayout>

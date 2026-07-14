@@ -1,19 +1,15 @@
 <script lang="ts">
-  import type { Table } from "@tanstack/table-core";
-
   import UserPlusIcon from "@lucide/svelte/icons/circle-plus";
-
-  import type { Service } from "$lib/bindings";
 
   import { appStore } from "$lib/stores/app.svelte";
 
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
 
+  import DataTable from "$lib/components/data-table.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import { columns } from "./columns";
-  import DataTable from "./data-table.svelte";
   import ServiceMutationSheet from "./service-mutation-sheet.svelte";
 
   let inputValue: string = $state("");
@@ -38,5 +34,11 @@
       <ServiceMutationSheet bind:open={isSheetOpen} />
     </div>
   {/snippet}
-  <DataTable data={appStore.services} {columns} bind:searchTerm={inputValue} />
+  <DataTable
+    data={appStore.services}
+    {columns}
+    bind:searchTerm={inputValue}
+    emptyMessage="Сервісів не знайдено..."
+    headerClasses={{ name: "w-full" }}
+  />
 </PageLayout>
