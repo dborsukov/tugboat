@@ -18,7 +18,7 @@
   import * as ButtonGroup from "$lib/components/ui/button-group/index.js";
   import Button from "$lib/components/ui/button/button.svelte";
   import * as Command from "$lib/components/ui/command/index.js";
-  import Input from "$lib/components/ui/input/input.svelte";
+  import * as Details from "$lib/components/ui/details/index";
   import * as Popover from "$lib/components/ui/popover/index.js";
 
   import PageLayout from "$lib/components/page-layout.svelte";
@@ -60,9 +60,9 @@
 <PageLayout>
   {#snippet header()}
     <div class="h-full px-4 flex items-center justify-between">
-      <Button variant="secondary" onclick={() => goto("/work_orders")}>
-        <ChevronLeftIcon /> Список
-      </Button>
+      <h2 class="text-xl font-mono">
+        {work_order.id}
+      </h2>
       <div class="flex gap-2 items-center">
         <StatusSelector {work_order} />
         <DropdownMenu {work_order} />
@@ -70,12 +70,7 @@
     </div>
   {/snippet}
   <div class="h-full w-full p-4">
-    <div class="border p-4 rounded">
-      <h2 class="text-xl text-center font-semibold">
-        Замовлення {work_order.id}
-      </h2>
-    </div>
-    <div class="grid grid-cols-2 gap-4 mt-4">
+    <div class="grid grid-cols-2 gap-4">
       <a href="/cars/{car.id}">
         <CarCard {car} short class="h-full" />
       </a>
@@ -83,66 +78,62 @@
         <ClientCard {client} short class="h-full" />
       </a>
     </div>
-    <div class="border p-4 rounded grid mt-4">
-      <div class="flex items-center justify-between border-b border-muted pb-2">
-        <span class="flex items-center gap-2 text-muted-foreground">
-          <CalendarPlusIcon class="size-4 text-muted-foreground/70" /> Створено
-        </span>
-        <span class="max-w-45 truncate">
+
+    <Details.Card class="mt-4">
+      <Details.Item>
+        <Details.Title>
+          <Details.Icon icon={CalendarPlusIcon} /> Створено
+        </Details.Title>
+        <Details.Content>
           {prettifyIsoDateString(work_order.created_at, "long")}
-        </span>
-      </div>
+        </Details.Content>
+      </Details.Item>
 
       {#if work_order.started_at}
-        <div
-          class="flex items-center justify-between mt-2 border-b border-muted pb-2"
-        >
-          <span class="flex items-center gap-2 text-muted-foreground">
-            <CalendarPlusIcon class="size-4 text-muted-foreground/70" /> Почато
-          </span>
-          <span class="max-w-45 truncate">
+        <Details.Item>
+          <Details.Title>
+            <Details.Icon icon={CalendarPlusIcon} /> Почато
+          </Details.Title>
+          <Details.Content>
             {prettifyIsoDateString(work_order.started_at, "long")}
-          </span>
-        </div>
+          </Details.Content>
+        </Details.Item>
       {/if}
 
       {#if work_order.completed_at}
-        <div
-          class="flex items-center justify-between mt-2 border-b border-muted pb-2"
-        >
-          <span class="flex items-center gap-2 text-muted-foreground">
-            <CalendarPlusIcon class="size-4 text-muted-foreground/70" /> Завершено
-          </span>
-          <span class="max-w-45 truncate">
+        <Details.Item>
+          <Details.Title>
+            <Details.Icon icon={CalendarPlusIcon} /> Завершено
+          </Details.Title>
+          <Details.Content>
             {prettifyIsoDateString(work_order.completed_at, "long")}
-          </span>
-        </div>
+          </Details.Content>
+        </Details.Item>
       {/if}
 
-      <div
-        class="flex items-center justify-between mt-2 border-b border-muted pb-2"
-      >
-        <span class="flex items-center gap-2 text-muted-foreground">
-          <GaugeIcon class="size-4 text-muted-foreground/70" />Одометр
-        </span>
-        {#if work_order.odometer_in}
-          <span class="max-w-45 truncate font-mono border rounded px-2">
+      <Details.Item>
+        <Details.Title>
+          <Details.Icon icon={GaugeIcon} /> Одометр
+        </Details.Title>
+        <Details.Content>
+          {#if work_order.odometer_in}
             {work_order.odometer_in} км
-          </span>
-        {:else}
-          <span class="text-muted-foreground/50 italic text">Не вказано</span>
-        {/if}
-      </div>
+          {:else}
+            Не вказано
+          {/if}
+        </Details.Content>
+      </Details.Item>
 
-      <div class="flex items-center justify-between mt-2">
-        <span class="flex items-center gap-2 text-muted-foreground">
-          <RateIcon class="size-4 text-muted-foreground/70" />Тариф
-        </span>
-        <span class="max-w-45 truncate font-mono border rounded px-2">
+      <Details.Item>
+        <Details.Title>
+          <Details.Icon icon={RateIcon} /> Тариф
+        </Details.Title>
+        <Details.Content>
           {work_order.rate} грн/год.
-        </span>
-      </div>
-    </div>
+        </Details.Content>
+      </Details.Item>
+    </Details.Card>
+
     <div class="flex gap-4 my-4">
       <h2 class="text-xl font-semibold mr-auto">Сервіси</h2>
       <ButtonGroup.Root>
@@ -210,13 +201,13 @@
     <div class="border rounded mt-4">
       <DataTable columns={partsColumns} data={appStore.work_order_part_items} />
     </div>
-  </div>
-  <WorkOrderLaborItemMutationSheet
-    bind:open={isLaborSheetOpen}
-    work_order_id={work_order.id}
-  />
-  <WorkOrderPartItemMutationSheet
-    bind:open={isPartsSheetOpen}
-    work_order_id={work_order.id}
-  />
-</PageLayout>
+    <WorkOrderLaborItemMutationSheet
+      bind:open={isLaborSheetOpen}
+      work_order_id={work_order.id}
+    />
+    <WorkOrderPartItemMutationSheet
+      bind:open={isPartsSheetOpen}
+      work_order_id={work_order.id}
+    />
+  </div></PageLayout
+>

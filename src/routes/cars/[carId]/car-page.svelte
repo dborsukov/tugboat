@@ -1,6 +1,4 @@
 <script lang="ts">
-  import { toast } from "svelte-sonner";
-
   import WorkOrderIcon from "@lucide/svelte/icons/briefcase-business";
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
   import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
@@ -10,14 +8,15 @@
 
   import { goto } from "$app/navigation";
 
-  import { commands, type Car } from "$lib/bindings";
+  import { type Car } from "$lib/bindings";
 
   import { appStore } from "$lib/stores/app.svelte";
 
-  import { prettifyIsoDateString, sqidsEncode } from "$lib/utils";
+  import { prettifyIsoDateString } from "$lib/utils";
 
   import { Badge } from "$lib/components/ui/badge";
   import Button from "$lib/components/ui/button/button.svelte";
+  import * as Details from "$lib/components/ui/details/index";
 
   import LogoLoader from "$lib/components/car-logo-loader.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
@@ -33,7 +32,6 @@
   let isSheetOpen: boolean = $state(false);
 </script>
 
-<!-- TODO: extract item list into composable components -->
 <PageLayout>
   {#snippet header()}
     <div class="h-full px-4 flex items-center">
@@ -73,59 +71,57 @@
         </div>
       </div>
     </div>
-    <div class="border p-4 mt-4 rounded grid gap-3">
-      <div class="flex items-center justify-between border-b border-muted pb-3">
-        <span class="text-muted-foreground flex items-center gap-2">
-          <UserIcon class="size-4 text-muted-foreground/70" /> Власник
-        </span>
-        {#if owner != undefined}
-          <span class="max-w-45 truncate select-all" title={owner.name}>
+
+    <Details.Card class="mt-4">
+      <Details.Item>
+        <Details.Title>
+          <Details.Icon icon={UserIcon} /> Власник
+        </Details.Title>
+        <Details.Content>
+          {#if owner != undefined}
             {owner.name}
-          </span>
-        {:else}
-          <span class="text-muted-foreground/50 italic text">Не вказано</span>
-        {/if}
-      </div>
+          {:else}
+            Не вказано
+          {/if}
+        </Details.Content>
+      </Details.Item>
 
-      <div class="flex items-center justify-between border-b border-muted pb-3">
-        <span class="text-muted-foreground flex items-center gap-2">
-          <HashIcon class="size-4 text-muted-foreground/70" /> Реєстрація
-        </span>
-        {#if car.registration}
-          <span
-            class="font-mono font-bold uppercase tracking-wider bg-muted px-2 py-0.5 rounded text-sm border select-all"
-          >
+      <Details.Item>
+        <Details.Title>
+          <Details.Icon icon={HashIcon} /> Державний номер
+        </Details.Title>
+        <Details.Content>
+          {#if owner != undefined}
             {car.registration}
-          </span>
-        {:else}
-          <span class="text-muted-foreground/50 italic text">Не вказано</span>
-        {/if}
-      </div>
+          {:else}
+            Не вказано
+          {/if}
+        </Details.Content>
+      </Details.Item>
 
-      <div class="flex items-center justify-between border-b border-muted pb-3">
-        <span class="text-muted-foreground flex items-center gap-2">
-          <FingerprintIcon class="size-4 text-muted-foreground/70" /> VIN
-        </span>
-        {#if car.vin}
-          <span
-            class="font-mono font-bold uppercase tracking-wider bg-muted px-2 py-0.5 rounded text-sm border select-all"
-          >
+      <Details.Item>
+        <Details.Title>
+          <Details.Icon icon={FingerprintIcon} /> VIN-код
+        </Details.Title>
+        <Details.Content>
+          {#if owner != undefined}
             {car.vin}
-          </span>
-        {:else}
-          <span class="text-muted-foreground/50 italic text">Не вказано</span>
-        {/if}
-      </div>
+          {:else}
+            Не вказано
+          {/if}
+        </Details.Content>
+      </Details.Item>
 
-      <div class="flex items-center justify-between">
-        <span class="flex items-center gap-2 text-muted-foreground">
-          <CalendarPlusIcon class="size-4 text-muted-foreground/70" /> Створено
-        </span>
-        <span class="max-w-45 truncate">
-          {prettifyIsoDateString(car.created_at, "long")}
-        </span>
-      </div>
-    </div>
+      <Details.Item>
+        <Details.Title>
+          <Details.Icon icon={CalendarPlusIcon} /> Створено
+        </Details.Title>
+        <Details.Content>
+          {car.created_at}
+        </Details.Content>
+      </Details.Item>
+    </Details.Card>
+
     <div class="border rounded p-4 mt-4">Invoices here...</div>
   </div>
 </PageLayout>
