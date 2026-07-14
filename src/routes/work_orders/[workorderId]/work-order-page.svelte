@@ -26,13 +26,16 @@
   import CarCard from "../../cars/car-card.svelte";
   import ClientCard from "../../clients/client-card.svelte";
   import StatusSelector from "../status-selector.svelte";
-  import { columns } from "./columns";
   import DataTable from "./data-table.svelte";
   import DropdownMenu from "./dropdown-menu.svelte";
-  import WorkOrderItemMutationSheet from "./work-order-item-mutation-sheet.svelte";
+  import { columns as laborColumns } from "./labor-columns";
+  import { columns as partsColumns } from "./parts-columns";
+  import WorkOrderLaborItemMutationSheet from "./work-order-labor-item-mutation-sheet.svelte";
+  import WorkOrderPartItemMutationSheet from "./work-order-parts-item-mutation-sheet.svelte";
 
   let { work_order }: { work_order: WorkOrder } = $props();
-  let isSheetOpen: boolean = $state(false);
+  let isLaborSheetOpen: boolean = $state(false);
+  let isPartsSheetOpen: boolean = $state(false);
   let isPopoverOpen: boolean = $state(false);
 
   const car = appStore.cars.find((c) => c.id === work_order.car_id);
@@ -42,7 +45,7 @@
     throw new Error("Elements missing from appStore");
   }
 
-  const data = $derived(
+  const labor_data = $derived(
     appStore.work_order_labor_items
       .filter((i) => i.work_order_id === work_order.id)
       .map((item) => {
@@ -143,7 +146,9 @@
     <div class="flex gap-4 my-4">
       <h2 class="text-xl font-semibold mr-auto">Сервіси</h2>
       <ButtonGroup.Root>
-        <Button variant="outline" onclick={() => (isSheetOpen = !isSheetOpen)}
+        <Button
+          variant="outline"
+          onclick={() => (isLaborSheetOpen = !isLaborSheetOpen)}
           >Створити</Button
         >
         <Popover.Root bind:open={isPopoverOpen}>
@@ -194,11 +199,24 @@
       </ButtonGroup.Root>
     </div>
     <div class="border rounded mt-4">
-      <DataTable {columns} {data} />
+      <DataTable columns={laborColumns} data={labor_data} />
+    </div>
+    <div class="flex gap-4 my-4">
+      <h2 class="text-xl font-semibold mr-auto">Запчастини</h2>
+      <Button onclick={() => (isPartsSheetOpen = !isPartsSheetOpen)}
+        >Створити</Button
+      >
+    </div>
+    <div class="border rounded mt-4">
+      <DataTable columns={partsColumns} data={appStore.work_order_part_items} />
     </div>
   </div>
-  <WorkOrderItemMutationSheet
-    bind:open={isSheetOpen}
+  <WorkOrderLaborItemMutationSheet
+    bind:open={isLaborSheetOpen}
+    work_order_id={work_order.id}
+  />
+  <WorkOrderPartItemMutationSheet
+    bind:open={isPartsSheetOpen}
     work_order_id={work_order.id}
   />
 </PageLayout>

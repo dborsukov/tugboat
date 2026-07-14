@@ -39,8 +39,8 @@
   );
   const formID = $derived(
     isEdit
-      ? `work-order-item-mutation-form-${id}`
-      : "work-order-item-mutation-form-create",
+      ? `work-order-labor-item-mutation-form-${id}`
+      : "work-order-labor-item-mutation-form-create",
   );
 
   const workOrderItemSchema = z.object({

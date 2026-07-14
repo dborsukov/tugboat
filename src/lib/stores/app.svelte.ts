@@ -6,6 +6,7 @@ import {
   type Service,
   type WorkOrder,
   type WorkOrderLaborItem,
+  type WorkOrderPartItem,
 } from "$lib/bindings";
 
 function unwrap<T>(
@@ -27,6 +28,7 @@ class AppStore {
   services: Service[] = $state([]);
   work_orders: WorkOrder[] = $state([]);
   work_order_labor_items: WorkOrderLaborItem[] = $state([]);
+  work_order_part_items: WorkOrderPartItem[] = $state([]);
   loading = $state(false);
   error: string | null = $state(null);
 
@@ -41,6 +43,7 @@ class AppStore {
       services,
       work_orders,
       work_order_labor_items,
+      work_order_part_items,
       version,
     ] = await Promise.all([
       commands.fetchClients().then(unwrap),
@@ -49,6 +52,7 @@ class AppStore {
       commands.fetchServices().then(unwrap),
       commands.fetchWorkOrders().then(unwrap),
       commands.fetchWorkOrderLaborItems().then(unwrap),
+      commands.fetchWorkOrderPartItems().then(unwrap),
       commands.getAppVersion(),
     ]);
 
@@ -58,6 +62,7 @@ class AppStore {
     this.services = services;
     this.work_orders = work_orders;
     this.work_order_labor_items = work_order_labor_items;
+    this.work_order_part_items = work_order_part_items;
     this.version = version;
 
     this.loading = false;
@@ -82,6 +87,13 @@ class AppStore {
   createWorkOrderLaborItem(work_order_item: WorkOrderLaborItem) {
     this.work_order_labor_items = [
       ...this.work_order_labor_items,
+      work_order_item,
+    ];
+  }
+
+  createWorkOrderPartItem(work_order_item: WorkOrderPartItem) {
+    this.work_order_part_items = [
+      ...this.work_order_part_items,
       work_order_item,
     ];
   }
@@ -115,6 +127,13 @@ class AppStore {
     );
   }
 
+  updateWorkOrderPartItem(updated: WorkOrderPartItem) {
+    this.work_order_part_items = this.work_order_part_items.map(
+      (work_order_item) =>
+        work_order_item.id === updated.id ? updated : work_order_item,
+    );
+  }
+
   removeClient(id: number) {
     this.clients = this.clients.filter((client) => client.id !== id);
   }
@@ -125,6 +144,12 @@ class AppStore {
 
   removeWorkOrderLaborItem(id: number) {
     this.work_order_labor_items = this.work_order_labor_items.filter(
+      (item) => item.id !== id,
+    );
+  }
+
+  removeWorkOrderPartItem(id: number) {
+    this.work_order_part_items = this.work_order_part_items.filter(
       (item) => item.id !== id,
     );
   }

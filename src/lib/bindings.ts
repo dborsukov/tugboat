@@ -11,20 +11,24 @@ export const commands = {
 	createService: (payload: CreateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("create_service", { payload })),
 	createWorkOrder: (payload: CreateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("create_work_order", { payload })),
 	createWorkOrderLaborItem: (payload: CreateWorkOrderLaborItemPayload) => typedError<WorkOrderLaborItem, AppError>(__TAURI_INVOKE("create_work_order_labor_item", { payload })),
+	createWorkOrderPartItem: (payload: CreateWorkOrderPartItemPayload) => typedError<WorkOrderPartItem, AppError>(__TAURI_INVOKE("create_work_order_part_item", { payload })),
 	deleteCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_car", { id })),
 	deleteClient: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_client", { id })),
 	deleteWorkOrderLaborItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order_labor_item", { id })),
+	deleteWorkOrderPartItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order_part_item", { id })),
 	fetchCarBrands: () => typedError<CarBrand[], AppError>(__TAURI_INVOKE("fetch_car_brands")),
 	fetchCars: () => typedError<Car[], AppError>(__TAURI_INVOKE("fetch_cars")),
 	fetchClients: () => typedError<Client[], AppError>(__TAURI_INVOKE("fetch_clients")),
 	fetchServices: () => typedError<Service[], AppError>(__TAURI_INVOKE("fetch_services")),
 	fetchWorkOrderLaborItems: () => typedError<WorkOrderLaborItem[], AppError>(__TAURI_INVOKE("fetch_work_order_labor_items")),
+	fetchWorkOrderPartItems: () => typedError<WorkOrderPartItem[], AppError>(__TAURI_INVOKE("fetch_work_order_part_items")),
 	fetchWorkOrders: () => typedError<WorkOrder[], AppError>(__TAURI_INVOKE("fetch_work_orders")),
 	updateCar: (id: number, payload: UpdateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("update_car", { id, payload })),
 	updateClient: (id: number, payload: UpdateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("update_client", { id, payload })),
 	updateService: (id: number, payload: UpdateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("update_service", { id, payload })),
 	updateWorkOrder: (payload: UpdateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("update_work_order", { payload })),
 	updateWorkOrderLaborItem: (id: number, payload: UpdateWorkOrderLaborItemPayload) => typedError<WorkOrderLaborItem, AppError>(__TAURI_INVOKE("update_work_order_labor_item", { id, payload })),
+	updateWorkOrderPartItem: (id: number, payload: UpdateWorkOrderPartItemPayload) => typedError<WorkOrderPartItem, AppError>(__TAURI_INVOKE("update_work_order_part_item", { id, payload })),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
 };
 
@@ -83,6 +87,16 @@ export type CreateWorkOrderLaborItemPayload = {
 	labor_hours: number,
 };
 
+export type CreateWorkOrderPartItemPayload = {
+	work_order_id: string,
+	code: string | null,
+	name: string,
+	quantity: number,
+	unit_type: string,
+	unit_price_cents: number,
+	status: PartStatus,
+};
+
 export type CreateWorkOrderPayload = {
 	id: string,
 	car_id: number,
@@ -93,6 +107,8 @@ export type CreateWorkOrderPayload = {
 	status: WorkOrderStatus,
 	rate: number,
 };
+
+export type PartStatus = "Quoted" | "Ordered" | "InStock" | "Installing" | "Installed" | "AwaitingReturn" | "Returned" | "Warranty";
 
 export type Service = {
 	id: number,
@@ -128,6 +144,15 @@ export type UpdateWorkOrderLaborItemPayload = {
 	labor_hours: number,
 };
 
+export type UpdateWorkOrderPartItemPayload = {
+	code: string | null,
+	name: string,
+	quantity: number,
+	unit_type: string,
+	unit_price_cents: number,
+	status: PartStatus,
+};
+
 export type UpdateWorkOrderPayload = {
 	id: string,
 	car_id: number,
@@ -161,6 +186,17 @@ export type WorkOrderLaborItem = {
 	code: string | null,
 	name: string,
 	labor_hours: number,
+};
+
+export type WorkOrderPartItem = {
+	id: number,
+	work_order_id: string,
+	code: string | null,
+	name: string,
+	quantity: number,
+	unit_type: string,
+	unit_price_cents: number,
+	status: PartStatus,
 };
 
 export type WorkOrderStatus = "Received" | "InDiagnostics" | "AwaitingApproval" | "AwaitingParts" | "Working" | "ReadyForPickup" | "Paid" | "Canceled";

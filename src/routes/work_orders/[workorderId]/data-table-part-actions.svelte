@@ -14,16 +14,16 @@
 
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
 
-  import WorkOrderItemMutationSheet from "./work-order-item-mutation-sheet.svelte";
+  import WorkOrderPartItemMutationSheet from "./work-order-parts-item-mutation-sheet.svelte";
 
   let { id }: { id: number } = $props();
   let isSheetOpen: boolean = $state(false);
   let isDeleteDialogOpen: boolean = $state(false);
 
   async function handleDelete() {
-    let res = await commands.deleteWorkOrderLaborItem(id);
+    let res = await commands.deleteWorkOrderPartItem(id);
     if (res.status === "ok") {
-      appStore.removeWorkOrderLaborItem(id);
+      appStore.removeWorkOrderPartItem(id);
     } else {
       toast.error("Виникла помилка", {
         description: res.error.message,
@@ -65,7 +65,7 @@
   </DropdownMenu.Content>
 </DropdownMenu.Root>
 
-<WorkOrderItemMutationSheet bind:open={isSheetOpen} {id} />
+<WorkOrderPartItemMutationSheet bind:open={isSheetOpen} {id} />
 <DeleteDialog
   bind:open={isDeleteDialogOpen}
   onDelete={handleDelete}

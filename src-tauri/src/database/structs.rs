@@ -271,3 +271,81 @@ pub struct UpdateWorkOrderLaborItemPayload {
     #[specta(type = specta_typescript::Number)]
     pub labor_hours: f64,
 }
+
+#[derive(
+    // Builtins
+    Debug,
+    Clone,
+    Copy,
+    // Comparisons and hashing
+    PartialEq,
+    Eq,
+    // Thrid-party: Serde
+    Serialize,
+    Deserialize,
+    // Thrid-party: Sqlx
+    sqlx::Type,
+    specta::Type,
+)]
+#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+pub enum PartStatus {
+    Quoted,
+    Ordered,
+    InStock,
+    Installing,
+    Installed,
+    AwaitingReturn,
+    Returned,
+    Warranty,
+}
+
+#[derive(
+    // Builtins
+    Debug,
+    Clone,
+    // Thrid-party: Serde
+    Serialize,
+    Deserialize,
+    // Thrid-party: Sqlx
+    FromRow,
+    // Thrid-party: Specta
+    specta::Type,
+)]
+pub struct WorkOrderPartItem {
+    #[specta(type = specta_typescript::Number)]
+    pub id: i64,
+    pub work_order_id: String,
+    pub code: Option<String>,
+    pub name: String,
+    #[specta(type = specta_typescript::Number)]
+    pub quantity: f64,
+    pub unit_type: String,
+    #[specta(type = specta_typescript::Number)]
+    pub unit_price_cents: i64,
+    pub status: PartStatus,
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+pub struct CreateWorkOrderPartItemPayload {
+    pub work_order_id: String,
+    pub code: Option<String>,
+    pub name: String,
+    #[specta(type = specta_typescript::Number)]
+    pub quantity: f64,
+    pub unit_type: String,
+    #[specta(type = specta_typescript::Number)]
+    pub unit_price_cents: i64,
+    pub status: PartStatus,
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+pub struct UpdateWorkOrderPartItemPayload {
+    pub code: Option<String>,
+    pub name: String,
+    #[specta(type = specta_typescript::Number)]
+    pub quantity: f64,
+    pub unit_type: String,
+    #[specta(type = specta_typescript::Number)]
+    pub unit_price_cents: i64,
+    pub status: PartStatus,
+}

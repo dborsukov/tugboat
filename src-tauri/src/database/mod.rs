@@ -65,6 +65,18 @@ pub async fn fetch_work_order_labor_items(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn fetch_work_order_part_items(
+    state: State<'_, crate::AppState>,
+) -> AppResult<Vec<WorkOrderPartItem>> {
+    let work_order_part_items: Vec<WorkOrderPartItem> =
+        sqlx::query_as("SELECT * FROM work_order_part_items")
+            .fetch_all(&state.db_pool)
+            .await?;
+    Ok(work_order_part_items)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn create_client(
     state: State<'_, crate::AppState>,
     payload: CreateClientPayload,
@@ -324,7 +336,67 @@ pub async fn delete_work_order_labor_item(
         .await?;
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound(
-            "Автомобіля з таким ID не знайдено в базі даних".to_string(),
+            "Сервісу з таким ID не знайдено в базі даних".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn create_work_order_part_item(
+    state: State<'_, crate::AppState>,
+    payload: CreateWorkOrderPartItemPayload,
+) -> AppResult<WorkOrderPartItem> {
+    let work_order_part_item: WorkOrderPartItem =
+        sqlx::query_as("INSERT INTO work_order_part_items (work_order_id, code, name, quantity, unit_type, unit_price_cents, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *")
+            .bind(payload.work_order_id)
+            .bind(payload.code)
+            .bind(payload.name)
+            .bind(payload.quantity)
+            .bind(payload.unit_type)
+            .bind(payload.unit_price_cents)
+            .bind(payload.status)
+            .fetch_one(&state.db_pool)
+            .await?;
+    Ok(work_order_part_item)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_work_order_part_item(
+    state: State<'_, crate::AppState>,
+    id: i32,
+    payload: UpdateWorkOrderPartItemPayload,
+) -> AppResult<WorkOrderPartItem> {
+    let work_order_part_item: WorkOrderPartItem = sqlx::query_as(
+        "UPDATE work_order_part_items SET code = $2, name = $3, quantity = $4, unit_type = $5, unit_price_cents = $6, status = $7 WHERE id = $1 RETURNING *",
+    )
+        .bind(id)
+        .bind(payload.code)
+        .bind(payload.name)
+        .bind(payload.quantity)
+        .bind(payload.unit_type)
+        .bind(payload.unit_price_cents)
+        .bind(payload.status)
+        .fetch_one(&state.db_pool)
+        .await?;
+    Ok(work_order_part_item)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_work_order_part_item(
+    state: State<'_, crate::AppState>,
+    id: i32,
+) -> AppResult<()> {
+    let result = sqlx::query("DELETE FROM work_order_part_items WHERE id = $1")
+        .bind(id)
+        .execute(&state.db_pool)
+        .await?;
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound(
+            "Запчастини з таким ID не знайдено в базі даних".to_string(),
         ));
     }
     Ok(())

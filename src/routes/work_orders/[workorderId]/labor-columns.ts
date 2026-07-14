@@ -5,7 +5,7 @@ import type { WorkOrderLaborItem } from "$lib/bindings";
 
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
-import DataTableActions from "./data-table-actions.svelte";
+import DataTableActions from "./data-table-labor-actions.svelte";
 
 const currencyFormatter = new Intl.NumberFormat("uk-UA", {
   style: "currency",

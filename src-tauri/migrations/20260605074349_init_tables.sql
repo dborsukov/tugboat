@@ -68,6 +68,18 @@ CREATE TABLE work_order_labor_items (
     FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE SET NULL
 );
 
+CREATE TABLE work_order_part_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    work_order_id TEXT NOT NULL,
+    code TEXT,
+    name TEXT NOT NULL,
+    quantity REAL NOT NULL DEFAULT 1.0,
+    unit_type TEXT NOT NULL DEFAULT "шт",
+    unit_price_cents INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL,
+    FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE
+);
+
 CREATE INDEX idx_cars_client_id ON cars (client_id);
 
 CREATE INDEX idx_cars_brand_id ON cars (brand_id);
@@ -77,3 +89,5 @@ CREATE INDEX idx_work_orders_car_id ON work_orders (car_id);
 CREATE INDEX idx_work_order_labor_items_service_id ON work_order_labor_items (service_id);
 
 CREATE INDEX idx_work_order_labor_items_work_order_id ON work_order_labor_items (work_order_id);
+
+CREATE INDEX idx_work_order_part_items_work_order_id ON work_order_part_items (work_order_id);
