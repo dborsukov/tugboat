@@ -2,6 +2,9 @@
   import WorkOrdersIcon from "@lucide/svelte/icons/briefcase-business";
   import CarsIcon from "@lucide/svelte/icons/car";
   import CustomerIcon from "@lucide/svelte/icons/circle-user";
+  import HomeIcon from "@lucide/svelte/icons/home";
+  import PanelCloseIcon from "@lucide/svelte/icons/panel-left-close";
+  import PanelOpenIcon from "@lucide/svelte/icons/panel-left-open";
   import SettingsIcon from "@lucide/svelte/icons/settings";
   import WrenchIcon from "@lucide/svelte/icons/wrench";
 
@@ -9,16 +12,27 @@
 
   import { appStore } from "$lib/stores/app.svelte";
 
+  import { useSidebar } from "$lib/components/ui/sidebar/index.js";
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
 
   import PopeyeIcon from "$lib/components/icons/popeye.svelte";
 
+  import Button from "./ui/button/button.svelte";
   import SidebarFooter from "./ui/sidebar/sidebar-footer.svelte";
   import SidebarMenuBadge from "./ui/sidebar/sidebar-menu-badge.svelte";
-  import SidebarMenu from "./ui/sidebar/sidebar-menu.svelte";
 
-  // Menu items.
-  const sidebar1 = $derived([
+  const sidebar = useSidebar();
+
+  const top_level_menu = $derived([
+    {
+      title: "Головна",
+      url: "/",
+      icon: HomeIcon,
+      badge: null,
+    },
+  ]);
+
+  const crm_menu = $derived([
     {
       title: "Клієнти",
       url: "/clients",
@@ -38,7 +52,8 @@
       badge: appStore.work_orders.length,
     },
   ]);
-  const sidebar2 = $derived([
+
+  const management_menu = $derived([
     {
       title: "Сервіси",
       url: "/services",
@@ -46,7 +61,7 @@
       badge: appStore.services.length,
     },
   ]);
-  const footer = [
+  const footer_menu = [
     {
       title: "Налаштування",
       url: "/settings",
@@ -56,58 +71,70 @@
 </script>
 
 <Sidebar.Root collapsible="icon" variant="sidebar">
-  <Sidebar.Header
-    class="h-16 border-b justify-center transition-all duration-100 group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:py-4"
-  >
+  <Sidebar.Header class="h-16 border-b">
     <div
-      class="flex w-full items-center justify-between flex-row
-		group-data-[collapsible=icon]:flex-col
-		group-data-[collapsible=icon]:justify-center
-		group-data-[collapsible=icon]:gap-4"
+      class="flex h-full w-full items-center justify-center group-data-[collapsible=]:pl-2 transition-all duration-300"
     >
-      <SidebarMenu>
-        <Sidebar.MenuItem>
-          <Sidebar.MenuButton
-            size="lg"
-            class="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            isActive={page.url.pathname.endsWith("/")}
-          >
-            {#snippet child({ props })}
-              <a href="/" {...props}>
-                <div
-                  class="flex aspect-square size-8 items-center justify-center rounded-lg text-sidebar-primary-foreground"
-                >
-                  <PopeyeIcon class="size-9!" />
-                </div>
-
-                <div
-                  class="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden"
-                >
-                  <span class="truncate font-semibold">Папай CRM </span>
-                  <span
-                    class="truncate text-xs font-semibold text-muted-foreground"
-                    >Версія {appStore.version}</span
-                  >
-                </div>
-              </a>
-            {/snippet}
-          </Sidebar.MenuButton>
-        </Sidebar.MenuItem>
-      </SidebarMenu>
+      <div
+        class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg text-sidebar-primary-foreground transition-all duration-300 ease-in-out group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0"
+      >
+        <PopeyeIcon class="size-9! shrink-0" />
+      </div>
 
       <div
-        class="flex items-center justify-center px-2 group-data-[collapsible=icon]:px-0"
+        class="flex flex-1 flex-col justify-center overflow-hidden px-2 text-sm font-semibold leading-tight transition-all duration-300 ease-in-out group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:opacity-0"
       >
-        <Sidebar.Trigger class="h-8 w-8" />
+        <span class="truncate">Папай CRM</span>
+        <span class="truncate text-xs text-muted-foreground"
+          >Версія {appStore.version}</span
+        >
+      </div>
+
+      <div class="flex shrink-0 items-center justify-center">
+        <Button
+          size="icon-lg"
+          variant="ghost"
+          class="hover:cursor-pointer"
+          onclick={() => sidebar.toggle()}
+        >
+          <PanelCloseIcon
+            class="absolute transition-all duration-300 ease-in-out group-data-[collapsible=icon]:scale-50 group-data-[collapsible=icon]:opacity-0"
+          />
+          <PanelOpenIcon
+            class="absolute scale-50 opacity-0 transition-all duration-300 ease-in-out group-data-[collapsible=icon]:scale-100 group-data-[collapsible=icon]:opacity-100"
+          />
+        </Button>
       </div>
     </div>
   </Sidebar.Header>
+
   <Sidebar.Content>
+    <Sidebar.Group>
+      <Sidebar.GroupContent>
+        <Sidebar.Menu>
+          {#each top_level_menu as item (item.title)}
+            <Sidebar.MenuItem>
+              <Sidebar.MenuButton isActive={page.url.pathname === item.url}>
+                {#snippet child({ props })}
+                  <a href={item.url} {...props}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </a>
+                {/snippet}
+              </Sidebar.MenuButton>
+              {#if item.badge}
+                <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>
+              {/if}
+            </Sidebar.MenuItem>
+          {/each}
+        </Sidebar.Menu>
+      </Sidebar.GroupContent>
+    </Sidebar.Group>
     <Sidebar.Group>
       <Sidebar.GroupLabel>База</Sidebar.GroupLabel>
       <Sidebar.GroupContent>
         <Sidebar.Menu>
-          {#each sidebar1 as item (item.title)}
+          {#each crm_menu as item (item.title)}
             <Sidebar.MenuItem>
               <Sidebar.MenuButton
                 isActive={page.url.pathname.startsWith(item.url)}
@@ -129,7 +156,7 @@
       <Sidebar.GroupLabel>Управління</Sidebar.GroupLabel>
       <Sidebar.GroupContent>
         <Sidebar.Menu>
-          {#each sidebar2 as item (item.title)}
+          {#each management_menu as item (item.title)}
             <Sidebar.MenuItem>
               <Sidebar.MenuButton
                 isActive={page.url.pathname.startsWith(item.url)}
@@ -150,7 +177,7 @@
   </Sidebar.Content>
   <SidebarFooter>
     <Sidebar.Menu>
-      {#each footer as item (item.title)}
+      {#each footer_menu as item (item.title)}
         <Sidebar.MenuItem>
           <Sidebar.MenuButton isActive={page.url.pathname.startsWith(item.url)}>
             {#snippet child({ props })}
