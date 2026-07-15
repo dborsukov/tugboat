@@ -52,6 +52,12 @@
         };
       }),
   );
+
+  const parts_data = $derived(
+    appStore.work_order_part_items.filter(
+      (i) => i.work_order_id === work_order.id,
+    ),
+  );
 </script>
 
 <PageLayout>
@@ -187,7 +193,7 @@
       </ButtonGroup.Root>
     </div>
 
-    <div class="border rounded mt-4">
+    <div class="mt-4">
       <DataTable
         columns={laborColumns}
         data={labor_data}
@@ -196,6 +202,7 @@
         headerClasses={{ name: "w-full" }}
       />
     </div>
+
     <div class="flex gap-4 my-4">
       <h2 class="text-xl font-semibold mr-auto">Запчастини</h2>
       <Button onclick={() => (isPartsSheetOpen = !isPartsSheetOpen)}
@@ -203,10 +210,10 @@
       >
     </div>
 
-    <div class="border rounded mt-4">
+    <div class="mt-4">
       <DataTable
         columns={partsColumns}
-        data={appStore.work_order_part_items}
+        data={parts_data}
         emptyMessage="Запчастин не знайдено..."
         showPagination={false}
         headerClasses={{ name: "w-full" }}

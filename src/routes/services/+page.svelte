@@ -34,11 +34,13 @@
       <ServiceMutationSheet bind:open={isSheetOpen} />
     </div>
   {/snippet}
-  <DataTable
-    data={appStore.services}
-    {columns}
-    bind:searchTerm={inputValue}
-    emptyMessage="Сервісів не знайдено..."
-    headerClasses={{ name: "w-full" }}
-  />
+  <div class="p-4">
+    <DataTable
+      data={appStore.services}
+      {columns}
+      bind:searchTerm={inputValue}
+      emptyMessage="Сервісів не знайдено..."
+      headerClasses={{ name: "w-full" }}
+    />
+  </div>
 </PageLayout>

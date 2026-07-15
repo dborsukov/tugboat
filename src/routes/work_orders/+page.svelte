@@ -34,11 +34,13 @@
       <Input placeholder="Пошук..." bind:value={inputValue} class="w-full" />
     </div>
   {/snippet}
-  <DataTable
-    {data}
-    {columns}
-    bind:searchTerm={inputValue}
-    emptyMessage="Замовлень не знайдено..."
-    onRowClick={(row) => goto(`/work_orders/${row.id}`)}
-  />
+  <div class="p-4">
+    <DataTable
+      {data}
+      {columns}
+      bind:searchTerm={inputValue}
+      emptyMessage="Замовлень не знайдено..."
+      onRowClick={(row) => goto(`/work_orders/${row.id}`)}
+    />
+  </div>
 </PageLayout>
