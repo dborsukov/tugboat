@@ -5,6 +5,8 @@
 
   import { goto } from "$app/navigation";
 
+  import type { Client } from "$lib/bindings";
+
   import { appStore } from "$lib/stores/app.svelte";
 
   import { prettifyIsoDateString } from "$lib/utils";
@@ -18,9 +20,10 @@
   import DropdownMenu from "./dropdown-menu.svelte";
 
   let { data } = $props();
-  let cars = $derived(
-    appStore.cars.filter((c) => c.client_id === data.client.id),
+  let client = $derived(
+    appStore.clients.find((c) => c.id.toString() === data.id) as Client,
   );
+  let cars = $derived(appStore.cars.filter((c) => c.client_id === client.id));
 </script>
 
 <PageLayout>
@@ -29,14 +32,14 @@
       <Button variant="secondary" onclick={() => goto("/clients")}>
         <ChevronLeftIcon /> Список
       </Button>
-      <DropdownMenu client={data.client} />
+      <DropdownMenu {client} />
     </div>
   {/snippet}
   <div class="h-full w-full p-4">
     <div class="border p-4 rounded">
       <div class="flex items-center justify-between">
-        <h1 class="text-2xl font-semibold">{data.client?.name}</h1>
-        <p class="text-muted-foreground">ID: {data.client?.id}</p>
+        <h1 class="text-2xl font-semibold">{client?.name}</h1>
+        <p class="text-muted-foreground">ID: {client?.id}</p>
       </div>
     </div>
     <Details.Card class="mt-4">
@@ -45,7 +48,7 @@
           <Details.Icon icon={PhoneIcon} /> Номер
         </Details.Title>
         <Details.Content>
-          {data.client.phone}
+          {client.phone}
         </Details.Content>
       </Details.Item>
 
@@ -54,7 +57,7 @@
           <Details.Icon icon={CalendarPlusIcon} /> Створено
         </Details.Title>
         <Details.Content>
-          {prettifyIsoDateString(data.client.created_at, "long")}
+          {prettifyIsoDateString(client.created_at, "long")}
         </Details.Content>
       </Details.Item>
     </Details.Card>

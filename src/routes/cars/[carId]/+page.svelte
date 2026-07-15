@@ -8,6 +8,8 @@
 
   import { goto } from "$app/navigation";
 
+  import type { Car } from "$lib/bindings";
+
   import { appStore } from "$lib/stores/app.svelte";
 
   import { prettifyIsoDateString } from "$lib/utils";
@@ -23,12 +25,11 @@
   import DropdownMenu from "./dropdown-menu.svelte";
 
   let { data } = $props();
-  let owner = $derived(
-    appStore.clients.find((c) => c.id === data.car.client_id),
+  let car = $derived(
+    appStore.cars.find((c) => c.id.toString() === data.id) as Car,
   );
-  let brand = $derived(
-    appStore.car_brands.find((b) => b.id === data.car.brand_id),
-  );
+  let owner = $derived(appStore.clients.find((c) => c.id === car.client_id));
+  let brand = $derived(appStore.car_brands.find((b) => b.id === car.brand_id));
   let slug = $derived(brand != undefined ? brand.icon_slug : "");
 
   let isSheetOpen: boolean = $state(false);
@@ -43,8 +44,8 @@
       <Button class="ml-auto mr-2" onclick={() => (isSheetOpen = !isSheetOpen)}>
         <WorkOrderIcon /> Нове замовлення
       </Button>
-      <DropdownMenu car={data.car} />
-      <WorkOrderMutationSheet bind:open={isSheetOpen} car_id={data.car.id} />
+      <DropdownMenu {car} />
+      <WorkOrderMutationSheet bind:open={isSheetOpen} car_id={car.id} />
     </div>
   {/snippet}
   <div class="p-4">
@@ -62,14 +63,14 @@
             {/if}
           </div>
           <div class="text-lg tracking-tight mt-0.5">
-            {data.car.model}
+            {car.model}
           </div>
         </div>
         <div class="flex flex-col gap-1 justify-between items-end">
           <Badge variant="outline" class="text-lg px-3 py-3.5 bg-background">
-            {data.car.year}
+            {car.year}
           </Badge>
-          <p class="text-muted-foreground">ID: {data.car.id}</p>
+          <p class="text-muted-foreground">ID: {car.id}</p>
         </div>
       </div>
     </div>
@@ -94,7 +95,7 @@
         </Details.Title>
         <Details.Content>
           {#if owner != undefined}
-            {data.car.registration}
+            {car.registration}
           {:else}
             Не вказано
           {/if}
@@ -107,7 +108,7 @@
         </Details.Title>
         <Details.Content>
           {#if owner != undefined}
-            {data.car.vin}
+            {car.vin}
           {:else}
             Не вказано
           {/if}
@@ -119,7 +120,7 @@
           <Details.Icon icon={CalendarPlusIcon} /> Створено
         </Details.Title>
         <Details.Content>
-          {prettifyIsoDateString(data.car.created_at, "long")}
+          {prettifyIsoDateString(car.created_at, "long")}
         </Details.Content>
       </Details.Item>
     </Details.Card>

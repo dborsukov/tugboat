@@ -6,7 +6,7 @@
   import GaugeIcon from "@lucide/svelte/icons/gauge";
   import RateIcon from "@lucide/svelte/icons/hand-coins";
 
-  import { commands } from "$lib/bindings";
+  import { commands, type WorkOrder } from "$lib/bindings";
 
   import { appStore } from "$lib/stores/app.svelte";
 
@@ -31,11 +31,16 @@
   import WorkOrderPartItemMutationSheet from "./work-order-parts-item-mutation-sheet.svelte";
 
   let { data } = $props();
+
+  let work_order = $derived(
+    appStore.work_orders.find((w) => w.id === data.id) as WorkOrder,
+  );
+
   let isLaborSheetOpen: boolean = $state(false);
   let isPartsSheetOpen: boolean = $state(false);
   let isPopoverOpen: boolean = $state(false);
 
-  const car = appStore.cars.find((c) => c.id === data.work_order.car_id);
+  const car = appStore.cars.find((c) => c.id === work_order.car_id);
   const carBrand = appStore.car_brands.find((c) => c.id === car?.brand_id);
   const client = appStore.clients.find((c) => c.id === car?.client_id);
   if (car === undefined || client === undefined || carBrand === undefined) {
@@ -44,18 +49,18 @@
 
   const labor_data = $derived(
     appStore.work_order_labor_items
-      .filter((i) => i.work_order_id === data.work_order.id)
+      .filter((i) => i.work_order_id === work_order.id)
       .map((item) => {
         return {
           ...item,
-          rate: data.work_order.rate,
+          rate: work_order.rate,
         };
       }),
   );
 
   const parts_data = $derived(
     appStore.work_order_part_items.filter(
-      (i) => i.work_order_id === data.work_order.id,
+      (i) => i.work_order_id === work_order.id,
     ),
   );
 </script>
@@ -64,11 +69,11 @@
   {#snippet header()}
     <div class="h-full px-4 flex items-center justify-between">
       <h2 class="text-xl font-mono">
-        {data.work_order.id}
+        {work_order.id}
       </h2>
       <div class="flex gap-2 items-center">
-        <StatusSelector work_order={data.work_order} />
-        <DropdownMenu work_order={data.work_order} />
+        <StatusSelector {work_order} />
+        <DropdownMenu {work_order} />
       </div>
     </div>
   {/snippet}
@@ -88,28 +93,28 @@
           <Details.Icon icon={CalendarPlusIcon} /> Створено
         </Details.Title>
         <Details.Content>
-          {prettifyIsoDateString(data.work_order.created_at, "long")}
+          {prettifyIsoDateString(work_order.created_at, "long")}
         </Details.Content>
       </Details.Item>
 
-      {#if data.work_order.started_at}
+      {#if work_order.started_at}
         <Details.Item>
           <Details.Title>
             <Details.Icon icon={CalendarPlusIcon} /> Почато
           </Details.Title>
           <Details.Content>
-            {prettifyIsoDateString(data.work_order.started_at, "long")}
+            {prettifyIsoDateString(work_order.started_at, "long")}
           </Details.Content>
         </Details.Item>
       {/if}
 
-      {#if data.work_order.completed_at}
+      {#if work_order.completed_at}
         <Details.Item>
           <Details.Title>
             <Details.Icon icon={CalendarPlusIcon} /> Завершено
           </Details.Title>
           <Details.Content>
-            {prettifyIsoDateString(data.work_order.completed_at, "long")}
+            {prettifyIsoDateString(work_order.completed_at, "long")}
           </Details.Content>
         </Details.Item>
       {/if}
@@ -119,8 +124,8 @@
           <Details.Icon icon={GaugeIcon} /> Одометр
         </Details.Title>
         <Details.Content>
-          {#if data.work_order.odometer_in}
-            {data.work_order.odometer_in} км
+          {#if work_order.odometer_in}
+            {work_order.odometer_in} км
           {:else}
             Не вказано
           {/if}
@@ -132,7 +137,7 @@
           <Details.Icon icon={RateIcon} /> Тариф
         </Details.Title>
         <Details.Content>
-          {data.work_order.rate} грн/год.
+          {work_order.rate} грн/год.
         </Details.Content>
       </Details.Item>
     </Details.Card>
@@ -165,7 +170,7 @@
                       value={service.name}
                       onSelect={async () => {
                         let res = await commands.createWorkOrderLaborItem({
-                          work_order_id: data.work_order.id,
+                          work_order_id: work_order.id,
                           service_id: service.id,
                           code: service.code,
                           name: service.name,
@@ -222,11 +227,11 @@
 
     <WorkOrderLaborItemMutationSheet
       bind:open={isLaborSheetOpen}
-      work_order_id={data.work_order.id}
+      work_order_id={work_order.id}
     />
     <WorkOrderPartItemMutationSheet
       bind:open={isPartsSheetOpen}
-      work_order_id={data.work_order.id}
+      work_order_id={work_order.id}
     />
   </div></PageLayout
 >

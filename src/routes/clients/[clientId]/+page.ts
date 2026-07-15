@@ -3,13 +3,13 @@ import { error } from "@sveltejs/kit";
 import { appStore } from "$lib/stores/app.svelte";
 
 export const load = async ({ params }) => {
-  const client = appStore.clients.find(
+  const exists = appStore.clients.find(
     (c) => c.id.toString() === params.clientId,
   );
 
-  if (!client) {
+  if (!exists) {
     error(404, "Клієнта не знайдено");
   }
 
-  return { client };
+  return { id: params.clientId };
 };
