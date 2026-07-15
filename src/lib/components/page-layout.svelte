@@ -19,10 +19,12 @@
     </PageHeader>
   {/if}
 
-  <div class="flex-1 overflow-auto min-h-0">
-    {#if children}
-      {@render children()}
-    {/if}
+  <div class="flex-1 w-full overflow-auto scrollbar-gutter-both">
+    <div class="max-w-7xl mx-auto">
+      {#if children}
+        {@render children()}
+      {/if}
+    </div>
   </div>
 
   {#if footer}
