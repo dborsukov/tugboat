@@ -16,6 +16,8 @@
 
   import LogoLoader from "$lib/components/car-logo-loader.svelte";
 
+  import ClientBadge from "../clients/client-badge.svelte";
+
   interface Props extends ComponentProps<typeof Card.Root> {
     car: Car;
     short?: boolean;
@@ -66,9 +68,7 @@
           <UserIcon class="size-4 text-muted-foreground/70" /> Власник
         </span>
         {#if owner != undefined}
-          <span class="max-w-45 truncate" title={owner.name}>
-            {owner.name}
-          </span>
+          <ClientBadge client={owner} iconSize="size-6" />
         {:else}
           <span class="text-muted-foreground/50 italic text">Не вказано</span>
         {/if}

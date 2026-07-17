@@ -7,6 +7,7 @@ import { prettifyIsoDateString } from "$lib/utils";
 
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
+import ClientBadge from "../clients/client-badge.svelte";
 import CarDisplay from "./car-display.svelte";
 import DataTableClientButton from "./data-table-client-button.svelte";
 import StatusSelector from "./status-selector.svelte";
@@ -48,12 +49,9 @@ export const columns: ColumnDef<WorkOrderTableData>[] = [
       });
     },
     cell: ({ row }) => {
-      const nameCellSnippet = createRawSnippet(() => {
-        return {
-          render: () => `<div>${row.original.client.name}</div>`,
-        };
+      return renderComponent(ClientBadge, {
+        client: row.original.client,
       });
-      return renderSnippet(nameCellSnippet);
     },
   },
   {

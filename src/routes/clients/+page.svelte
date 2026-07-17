@@ -65,7 +65,7 @@
   {:else}
     <div class="flex flex-wrap gap-4 p-4">
       {#each paginatedClients as client (client.id)}
-        <a href="/clients/{client.id}" class="flex-1 min-w-max">
+        <a href="/clients/{client.id}" class="flex-1">
           <ClientCard {client} />
         </a>
       {/each}

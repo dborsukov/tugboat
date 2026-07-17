@@ -78,12 +78,20 @@
     </div>
   {/snippet}
   <div class="h-full w-full p-4">
-    <div class="grid grid-cols-2 gap-4">
-      <a href="/cars/{car.id}">
-        <CarCard {car} short class="h-full" />
+    <div class="flex flex-row w-full items-stretch gap-4">
+      <a href="/cars/{car.id}" class="flex flex-1">
+        <CarCard
+          {car}
+          short
+          class="w-full h-full flex flex-col justify-center"
+        />
       </a>
-      <a href="/clients/{client.id}">
-        <ClientCard {client} short class="h-full" />
+      <a href="/clients/{client.id}" class="flex flex-1">
+        <ClientCard
+          {client}
+          short
+          class="w-full h-full flex flex-col justify-center"
+        />
       </a>
     </div>
 

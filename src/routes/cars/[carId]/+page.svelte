@@ -21,6 +21,8 @@
   import LogoLoader from "$lib/components/car-logo-loader.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
+  import ClientBadge from "../../clients/client-badge.svelte";
+  import ClientCard from "../../clients/client-card.svelte";
   import WorkOrderMutationSheet from "../../work_orders/work-order-mutation-sheet.svelte";
   import DropdownMenu from "./dropdown-menu.svelte";
 
@@ -82,7 +84,7 @@
         </Details.Title>
         <Details.Content>
           {#if owner != undefined}
-            {owner.name}
+            <ClientBadge client={owner} />
           {:else}
             Не вказано
           {/if}
