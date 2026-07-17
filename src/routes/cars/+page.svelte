@@ -63,9 +63,11 @@
       Автомобілей не знайдено
     </div>
   {:else}
-    <div class="flex flex-wrap gap-4 p-4">
+    <div
+      class="grid gap-4 p-4 grid-cols-[repeat(auto-fit,minmax(200px,405px))] justify-center"
+    >
       {#each paginatedCars as car (car.id)}
-        <a href="/cars/{car.id}" class="flex-1 min-w-max">
+        <a href="/cars/{car.id}" class="w-full">
           <CarCard {car} />
         </a>
       {/each}

@@ -63,9 +63,11 @@
       Клієнтів не знайдено
     </div>
   {:else}
-    <div class="flex flex-wrap gap-4 p-4">
+    <div
+      class="grid gap-4 p-4 grid-cols-[repeat(auto-fit,minmax(200px,405px))] justify-center"
+    >
       {#each paginatedClients as client (client.id)}
-        <a href="/clients/{client.id}" class="flex-1">
+        <a href="/clients/{client.id}" class="w-full">
           <ClientCard {client} />
         </a>
       {/each}

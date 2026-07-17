@@ -34,10 +34,10 @@
     />
 
     <div class="flex flex-col flex-1 overflow-hidden">
-      <Card.Title
-        class="text-xl font-semibold leading-none tracking-tight text-nowrap truncate text-ellipsis"
-      >
-        {client.name}
+      <Card.Title>
+        <p class="text-xl font-semibold text-nowrap truncate text-ellipsis">
+          {client.name}
+        </p>
       </Card.Title>
 
       <Card.Description
