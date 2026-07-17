@@ -29,8 +29,8 @@
   async function handleDelete() {
     let res = await commands.archiveWorkOrder(work_order.id);
     if (res.status === "ok") {
-      appStore.archiveWorkOrder(work_order.id);
       await goto("/work_orders");
+      appStore.archiveWorkOrder(work_order.id);
       toast.success("Замовлення видалено");
     } else {
       toast.error("Виникла помилка", {

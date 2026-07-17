@@ -29,8 +29,8 @@
   async function handleDelete() {
     let res = await commands.deleteClient(client.id);
     if (res.status === "ok") {
-      appStore.removeClient(client.id);
       await goto("/clients");
+      appStore.removeClient(client.id);
       toast.success("Клієнта видалено");
     } else {
       toast.error("Виникла помилка", {

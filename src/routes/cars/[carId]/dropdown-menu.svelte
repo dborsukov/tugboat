@@ -29,8 +29,8 @@
   async function handleDelete() {
     let res = await commands.deleteCar(car.id);
     if (res.status === "ok") {
-      appStore.removeCar(car.id);
       await goto("/cars");
+      appStore.removeCar(car.id);
       toast.success("Автомобіль видалено");
     } else {
       toast.error("Виникла помилка", {
