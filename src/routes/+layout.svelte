@@ -1,8 +1,6 @@
 <script lang="ts">
   import "../app.css";
 
-  import { onMount } from "svelte";
-
   import { appStore } from "$lib/stores/app.svelte";
 
   import Button from "$lib/components/ui/button/button.svelte";
@@ -14,8 +12,6 @@
   import AppSidebar from "$lib/components/app-sidebar.svelte";
 
   let { children } = $props();
-
-  onMount(() => appStore.loadAll());
 </script>
 
 {#if appStore.loading}

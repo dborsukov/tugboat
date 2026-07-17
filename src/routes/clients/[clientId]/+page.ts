@@ -2,7 +2,9 @@ import { error } from "@sveltejs/kit";
 
 import { appStore } from "$lib/stores/app.svelte";
 
-export const load = async ({ params }) => {
+export const load = async ({ params, parent }) => {
+  await parent();
+
   const exists = appStore.clients.find(
     (c) => c.id.toString() === params.clientId,
   );
