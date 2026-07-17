@@ -29,10 +29,13 @@ class AppStore {
   work_orders: WorkOrder[] = $state([]);
   work_order_labor_items: WorkOrderLaborItem[] = $state([]);
   work_order_part_items: WorkOrderPartItem[] = $state([]);
+  loaded = $state(false);
   loading = $state(false);
   error: string | null = $state(null);
 
-  async loadAll() {
+  async load() {
+    if (this.loaded && !this.error) return;
+
     this.loading = true;
     this.error = null;
 
@@ -66,6 +69,7 @@ class AppStore {
     this.version = version;
 
     this.loading = false;
+    this.loaded = true;
   }
 
   createClient(client: Client) {
