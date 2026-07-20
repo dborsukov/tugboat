@@ -3,7 +3,7 @@
   import { toast } from "svelte-sonner";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
-  import z from "zod";
+  import z, { string } from "zod";
 
   import CheckIcon from "@lucide/svelte/icons/check";
   import ChevronsUpDownIcon from "@lucide/svelte/icons/chevrons-up-down";
@@ -61,6 +61,10 @@
     return value.toUpperCase().replace(/[\s-]/g, "");
   }
 
+  function normalizeVin(value: string) {
+    return value.toUpperCase().replace(/[\s-]/g, "");
+  }
+
   const carSchema = z.object({
     client_id: z
       .number({ error: "Вкажіть власника" })
@@ -98,12 +102,16 @@
     vin: z
       .string()
       .trim()
-      .toUpperCase()
-      .regex(/^[A-HJ-NPR-Z0-9]*$/, {
-        error: "VIN-код містить неприпустимі символи",
-        abort: true,
-      })
-      .length(17, { error: "Довжина VIN-коду має становити 17 символів" }),
+      .transform(normalizeVin)
+      .pipe(
+        z
+          .string()
+          .regex(/^[A-HJ-NPR-Z0-9]*$/, {
+            error: "VIN-код містить неприпустимі символи",
+            abort: true,
+          })
+          .length(17, { error: "Довжина VIN-коду має становити 17 символів" }),
+      ),
   });
 
   //TODO: add the option to navigate directly to already existsing car if it was found
@@ -405,7 +413,7 @@
               {...props}
               value={$formData.vin}
               oninput={(e) => {
-                $formData.vin = e.currentTarget.value.toUpperCase();
+                $formData.vin = normalizeVin(e.currentTarget.value);
               }}
               class="uppercase"
             />
