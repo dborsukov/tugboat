@@ -23,6 +23,8 @@
   import * as Sheet from "$lib/components/ui/sheet";
   import { Spinner } from "$lib/components/ui/spinner";
 
+  import ClientBadge from "../clients/client-badge.svelte";
+
   interface Props {
     open: boolean;
     car?: any | null;
@@ -46,12 +48,18 @@
   let brandComboOpen = $state(false);
   let brandComboTriggerRef = $state<HTMLButtonElement>(null!);
 
-  const clientComboSelectedValue = $derived(
-    appStore.clients.find((b) => b.id === $formData.client_id)?.name,
-  );
   const brandComboSelectedValue = $derived(
     appStore.car_brands.find((b) => b.id === $formData.brand_id)?.name,
   );
+
+  // Standard 2004+ format: 2 region letters, 4 digits, 2 series letters.
+  // Only Cyrillic letters that resemble Latin ones are used on real UA plates.
+  const STANDARD_PLATE_RE =
+    /^[ABEIKMHOPCTXАВЕІКМНОРСТХ]{2}\d{4}[ABEIKMHOPCTXАВЕІКМНОРСТХ]{2}$/;
+
+  function normalizePlate(value: string) {
+    return value.toUpperCase().replace(/[\s-]/g, "");
+  }
 
   const carSchema = z.object({
     client_id: z
@@ -77,18 +85,28 @@
     registration: z
       .string()
       .trim()
-      .toUpperCase()
-      .min(1, { error: "Вкажіть реєстраційний номер" }),
+      .transform(normalizePlate)
+      .pipe(
+        z
+          .string()
+          .min(1, { error: "Занадто короткий номерний знак" })
+          .regex(/^[A-ZА-Я0-9]*$/, {
+            error: "Номерний знак містить неприпустимі символи",
+          }),
+      ),
 
     vin: z
       .string()
       .trim()
       .toUpperCase()
-      .regex(/^[A-HJ-NPR-Z0-9]{17}$/, {
-        error: "VIN-код має складатись з 17 правильних символів",
-      }),
+      .regex(/^[A-HJ-NPR-Z0-9]*$/, {
+        error: "VIN-код містить неприпустимі символи",
+        abort: true,
+      })
+      .length(17, { error: "Довжина VIN-коду має становити 17 символів" }),
   });
 
+  //TODO: add the option to navigate directly to already existsing car if it was found
   const extendedSchema = carSchema
     .refine(
       (data) => {
@@ -167,6 +185,11 @@
 
   const { form: formData, enhance, submitting } = form;
 
+  const registrationLooksNonStandard = $derived(
+    $formData.registration.length > 0 &&
+      !STANDARD_PLATE_RE.test($formData.registration),
+  );
+
   $effect(() => {
     if (open) {
       if (car) {
@@ -226,16 +249,26 @@
                     {...formProps}
                     {...triggerProps}
                     variant="outline"
-                    class="w-full justify-between"
+                    class={cn(
+                      "w-full justify-between",
+                      $formData.client_id != -1 && "pl-2",
+                    )}
                     role="combobox"
                     aria-expanded={clientComboOpen}
                   >
-                    {clientComboSelectedValue || "Оберіть власника..."}
+                    {#if $formData.client_id != -1}
+                      <ClientBadge
+                        clientId={$formData.client_id}
+                        iconSize="size-5"
+                      />
+                    {:else}
+                      Оберіть власника...
+                    {/if}
                     <ChevronsUpDownIcon class="opacity-50" />
                   </Button>
                 {/snippet}
               </Popover.Trigger>
-              <Popover.Content class="w-50 p-0" align="start">
+              <Popover.Content class="w-full p-0" align="start">
                 <Command.Root>
                   <Command.Input placeholder="Пошук клієнтів..." />
                   <Command.List>
@@ -243,7 +276,7 @@
                     <Command.Group>
                       {#each appStore.clients as client (client.id)}
                         <Command.Item
-                          value={client.name}
+                          value={`${client.name}-${client.id}`}
                           onSelect={() => {
                             $formData.client_id = client.id;
                             closeAndFocusClient();
@@ -255,7 +288,7 @@
                                 "text-transparent",
                             )}
                           />
-                          {client.name}
+                          <ClientBadge {client} />
                         </Command.Item>
                       {/each}
                     </Command.Group>
@@ -347,9 +380,18 @@
             <Label>Реєстраційний номер</Label>
             <Input
               {...props}
-              bind:value={$formData.registration}
-              class="uppercase font-mono font-semibold"
+              value={$formData.registration}
+              oninput={(e) => {
+                $formData.registration = normalizePlate(e.currentTarget.value);
+              }}
+              class="uppercase"
             />
+            {#if registrationLooksNonStandard}
+              <p class="text-xs text-muted-foreground">
+                Не схоже на стандартний номер — це нормально для старих,
+                тимчасових чи спецтранспортних номерів.
+              </p>
+            {/if}
           {/snippet}
         </Form.Control>
         <Form.FieldErrors />
@@ -361,8 +403,11 @@
             <Label>VIN-код</Label>
             <Input
               {...props}
-              bind:value={$formData.vin}
-              class="uppercase font-mono font-semibold"
+              value={$formData.vin}
+              oninput={(e) => {
+                $formData.vin = e.currentTarget.value.toUpperCase();
+              }}
+              class="uppercase"
             />
           {/snippet}
         </Form.Control>
