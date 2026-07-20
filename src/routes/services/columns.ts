@@ -6,6 +6,7 @@ import type { Service } from "$lib/bindings";
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
 import DataTableActions from "./data-table-actions.svelte";
+import DataTableCodeCell from "./data-table-code-cell.svelte";
 import DataTableNameButton from "./data-table-name-button.svelte";
 
 export const columns: ColumnDef<Service>[] = [
@@ -21,13 +22,7 @@ export const columns: ColumnDef<Service>[] = [
       );
     },
     cell: ({ row }) => {
-      const nameCellSnippet = createRawSnippet(() => {
-        return {
-          render: () =>
-            `<div class="px-2 font-mono">${row.original.code}</div>`,
-        };
-      });
-      return renderSnippet(nameCellSnippet);
+      return renderComponent(DataTableCodeCell, { code: row.original.code });
     },
   },
   {
@@ -62,7 +57,7 @@ export const columns: ColumnDef<Service>[] = [
       const nameCellSnippet = createRawSnippet(() => {
         return {
           render: () =>
-            `<div class="text-end">${row.original.labor_hours}</div>`,
+            `<div class="text-center font-mono">${row.original.labor_hours.toFixed(1)}</div>`,
         };
       });
       return renderSnippet(nameCellSnippet);

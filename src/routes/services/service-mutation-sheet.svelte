@@ -168,6 +168,7 @@
         </Form.Control>
         <Form.FieldErrors />
       </Form.Field>
+
       <Form.Field {form} name="name">
         <Form.Control>
           {#snippet children({ props })}
@@ -177,6 +178,7 @@
         </Form.Control>
         <Form.FieldErrors />
       </Form.Field>
+
       <Form.Field {form} name="labor_hours">
         <Form.Control>
           {#snippet children({ props })}
@@ -185,6 +187,7 @@
               {...props}
               type="number"
               step="0.1"
+              min="0"
               bind:value={$formData.labor_hours}
             />
           {/snippet}
