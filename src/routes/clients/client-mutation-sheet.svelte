@@ -1,5 +1,8 @@
 <script lang="ts">
   import { toast } from "svelte-sonner";
+  import { TelInput } from "svelte-tel-input";
+  import type { CountryCode } from "svelte-tel-input/types";
+  import { validateTelInput } from "svelte-tel-input/validators";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
@@ -31,9 +34,22 @@
   );
   const formID = "client-mutation-form";
 
+  let phoneCountry = $state<CountryCode>("UA");
+
   export const clientSchema = z.object({
     name: z.string().nonempty("Ім'я не може бути пустим"),
-    phone: z.string().nonempty("Мобільний номер не може бути пустим"),
+    phone: z.string().superRefine((val, ctx) => {
+      const error = validateTelInput(val, {
+        required: true,
+        allowedCountries: ["UA"],
+      });
+      if (error) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Введіть коректний номер телефону",
+        });
+      }
+    }),
   });
 
   const extendedSchema = clientSchema.refine(
@@ -140,7 +156,14 @@
         <Form.Control>
           {#snippet children({ props })}
             <Label>Мобільний номер</Label>
-            <Input {...props} bind:value={$formData.phone} />
+            <TelInput
+              {...props}
+              bind:value={$formData.phone}
+              bind:country={phoneCountry}
+              options={{ lockCountry: true, spaces: true }}
+              placeholder="+380 XX XXX XX XX"
+              class="bg-input/50 focus-visible:border-ring focus-visible:ring-ring/30 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 h-8 rounded-2xl border border-transparent px-2.5 py-1 text-base transition-[color,box-shadow] duration-200 file:h-6 file:text-sm file:font-medium focus-visible:ring-3 aria-invalid:ring-3 md:text-sm file:text-foreground placeholder:text-muted-foreground w-full min-w-0 outline-none file:inline-flex file:border-0 file:bg-transparent disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+            />
           {/snippet}
         </Form.Control>
         <Form.FieldErrors />
