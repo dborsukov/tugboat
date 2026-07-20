@@ -64,9 +64,9 @@
 
       const payload = {
         service_id: null,
-        code: $formData.code,
-        name: $formData.name,
-        labor_hours: $formData.labor_hours,
+        code: nativeForm.data.code,
+        name: nativeForm.data.name,
+        labor_hours: nativeForm.data.labor_hours,
       };
 
       if (isEdit && id) {

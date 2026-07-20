@@ -75,12 +75,12 @@
       if (!nativeForm.valid) return;
 
       const payload = {
-        code: $formData.code,
-        name: $formData.name,
-        quantity: $formData.quantity,
-        unit_type: $formData.unit_type,
-        unit_price_cents: $formData.unit_price_cents,
-        status: $formData.status as PartStatus,
+        code: nativeForm.data.code,
+        name: nativeForm.data.name,
+        quantity: nativeForm.data.quantity,
+        unit_type: nativeForm.data.unit_type,
+        unit_price_cents: nativeForm.data.unit_price_cents,
+        status: nativeForm.data.status as PartStatus,
       };
 
       if (isEdit && id) {

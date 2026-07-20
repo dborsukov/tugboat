@@ -74,11 +74,11 @@
           car_id: work_order.car_id,
           started_at: work_order.started_at,
           completed_at: work_order.completed_at,
-          odometer_in: $formData.odometer_in,
+          odometer_in: nativeForm.data.odometer_in,
           customer_complaint: work_order.customer_complaint,
           mechanic_notes: work_order.mechanic_notes,
           status: work_order.status,
-          rate: $formData.rate,
+          rate: nativeForm.data.rate,
         });
         if (res.status === "ok") {
           appStore.updateWorkOrder(res.data);
@@ -101,11 +101,11 @@
           id: new_id,
           car_id: car_id,
           created_at: new Date().toISOString(),
-          odometer_in: $formData.odometer_in,
+          odometer_in: nativeForm.data.odometer_in,
           status: "Received",
           customer_complaint: null,
           mechanic_notes: null,
-          rate: $formData.rate,
+          rate: nativeForm.data.rate,
         });
         if (res.status === "ok") {
           appStore.createWorkOrder(res.data);

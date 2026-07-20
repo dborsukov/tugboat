@@ -77,8 +77,8 @@
       if (!nativeForm.valid) return;
 
       const payload = {
-        name: $formData.name,
-        phone: $formData.phone,
+        name: nativeForm.data.name,
+        phone: nativeForm.data.phone,
       };
 
       if (isEdit) {

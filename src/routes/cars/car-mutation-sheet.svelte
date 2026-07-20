@@ -149,12 +149,12 @@
       if (!nativeForm.valid) return;
 
       const payload = {
-        client_id: $formData.client_id,
-        brand_id: $formData.brand_id,
-        model: $formData.model,
-        year: $formData.year,
-        registration: $formData.registration,
-        vin: $formData.vin,
+        client_id: nativeForm.data.client_id,
+        brand_id: nativeForm.data.brand_id,
+        model: nativeForm.data.model,
+        year: nativeForm.data.year,
+        registration: nativeForm.data.registration,
+        vin: nativeForm.data.vin,
       };
 
       if (isEdit) {
