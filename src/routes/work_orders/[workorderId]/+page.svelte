@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { NumberFormatStyle, NumericText } from "svelte-number-format";
   import { toast } from "svelte-sonner";
 
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
@@ -18,6 +19,7 @@
   import * as Details from "$lib/components/ui/details/index";
   import * as Popover from "$lib/components/ui/popover/index.js";
 
+  import CurrencyDisplay from "$lib/components/currency-display.svelte";
   import DataTable from "$lib/components/data-table.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
@@ -133,11 +135,10 @@
             <Details.Icon icon={GaugeIcon} /> Одометр
           </Details.Title>
           <Details.Content>
-            {#if work_order.odometer_in}
-              {work_order.odometer_in} км
-            {:else}
-              Не вказано
-            {/if}
+            <div class="flex gap-2">
+              <p>{work_order.odometer_in}</p>
+              <p class="text-muted-foreground">км.</p>
+            </div>
           </Details.Content>
         </Details.Item>
 
@@ -146,7 +147,11 @@
             <Details.Icon icon={RateIcon} /> Тариф
           </Details.Title>
           <Details.Content>
-            {work_order.rate} грн/год.
+            <CurrencyDisplay
+              cents={work_order.rate}
+              suffix="грн./год."
+              suffix_muted
+            />
           </Details.Content>
         </Details.Item>
       </Details.Card>

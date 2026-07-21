@@ -1,5 +1,6 @@
 <script lang="ts">
   import { tick } from "svelte";
+  import { NumberFormatStyle, NumericFormat } from "svelte-number-format";
   import { toast } from "svelte-sonner";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
@@ -79,7 +80,7 @@
         name: nativeForm.data.name,
         quantity: nativeForm.data.quantity,
         unit_type: nativeForm.data.unit_type,
-        unit_price_cents: nativeForm.data.unit_price_cents,
+        unit_price_cents: nativeForm.data.unit_price_cents * 100,
         status: nativeForm.data.status as PartStatus,
       };
 
@@ -124,10 +125,11 @@
         $formData.name = work_order_item.name;
         $formData.quantity = work_order_item.quantity;
         $formData.unit_type = work_order_item.unit_type;
-        $formData.unit_price_cents = work_order_item.unit_price_cents;
+        $formData.unit_price_cents = work_order_item.unit_price_cents / 100;
         $formData.status = work_order_item.status;
       } else {
         form.reset();
+        $formData.unit_type = "штука";
       }
     }
   });
@@ -196,6 +198,7 @@
             <Input
               type="number"
               step="0.1"
+              min="0"
               {...props}
               bind:value={$formData.quantity}
             />
@@ -211,6 +214,22 @@
             <Input {...props} bind:value={$formData.unit_type} />
           {/snippet}
         </Form.Control>
+        <div class="flex gap-2 items-center">
+          <Button
+            variant="outline"
+            size="sm"
+            onclick={() => {
+              $formData.unit_type = "штука";
+            }}>штука</Button
+          >
+          <Button
+            variant="outline"
+            size="sm"
+            onclick={() => {
+              $formData.unit_type = "літр";
+            }}>літр</Button
+          >
+        </div>
         <Form.FieldErrors />
       </Form.Field>
 
@@ -218,11 +237,27 @@
         <Form.Control>
           {#snippet children({ props })}
             <Label>Ціна</Label>
-            <Input
-              type="number"
-              {...props}
-              bind:value={$formData.unit_price_cents}
-            />
+            <div class="flex gap-2 items-baseline" {...props}>
+              <NumericFormat
+                bind:value={$formData.unit_price_cents}
+                onkeydown={(e: KeyboardEvent) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const input = e.currentTarget as HTMLInputElement;
+                    input.blur();
+                    input.closest("form")?.requestSubmit();
+                  }
+                }}
+                locale="ua-UK"
+                options={{
+                  formatStyle: NumberFormatStyle.Decimal,
+                  currency: "UAH",
+                  precision: 2,
+                }}
+                class="flex-1 bg-input/50 focus-visible:border-ring focus-visible:ring-ring/30 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 h-8 rounded-2xl border border-transparent px-2.5 py-1 text-base transition-[color,box-shadow] duration-200 file:h-6 file:text-sm file:font-medium focus-visible:ring-3 aria-invalid:ring-3 md:text-sm file:text-foreground placeholder:text-muted-foreground w-full min-w-0 outline-none file:inline-flex file:border-0 file:bg-transparent disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              <p>грн.</p>
+            </div>
           {/snippet}
         </Form.Control>
         <Form.FieldErrors />

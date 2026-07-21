@@ -5,6 +5,8 @@ import type { WorkOrderPartItem } from "$lib/bindings";
 
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
+import CurrencyDisplay from "$lib/components/currency-display.svelte";
+
 import DataTableActions from "./data-table-part-actions.svelte";
 import PartStatusSelector from "./part-status-selector.svelte";
 
@@ -69,13 +71,11 @@ export const columns: ColumnDef<WorkOrderPartItem>[] = [
       );
     },
     cell: ({ row }) => {
-      const formatted = currencyFormatter.format(row.original.unit_price_cents);
-
-      const priceCellSnippet = createRawSnippet(() => ({
-        render: () => `<div class="text-end font-medium">${formatted}</div>`,
-      }));
-
-      return renderSnippet(priceCellSnippet);
+      return renderComponent(CurrencyDisplay, {
+        cents: row.original.unit_price_cents,
+        suffix: "грн.",
+        class: "font-medium justify-end",
+      });
     },
   },
   {
@@ -90,15 +90,11 @@ export const columns: ColumnDef<WorkOrderPartItem>[] = [
       );
     },
     cell: ({ row }) => {
-      const formatted = currencyFormatter.format(
-        row.original.quantity * row.original.unit_price_cents,
-      );
-
-      const priceCellSnippet = createRawSnippet(() => ({
-        render: () => `<div class="text-end font-medium">${formatted}</div>`,
-      }));
-
-      return renderSnippet(priceCellSnippet);
+      return renderComponent(CurrencyDisplay, {
+        cents: row.original.quantity * row.original.unit_price_cents,
+        suffix: "грн.",
+        class: "font-medium justify-end",
+      });
     },
   },
   {

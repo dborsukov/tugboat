@@ -166,6 +166,7 @@
             <Input
               type="number"
               step="0.1"
+              min="0"
               {...props}
               bind:value={$formData.labor_hours}
             />

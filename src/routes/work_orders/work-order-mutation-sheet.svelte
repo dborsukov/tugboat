@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { NumberFormatStyle, NumericFormat } from "svelte-number-format";
   import { toast } from "svelte-sonner";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
@@ -61,6 +62,9 @@
     id: formID,
     async onUpdate({ form: nativeForm }) {
       if (!nativeForm.valid) return;
+
+      const rateInCents = Math.round(nativeForm.data.rate * 100);
+
       if (isEdit) {
         if (work_order === null) {
           return toast.error("Критична помилка", {
@@ -78,7 +82,7 @@
           customer_complaint: work_order.customer_complaint,
           mechanic_notes: work_order.mechanic_notes,
           status: work_order.status,
-          rate: nativeForm.data.rate,
+          rate: rateInCents,
         });
         if (res.status === "ok") {
           appStore.updateWorkOrder(res.data);
@@ -105,7 +109,7 @@
           status: "Received",
           customer_complaint: null,
           mechanic_notes: null,
-          rate: nativeForm.data.rate,
+          rate: rateInCents,
         });
         if (res.status === "ok") {
           appStore.createWorkOrder(res.data);
@@ -128,7 +132,7 @@
     if (open) {
       if (work_order) {
         $formData.odometer_in = work_order.odometer_in;
-        $formData.rate = work_order.rate;
+        $formData.rate = work_order.rate / 100;
       } else {
         form.reset();
       }
@@ -162,11 +166,16 @@
         <Form.Control>
           {#snippet children({ props })}
             <Label>Одометр(пробіг)</Label>
-            <Input
-              type="number"
-              {...props}
-              bind:value={$formData.odometer_in}
-            />
+            <div class="flex gap-2 items-baseline">
+              <Input
+                type="number"
+                min="0"
+                {...props}
+                bind:value={$formData.odometer_in}
+                class="flex-1"
+              />
+              <p>км.</p>
+            </div>
           {/snippet}
         </Form.Control>
         <Form.FieldErrors />
@@ -175,7 +184,27 @@
         <Form.Control>
           {#snippet children({ props })}
             <Label>Тариф</Label>
-            <Input type="number" {...props} bind:value={$formData.rate} />
+            <div class="flex gap-2 items-baseline" {...props}>
+              <NumericFormat
+                bind:value={$formData.rate}
+                onkeydown={(e: KeyboardEvent) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const input = e.currentTarget as HTMLInputElement;
+                    input.blur();
+                    input.closest("form")?.requestSubmit();
+                  }
+                }}
+                locale="ua-UK"
+                options={{
+                  formatStyle: NumberFormatStyle.Decimal,
+                  currency: "UAH",
+                  precision: 2,
+                }}
+                class="flex-1 bg-input/50 focus-visible:border-ring focus-visible:ring-ring/30 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 h-8 rounded-2xl border border-transparent px-2.5 py-1 text-base transition-[color,box-shadow] duration-200 file:h-6 file:text-sm file:font-medium focus-visible:ring-3 aria-invalid:ring-3 md:text-sm file:text-foreground placeholder:text-muted-foreground w-full min-w-0 outline-none file:inline-flex file:border-0 file:bg-transparent disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+              />
+              <p>грн./год.</p>
+            </div>
           {/snippet}
         </Form.Control>
         <Form.FieldErrors />
