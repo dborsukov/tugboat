@@ -68,6 +68,7 @@
           <ChevronLeftIcon /> Список
         </Button>
         <Button
+          variant="outline"
           class="ml-auto mr-2"
           onclick={() => (isSheetOpen = !isSheetOpen)}
         >

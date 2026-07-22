@@ -1,6 +1,7 @@
 <script lang="ts">
   import { compareItems, rankItem } from "@tanstack/match-sorter-utils";
 
+  import SortIcon from "@lucide/svelte/icons/arrow-up-down";
   import PlusIcon from "@lucide/svelte/icons/plus";
 
   import { appStore } from "$lib/stores/app.svelte";
@@ -8,16 +9,25 @@
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import * as Pagination from "$lib/components/ui/pagination/index.js";
+  import * as Select from "$lib/components/ui/select/index.js";
 
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import CarCard from "./car-card.svelte";
   import CarMutationSheet from "./car-mutation-sheet.svelte";
 
+  type SortOption = "date-desc" | "date-asc";
+
+  const sortLabels: Record<SortOption, string> = {
+    "date-desc": "Спочатку нові",
+    "date-asc": "Спочатку старі",
+  };
+
   let currentPage = $state(1);
   let perPage = $state(15);
   let searchQuery = $state("");
   let isSheetOpen = $state(false);
+  let sortBy = $state<SortOption>("date-desc");
 
   let filteredCars = $derived.by(() => {
     const query = searchQuery.trim();
@@ -54,11 +64,37 @@
       .map(({ car }) => car);
   });
 
+  let sortedCars = $derived.by(() => {
+    const sorted = [...filteredCars];
+
+    switch (sortBy) {
+      case "date-asc":
+        sorted.sort(
+          (a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+        );
+        break;
+      case "date-desc":
+      default:
+        sorted.sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
+        break;
+    }
+
+    return sorted;
+  });
+
   let paginatedCars = $derived(
-    filteredCars.slice((currentPage - 1) * perPage, currentPage * perPage),
+    sortedCars.slice((currentPage - 1) * perPage, currentPage * perPage),
   );
 
   function handleSearchInput() {
+    currentPage = 1;
+  }
+
+  function handleSortChange() {
     currentPage = 1;
   }
 </script>
@@ -67,11 +103,25 @@
   {#snippet header()}
     <div class="h-full px-4 flex items-center gap-2">
       <Input
-        placeholder="Пошук за моделю, номером, VIN-кодом або власником..."
+        placeholder="Пошук за моделлю, номером, VIN-кодом або власником..."
         class="w-full"
         bind:value={searchQuery}
         oninput={handleSearchInput}
       />
+      <Select.Root
+        type="single"
+        bind:value={sortBy}
+        onValueChange={handleSortChange}
+      >
+        <Select.Trigger class="w-45 shrink-0">
+          <SortIcon />
+          {sortLabels[sortBy]}
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="date-desc">{sortLabels["date-desc"]}</Select.Item>
+          <Select.Item value="date-asc">{sortLabels["date-asc"]}</Select.Item>
+        </Select.Content>
+      </Select.Root>
       <Button variant="outline" onclick={() => (isSheetOpen = !isSheetOpen)}>
         Додати <PlusIcon />
       </Button>

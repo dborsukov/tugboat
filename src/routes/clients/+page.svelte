@@ -1,6 +1,7 @@
 <script lang="ts">
   import { compareItems, rankItem } from "@tanstack/match-sorter-utils";
 
+  import SortIcon from "@lucide/svelte/icons/arrow-up-down";
   import PlusIcon from "@lucide/svelte/icons/plus";
 
   import { appStore } from "$lib/stores/app.svelte";
@@ -8,16 +9,27 @@
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import * as Pagination from "$lib/components/ui/pagination/index.js";
+  import * as Select from "$lib/components/ui/select/index.js";
 
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import ClientCard from "./client-card.svelte";
   import ClientMutationSheet from "./client-mutation-sheet.svelte";
 
+  type SortOption = "date-desc" | "date-asc" | "name-asc" | "name-desc";
+
+  const sortLabels: Record<SortOption, string> = {
+    "date-desc": "Спочатку нові",
+    "date-asc": "Спочатку старі",
+    "name-asc": "За ім'ям (А-Я)",
+    "name-desc": "За ім'ям (Я-А)",
+  };
+
   let currentPage = $state(1);
   let perPage = $state(15);
   let searchQuery = $state("");
   let isSheetOpen = $state(false);
+  let sortBy = $state<SortOption>("date-desc");
 
   let filteredClients = $derived.by(() => {
     const query = searchQuery.trim();
@@ -40,11 +52,43 @@
       .map(({ client }) => client);
   });
 
+  let sortedClients = $derived.by(() => {
+    const sorted = [...filteredClients];
+
+    switch (sortBy) {
+      case "name-asc":
+        sorted.sort((a, b) => a.name.localeCompare(b.name, "uk"));
+        break;
+      case "name-desc":
+        sorted.sort((a, b) => b.name.localeCompare(a.name, "uk"));
+        break;
+      case "date-asc":
+        sorted.sort(
+          (a, b) =>
+            new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+        );
+        break;
+      case "date-desc":
+      default:
+        sorted.sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+        );
+        break;
+    }
+
+    return sorted;
+  });
+
   let paginatedClients = $derived(
-    filteredClients.slice((currentPage - 1) * perPage, currentPage * perPage),
+    sortedClients.slice((currentPage - 1) * perPage, currentPage * perPage),
   );
 
   function handleSearchInput() {
+    currentPage = 1;
+  }
+
+  function handleSortChange() {
     currentPage = 1;
   }
 </script>
@@ -58,6 +102,22 @@
         bind:value={searchQuery}
         oninput={handleSearchInput}
       />
+      <Select.Root
+        type="single"
+        bind:value={sortBy}
+        onValueChange={handleSortChange}
+      >
+        <Select.Trigger class="w-45 shrink-0">
+          <SortIcon />
+          {sortLabels[sortBy]}
+        </Select.Trigger>
+        <Select.Content>
+          <Select.Item value="date-desc">{sortLabels["date-desc"]}</Select.Item>
+          <Select.Item value="date-asc">{sortLabels["date-asc"]}</Select.Item>
+          <Select.Item value="name-asc">{sortLabels["name-asc"]}</Select.Item>
+          <Select.Item value="name-desc">{sortLabels["name-desc"]}</Select.Item>
+        </Select.Content>
+      </Select.Root>
       <Button variant="outline" onclick={() => (isSheetOpen = !isSheetOpen)}>
         Додати <PlusIcon />
       </Button>

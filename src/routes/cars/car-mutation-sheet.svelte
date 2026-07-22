@@ -385,7 +385,7 @@
       <Form.Field {form} name="registration">
         <Form.Control>
           {#snippet children({ props })}
-            <Label>Реєстраційний номер</Label>
+            <Label>Номерний знак</Label>
             <Input
               {...props}
               value={$formData.registration}
