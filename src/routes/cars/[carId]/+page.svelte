@@ -129,7 +129,7 @@
 
         <Details.Item>
           <Details.Title>
-            <Details.Icon icon={HashIcon} /> Державний номер
+            <Details.Icon icon={HashIcon} /> Номерний знак
           </Details.Title>
           <Details.Content>
             {#if car.registration != undefined}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import UserPlusIcon from "@lucide/svelte/icons/circle-plus";
+  import PlusIcon from "@lucide/svelte/icons/plus";
 
   import { appStore } from "$lib/stores/app.svelte";
 
@@ -20,16 +20,17 @@
   {#snippet header()}
     <div class="h-full px-4 flex items-center gap-2">
       <Input
-        placeholder="Пошук за назвою або ціною..."
+        placeholder="Пошук за кодом, назвою або нормо-годинами..."
         bind:value={inputValue}
         class="w-full"
       />
       <Button
+        variant="outline"
         onclick={() => {
           isSheetOpen = !isSheetOpen;
         }}
       >
-        <UserPlusIcon /> Додати
+        Додати <PlusIcon />
       </Button>
       <ServiceMutationSheet bind:open={isSheetOpen} />
     </div>

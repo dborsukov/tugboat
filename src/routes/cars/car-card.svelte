@@ -76,7 +76,7 @@
 
       <div class="flex items-center justify-between border-b border-muted pb-2">
         <span class="text-muted-foreground flex items-center gap-2">
-          <HashIcon class="size-4 text-muted-foreground/70" /> Реєстрація
+          <HashIcon class="size-4 text-muted-foreground/70" /> Номерний знак
         </span>
         {#if car.registration}
           <span
@@ -91,7 +91,7 @@
 
       <div class="flex items-center justify-between">
         <span class="text-muted-foreground flex items-center gap-2">
-          <FingerprintIcon class="size-4 text-muted-foreground/70" /> VIN
+          <FingerprintIcon class="size-4 text-muted-foreground/70" /> VIN-код
         </span>
         {#if car.vin}
           <span

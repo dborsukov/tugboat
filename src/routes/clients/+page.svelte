@@ -1,5 +1,7 @@
 <script lang="ts">
-  import UserPlusIcon from "@lucide/svelte/icons/user-plus";
+  import { compareItems, rankItem } from "@tanstack/match-sorter-utils";
+
+  import PlusIcon from "@lucide/svelte/icons/plus";
 
   import { appStore } from "$lib/stores/app.svelte";
 
@@ -17,17 +19,26 @@
   let searchQuery = $state("");
   let isSheetOpen = $state(false);
 
-  let filteredClients = $derived(
-    appStore.clients.filter((client) => {
-      const query = searchQuery.trim().toLowerCase();
-      if (!query) return true;
+  let filteredClients = $derived.by(() => {
+    const query = searchQuery.trim();
+    if (!query) return appStore.clients;
 
-      const matchesName = client.name.toLowerCase().includes(query);
-      const matchesPhone = client.phone!.includes(query);
-
-      return matchesName || matchesPhone;
-    }),
-  );
+    return appStore.clients
+      .map((client) => {
+        const nameRank = rankItem(client.name, query);
+        const phoneRank = rankItem(client.phone ?? "", query);
+        // keep whichever field matched better for this client
+        const bestRank = nameRank.rank > phoneRank.rank ? nameRank : phoneRank;
+        return {
+          client,
+          bestRank,
+          passed: nameRank.passed || phoneRank.passed,
+        };
+      })
+      .filter(({ passed }) => passed)
+      .sort((a, b) => compareItems(a.bestRank, b.bestRank))
+      .map(({ client }) => client);
+  });
 
   let paginatedClients = $derived(
     filteredClients.slice((currentPage - 1) * perPage, currentPage * perPage),
@@ -41,19 +52,14 @@
 <PageLayout>
   {#snippet header()}
     <div class="h-full px-4 flex items-center gap-2">
-      <!-- TODO: implement fuzzy search with highlight -->
       <Input
         placeholder="Пошук за ім'ям або телефоном..."
         class="w-full"
         bind:value={searchQuery}
         oninput={handleSearchInput}
       />
-      <Button
-        onclick={() => {
-          isSheetOpen = !isSheetOpen;
-        }}
-      >
-        <UserPlusIcon /> Створити
+      <Button variant="outline" onclick={() => (isSheetOpen = !isSheetOpen)}>
+        Додати <PlusIcon />
       </Button>
       <ClientMutationSheet bind:open={isSheetOpen} />
     </div>

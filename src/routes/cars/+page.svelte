@@ -1,5 +1,7 @@
 <script lang="ts">
-  import CirclePlusIcon from "@lucide/svelte/icons/circle-plus";
+  import { compareItems, rankItem } from "@tanstack/match-sorter-utils";
+
+  import PlusIcon from "@lucide/svelte/icons/plus";
 
   import { appStore } from "$lib/stores/app.svelte";
 
@@ -17,21 +19,40 @@
   let searchQuery = $state("");
   let isSheetOpen = $state(false);
 
-  let filteredCars = $derived(
-    appStore.cars.filter((car) => {
-      const query = searchQuery.trim().toLowerCase();
-      if (!query) return true;
+  let filteredCars = $derived.by(() => {
+    const query = searchQuery.trim();
+    if (!query) return appStore.cars;
 
-      const brand = appStore.car_brands.find((b) => b.id === car.brand_id);
-      const name = brand?.name + car.model;
+    return appStore.cars
+      .map((car) => {
+        const brand = appStore.car_brands.find((b) => b.id === car.brand_id);
+        const modelName = `${brand?.name ?? ""} ${car.model ?? ""}`.trim();
+        const owner = appStore.clients.find((c) => c.id === car.client_id);
 
-      const matchesName = name.toLowerCase().includes(query);
-      const matchesReg = car.registration?.toLowerCase().includes(query);
-      const matchesVin = car.vin?.toLowerCase().includes(query);
+        const modelRank = rankItem(modelName, query);
+        const plateRank = rankItem(car.registration ?? "", query);
+        const vinRank = rankItem(car.vin ?? "", query);
+        const ownerRank = rankItem(owner?.name ?? "", query);
 
-      return matchesName || matchesReg || matchesVin;
-    }),
-  );
+        // keep whichever field matched best for this car
+        const bestRank = [modelRank, plateRank, vinRank, ownerRank].reduce(
+          (best, rank) => (rank.rank > best.rank ? rank : best),
+        );
+
+        return {
+          car,
+          bestRank,
+          passed:
+            modelRank.passed ||
+            plateRank.passed ||
+            vinRank.passed ||
+            ownerRank.passed,
+        };
+      })
+      .filter(({ passed }) => passed)
+      .sort((a, b) => compareItems(a.bestRank, b.bestRank))
+      .map(({ car }) => car);
+  });
 
   let paginatedCars = $derived(
     filteredCars.slice((currentPage - 1) * perPage, currentPage * perPage),
@@ -45,15 +66,14 @@
 <PageLayout>
   {#snippet header()}
     <div class="h-full px-4 flex items-center gap-2">
-      <!-- TODO: implement fuzzy search with highlight -->
       <Input
-        placeholder="Пошук за моделю або номером"
+        placeholder="Пошук за моделю, номером, VIN-кодом або власником..."
         class="w-full"
         bind:value={searchQuery}
         oninput={handleSearchInput}
       />
-      <Button onclick={() => (isSheetOpen = !isSheetOpen)}>
-        <CirclePlusIcon /> Створити
+      <Button variant="outline" onclick={() => (isSheetOpen = !isSheetOpen)}>
+        Додати <PlusIcon />
       </Button>
       <CarMutationSheet bind:open={isSheetOpen} />
     </div>
