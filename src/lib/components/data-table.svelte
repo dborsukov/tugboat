@@ -10,6 +10,7 @@
     type FilterFn,
     type PaginationState,
     type SortingState,
+    type VisibilityState,
   } from "@tanstack/table-core";
 
   import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
@@ -32,6 +33,10 @@
     onRowClick,
     headerClasses = {},
     rounded = true,
+    disableSorting = false,
+    disableFiltering = false,
+    initialSorting = [],
+    hiddenColumns = [],
   }: {
     data: TData[];
     columns: ColumnDef<TData, TValue>[];
@@ -41,11 +46,19 @@
     onRowClick?: (row: TData) => void;
     headerClasses?: Record<string, string>;
     rounded?: boolean;
+    disableSorting?: boolean;
+    disableFiltering?: boolean;
+    initialSorting?: SortingState;
+    hiddenColumns?: string[];
   } = $props();
 
-  let sorting = $state<SortingState>([]);
+  let sorting = $state<SortingState>(initialSorting);
   let columnFilters = $state<ColumnFiltersState>([]);
   let pagination = $state<PaginationState>({ pageIndex: 0, pageSize: 10 });
+
+  let columnVisibility = $state<VisibilityState>(
+    hiddenColumns.reduce((acc, colId) => ({ ...acc, [colId]: false }), {}),
+  );
 
   const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
     const itemRank = rankItem(row.getValue(columnId), value);
@@ -70,6 +83,8 @@
     getFilteredRowModel: getFilteredRowModel(),
     // svelte-ignore state_referenced_locally
     getPaginationRowModel: showPagination ? getPaginationRowModel() : undefined,
+    enableSorting: !disableSorting,
+    enableFilters: !disableFiltering,
     onSortingChange: (updater) => {
       sorting = typeof updater === "function" ? updater(sorting) : updater;
     },
@@ -85,6 +100,10 @@
       searchTerm =
         typeof updater === "function" ? updater(searchTerm) : updater;
     },
+    onColumnVisibilityChange: (updater) => {
+      columnVisibility =
+        typeof updater === "function" ? updater(columnVisibility) : updater;
+    },
     state: {
       get sorting() {
         return sorting;
@@ -97,6 +116,9 @@
       },
       get globalFilter() {
         return searchTerm;
+      },
+      get columnVisibility() {
+        return columnVisibility;
       },
     },
   });
@@ -161,7 +183,10 @@
           </Table.Row>
         {:else}
           <Table.Row>
-            <Table.Cell colspan={columns.length} class="h-24 text-center">
+            <Table.Cell
+              colspan={table.getVisibleFlatColumns().length}
+              class="h-24 text-center"
+            >
               {emptyMessage}
             </Table.Cell>
           </Table.Row>

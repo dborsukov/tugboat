@@ -11,7 +11,7 @@
 
   import { appStore } from "$lib/stores/app.svelte";
 
-  import { sqidsEncode } from "$lib/utils";
+  import { sqidsEncode } from "$lib/misc";
 
   import { Button } from "$lib/components/ui/button";
   import * as Form from "$lib/components/ui/form";

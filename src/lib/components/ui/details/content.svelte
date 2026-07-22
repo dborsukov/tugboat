@@ -12,6 +12,6 @@
   } = $props();
 </script>
 
-<div class={cn("max-w-45 truncate text-right", className)}>
+<div class={cn("text-right", className)}>
   {@render children()}
 </div>

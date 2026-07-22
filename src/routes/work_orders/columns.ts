@@ -3,7 +3,7 @@ import { createRawSnippet } from "svelte";
 
 import type { Car, CarBrand, Client, WorkOrder } from "$lib/bindings";
 
-import { prettifyIsoDateString } from "$lib/utils";
+import { prettifyIsoDateString } from "$lib/misc";
 
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
@@ -79,6 +79,7 @@ export const columns: ColumnDef<WorkOrderTableData>[] = [
   {
     id: "created_at",
     accessorFn: (row) => prettifyIsoDateString(row.created_at, "datetime"),
+    sortingFn: "datetime",
     header: () => {
       const createdHeaderSnippet = createRawSnippet(() => {
         return {

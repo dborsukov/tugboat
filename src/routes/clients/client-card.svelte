@@ -1,12 +1,14 @@
 <script lang="ts">
   import type { ComponentProps } from "svelte";
+  import { MaskPatterns, PatternFormat } from "svelte-number-format";
 
   import DateIcon from "@lucide/svelte/icons/calendar-plus";
   import PhoneIcon from "@lucide/svelte/icons/phone";
 
   import type { Client } from "$lib/bindings";
 
-  import { cn, prettifyIsoDateString } from "$lib/utils";
+  import { cn } from "$lib/utils";
+  import { prettifyIsoDateString } from "$lib/misc";
 
   import * as Card from "$lib/components/ui/card";
 
@@ -50,7 +52,10 @@
         >
           <PhoneIcon class="size-4 shrink-0" />
           <p class="text-base text-nowrap truncate text-ellipsis">
-            {client.phone}
+            <PatternFormat
+              bind:value={client.phone}
+              format={MaskPatterns.PHONE_INTERNATIONAL}
+            />
           </p>
         </div>
         {#if !short}

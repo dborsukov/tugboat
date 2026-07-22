@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { NumberFormatStyle, NumericText } from "svelte-number-format";
   import { toast } from "svelte-sonner";
 
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
@@ -11,10 +10,11 @@
 
   import { appStore } from "$lib/stores/app.svelte";
 
-  import { prettifyIsoDateString } from "$lib/utils";
+  import { prettifyIsoDateString } from "$lib/misc";
 
   import * as ButtonGroup from "$lib/components/ui/button-group/index.js";
   import Button from "$lib/components/ui/button/button.svelte";
+  import * as Card from "$lib/components/ui/card/index";
   import * as Command from "$lib/components/ui/command/index.js";
   import * as Details from "$lib/components/ui/details/index";
   import * as Popover from "$lib/components/ui/popover/index.js";
@@ -156,88 +156,102 @@
         </Details.Item>
       </Details.Card>
 
-      <div class="flex gap-4 my-4">
-        <h2 class="text-xl font-semibold mr-auto">Сервіси</h2>
-        <ButtonGroup.Root>
-          <Button
-            variant="outline"
-            onclick={() => (isLaborSheetOpen = !isLaborSheetOpen)}
-            >Створити</Button
-          >
-          <Popover.Root bind:open={isPopoverOpen}>
-            <Popover.Trigger>
-              {#snippet child({ props })}
-                <Button {...props}>
-                  Додати з бази
-                  <ChevronDownIcon />
-                </Button>
-              {/snippet}
-            </Popover.Trigger>
-            <Popover.Content class="w-80 p-0">
-              <Command.Root>
-                <Command.Input placeholder="Пошук сервісів..." />
-                <Command.List>
-                  <Command.Empty>Сервісів не знайдено...</Command.Empty>
-                  <Command.Group value="services">
-                    {#each appStore.services as service (service.id)}
-                      <Command.Item
-                        value={service.name}
-                        onSelect={async () => {
-                          let res = await commands.createWorkOrderLaborItem({
-                            work_order_id: work_order.id,
-                            service_id: service.id,
-                            code: service.code,
-                            name: service.name,
-                            labor_hours: service.labor_hours,
-                          });
-                          isPopoverOpen = false;
-                          if (res.status === "ok") {
-                            appStore.createWorkOrderLaborItem(res.data);
-                          } else {
-                            return toast.error("Виникла помилка", {
-                              description: res.error.message,
-                              position: "bottom-left",
-                            });
-                          }
-                        }}
-                      >
-                        {service.name}
-                      </Command.Item>
-                    {/each}
-                  </Command.Group>
-                </Command.List>
-              </Command.Root>
-            </Popover.Content>
-          </Popover.Root>
-        </ButtonGroup.Root>
-      </div>
+      <Card.Root class="mt-4">
+        <Card.Header>
+          <Card.Title class="flex gap-2 text-xl">
+            <p>Сервіси</p>
+            <p class="text-muted-foreground">{labor_data.length}</p>
+          </Card.Title>
+          <Card.Action>
+            <ButtonGroup.Root>
+              <Button
+                variant="outline"
+                onclick={() => (isLaborSheetOpen = !isLaborSheetOpen)}
+                >Створити</Button
+              >
+              <Popover.Root bind:open={isPopoverOpen}>
+                <Popover.Trigger>
+                  {#snippet child({ props })}
+                    <Button {...props}>
+                      Додати з бази
+                      <ChevronDownIcon />
+                    </Button>
+                  {/snippet}
+                </Popover.Trigger>
+                <Popover.Content class="w-80 p-0">
+                  <Command.Root>
+                    <Command.Input placeholder="Пошук сервісів..." />
+                    <Command.List>
+                      <Command.Empty>Сервісів не знайдено...</Command.Empty>
+                      <Command.Group value="services">
+                        {#each appStore.services as service (service.id)}
+                          <Command.Item
+                            value={service.name}
+                            onSelect={async () => {
+                              let res = await commands.createWorkOrderLaborItem(
+                                {
+                                  work_order_id: work_order.id,
+                                  service_id: service.id,
+                                  code: service.code,
+                                  name: service.name,
+                                  labor_hours: service.labor_hours,
+                                },
+                              );
+                              isPopoverOpen = false;
+                              if (res.status === "ok") {
+                                appStore.createWorkOrderLaborItem(res.data);
+                              } else {
+                                return toast.error("Виникла помилка", {
+                                  description: res.error.message,
+                                  position: "bottom-left",
+                                });
+                              }
+                            }}
+                          >
+                            {service.name}
+                          </Command.Item>
+                        {/each}
+                      </Command.Group>
+                    </Command.List>
+                  </Command.Root>
+                </Popover.Content>
+              </Popover.Root>
+            </ButtonGroup.Root>
+          </Card.Action>
+        </Card.Header>
+        <Card.Content>
+          <DataTable
+            columns={laborColumns}
+            data={labor_data}
+            emptyMessage="Сервісів не знайдено..."
+            showPagination={false}
+            headerClasses={{ name: "w-full" }}
+          />
+        </Card.Content>
+      </Card.Root>
 
-      <div class="mt-4">
-        <DataTable
-          columns={laborColumns}
-          data={labor_data}
-          emptyMessage="Сервісів не знайдено..."
-          showPagination={false}
-          headerClasses={{ name: "w-full" }}
-        />
-      </div>
-
-      <div class="flex gap-4 my-4">
-        <h2 class="text-xl font-semibold mr-auto">Запчастини</h2>
-        <Button onclick={() => (isPartsSheetOpen = !isPartsSheetOpen)}
-          >Створити</Button
-        >
-      </div>
-
-      <div class="mt-4">
-        <DataTable
-          columns={partsColumns}
-          data={parts_data}
-          emptyMessage="Запчастин не знайдено..."
-          showPagination={false}
-          headerClasses={{ name: "w-full" }}
-        />
-      </div>
+      <Card.Root class="mt-4">
+        <Card.Header>
+          <Card.Title class="flex gap-2 text-xl">
+            <p>Запчастини</p>
+            <p class="text-muted-foreground">{parts_data.length}</p>
+          </Card.Title>
+          <Card.Action>
+            <Button onclick={() => (isPartsSheetOpen = !isPartsSheetOpen)}
+              >Створити</Button
+            >
+          </Card.Action>
+        </Card.Header>
+        <Card.Content>
+          <DataTable
+            columns={partsColumns}
+            data={parts_data}
+            emptyMessage="Запчастин не знайдено..."
+            showPagination={false}
+            headerClasses={{ name: "w-full" }}
+          />
+        </Card.Content>
+      </Card.Root>
 
       <WorkOrderLaborItemMutationSheet
         bind:open={isLaborSheetOpen}

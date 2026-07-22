@@ -3,6 +3,8 @@
 
   import { cn } from "$lib/utils";
 
+  import * as Card from "$lib/components/ui/card/index";
+
   let {
     children,
     class: className = "",
@@ -12,6 +14,8 @@
   } = $props();
 </script>
 
-<div class={cn("flex flex-col border border-border p-4 rounded", className)}>
-  {@render children()}
-</div>
+<Card.Root class={cn("flex flex-col text-md", className)}>
+  <Card.Content>
+    {@render children()}
+  </Card.Content>
+</Card.Root>
