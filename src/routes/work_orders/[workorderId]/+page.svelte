@@ -20,7 +20,8 @@
   import * as Popover from "$lib/components/ui/popover/index.js";
 
   import CurrencyDisplay from "$lib/components/currency-display.svelte";
-  import DataTable from "$lib/components/data-table.svelte";
+  import DataTable from "$lib/components/data-table/data-table.svelte";
+  import { buildTable } from "$lib/components/data-table/table-builder.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import CarCard from "../../cars/car-card.svelte";
@@ -49,7 +50,7 @@
     throw new Error("Elements missing from appStore");
   }
 
-  const labor_data = $derived(
+  const laborData = $derived(
     appStore.work_order_labor_items
       .filter((i) => i.work_order_id === work_order.id)
       .map((item) => {
@@ -60,11 +61,35 @@
       }),
   );
 
-  const parts_data = $derived(
+  let laborTable = buildTable({
+    get data() {
+      return laborData;
+    },
+    get columns() {
+      return laborColumns;
+    },
+    disableSorting: true,
+    disableFiltering: true,
+    disablePagination: true,
+  });
+
+  const partsData = $derived(
     appStore.work_order_part_items.filter(
       (i) => i.work_order_id === work_order.id,
     ),
   );
+
+  let partsTable = buildTable({
+    get data() {
+      return partsData;
+    },
+    get columns() {
+      return partsColumns;
+    },
+    disableSorting: true,
+    disableFiltering: true,
+    disablePagination: true,
+  });
 </script>
 
 {#if work_order}
@@ -160,7 +185,7 @@
         <Card.Header>
           <Card.Title class="flex gap-2 text-xl">
             <p>Сервіси</p>
-            <p class="text-muted-foreground">{labor_data.length}</p>
+            <p class="text-muted-foreground">{laborData.length}</p>
           </Card.Title>
           <Card.Action>
             <ButtonGroup.Root>
@@ -221,10 +246,8 @@
         </Card.Header>
         <Card.Content>
           <DataTable
-            columns={laborColumns}
-            data={labor_data}
+            table={laborTable}
             emptyMessage="Сервісів не знайдено..."
-            showPagination={false}
             headerClasses={{ name: "w-full" }}
           />
         </Card.Content>
@@ -234,7 +257,7 @@
         <Card.Header>
           <Card.Title class="flex gap-2 text-xl">
             <p>Запчастини</p>
-            <p class="text-muted-foreground">{parts_data.length}</p>
+            <p class="text-muted-foreground">{partsData.length}</p>
           </Card.Title>
           <Card.Action>
             <Button onclick={() => (isPartsSheetOpen = !isPartsSheetOpen)}
@@ -244,10 +267,8 @@
         </Card.Header>
         <Card.Content>
           <DataTable
-            columns={partsColumns}
-            data={parts_data}
+            table={partsTable}
             emptyMessage="Запчастин не знайдено..."
-            showPagination={false}
             headerClasses={{ name: "w-full" }}
           />
         </Card.Content>

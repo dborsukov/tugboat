@@ -6,7 +6,8 @@
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
 
-  import DataTable from "$lib/components/data-table.svelte";
+  import DataTable from "$lib/components/data-table/data-table.svelte";
+  import { buildTable } from "$lib/components/data-table/table-builder.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import { columns } from "./columns";
@@ -14,6 +15,19 @@
 
   let inputValue: string = $state("");
   let isSheetOpen: boolean = $state(false);
+
+  let table = buildTable({
+    get data() {
+      return appStore.services;
+    },
+    get columns() {
+      return columns;
+    },
+    get searchTerm() {
+      return inputValue;
+    },
+    initialSorting: [{ id: "name", desc: true }],
+  });
 </script>
 
 <PageLayout>
@@ -37,9 +51,7 @@
   {/snippet}
   <div class="p-4">
     <DataTable
-      data={appStore.services}
-      {columns}
-      bind:searchTerm={inputValue}
+      {table}
       emptyMessage="Сервісів не знайдено..."
       headerClasses={{ name: "w-full" }}
     />

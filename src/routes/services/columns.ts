@@ -5,9 +5,10 @@ import type { Service } from "$lib/bindings";
 
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
+import DataTableSortButton from "$lib/components/data-table-sort-button.svelte";
+
 import DataTableActions from "./data-table-actions.svelte";
 import DataTableCodeCell from "./data-table-code-cell.svelte";
-import DataTableNameButton from "./data-table-name-button.svelte";
 
 export const columns: ColumnDef<Service>[] = [
   {
@@ -28,9 +29,15 @@ export const columns: ColumnDef<Service>[] = [
   {
     accessorKey: "name",
     header: ({ column }) => {
-      return renderComponent(DataTableNameButton, {
+      return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
         sortStatus: column.getIsSorted(),
+        class: "pl-1.5",
+        children: createRawSnippet(() => {
+          return {
+            render: () => "<span>Назва</span>",
+          };
+        }),
       });
     },
     cell: ({ row }) => {
@@ -44,14 +51,18 @@ export const columns: ColumnDef<Service>[] = [
   },
   {
     accessorKey: "labor_hours",
-    header: () => {
-      return renderSnippet(
-        createRawSnippet(() => {
+    sortingFn: "alphanumeric",
+    header: ({ column }) => {
+      return renderComponent(DataTableSortButton, {
+        onclick: column.getToggleSortingHandler(),
+        sortStatus: column.getIsSorted(),
+        class: "pl-1.5",
+        children: createRawSnippet(() => {
           return {
-            render: () => `<div class="text-end">Нормо-години</div>`,
+            render: () => "<span>Нормо-години</span>",
           };
         }),
-      );
+      });
     },
     cell: ({ row }) => {
       const nameCellSnippet = createRawSnippet(() => {

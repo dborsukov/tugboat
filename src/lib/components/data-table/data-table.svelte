@@ -1,17 +1,5 @@
-<script lang="ts" generics="TData, TValue">
-  import { rankItem } from "@tanstack/match-sorter-utils";
-  import {
-    getCoreRowModel,
-    getFilteredRowModel,
-    getPaginationRowModel,
-    getSortedRowModel,
-    type ColumnDef,
-    type ColumnFiltersState,
-    type FilterFn,
-    type PaginationState,
-    type SortingState,
-    type VisibilityState,
-  } from "@tanstack/table-core";
+<script lang="ts" generics="TData">
+  import { type Table } from "@tanstack/table-core";
 
   import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
@@ -21,107 +9,26 @@
   import { cn } from "$lib/utils";
 
   import { Button } from "$lib/components/ui/button";
-  import { createSvelteTable, FlexRender } from "$lib/components/ui/data-table";
-  import * as Table from "$lib/components/ui/table/index.js";
+  import { FlexRender } from "$lib/components/ui/data-table";
+  import * as TableUI from "$lib/components/ui/table/index.js";
 
   let {
-    data,
-    columns,
-    searchTerm = $bindable(""),
+    table,
     emptyMessage = "Даних не знайдено...",
-    showPagination = true,
-    onRowClick,
     headerClasses = {},
     rounded = true,
-    disableSorting = false,
-    disableFiltering = false,
-    initialSorting = [],
-    hiddenColumns = [],
+    onRowClick,
   }: {
-    data: TData[];
-    columns: ColumnDef<TData, TValue>[];
-    searchTerm?: string;
+    table: Table<TData>;
     emptyMessage?: string;
-    showPagination?: boolean;
-    onRowClick?: (row: TData) => void;
     headerClasses?: Record<string, string>;
     rounded?: boolean;
-    disableSorting?: boolean;
-    disableFiltering?: boolean;
-    initialSorting?: SortingState;
-    hiddenColumns?: string[];
+    onRowClick?: (row: TData) => void;
   } = $props();
 
-  let sorting = $state<SortingState>(initialSorting);
-  let columnFilters = $state<ColumnFiltersState>([]);
-  let pagination = $state<PaginationState>({ pageIndex: 0, pageSize: 10 });
-
-  let columnVisibility = $state<VisibilityState>(
-    hiddenColumns.reduce((acc, colId) => ({ ...acc, [colId]: false }), {}),
+  const showPagination = $derived(
+    table.options.getPaginationRowModel !== undefined,
   );
-
-  const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
-    const itemRank = rankItem(row.getValue(columnId), value);
-    addMeta({ itemRank });
-    return itemRank.passed;
-  };
-
-  let table = createSvelteTable({
-    get data() {
-      return data;
-    },
-    get columns() {
-      return columns;
-    },
-    filterFns: {
-      fuzzy: fuzzyFilter,
-    },
-    // @ts-expect-error API and docs mismatch?
-    globalFilterFn: "fuzzy",
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    // svelte-ignore state_referenced_locally
-    getPaginationRowModel: showPagination ? getPaginationRowModel() : undefined,
-    enableSorting: !disableSorting,
-    enableFilters: !disableFiltering,
-    onSortingChange: (updater) => {
-      sorting = typeof updater === "function" ? updater(sorting) : updater;
-    },
-    onColumnFiltersChange: (updater) => {
-      columnFilters =
-        typeof updater === "function" ? updater(columnFilters) : updater;
-    },
-    onPaginationChange: (updater) => {
-      pagination =
-        typeof updater === "function" ? updater(pagination) : updater;
-    },
-    onGlobalFilterChange: (updater) => {
-      searchTerm =
-        typeof updater === "function" ? updater(searchTerm) : updater;
-    },
-    onColumnVisibilityChange: (updater) => {
-      columnVisibility =
-        typeof updater === "function" ? updater(columnVisibility) : updater;
-    },
-    state: {
-      get sorting() {
-        return sorting;
-      },
-      get columnFilters() {
-        return columnFilters;
-      },
-      get pagination() {
-        return pagination;
-      },
-      get globalFilter() {
-        return searchTerm;
-      },
-      get columnVisibility() {
-        return columnVisibility;
-      },
-    },
-  });
 
   function handleRowKeyDown(e: KeyboardEvent, rowData: TData) {
     if (e.key === "Enter" || e.key === " ") {
@@ -135,16 +42,16 @@
   <div
     class={cn(
       "flex-1 w-full overflow-auto border border-border",
-      showPagination && "border-b-0 rounded-b-none",
       rounded && "rounded",
+      showPagination && "border-b-0 rounded-b-none",
     )}
   >
-    <Table.Root class="flex-1 w-full">
-      <Table.Header>
+    <TableUI.Root class="flex-1 w-full">
+      <TableUI.Header>
         {#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
-          <Table.Row class="divide-x divide-border">
+          <TableUI.Row class="divide-x divide-border">
             {#each headerGroup.headers as header (header.id)}
-              <Table.Head
+              <TableUI.Head
                 colspan={header.colSpan}
                 class={cn(headerClasses[header.id])}
               >
@@ -154,14 +61,14 @@
                     context={header.getContext()}
                   />
                 {/if}
-              </Table.Head>
+              </TableUI.Head>
             {/each}
-          </Table.Row>
+          </TableUI.Row>
         {/each}
-      </Table.Header>
-      <Table.Body>
+      </TableUI.Header>
+      <TableUI.Body>
         {#each table.getRowModel().rows as row (row.id)}
-          <Table.Row
+          <TableUI.Row
             tabindex={onRowClick ? 0 : undefined}
             data-state={row.getIsSelected() && "selected"}
             class={cn(
@@ -173,26 +80,26 @@
             onkeydown={(e) => handleRowKeyDown(e, row.original)}
           >
             {#each row.getVisibleCells() as cell (cell.id)}
-              <Table.Cell>
+              <TableUI.Cell>
                 <FlexRender
                   content={cell.column.columnDef.cell}
                   context={cell.getContext()}
                 />
-              </Table.Cell>
+              </TableUI.Cell>
             {/each}
-          </Table.Row>
+          </TableUI.Row>
         {:else}
-          <Table.Row>
-            <Table.Cell
+          <TableUI.Row>
+            <TableUI.Cell
               colspan={table.getVisibleFlatColumns().length}
               class="h-24 text-center"
             >
               {emptyMessage}
-            </Table.Cell>
-          </Table.Row>
+            </TableUI.Cell>
+          </TableUI.Row>
         {/each}
-      </Table.Body>
-    </Table.Root>
+      </TableUI.Body>
+    </TableUI.Root>
   </div>
 
   {#if showPagination}

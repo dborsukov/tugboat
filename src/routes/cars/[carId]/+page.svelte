@@ -22,7 +22,8 @@
 
   import LogoLoader from "$lib/components/car-logo-loader.svelte";
   import CopyButton from "$lib/components/copy-button.svelte";
-  import DataTable from "$lib/components/data-table.svelte";
+  import DataTable from "$lib/components/data-table/data-table.svelte";
+  import { buildTable } from "$lib/components/data-table/table-builder.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import ClientBadge from "../../clients/client-badge.svelte";
@@ -31,16 +32,18 @@
   import DropdownMenu from "./dropdown-menu.svelte";
 
   let { data } = $props();
+  let isSheetOpen: boolean = $state(false);
+
   let car = $derived(
     appStore.cars.find((c) => c.id.toString() === data.id) as Car,
   );
   let owner = $derived(appStore.clients.find((c) => c.id === car.client_id));
   let brand = $derived(appStore.car_brands.find((b) => b.id === car.brand_id));
   let slug = $derived(brand != undefined ? brand.icon_slug : "");
-
   let carWorkOrders = $derived.by(() => {
     return appStore.work_orders.filter((wo) => wo.car_id === car.id);
   });
+
   const tableData = $derived(
     carWorkOrders.map((order) => {
       const carBrand = appStore.car_brands.find((c) => c.id === car?.brand_id);
@@ -57,7 +60,19 @@
     }),
   );
 
-  let isSheetOpen: boolean = $state(false);
+  let table = buildTable({
+    get data() {
+      return tableData;
+    },
+    get columns() {
+      return columns;
+    },
+    disableSorting: true,
+    disableFiltering: true,
+    disablePagination: true,
+    initialSorting: [{ id: "created_at", desc: true }],
+    hiddenColumns: ["client", "car_id"],
+  });
 </script>
 
 {#if car}
@@ -188,14 +203,9 @@
         {#if carWorkOrders.length != 0}
           <Card.Content>
             <DataTable
-              data={tableData}
-              {columns}
+              {table}
               emptyMessage="Замовлень не знайдено..."
               onRowClick={(row) => goto(`/work_orders/${row.id}`)}
-              showPagination={false}
-              disableFiltering
-              initialSorting={[{ id: "created_at", desc: true }]}
-              hiddenColumns={["client", "car_id"]}
             />
           </Card.Content>
         {/if}

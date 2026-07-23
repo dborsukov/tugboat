@@ -17,7 +17,8 @@
   import * as Card from "$lib/components/ui/card/index.js";
   import * as Details from "$lib/components/ui/details/index";
 
-  import DataTable from "$lib/components/data-table.svelte";
+  import DataTable from "$lib/components/data-table/data-table.svelte";
+  import { buildTable } from "$lib/components/data-table/table-builder.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import CarCard from "../../cars/car-card.svelte";
@@ -26,6 +27,7 @@
   import DropdownMenu from "./dropdown-menu.svelte";
 
   let { data } = $props();
+
   let client = $derived(
     appStore.clients.find((c) => c.id.toString() === data.id) as Client,
   );
@@ -39,6 +41,7 @@
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
       );
   });
+
   const tableData = $derived(
     clientWorkOrders.map((order) => {
       const car = appStore.cars.find((c) => c.id === order.car_id);
@@ -55,6 +58,20 @@
       };
     }),
   );
+
+  let table = buildTable({
+    get data() {
+      return tableData;
+    },
+    get columns() {
+      return columns;
+    },
+    disableSorting: true,
+    disableFiltering: true,
+    disablePagination: true,
+    initialSorting: [{ id: "created_at", desc: true }],
+    hiddenColumns: ["client"],
+  });
 </script>
 
 {#if client}
@@ -134,14 +151,9 @@
         {#if clientWorkOrders.length != 0}
           <Card.Content>
             <DataTable
-              data={tableData}
-              {columns}
+              {table}
               emptyMessage="Замовлень не знайдено..."
               onRowClick={(row) => goto(`/work_orders/${row.id}`)}
-              showPagination={false}
-              disableFiltering
-              initialSorting={[{ id: "created_at", desc: true }]}
-              hiddenColumns={["client"]}
             />
           </Card.Content>
         {/if}

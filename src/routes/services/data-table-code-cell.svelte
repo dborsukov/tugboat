@@ -7,5 +7,5 @@
 </script>
 
 {#if code}
-  <p class="font-mono">{code}</p>
+  <p class="font-mono px-2">{code}</p>
 {/if}

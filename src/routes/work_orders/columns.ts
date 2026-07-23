@@ -7,9 +7,10 @@ import { prettifyIsoDateString } from "$lib/misc";
 
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
+import DataTableSortButton from "$lib/components/data-table-sort-button.svelte";
+
 import ClientBadge from "../clients/client-badge.svelte";
 import CarDisplay from "./car-display.svelte";
-import DataTableClientButton from "./data-table-client-button.svelte";
 import StatusSelector from "./status-selector.svelte";
 
 export type WorkOrderTableData = WorkOrder & {
@@ -43,9 +44,15 @@ export const columns: ColumnDef<WorkOrderTableData>[] = [
     id: "client",
     accessorFn: (row) => row.client.name,
     header: ({ column }) => {
-      return renderComponent(DataTableClientButton, {
+      return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
         sortStatus: column.getIsSorted(),
+        class: "pl-0",
+        children: createRawSnippet(() => {
+          return {
+            render: () => "<span>Клієнт</span>",
+          };
+        }),
       });
     },
     cell: ({ row }) => {
@@ -58,7 +65,18 @@ export const columns: ColumnDef<WorkOrderTableData>[] = [
     id: "car_id",
     accessorFn: (row) =>
       `${row.carBrand.name} ${row.car.model} ${row.car.year}`,
-    header: "Автомобіль",
+    header: ({ column }) => {
+      return renderComponent(DataTableSortButton, {
+        onclick: column.getToggleSortingHandler(),
+        sortStatus: column.getIsSorted(),
+        class: "pl-0",
+        children: createRawSnippet(() => {
+          return {
+            render: () => "<span>Автомобіль</span>",
+          };
+        }),
+      });
+    },
     cell: ({ row }) => {
       return renderComponent(CarDisplay, {
         car: row.original.car,
@@ -68,7 +86,19 @@ export const columns: ColumnDef<WorkOrderTableData>[] = [
   },
   {
     accessorKey: "status",
-    header: "Статус",
+    filterFn: "arrIncludesSome",
+    header: ({ column }) => {
+      return renderComponent(DataTableSortButton, {
+        onclick: column.getToggleSortingHandler(),
+        sortStatus: column.getIsSorted(),
+        class: "pl-0",
+        children: createRawSnippet(() => {
+          return {
+            render: () => "<span>Статус</span>",
+          };
+        }),
+      });
+    },
     cell: ({ row }) => {
       return renderComponent(StatusSelector, {
         status: row.original.status,
@@ -80,19 +110,23 @@ export const columns: ColumnDef<WorkOrderTableData>[] = [
     id: "created_at",
     accessorFn: (row) => prettifyIsoDateString(row.created_at, "datetime"),
     sortingFn: "datetime",
-    header: () => {
-      const createdHeaderSnippet = createRawSnippet(() => {
-        return {
-          render: () => `<div class="text-end px-2">Створено</div>`,
-        };
+    header: ({ column }) => {
+      return renderComponent(DataTableSortButton, {
+        onclick: column.getToggleSortingHandler(),
+        sortStatus: column.getIsSorted(),
+        class: "pl-2",
+        children: createRawSnippet(() => {
+          return {
+            render: () => "<span>Створено</span>",
+          };
+        }),
       });
-      return renderSnippet(createdHeaderSnippet);
     },
     cell: ({ row }) => {
       const createdCellSnippet = createRawSnippet(() => {
         return {
           render: () =>
-            `<div class="font-mono tracking-tighter text-end px-2 text-muted-foreground">${prettifyIsoDateString(row.original.created_at, "datetime")}</div>`,
+            `<div class="px-2">${prettifyIsoDateString(row.original.created_at, "datetime")}</div>`,
         };
       });
       return renderSnippet(createdCellSnippet);
