@@ -101,7 +101,7 @@
 
 <PageLayout>
   {#snippet header()}
-    <div class="h-full px-4 flex items-center gap-2">
+    <div class="h-full pl-1 flex items-center gap-2">
       <Input
         placeholder="Пошук за моделлю, номером, VIN-кодом або власником..."
         class="w-full"

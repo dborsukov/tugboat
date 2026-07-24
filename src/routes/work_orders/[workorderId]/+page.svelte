@@ -1,10 +1,16 @@
 <script lang="ts">
+  import { NumericText } from "svelte-number-format";
   import { toast } from "svelte-sonner";
 
+  import CalendarCheckIcon from "@lucide/svelte/icons/calendar-check";
+  import CalendarClockIcon from "@lucide/svelte/icons/calendar-clock";
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
   import GaugeIcon from "@lucide/svelte/icons/gauge";
   import RateIcon from "@lucide/svelte/icons/hand-coins";
+  import PackageIcon from "@lucide/svelte/icons/package";
+  import ReceiptTextIcon from "@lucide/svelte/icons/receipt-text";
+  import WrenchIcon from "@lucide/svelte/icons/wrench";
 
   import { commands, type WorkOrder } from "$lib/bindings";
 
@@ -90,15 +96,71 @@
     disableFiltering: true,
     disablePagination: true,
   });
+
+  const laborTotalCents = $derived(
+    laborData.reduce(
+      (sum, item) => sum + Math.round(item.labor_hours * item.rate),
+      0,
+    ),
+  );
+
+  const partsTotalCents = $derived(
+    partsData.reduce(
+      (sum, item) => sum + Math.round(item.quantity * item.unit_price_cents),
+      0,
+    ),
+  );
+
+  const grandTotalCents = $derived(laborTotalCents + partsTotalCents);
 </script>
 
 {#if work_order}
   <PageLayout>
     {#snippet header()}
-      <div class="h-full px-4 flex items-center justify-between">
-        <h2 class="text-xl font-mono">
-          {work_order.id}
-        </h2>
+      <div class="ml-2 h-full flex items-center gap-4">
+        <div class="hidden md:block h-9/12 w-px bg-border shrink-0"></div>
+
+        <div class="flex flex-col justify-center leading-tight shrink-0">
+          <span class="text-xs text-muted-foreground">Наряд-замовлення</span>
+          <h2 class="text-lg font-mono font-medium">{work_order.id}</h2>
+        </div>
+
+        <div class="hidden md:block h-9/12 w-px bg-border shrink-0"></div>
+
+        <div class="h-full flex items-center gap-4 flex-1 min-w-0">
+          <div class="hidden md:flex items-center gap-2">
+            <WrenchIcon class="size-5 text-muted-foreground" />
+            <div class="flex flex-col leading-tight">
+              <span class="text-xs text-muted-foreground">Роботи</span>
+              <CurrencyDisplay cents={laborTotalCents} suffix="грн." />
+            </div>
+          </div>
+
+          <div class="hidden md:flex items-center gap-2">
+            <PackageIcon class="size-5 text-muted-foreground" />
+            <div class="flex flex-col leading-tight">
+              <span class="text-xs text-muted-foreground">Запчастини</span>
+              <CurrencyDisplay cents={partsTotalCents} suffix="грн." />
+            </div>
+          </div>
+
+          <div class="h-9/12 w-px bg-border shrink-0"></div>
+
+          <div
+            class="flex items-center gap-2 rounded-md px-2 py-1 bg-linear-to-r from-emerald-100 to-transparent"
+          >
+            <ReceiptTextIcon class="size-5 text-emerald-700" />
+            <div class="flex flex-col leading-tight">
+              <span class="text-xs text-emerald-700">Разом</span>
+              <CurrencyDisplay
+                cents={grandTotalCents}
+                class="font-semibold"
+                suffix="грн."
+              />
+            </div>
+          </div>
+        </div>
+
         <div class="flex gap-2 items-center">
           <StatusSelector {work_order} />
           <DropdownMenu {work_order} />
@@ -106,7 +168,7 @@
       </div>
     {/snippet}
     <div class="h-full w-full p-4">
-      <div class="flex flex-row w-full items-stretch gap-4">
+      <div class="flex flex-col sm:flex-row w-full items-stretch gap-4">
         <a href="/cars/{car.id}" class="flex flex-1">
           <CarCard
             {car}
@@ -126,42 +188,14 @@
       <Details.Card class="mt-4">
         <Details.Item>
           <Details.Title>
-            <Details.Icon icon={CalendarPlusIcon} /> Створено
-          </Details.Title>
-          <Details.Content>
-            {prettifyIsoDateString(work_order.created_at, "long")}
-          </Details.Content>
-        </Details.Item>
-
-        {#if work_order.started_at}
-          <Details.Item>
-            <Details.Title>
-              <Details.Icon icon={CalendarPlusIcon} /> Почато
-            </Details.Title>
-            <Details.Content>
-              {prettifyIsoDateString(work_order.started_at, "long")}
-            </Details.Content>
-          </Details.Item>
-        {/if}
-
-        {#if work_order.completed_at}
-          <Details.Item>
-            <Details.Title>
-              <Details.Icon icon={CalendarPlusIcon} /> Завершено
-            </Details.Title>
-            <Details.Content>
-              {prettifyIsoDateString(work_order.completed_at, "long")}
-            </Details.Content>
-          </Details.Item>
-        {/if}
-
-        <Details.Item>
-          <Details.Title>
             <Details.Icon icon={GaugeIcon} /> Одометр
           </Details.Title>
           <Details.Content>
             <div class="flex gap-2">
-              <p>{work_order.odometer_in}</p>
+              <NumericText
+                value={work_order.odometer_in}
+                class="text-end select-none!"
+              />
               <p class="text-muted-foreground">км.</p>
             </div>
           </Details.Content>
@@ -179,6 +213,37 @@
             />
           </Details.Content>
         </Details.Item>
+
+        <Details.Item>
+          <Details.Title>
+            <Details.Icon icon={CalendarPlusIcon} /> Створено
+          </Details.Title>
+          <Details.Content>
+            {prettifyIsoDateString(work_order.created_at, "datetime")}
+          </Details.Content>
+        </Details.Item>
+
+        {#if work_order.started_at}
+          <Details.Item>
+            <Details.Title>
+              <Details.Icon icon={CalendarClockIcon} /> Почато
+            </Details.Title>
+            <Details.Content>
+              {prettifyIsoDateString(work_order.started_at, "datetime")}
+            </Details.Content>
+          </Details.Item>
+        {/if}
+
+        {#if work_order.completed_at}
+          <Details.Item>
+            <Details.Title>
+              <Details.Icon icon={CalendarCheckIcon} /> Завершено
+            </Details.Title>
+            <Details.Content>
+              {prettifyIsoDateString(work_order.completed_at, "datetime")}
+            </Details.Content>
+          </Details.Item>
+        {/if}
       </Details.Card>
 
       <Card.Root class="mt-4">

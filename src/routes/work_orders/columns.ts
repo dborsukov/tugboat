@@ -47,7 +47,7 @@ export const columns: ColumnDef<WorkOrderTableData>[] = [
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
         sortStatus: column.getIsSorted(),
-        disabled: column.getCanSort(),
+        disabled: !column.getCanSort(),
         class: "pl-0",
         children: createRawSnippet(() => {
           return {
@@ -70,7 +70,7 @@ export const columns: ColumnDef<WorkOrderTableData>[] = [
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
         sortStatus: column.getIsSorted(),
-        disabled: column.getCanSort(),
+        disabled: !column.getCanSort(),
         class: "pl-0",
         children: createRawSnippet(() => {
           return {
@@ -93,7 +93,7 @@ export const columns: ColumnDef<WorkOrderTableData>[] = [
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
         sortStatus: column.getIsSorted(),
-        disabled: column.getCanSort(),
+        disabled: !column.getCanSort(),
         class: "pl-0",
         children: createRawSnippet(() => {
           return {
@@ -117,7 +117,7 @@ export const columns: ColumnDef<WorkOrderTableData>[] = [
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
         sortStatus: column.getIsSorted(),
-        disabled: column.getCanSort(),
+        disabled: !column.getCanSort(),
         class: "pl-2",
         children: createRawSnippet(() => {
           return {

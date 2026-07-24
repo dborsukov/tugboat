@@ -30,6 +30,9 @@
   let searchQuery = $state("");
   let isSheetOpen = $state(false);
   let sortBy = $state<SortOption>("date-desc");
+  let searchInputEl = $state<HTMLInputElement | null>(null);
+
+  $effect(() => searchInputEl?.focus());
 
   let filteredClients = $derived.by(() => {
     const query = searchQuery.trim();
@@ -39,7 +42,6 @@
       .map((client) => {
         const nameRank = rankItem(client.name, query);
         const phoneRank = rankItem(client.phone ?? "", query);
-        // keep whichever field matched better for this client
         const bestRank = nameRank.rank > phoneRank.rank ? nameRank : phoneRank;
         return {
           client,
@@ -95,8 +97,9 @@
 
 <PageLayout>
   {#snippet header()}
-    <div class="h-full px-4 flex items-center gap-2">
+    <div class="h-full pl-1 flex items-center gap-2">
       <Input
+        bind:ref={searchInputEl}
         placeholder="Пошук за ім'ям або телефоном..."
         class="w-full"
         bind:value={searchQuery}

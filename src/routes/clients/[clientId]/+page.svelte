@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { MaskPatterns, PatternFormat } from "svelte-number-format";
+  import { MaskPatterns, PatternText } from "svelte-number-format";
 
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
   import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
@@ -77,10 +77,7 @@
 {#if client}
   <PageLayout>
     {#snippet header()}
-      <div class="h-full px-4 flex items-center justify-between">
-        <Button variant="secondary" onclick={() => goto("/clients")}>
-          <ChevronLeftIcon /> Список
-        </Button>
+      <div class="h-full flex items-center justify-end">
         <DropdownMenu {client} />
       </div>
     {/snippet}
@@ -101,10 +98,10 @@
             <Details.Icon icon={PhoneIcon} /> Номер
           </Details.Title>
           <Details.Content>
-            <PatternFormat
-              bind:value={client.phone}
+            <PatternText
+              value={client.phone}
               format={MaskPatterns.PHONE_INTERNATIONAL}
-              class="text-end"
+              class="text-end select-none!"
             />
           </Details.Content>
         </Details.Item>

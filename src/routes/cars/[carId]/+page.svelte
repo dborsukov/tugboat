@@ -78,10 +78,7 @@
 {#if car}
   <PageLayout>
     {#snippet header()}
-      <div class="h-full px-4 flex items-center">
-        <Button variant="secondary" onclick={() => goto("/cars")}>
-          <ChevronLeftIcon /> Список
-        </Button>
+      <div class="h-full flex items-center">
         <Button
           variant="outline"
           class="ml-auto mr-2"

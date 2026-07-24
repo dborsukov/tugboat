@@ -10,6 +10,9 @@
   import { Spinner } from "$lib/components/ui/spinner";
 
   import AppSidebar from "$lib/components/app-sidebar.svelte";
+  import { navHistory } from "$lib/components/nav-history.svelte";
+
+  navHistory.init();
 
   let { children } = $props();
 </script>

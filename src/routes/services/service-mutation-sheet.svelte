@@ -182,7 +182,7 @@
       <Form.Field {form} name="labor_hours">
         <Form.Control>
           {#snippet children({ props })}
-            <Label>Норм-години</Label>
+            <Label>Нормо-години</Label>
             <Input
               {...props}
               type="number"

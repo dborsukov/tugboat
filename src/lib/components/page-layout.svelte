@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
-  import PageHeader from "./page-header.svelte"; // Adjust path as needed
+  import PageHeader from "./page-header.svelte";
 
   interface Props {
     header?: Snippet;
@@ -13,11 +13,11 @@
 </script>
 
 <div class="flex flex-col h-full min-h-0">
-  {#if header}
-    <PageHeader>
+  <PageHeader>
+    {#if header}
       {@render header()}
-    </PageHeader>
-  {/if}
+    {/if}
+  </PageHeader>
 
   <div class="flex-1 w-full overflow-auto scrollbar-gutter-both">
     <div class="max-w-7xl mx-auto">

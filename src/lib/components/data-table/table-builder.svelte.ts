@@ -59,6 +59,7 @@ export function buildTable<TData, TValue>(
     get columns() {
       return options.columns;
     },
+
     state: {
       get sorting() {
         return sorting;
@@ -80,6 +81,9 @@ export function buildTable<TData, TValue>(
       fuzzy: fuzzyFilter,
     },
     globalFilterFn: "fuzzy",
+    enableSorting: !options?.disableSorting,
+    enableFilters: !options?.disableFiltering,
+
     getCoreRowModel: getCoreRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
@@ -92,6 +96,7 @@ export function buildTable<TData, TValue>(
     getPaginationRowModel: options?.disablePagination
       ? undefined
       : getPaginationRowModel(),
+
     onSortingChange: (updater) => {
       sorting = typeof updater === "function" ? updater(sorting) : updater;
     },

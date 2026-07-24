@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ComponentProps } from "svelte";
-  import { MaskPatterns, PatternFormat } from "svelte-number-format";
+  import { MaskPatterns, PatternText } from "svelte-number-format";
 
   import DateIcon from "@lucide/svelte/icons/calendar-plus";
   import PhoneIcon from "@lucide/svelte/icons/phone";
@@ -51,9 +51,9 @@
           title="Дата додавання"
         >
           <PhoneIcon class="size-4 shrink-0" />
-          <p class="text-base text-nowrap truncate text-ellipsis">
-            <PatternFormat
-              bind:value={client.phone}
+          <p class="text-base text-nowrap truncate text-ellipsis select-none!">
+            <PatternText
+              value={client.phone}
               format={MaskPatterns.PHONE_INTERNATIONAL}
             />
           </p>

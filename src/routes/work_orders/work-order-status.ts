@@ -81,19 +81,19 @@ export const statusStyles: Record<
   ReadyForPickup: {
     text: "Готово до видачі",
     icon: ReadyForPickupIcon,
+    base: "bg-teal-100 text-teal-700",
+    highlighted: " data-highlighted:bg-teal-200 data-highlighted:text-teal-900",
+    rounding: "",
+    border: "border-teal-300",
+  },
+  Paid: {
+    text: "Сплачено",
+    icon: PaidIcon,
     base: "bg-emerald-100 text-emerald-700",
     highlighted:
       " data-highlighted:bg-emerald-200 data-highlighted:text-emerald-900",
     rounding: "",
     border: "border-emerald-300",
-  },
-  Paid: {
-    text: "Сплачено",
-    icon: PaidIcon,
-    base: "bg-teal-100 text-teal-700",
-    highlighted: " data-highlighted:bg-teal-200 data-highlighted:text-teal-900",
-    rounding: "",
-    border: "border-teal-300",
   },
   Canceled: {
     text: "Скасовано",

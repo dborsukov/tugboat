@@ -80,7 +80,7 @@
         </span>
         {#if car.registration}
           <span
-            class="font-mono font-bold uppercase tracking-wider bg-muted px-2 py-0.5 rounded text-xs border"
+            class="font-mono font-semibold uppercase tracking-wider bg-muted px-2 py-0.5 rounded text-xs border"
           >
             {car.registration}
           </span>
@@ -95,7 +95,7 @@
         </span>
         {#if car.vin}
           <span
-            class="font-mono font-bold uppercase tracking-wider bg-muted px-2 py-0.5 rounded text-xs border"
+            class="font-mono font-semibold uppercase tracking-wider bg-muted px-2 py-0.5 rounded text-xs border"
           >
             {car.vin}
           </span>

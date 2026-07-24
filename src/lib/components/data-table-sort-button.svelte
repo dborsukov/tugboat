@@ -1,6 +1,4 @@
 <script lang="ts">
-  import type { Snippet } from "svelte";
-
   import ArrowDownIcon from "@lucide/svelte/icons/chevron-down";
   import ArrowUpIcon from "@lucide/svelte/icons/chevron-up";
   import ArrowUpDownIcon from "@lucide/svelte/icons/chevrons-up-down";
