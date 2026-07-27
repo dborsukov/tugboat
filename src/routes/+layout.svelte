@@ -1,28 +1,25 @@
 <script lang="ts">
   import "../app.css";
 
+  import { ModeWatcher, setMode } from "mode-watcher";
+
   import { appStore } from "$lib/stores/app.svelte";
 
   import Button from "$lib/components/ui/button/button.svelte";
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
   import SidebarInset from "$lib/components/ui/sidebar/sidebar-inset.svelte";
   import { Toaster } from "$lib/components/ui/sonner/index.js";
-  import { Spinner } from "$lib/components/ui/spinner";
 
   import AppSidebar from "$lib/components/app-sidebar.svelte";
   import { navHistory } from "$lib/components/nav-history.svelte";
 
   navHistory.init();
+  setMode(appStore.settings.theme);
 
   let { children } = $props();
 </script>
 
-{#if appStore.loading}
-  <div class="flex justify-center items-center gap-2 w-full h-screen text-2xl">
-    <Spinner class="size-6" />
-    <p>Завантаження...</p>
-  </div>
-{:else if appStore.error !== null}
+{#if appStore.error !== null}
   <div
     class="flex flex-col gap-2 items-center justify-center h-screen p-8 text-center bg-background text-foreground"
   >
@@ -37,6 +34,7 @@
     >
   </div>
 {:else}
+  <ModeWatcher />
   <Toaster position="bottom-center" richColors />
   <Sidebar.Provider>
     <AppSidebar />

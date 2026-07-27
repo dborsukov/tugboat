@@ -20,12 +20,14 @@ export const commands = {
 	fetchCars: () => typedError<Car[], AppError>(__TAURI_INVOKE("fetch_cars")),
 	fetchClients: () => typedError<Client[], AppError>(__TAURI_INVOKE("fetch_clients")),
 	fetchServices: () => typedError<Service[], AppError>(__TAURI_INVOKE("fetch_services")),
+	fetchSettings: () => typedError<AppSettings, AppError>(__TAURI_INVOKE("fetch_settings")),
 	fetchWorkOrderLaborItems: () => typedError<WorkOrderLaborItem[], AppError>(__TAURI_INVOKE("fetch_work_order_labor_items")),
 	fetchWorkOrderPartItems: () => typedError<WorkOrderPartItem[], AppError>(__TAURI_INVOKE("fetch_work_order_part_items")),
 	fetchWorkOrders: () => typedError<WorkOrder[], AppError>(__TAURI_INVOKE("fetch_work_orders")),
 	updateCar: (id: number, payload: UpdateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("update_car", { id, payload })),
 	updateClient: (id: number, payload: UpdateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("update_client", { id, payload })),
 	updateService: (id: number, payload: UpdateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("update_service", { id, payload })),
+	updateSettings: (settings: AppSettings) => typedError<AppSettings, AppError>(__TAURI_INVOKE("update_settings", { settings })),
 	updateWorkOrder: (payload: UpdateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("update_work_order", { payload })),
 	updateWorkOrderLaborItem: (id: number, payload: UpdateWorkOrderLaborItemPayload) => typedError<WorkOrderLaborItem, AppError>(__TAURI_INVOKE("update_work_order_labor_item", { id, payload })),
 	updateWorkOrderPartItem: (id: number, payload: UpdateWorkOrderPartItemPayload) => typedError<WorkOrderPartItem, AppError>(__TAURI_INVOKE("update_work_order_part_item", { id, payload })),
@@ -34,6 +36,10 @@ export const commands = {
 
 /* Types */
 export type AppError = { type: "NotFound"; message: string } | { type: "ConstraintViolation"; message: string } | { type: "Sqlx"; message: string } | { type: "Generic"; message: string };
+
+export type AppSettings = {
+	theme: ThemeMode,
+};
 
 export type Car = {
 	id: number,
@@ -116,6 +122,8 @@ export type Service = {
 	name: string,
 	labor_hours: number,
 };
+
+export type ThemeMode = "light" | "dark" | "system";
 
 export type UpdateCarPayload = {
 	client_id: number,

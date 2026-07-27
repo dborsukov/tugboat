@@ -19,7 +19,6 @@ class NavigationHistory {
   }
 
   record(type: string, toHref: string | undefined) {
-    console.log(type, toHref);
     if (!toHref) return;
 
     if (this.#stack.length === 0) {

@@ -1,9 +1,10 @@
 import Sqids from "sqids";
 
+let squids_counter = 0;
 let date_locale = "uk-UA";
 const sqids = new Sqids({
-  alphabet: "65OVH9R8SPELUNT71GYX4AJ3IDCBQZW2FKM",
-  minLength: 10,
+  alphabet: "65VH9R8SPELUNT71GYX4AJ3DCBZW2FKM",
+  minLength: 6,
 });
 
 export function prettifyIsoDateString(
@@ -35,6 +36,8 @@ export function prettifyIsoDateString(
   }
 }
 
-export function sqidsEncode(value: number[]) {
-  return sqids.encode(value);
+export function sqidsEncode(value: number) {
+  // Reset counter every 1000 items to keep numbers lean
+  squids_counter = (squids_counter + 1) % 1000;
+  return sqids.encode([value, squids_counter]);
 }

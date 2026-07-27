@@ -18,12 +18,14 @@
     headerClasses = {},
     rounded = true,
     onRowClick,
+    class: className,
   }: {
     table: Table<TData>;
     emptyMessage?: string;
     headerClasses?: Record<string, string>;
     rounded?: boolean;
     onRowClick?: (row: TData) => void;
+    class?: string;
   } = $props();
 
   const showPagination = $derived(
@@ -38,7 +40,7 @@
   }
 </script>
 
-<div class="flex flex-col h-full w-full max-w-full">
+<div class={cn("flex flex-col h-full w-full max-w-full", className)}>
   <div
     class={cn(
       "flex-1 w-full overflow-auto border border-border",

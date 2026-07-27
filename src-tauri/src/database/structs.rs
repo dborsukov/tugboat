@@ -6,6 +6,46 @@ use sqlx::FromRow;
     // Builtins
     Debug,
     Clone,
+    Copy,
+    // Comparisons and hashing
+    PartialEq,
+    Eq,
+    // Thrid-party: Serde
+    Serialize,
+    Deserialize,
+    // Thrid-party: Sqlx
+    sqlx::Type,
+    specta::Type,
+)]
+#[serde(rename_all = "lowercase")]
+#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+pub enum ThemeMode {
+    Light,
+    Dark,
+    System,
+}
+
+#[derive(
+    // Builtins
+    Debug,
+    Clone,
+    // Thrid-party: Serde
+    Serialize,
+    Deserialize,
+    // Thrid-party: Sqlx
+    FromRow,
+    // Thrid-party: Specta
+    specta::Type,
+)]
+#[serde(rename_all = "camelCase")]
+pub struct AppSettings {
+    pub theme: ThemeMode,
+}
+
+#[derive(
+    // Builtins
+    Debug,
+    Clone,
     // Thrid-party: Serde
     Serialize,
     Deserialize,

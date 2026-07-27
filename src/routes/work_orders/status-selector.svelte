@@ -96,6 +96,7 @@
             class={cn(
               localStyles.base,
               localStyles.highlighted,
+              "rounded-none",
               localStyles.rounding,
             )}
           >

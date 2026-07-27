@@ -100,7 +100,7 @@
             position: "bottom-left",
           });
         }
-        let new_id = `WO-${sqidsEncode([Date.now()])}`;
+        let new_id = `WO-${sqidsEncode(Date.now())}`;
         let res = await commands.createWorkOrder({
           id: new_id,
           car_id: car_id,

@@ -84,6 +84,7 @@
       {table}
       emptyMessage="Замовлень не знайдено..."
       onRowClick={(row) => goto(`/work_orders/${row.id}`)}
+      class="rounded-sm shadow-xs"
     />
   </div>
 </PageLayout>

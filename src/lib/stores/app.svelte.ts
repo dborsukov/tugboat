@@ -1,5 +1,6 @@
 import {
   commands,
+  type AppSettings,
   type Car,
   type CarBrand,
   type Client,
@@ -22,6 +23,8 @@ function unwrap<T>(
 
 class AppStore {
   version: string = $state("0.0.0");
+  settings: AppSettings = $state({ theme: "system" });
+
   clients: Client[] = $state([]);
   car_brands: CarBrand[] = $state([]);
   cars: Car[] = $state([]);
@@ -29,6 +32,7 @@ class AppStore {
   work_orders: WorkOrder[] = $state([]);
   work_order_labor_items: WorkOrderLaborItem[] = $state([]);
   work_order_part_items: WorkOrderPartItem[] = $state([]);
+
   loaded = $state(false);
   loading = $state(false);
   error: string | null = $state(null);
@@ -40,6 +44,7 @@ class AppStore {
     this.error = null;
 
     const [
+      settings,
       clients,
       brands,
       cars,
@@ -49,6 +54,7 @@ class AppStore {
       work_order_part_items,
       version,
     ] = await Promise.all([
+      commands.fetchSettings().then(unwrap),
       commands.fetchClients().then(unwrap),
       commands.fetchCarBrands().then(unwrap),
       commands.fetchCars().then(unwrap),
@@ -59,6 +65,7 @@ class AppStore {
       commands.getAppVersion(),
     ]);
 
+    this.settings = settings;
     this.clients = clients;
     this.car_brands = brands;
     this.cars = cars;
@@ -100,6 +107,10 @@ class AppStore {
       ...this.work_order_part_items,
       work_order_item,
     ];
+  }
+
+  updateSettings(settings: AppSettings) {
+    this.settings = { ...settings };
   }
 
   updateClient(updated: Client) {

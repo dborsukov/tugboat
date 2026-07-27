@@ -54,6 +54,7 @@
       {table}
       emptyMessage="Сервісів не знайдено..."
       headerClasses={{ name: "w-full" }}
+      class="rounded-sm shadow-xs"
     />
   </div>
 </PageLayout>

@@ -54,73 +54,74 @@
     Quoted: {
       text: "Підбір",
       icon: QuotedIcon,
-      base: "bg-slate-100 text-slate-700",
+      base: "bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300",
       highlighted:
-        "data-highlighted:bg-slate-200 data-highlighted:text-slate-900",
-      rounding: "rounded-b-none",
-      border: "border-slate-300",
+        "data-highlighted:bg-slate-200 data-highlighted:text-slate-900 dark:data-highlighted:bg-slate-500/25 dark:data-highlighted:text-slate-100",
+      rounding: "rounded-t-xl",
+      border: "border-slate-300 dark:border-slate-500/30",
     },
     Ordered: {
       text: "Замовлено",
       icon: OrderedIcon,
-      base: "bg-sky-100 text-sky-800",
-      highlighted: "data-highlighted:bg-sky-200 data-highlighted:text-sky-900",
+      base: "bg-sky-100 text-sky-800 dark:bg-sky-500/15 dark:text-sky-300",
+      highlighted:
+        "data-highlighted:bg-sky-200 data-highlighted:text-sky-900 dark:data-highlighted:bg-sky-500/25 dark:data-highlighted:text-sky-100",
       rounding: "",
-      border: "border-sky-300",
+      border: "border-sky-300 dark:border-sky-500/30",
     },
     InStock: {
       text: "В наявності",
       icon: InStockIcon,
-      base: "bg-violet-100 text-violet-700",
+      base: "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
       highlighted:
-        " data-highlighted:bg-violet-200 data-highlighted:text-violet-900",
+        "data-highlighted:bg-violet-200 data-highlighted:text-violet-900 dark:data-highlighted:bg-violet-500/25 dark:data-highlighted:text-violet-100",
       rounding: "",
-      border: "border-violet-300",
+      border: "border-violet-300 dark:border-violet-500/30",
     },
     Installing: {
       text: "Встановлення",
       icon: InstallingIcon,
-      base: "bg-blue-100 text-blue-700",
+      base: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
       highlighted:
-        " data-highlighted:bg-blue-200 data-highlighted:text-blue-900",
+        "data-highlighted:bg-blue-200 data-highlighted:text-blue-900 dark:data-highlighted:bg-blue-500/25 dark:data-highlighted:text-blue-100",
       rounding: "",
-      border: "border-blue-300",
+      border: "border-blue-300 dark:border-blue-500/30",
     },
     Installed: {
       text: "Встановлено",
       icon: InstalledIcon,
-      base: "bg-emerald-100 text-emerald-700",
+      base: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
       highlighted:
-        " data-highlighted:bg-emerald-200 data-highlighted:text-emerald-900",
+        "data-highlighted:bg-emerald-200 data-highlighted:text-emerald-900 dark:data-highlighted:bg-emerald-500/25 dark:data-highlighted:text-emerald-100",
       rounding: "",
-      border: "border-emerald-300",
+      border: "border-emerald-300 dark:border-emerald-500/30",
     },
     AwaitingReturn: {
       text: "Очікує на повернення",
       icon: AwaitingReturnIcon,
-      base: "bg-amber-100 text-amber-700",
+      base: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
       highlighted:
-        " data-highlighted:bg-amber-200 data-highlighted:text-amber-900",
+        "data-highlighted:bg-amber-200 data-highlighted:text-amber-900 dark:data-highlighted:bg-amber-500/25 dark:data-highlighted:text-amber-100",
       rounding: "",
-      border: "border-amber-300",
+      border: "border-amber-300 dark:border-amber-500/30",
     },
     Returned: {
       text: "Повернено",
       icon: ReturnedIcon,
-      base: "bg-gray-100 text-gray-700",
+      base: "bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300",
       highlighted:
-        " data-highlighted:bg-gray-200 data-highlighted:text-gray-900",
+        "data-highlighted:bg-gray-200 data-highlighted:text-gray-900 dark:data-highlighted:bg-gray-500/25 dark:data-highlighted:text-gray-100",
       rounding: "",
-      border: "border-gray-300",
+      border: "border-gray-300 dark:border-gray-500/30",
     },
     Warranty: {
       text: "Гарантійний випадок",
       icon: WarrantyIcon,
-      base: "bg-rose-100 text-rose-700",
+      base: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
       highlighted:
-        " data-highlighted:bg-rose-200 data-highlighted:text-rose-900",
-      rounding: "rounded-t-none",
-      border: "border-rose-300",
+        "data-highlighted:bg-rose-200 data-highlighted:text-rose-900 dark:data-highlighted:bg-rose-500/25 dark:data-highlighted:text-rose-100",
+      rounding: "rounded-b-xl",
+      border: "border-rose-300 dark:border-rose-500/30",
     },
   };
 
@@ -160,6 +161,7 @@
             class={cn(
               localStyles.base,
               localStyles.highlighted,
+              "rounded-none",
               localStyles.rounding,
             )}
           >

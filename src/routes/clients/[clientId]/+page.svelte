@@ -66,7 +66,6 @@
     get columns() {
       return columns;
     },
-    disableSorting: true,
     disableFiltering: true,
     disablePagination: true,
     initialSorting: [{ id: "created_at", desc: true }],

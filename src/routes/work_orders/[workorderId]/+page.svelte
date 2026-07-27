@@ -147,11 +147,15 @@
           <div class="h-9/12 w-px bg-border shrink-0"></div>
 
           <div
-            class="flex items-center gap-2 rounded-md px-2 py-1 bg-linear-to-r from-emerald-100 to-transparent"
+            class="flex items-center gap-2 rounded-md px-2 py-1 bg-linear-to-r from-emerald-400/25 dark:from-emerald-700/35 to-transparent"
           >
-            <ReceiptTextIcon class="size-5 text-emerald-700" />
+            <ReceiptTextIcon
+              class="size-5 text-emerald-700 dark:text-emerald-200"
+            />
             <div class="flex flex-col leading-tight">
-              <span class="text-xs text-emerald-700">Разом</span>
+              <span class="text-xs text-emerald-700 dark:text-emerald-200"
+                >Разом</span
+              >
               <CurrencyDisplay
                 cents={grandTotalCents}
                 class="font-semibold"
