@@ -49,7 +49,7 @@
   let brandComboTriggerRef = $state<HTMLButtonElement>(null!);
 
   const brandComboSelectedValue = $derived(
-    appStore.car_brands.find((b) => b.id === $formData.brand_id)?.name,
+    appStore.carBrands.find((b) => b.id === $formData.brandId)?.name,
   );
 
   // Standard 2004+ format: 2 region letters, 4 digits, 2 series letters.
@@ -66,12 +66,12 @@
   }
 
   const carSchema = z.object({
-    client_id: z
+    clientId: z
       .number({ error: "Вкажіть власника" })
       .min(0, { error: "Вкажіть власника" })
       .default(-1),
 
-    brand_id: z
+    brandId: z
       .number({ error: "Вкажіть марку" })
       .min(0, { error: "Вкажіть марку" })
       .default(-1),
@@ -86,7 +86,7 @@
       })
       .default(() => new Date().getFullYear()),
 
-    registration: z
+    licensePlate: z
       .string()
       .trim()
       .transform(normalizePlate)
@@ -120,7 +120,7 @@
       (data) => {
         const carsList = appStore.cars || [];
         const duplicateCar = carsList.find(
-          (c) => c.registration === data.registration,
+          (c) => c.licensePlate === data.licensePlate,
         );
         if (!duplicateCar) return true;
         // Avoid record matching with itself (when editing)
@@ -129,7 +129,7 @@
       },
       {
         message: "Автомобіль з таким реєстраційним номером вже існує",
-        path: ["registration"],
+        path: ["licensePlate"],
       },
     )
     .refine(
@@ -157,11 +157,11 @@
       if (!nativeForm.valid) return;
 
       const payload = {
-        client_id: nativeForm.data.client_id,
-        brand_id: nativeForm.data.brand_id,
+        clientId: nativeForm.data.clientId,
+        brandId: nativeForm.data.brandId,
         model: nativeForm.data.model,
         year: nativeForm.data.year,
-        registration: nativeForm.data.registration,
+        licensePlate: nativeForm.data.licensePlate,
         vin: nativeForm.data.vin,
       };
 
@@ -193,19 +193,19 @@
 
   const { form: formData, enhance, submitting } = form;
 
-  const registrationLooksNonStandard = $derived(
-    $formData.registration.length > 0 &&
-      !STANDARD_PLATE_RE.test($formData.registration),
+  const licensePlateLooksNonStandard = $derived(
+    $formData.licensePlate.length > 0 &&
+      !STANDARD_PLATE_RE.test($formData.licensePlate),
   );
 
   $effect(() => {
     if (open) {
       if (car) {
-        $formData.client_id = car.client_id;
-        $formData.brand_id = car.brand_id;
+        $formData.clientId = car.clientId;
+        $formData.brandId = car.brandId;
         $formData.model = car.model;
         $formData.year = car.year;
-        $formData.registration = car.registration ?? "";
+        $formData.licensePlate = car.licensePlate ?? "";
         $formData.vin = car.vin ?? "";
       } else {
         form.reset();
@@ -246,7 +246,7 @@
       id={formID}
       class="flex flex-col p-6 gap-4 overflow-y-auto h-full"
     >
-      <Form.Field {form} name="client_id">
+      <Form.Field {form} name="clientId">
         <Form.Control>
           {#snippet children({ props: formProps })}
             <Label>Власник</Label>
@@ -259,14 +259,14 @@
                     variant="outline"
                     class={cn(
                       "w-full justify-between",
-                      $formData.client_id != -1 && "pl-2",
+                      $formData.clientId != -1 && "pl-2",
                     )}
                     role="combobox"
                     aria-expanded={clientComboOpen}
                   >
-                    {#if $formData.client_id != -1}
+                    {#if $formData.clientId != -1}
                       <ClientBadge
-                        clientId={$formData.client_id}
+                        clientId={$formData.clientId}
                         iconSize="size-5"
                       />
                     {:else}
@@ -286,13 +286,13 @@
                         <Command.Item
                           value={`${client.name}-${client.id}`}
                           onSelect={() => {
-                            $formData.client_id = client.id;
+                            $formData.clientId = client.id;
                             closeAndFocusClient();
                           }}
                         >
                           <CheckIcon
                             class={cn(
-                              $formData.client_id !== client.id &&
+                              $formData.clientId !== client.id &&
                                 "text-transparent",
                             )}
                           />
@@ -309,7 +309,7 @@
         <Form.FieldErrors />
       </Form.Field>
 
-      <Form.Field {form} name="brand_id">
+      <Form.Field {form} name="brandId">
         <Form.Control>
           {#snippet children({ props: formProps })}
             <Label>Марка</Label>
@@ -335,17 +335,17 @@
                   <Command.List>
                     <Command.Empty>Марку не знайдено.</Command.Empty>
                     <Command.Group>
-                      {#each appStore.car_brands as brand (brand.id)}
+                      {#each appStore.carBrands as brand (brand.id)}
                         <Command.Item
                           value={brand.name}
                           onSelect={() => {
-                            $formData.brand_id = brand.id;
+                            $formData.brandId = brand.id;
                             closeAndFocusBrand();
                           }}
                         >
                           <CheckIcon
                             class={cn(
-                              $formData.brand_id !== brand.id &&
+                              $formData.brandId !== brand.id &&
                                 "text-transparent",
                             )}
                           />
@@ -382,19 +382,19 @@
         <Form.FieldErrors />
       </Form.Field>
 
-      <Form.Field {form} name="registration">
+      <Form.Field {form} name="licensePlate">
         <Form.Control>
           {#snippet children({ props })}
             <Label>Номерний знак</Label>
             <Input
               {...props}
-              value={$formData.registration}
+              value={$formData.licensePlate}
               oninput={(e) => {
-                $formData.registration = normalizePlate(e.currentTarget.value);
+                $formData.licensePlate = normalizePlate(e.currentTarget.value);
               }}
               class="uppercase"
             />
-            {#if registrationLooksNonStandard}
+            {#if licensePlateLooksNonStandard}
               <p class="text-xs text-muted-foreground">
                 Не схоже на стандартний номер — це нормально для старих,
                 тимчасових чи спецтранспортних номерів.

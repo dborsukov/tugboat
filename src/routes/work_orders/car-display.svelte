@@ -16,7 +16,7 @@
 </script>
 
 <div class="flex items-center gap-2 h-8">
-  <CarLogoLoader slug={carBrand.icon_slug} />
+  <CarLogoLoader slug={carBrand.iconSlug} />
   <p class="tracking-wide">{brandName}{car.model}</p>
   <Badge variant="outline" class="tracking-wider">{car.year}</Badge>
 </div>

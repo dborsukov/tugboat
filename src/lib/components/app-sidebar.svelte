@@ -49,7 +49,7 @@
       title: "Замовлення",
       url: "/work_orders",
       icon: WorkOrdersIcon,
-      badge: appStore.work_orders.length,
+      badge: appStore.workOrders.length,
     },
   ]);
 

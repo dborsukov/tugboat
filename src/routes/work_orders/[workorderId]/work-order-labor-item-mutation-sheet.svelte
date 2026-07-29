@@ -29,7 +29,7 @@
   }: Props = $props();
 
   let work_order_item = $derived(
-    appStore.work_order_labor_items.find((i) => i.id === id) ?? null,
+    appStore.workOrderLaborItems.find((i) => i.id === id) ?? null,
   );
 
   const isEdit = $derived(!!work_order_item);
@@ -46,7 +46,7 @@
   const workOrderItemSchema = z.object({
     code: z.string().nullable(),
     name: z.string().min(1, { error: "Вкажіть назву" }),
-    labor_hours: z
+    laborHours: z
       .number({ error: "Вкажіть кількість норм-годин" })
       .nonnegative("Неправильна кількість")
       .default(0),
@@ -63,10 +63,10 @@
       if (!nativeForm.valid) return;
 
       const payload = {
-        service_id: null,
+        serviceId: null,
         code: nativeForm.data.code,
         name: nativeForm.data.name,
-        labor_hours: nativeForm.data.labor_hours,
+        laborHours: nativeForm.data.laborHours,
       };
 
       if (isEdit && id) {
@@ -84,7 +84,7 @@
           return;
         }
         const create_payload = {
-          work_order_id: work_order_id,
+          workOrderId: work_order_id,
           ...payload,
         };
         let res = await commands.createWorkOrderLaborItem(create_payload);
@@ -109,7 +109,7 @@
       if (work_order_item) {
         $formData.code = work_order_item.code;
         $formData.name = work_order_item.name;
-        $formData.labor_hours = work_order_item.labor_hours;
+        $formData.laborHours = work_order_item.laborHours;
       } else {
         form.reset();
       }
@@ -159,7 +159,7 @@
         <Form.FieldErrors />
       </Form.Field>
 
-      <Form.Field {form} name="labor_hours">
+      <Form.Field {form} name="laborHours">
         <Form.Control>
           {#snippet children({ props })}
             <Label>Норм-години</Label>
@@ -168,7 +168,7 @@
               step="0.1"
               min="0"
               {...props}
-              bind:value={$formData.labor_hours}
+              bind:value={$formData.laborHours}
             />
           {/snippet}
         </Form.Control>

@@ -38,7 +38,7 @@
   export const serviceSchema = z.object({
     code: z.string().nullable(),
     name: z.string().min(1, { error: "Вкажіть назву" }),
-    labor_hours: z
+    laborHours: z
       .number({ error: "Вкажіть кількість норм-годин" })
       .nonnegative("Неправильна кількість")
       .default(0),
@@ -93,7 +93,7 @@
       const payload = {
         code: nativeForm.data.code,
         name: nativeForm.data.name,
-        labor_hours: nativeForm.data.labor_hours,
+        laborHours: nativeForm.data.laborHours,
       };
 
       if (isEdit && id) {
@@ -129,7 +129,7 @@
       if (service) {
         $formData.code = service.code;
         $formData.name = service.name;
-        $formData.labor_hours = service.labor_hours;
+        $formData.laborHours = service.laborHours;
       } else {
         form.reset();
       }
@@ -179,7 +179,7 @@
         <Form.FieldErrors />
       </Form.Field>
 
-      <Form.Field {form} name="labor_hours">
+      <Form.Field {form} name="laborHours">
         <Form.Control>
           {#snippet children({ props })}
             <Label>Нормо-години</Label>
@@ -188,7 +188,7 @@
               type="number"
               step="0.1"
               min="0"
-              bind:value={$formData.labor_hours}
+              bind:value={$formData.laborHours}
             />
           {/snippet}
         </Form.Control>

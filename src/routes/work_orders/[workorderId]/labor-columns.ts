@@ -7,13 +7,7 @@ import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
 import CurrencyDisplay from "$lib/components/currency-display.svelte";
 
-import DataTableCodeCell from "./data-table-code-cell.svelte";
 import DataTableActions from "./data-table-labor-actions.svelte";
-
-const currencyFormatter = new Intl.NumberFormat("uk-UA", {
-  style: "currency",
-  currency: "UAH",
-});
 
 export type WorkOrderLaborItemTableData = WorkOrderLaborItem & {
   rate: number;
@@ -32,7 +26,13 @@ export const columns: ColumnDef<WorkOrderLaborItemTableData>[] = [
       );
     },
     cell: ({ row }) => {
-      return renderComponent(DataTableCodeCell, { code: row.original.code });
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () => `<div class="font-mono">${row.original.code}</div>`,
+          };
+        }),
+      );
     },
   },
   {
@@ -40,7 +40,7 @@ export const columns: ColumnDef<WorkOrderLaborItemTableData>[] = [
     header: "Назва",
   },
   {
-    accessorKey: "labor_hours",
+    accessorKey: "laborHours",
     header: () => {
       return renderSnippet(
         createRawSnippet(() => {
@@ -54,7 +54,7 @@ export const columns: ColumnDef<WorkOrderLaborItemTableData>[] = [
       const nameCellSnippet = createRawSnippet(() => {
         return {
           render: () =>
-            `<div class="text-end">${row.original.labor_hours}</div>`,
+            `<div class="text-center font-mono">${row.original.laborHours}</div>`,
         };
       });
       return renderSnippet(nameCellSnippet);
@@ -73,7 +73,7 @@ export const columns: ColumnDef<WorkOrderLaborItemTableData>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(CurrencyDisplay, {
-        cents: row.original.rate * row.original.labor_hours,
+        cents: row.original.rate * row.original.laborHours,
         suffix: "грн.",
         class: "font-medium justify-end",
       });

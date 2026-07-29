@@ -1,12 +1,20 @@
 import type { ColumnDef } from "@tanstack/table-core";
 import { createRawSnippet } from "svelte";
 
-import type { Car, CarBrand, Client, WorkOrder } from "$lib/bindings";
+import type {
+  Car,
+  CarBrand,
+  Client,
+  WorkOrder,
+  WorkOrderLaborItem,
+  WorkOrderPartItem,
+} from "$lib/bindings";
 
 import { prettifyIsoDateString } from "$lib/misc";
 
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
+import CurrencyDisplay from "$lib/components/currency-display.svelte";
 import DataTableSortButton from "$lib/components/data-table-sort-button.svelte";
 
 import ClientBadge from "../clients/client-badge.svelte";
@@ -17,6 +25,8 @@ export type WorkOrderTableData = WorkOrder & {
   car: Car;
   carBrand: CarBrand;
   client: Client;
+  labor: WorkOrderLaborItem[];
+  parts: WorkOrderPartItem[];
 };
 
 export const columns: ColumnDef<WorkOrderTableData>[] = [
@@ -110,8 +120,54 @@ export const columns: ColumnDef<WorkOrderTableData>[] = [
     },
   },
   {
+    id: "total",
+    accessorFn: (row) => {
+      let laborTotal = row.labor.reduce(
+        (sum, item) => sum + Math.round(item.laborHours * row.rateCents),
+        0,
+      );
+      let partsTotal = row.parts.reduce(
+        (sum, item) =>
+          sum +
+          Math.round(
+            item.quantity * (item.costCents * (1 + item.markup / 100)),
+          ),
+        0,
+      );
+      let flatTotal = laborTotal + partsTotal;
+      if (row.discountCents != 0 || row.discountPercent != 0) {
+        if (row.discountType === "Fixed") {
+          return flatTotal - row.discountCents;
+        } else {
+          return flatTotal * (1 - row.discountPercent / 100);
+        }
+      }
+      return flatTotal;
+    },
+    header: ({ column }) => {
+      return renderComponent(DataTableSortButton, {
+        onclick: column.getToggleSortingHandler(),
+        sortStatus: column.getIsSorted(),
+        disabled: !column.getCanSort(),
+        class: "pl-1",
+        children: createRawSnippet(() => {
+          return {
+            render: () => "<span>Сума</span>",
+          };
+        }),
+      });
+    },
+    cell: ({ row }) => {
+      return renderComponent(CurrencyDisplay, {
+        cents: row.getValue("total") as number,
+        suffix: "грн.",
+        class: "px-2 justify-start",
+      });
+    },
+  },
+  {
     id: "created_at",
-    accessorFn: (row) => prettifyIsoDateString(row.created_at, "datetime"),
+    accessorFn: (row) => prettifyIsoDateString(row.createdAt, "datetime"),
     sortingFn: "datetime",
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
@@ -130,7 +186,7 @@ export const columns: ColumnDef<WorkOrderTableData>[] = [
       const createdCellSnippet = createRawSnippet(() => {
         return {
           render: () =>
-            `<div class="px-2">${prettifyIsoDateString(row.original.created_at, "datetime")}</div>`,
+            `<div class="px-2">${prettifyIsoDateString(row.original.createdAt, "datetime")}</div>`,
         };
       });
       return renderSnippet(createdCellSnippet);

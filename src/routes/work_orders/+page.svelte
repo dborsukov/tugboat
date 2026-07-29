@@ -19,10 +19,16 @@
   let inputValue: string = $state("");
 
   const tableData = $derived(
-    appStore.work_orders.map((order) => {
-      const car = appStore.cars.find((c) => c.id === order.car_id);
-      const carBrand = appStore.car_brands.find((c) => c.id === car?.brand_id);
-      const client = appStore.clients.find((c) => c.id === car?.client_id);
+    appStore.workOrders.map((order) => {
+      const car = appStore.cars.find((c) => c.id === order.carId);
+      const carBrand = appStore.carBrands.find((c) => c.id === car?.brandId);
+      const client = appStore.clients.find((c) => c.id === car?.clientId);
+      const labor = appStore.workOrderLaborItems.filter(
+        (i) => i.workOrderId === order.id,
+      );
+      const parts = appStore.workOrderPartItems.filter(
+        (i) => i.workOrderId === order.id,
+      );
       if (car === undefined || client === undefined || carBrand === undefined) {
         throw new Error("Elements missing from appStore");
       }
@@ -31,6 +37,8 @@
         car,
         carBrand,
         client,
+        labor,
+        parts,
       };
     }),
   );

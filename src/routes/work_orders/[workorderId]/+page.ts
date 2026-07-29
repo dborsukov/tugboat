@@ -5,7 +5,7 @@ import { appStore } from "$lib/stores/app.svelte";
 export const load = async ({ params, parent }) => {
   await parent();
 
-  const exists = appStore.work_orders.find(
+  const exists = appStore.workOrders.find(
     (c) => c.id.toString() === params.workorderId,
   );
 

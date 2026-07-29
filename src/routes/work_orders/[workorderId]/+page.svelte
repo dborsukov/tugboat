@@ -2,6 +2,7 @@
   import { NumericText } from "svelte-number-format";
   import { toast } from "svelte-sonner";
 
+  import DiscountIcon from "@lucide/svelte/icons/badge-percent";
   import CalendarCheckIcon from "@lucide/svelte/icons/calendar-check";
   import CalendarClockIcon from "@lucide/svelte/icons/calendar-clock";
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
@@ -41,28 +42,28 @@
 
   let { data } = $props();
 
-  let work_order = $derived(
-    appStore.work_orders.find((w) => w.id === data.id) as WorkOrder,
+  let workOrder = $derived(
+    appStore.workOrders.find((w) => w.id === data.id) as WorkOrder,
   );
 
   let isLaborSheetOpen: boolean = $state(false);
   let isPartsSheetOpen: boolean = $state(false);
   let isPopoverOpen: boolean = $state(false);
 
-  const car = appStore.cars.find((c) => c.id === work_order.car_id);
-  const carBrand = appStore.car_brands.find((c) => c.id === car?.brand_id);
-  const client = appStore.clients.find((c) => c.id === car?.client_id);
+  const car = appStore.cars.find((c) => c.id === workOrder.carId);
+  const carBrand = appStore.carBrands.find((c) => c.id === car?.brandId);
+  const client = appStore.clients.find((c) => c.id === car?.clientId);
   if (car === undefined || client === undefined || carBrand === undefined) {
     throw new Error("Elements missing from appStore");
   }
 
   const laborData = $derived(
-    appStore.work_order_labor_items
-      .filter((i) => i.work_order_id === work_order.id)
+    appStore.workOrderLaborItems
+      .filter((i) => i.workOrderId === workOrder.id)
       .map((item) => {
         return {
           ...item,
-          rate: work_order.rate,
+          rate: workOrder.rateCents,
         };
       }),
   );
@@ -80,9 +81,7 @@
   });
 
   const partsData = $derived(
-    appStore.work_order_part_items.filter(
-      (i) => i.work_order_id === work_order.id,
-    ),
+    appStore.workOrderPartItems.filter((i) => i.workOrderId === workOrder.id),
   );
 
   let partsTable = buildTable({
@@ -99,22 +98,34 @@
 
   const laborTotalCents = $derived(
     laborData.reduce(
-      (sum, item) => sum + Math.round(item.labor_hours * item.rate),
+      (sum, item) => sum + Math.round(item.laborHours * item.rate),
       0,
     ),
   );
 
   const partsTotalCents = $derived(
     partsData.reduce(
-      (sum, item) => sum + Math.round(item.quantity * item.unit_price_cents),
+      (sum, item) =>
+        sum +
+        Math.round(item.quantity * (item.costCents * (1 + item.markup / 100))),
       0,
     ),
   );
 
-  const grandTotalCents = $derived(laborTotalCents + partsTotalCents);
+  const grandTotalCents = $derived.by(() => {
+    let flatTotal = laborTotalCents + partsTotalCents;
+    if (workOrder.discountCents != 0 || workOrder.discountPercent != 0) {
+      if (workOrder.discountType === "Fixed") {
+        return flatTotal - workOrder.discountCents;
+      } else {
+        return flatTotal * (1 - workOrder.discountPercent / 100);
+      }
+    }
+    return flatTotal;
+  });
 </script>
 
-{#if work_order}
+{#if workOrder}
   <PageLayout>
     {#snippet header()}
       <div class="ml-2 h-full flex items-center gap-4">
@@ -122,7 +133,7 @@
 
         <div class="flex flex-col justify-center leading-tight shrink-0">
           <span class="text-xs text-muted-foreground">Наряд-замовлення</span>
-          <h2 class="text-lg font-mono font-medium">{work_order.id}</h2>
+          <h2 class="text-lg font-mono font-medium">{workOrder.id}</h2>
         </div>
 
         <div class="hidden md:block h-9/12 w-px bg-border shrink-0"></div>
@@ -143,6 +154,29 @@
               <CurrencyDisplay cents={partsTotalCents} suffix="грн." />
             </div>
           </div>
+
+          {#if workOrder.discountCents != 0 || workOrder.discountPercent != 0}
+            <div class="h-9/12 w-px bg-border shrink-0"></div>
+
+            <div
+              class="hidden md:flex items-center gap-2 rounded-md px-2 py-1 bg-linear-to-r from-amber-400/25 dark:from-amber-700/35 to-transparent"
+            >
+              <DiscountIcon class="size-5 text-amber-700 dark:text-amber-200" />
+              <div class="flex flex-col leading-tight">
+                <span class="text-xs text-amber-700 dark:text-amber-200"
+                  >Знижка</span
+                >
+                {#if workOrder.discountType === "Fixed"}
+                  <CurrencyDisplay
+                    cents={workOrder.discountCents}
+                    suffix="грн."
+                  />
+                {:else}
+                  {workOrder.discountPercent}%
+                {/if}
+              </div>
+            </div>
+          {/if}
 
           <div class="h-9/12 w-px bg-border shrink-0"></div>
 
@@ -166,8 +200,8 @@
         </div>
 
         <div class="flex gap-2 items-center">
-          <StatusSelector {work_order} />
-          <DropdownMenu {work_order} />
+          <StatusSelector work_order={workOrder} />
+          <DropdownMenu work_order={workOrder} />
         </div>
       </div>
     {/snippet}
@@ -197,7 +231,7 @@
           <Details.Content>
             <div class="flex gap-2">
               <NumericText
-                value={work_order.odometer_in}
+                value={workOrder.odometerIn}
                 class="text-end select-none!"
               />
               <p class="text-muted-foreground">км.</p>
@@ -211,7 +245,7 @@
           </Details.Title>
           <Details.Content>
             <CurrencyDisplay
-              cents={work_order.rate}
+              cents={workOrder.rateCents}
               suffix="грн./год."
               suffix_muted
             />
@@ -223,28 +257,28 @@
             <Details.Icon icon={CalendarPlusIcon} /> Створено
           </Details.Title>
           <Details.Content>
-            {prettifyIsoDateString(work_order.created_at, "datetime")}
+            {prettifyIsoDateString(workOrder.createdAt, "datetime")}
           </Details.Content>
         </Details.Item>
 
-        {#if work_order.started_at}
+        {#if workOrder.startedAt}
           <Details.Item>
             <Details.Title>
               <Details.Icon icon={CalendarClockIcon} /> Почато
             </Details.Title>
             <Details.Content>
-              {prettifyIsoDateString(work_order.started_at, "datetime")}
+              {prettifyIsoDateString(workOrder.startedAt, "datetime")}
             </Details.Content>
           </Details.Item>
         {/if}
 
-        {#if work_order.completed_at}
+        {#if workOrder.completedAt}
           <Details.Item>
             <Details.Title>
               <Details.Icon icon={CalendarCheckIcon} /> Завершено
             </Details.Title>
             <Details.Content>
-              {prettifyIsoDateString(work_order.completed_at, "datetime")}
+              {prettifyIsoDateString(workOrder.completedAt, "datetime")}
             </Details.Content>
           </Details.Item>
         {/if}
@@ -284,11 +318,11 @@
                             onSelect={async () => {
                               let res = await commands.createWorkOrderLaborItem(
                                 {
-                                  work_order_id: work_order.id,
-                                  service_id: service.id,
+                                  workOrderId: workOrder.id,
+                                  serviceId: service.id,
                                   code: service.code,
                                   name: service.name,
-                                  labor_hours: service.labor_hours,
+                                  laborHours: service.laborHours,
                                 },
                               );
                               isPopoverOpen = false;
@@ -345,11 +379,11 @@
 
       <WorkOrderLaborItemMutationSheet
         bind:open={isLaborSheetOpen}
-        work_order_id={work_order.id}
+        work_order_id={workOrder.id}
       />
       <WorkOrderPartItemMutationSheet
         bind:open={isPartsSheetOpen}
-        work_order_id={work_order.id}
+        work_order_id={workOrder.id}
       />
     </div></PageLayout
   >

@@ -65,7 +65,7 @@
           >
             <DateIcon class="size-4 shrink-0" />
             <p class="text-base text-nowrap truncate text-ellipsis">
-              {prettifyIsoDateString(client.created_at, "long")}
+              {prettifyIsoDateString(client.createdAt, "long")}
             </p>
           </div>
         {/if}

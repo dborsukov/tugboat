@@ -28,11 +28,11 @@
 
   let {
     open = $bindable(false),
-    work_order = null,
+    work_order: workOrder = null,
     car_id = null,
   }: Props = $props();
 
-  const isEdit = $derived(!!work_order);
+  const isEdit = $derived(!!workOrder);
   const titleText = $derived(
     isEdit ? "Редагувати наряд-замовлення" : "Створити наряд-замовлення",
   );
@@ -43,16 +43,45 @@
   );
   const formID = "work-order-mutation-form";
 
-  export const workOrderSchema = z.object({
-    odometer_in: z
-      .number({ error: "Вкажіть пробіг" })
-      .nonnegative("Неправильний пробіг")
-      .default(0),
-    rate: z
-      .number({ error: "Вкажіть тариф" })
-      .nonnegative("Неправильний тариф")
-      .default(0),
-  });
+  export const workOrderSchema = z
+    .object({
+      odometerIn: z
+        .number({ error: "Вкажіть пробіг" })
+        .nonnegative("Неправильний пробіг")
+        .default(0),
+      rate: z
+        .number({ error: "Вкажіть тариф" })
+        .nonnegative("Неправильний тариф")
+        .default(0),
+      discountType: z.enum(["Fixed", "Percentage"]).default("Fixed"),
+      discount: z.number({ error: "Вкажіть знижку" }).default(0),
+    })
+    .superRefine((data, ctx) => {
+      if (data.discountType === "Fixed") {
+        if (data.discount < 0) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["discount"],
+            message: "Знижка не може бути від'ємною",
+          });
+        }
+      } else {
+        if (data.discount < 0) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["discount"],
+            message: "Відсоток не може бути від'ємним",
+          });
+        }
+        if (data.discount > 100) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["discount"],
+            message: "Відсоток не може перевищувати 100",
+          });
+        }
+      }
+    });
 
   const form = superForm(defaults(zod4(workOrderSchema)), {
     SPA: true,
@@ -64,9 +93,17 @@
       if (!nativeForm.valid) return;
 
       const rateInCents = Math.round(nativeForm.data.rate * 100);
+      const discountCents =
+        nativeForm.data.discountType === "Fixed"
+          ? Math.round(nativeForm.data.discount * 100)
+          : 0;
+      const discountPercent =
+        nativeForm.data.discountType === "Percentage"
+          ? nativeForm.data.discount
+          : 0;
 
       if (isEdit) {
-        if (work_order === null) {
+        if (workOrder === null) {
           return toast.error("Критична помилка", {
             description:
               'Некоректний стан застосунку("work_order" не ініціалізовано.)',
@@ -74,15 +111,20 @@
           });
         }
         let res = await commands.updateWorkOrder({
-          id: work_order.id,
-          car_id: work_order.car_id,
-          started_at: work_order.started_at,
-          completed_at: work_order.completed_at,
-          odometer_in: nativeForm.data.odometer_in,
-          customer_complaint: work_order.customer_complaint,
-          mechanic_notes: work_order.mechanic_notes,
-          status: work_order.status,
-          rate: rateInCents,
+          id: workOrder.id,
+          carId: workOrder.carId,
+          odometerIn: nativeForm.data.odometerIn,
+          customerComplaint: workOrder.customerComplaint,
+          mechanicNotes: workOrder.mechanicNotes,
+          status: workOrder.status,
+          rateCents: rateInCents,
+          discountType: nativeForm.data.discountType,
+          discountCents,
+          discountPercent,
+          startedAt: workOrder.startedAt,
+          completedAt: workOrder.completedAt,
+          paidAt: workOrder.paidAt,
+          paymentMethod: workOrder.paymentMethod,
         });
         if (res.status === "ok") {
           appStore.updateWorkOrder(res.data);
@@ -103,13 +145,15 @@
         let new_id = `WO-${sqidsEncode(Date.now())}`;
         let res = await commands.createWorkOrder({
           id: new_id,
-          car_id: car_id,
-          created_at: new Date().toISOString(),
-          odometer_in: nativeForm.data.odometer_in,
+          carId: car_id,
+          odometerIn: nativeForm.data.odometerIn,
           status: "Received",
-          customer_complaint: null,
-          mechanic_notes: null,
-          rate: rateInCents,
+          customerComplaint: null,
+          mechanicNotes: null,
+          rateCents: rateInCents,
+          discountType: nativeForm.data.discountType,
+          discountCents,
+          discountPercent,
         });
         if (res.status === "ok") {
           appStore.createWorkOrder(res.data);
@@ -130,9 +174,14 @@
 
   $effect(() => {
     if (open) {
-      if (work_order) {
-        $formData.odometer_in = work_order.odometer_in;
-        $formData.rate = work_order.rate / 100;
+      if (workOrder) {
+        $formData.odometerIn = workOrder.odometerIn;
+        $formData.rate = workOrder.rateCents / 100;
+        $formData.discountType = workOrder.discountType;
+        $formData.discount =
+          workOrder.discountType === "Fixed"
+            ? workOrder.discountCents / 100
+            : workOrder.discountPercent;
       } else {
         form.reset();
       }
@@ -162,7 +211,7 @@
       id={formID}
       class="flex flex-col p-6 gap-4 overflow-y-auto h-full"
     >
-      <Form.Field {form} name="odometer_in">
+      <Form.Field {form} name="odometerIn">
         <Form.Control>
           {#snippet children({ props })}
             <Label>Одометр(пробіг)</Label>
@@ -171,7 +220,7 @@
                 type="number"
                 min="0"
                 {...props}
-                bind:value={$formData.odometer_in}
+                bind:value={$formData.odometerIn}
                 class="flex-1"
               />
               <p>км.</p>
@@ -180,6 +229,7 @@
         </Form.Control>
         <Form.FieldErrors />
       </Form.Field>
+
       <Form.Field {form} name="rate">
         <Form.Control>
           {#snippet children({ props })}
@@ -204,6 +254,63 @@
                 class="flex-1 bg-input/50 focus-visible:border-ring focus-visible:ring-ring/30 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 h-8 rounded-2xl border border-transparent px-2.5 py-1 text-base transition-[color,box-shadow] duration-200 file:h-6 file:text-sm file:font-medium focus-visible:ring-3 aria-invalid:ring-3 md:text-sm file:text-foreground placeholder:text-muted-foreground w-full min-w-0 outline-none file:inline-flex file:border-0 file:bg-transparent disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
               />
               <p>грн./год.</p>
+            </div>
+          {/snippet}
+        </Form.Control>
+        <Form.FieldErrors />
+      </Form.Field>
+
+      <Form.Field {form} name="discount">
+        <Form.Control>
+          {#snippet children({ props })}
+            <Label>Знижка</Label>
+            <div class="flex flex-col gap-2">
+              <div class="flex gap-2">
+                <Button
+                  type="button"
+                  variant={$formData.discountType === "Fixed"
+                    ? "default"
+                    : "outline"}
+                  class="flex-1"
+                  onclick={() => ($formData.discountType = "Fixed")}
+                >
+                  Фіксована
+                </Button>
+                <Button
+                  type="button"
+                  variant={$formData.discountType === "Percentage"
+                    ? "default"
+                    : "outline"}
+                  class="flex-1"
+                  onclick={() => ($formData.discountType = "Percentage")}
+                >
+                  Відсоток
+                </Button>
+              </div>
+              <div class="flex gap-2 items-baseline">
+                {#if $formData.discountType === "Fixed"}
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    {...props}
+                    bind:value={$formData.discount}
+                    class="flex-1"
+                  />
+                  <p>грн.</p>
+                {:else}
+                  <Input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    {...props}
+                    bind:value={$formData.discount}
+                    class="flex-1"
+                  />
+                  <p>%</p>
+                {/if}
+              </div>
             </div>
           {/snippet}
         </Form.Control>

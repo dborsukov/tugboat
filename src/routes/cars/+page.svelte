@@ -35,12 +35,12 @@
 
     return appStore.cars
       .map((car) => {
-        const brand = appStore.car_brands.find((b) => b.id === car.brand_id);
+        const brand = appStore.carBrands.find((b) => b.id === car.brandId);
         const modelName = `${brand?.name ?? ""} ${car.model ?? ""}`.trim();
-        const owner = appStore.clients.find((c) => c.id === car.client_id);
+        const owner = appStore.clients.find((c) => c.id === car.clientId);
 
         const modelRank = rankItem(modelName, query);
-        const plateRank = rankItem(car.registration ?? "", query);
+        const plateRank = rankItem(car.licensePlate ?? "", query);
         const vinRank = rankItem(car.vin ?? "", query);
         const ownerRank = rankItem(owner?.name ?? "", query);
 
@@ -71,14 +71,14 @@
       case "date-asc":
         sorted.sort(
           (a, b) =>
-            new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
         );
         break;
       case "date-desc":
       default:
         sorted.sort(
           (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         );
         break;
     }

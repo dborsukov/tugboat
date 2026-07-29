@@ -2,9 +2,9 @@ PRAGMA foreign_keys = ON;
 
 CREATE TABLE clients (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
     name TEXT NOT NULL,
-    phone TEXT UNIQUE
+    phone TEXT UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 
 CREATE TABLE car_brands (
@@ -25,11 +25,11 @@ CREATE TABLE cars (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     client_id INTEGER NOT NULL,
     brand_id INTEGER NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
     model TEXT NOT NULL,
     year INTEGER NOT NULL,
-    registration TEXT UNIQUE,
+    license_plate TEXT UNIQUE,
     vin TEXT UNIQUE,
+    created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
     FOREIGN KEY (brand_id) REFERENCES car_brands (id) ON DELETE RESTRICT
 );
@@ -38,22 +38,25 @@ CREATE TABLE services (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     code TEXT,
     name TEXT NOT NULL,
-    labor_hours REAL NOT NULL DEFAULT 1.0,
-    is_archived INTEGER NOT NULL DEFAULT 0
+    labor_hours REAL NOT NULL DEFAULT 1.0
 );
 
 CREATE TABLE work_orders (
     id TEXT PRIMARY KEY,
     car_id INTEGER NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    started_at TEXT,
-    completed_at TEXT,
     odometer_in INTEGER NOT NULL,
     customer_complaint TEXT,
     mechanic_notes TEXT,
     status TEXT NOT NULL,
-    rate INTEGER NOT NULL DEFAULT 0,
-    is_archived INTEGER NOT NULL DEFAULT 0,
+    rate_cents INTEGER NOT NULL DEFAULT 0,
+    discount_type TEXT NOT NULL,
+    discount_cents INTEGER NOT NULL DEFAULT 0,
+    discount_percent REAL NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    started_at TEXT,
+    completed_at TEXT,
+    paid_at TEXT,
+    payment_method TEXT,
     FOREIGN KEY (car_id) REFERENCES cars (id) ON DELETE RESTRICT
 );
 
@@ -75,7 +78,8 @@ CREATE TABLE work_order_part_items (
     name TEXT NOT NULL,
     quantity REAL NOT NULL DEFAULT 1.0,
     unit_type TEXT NOT NULL DEFAULT "шт",
-    unit_price_cents INTEGER NOT NULL DEFAULT 0,
+    cost_cents INTEGER NOT NULL DEFAULT 0,
+    markup REAL NOT NULL DEFAULT 0,
     status TEXT NOT NULL,
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE
 );

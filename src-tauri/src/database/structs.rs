@@ -54,21 +54,24 @@ pub struct AppSettings {
     // Thrid-party: Specta
     specta::Type,
 )]
+#[serde(rename_all = "camelCase")]
 pub struct Client {
     #[specta(type = specta_typescript::Number)]
     pub id: i64,
-    pub created_at: DateTime<Utc>,
     pub name: String,
     pub phone: Option<String>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateClientPayload {
     pub name: String,
     pub phone: Option<String>,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateClientPayload {
     pub name: String,
     pub phone: Option<String>,
@@ -86,6 +89,7 @@ pub struct UpdateClientPayload {
     // Thrid-party: Specta
     specta::Type,
 )]
+#[serde(rename_all = "camelCase")]
 pub struct CarBrand {
     #[specta(type = specta_typescript::Number)]
     pub id: i64,
@@ -105,6 +109,7 @@ pub struct CarBrand {
     // Thrid-party: Specta
     specta::Type,
 )]
+#[serde(rename_all = "camelCase")]
 pub struct Car {
     #[specta(type = specta_typescript::Number)]
     pub id: i64,
@@ -112,15 +117,16 @@ pub struct Car {
     pub client_id: i64,
     #[specta(type = specta_typescript::Number)]
     pub brand_id: i64,
-    pub created_at: DateTime<Utc>,
     pub model: String,
     #[specta(type = specta_typescript::Number)]
     pub year: i64,
-    pub registration: Option<String>,
+    pub license_plate: Option<String>,
     pub vin: Option<String>,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateCarPayload {
     #[specta(type = specta_typescript::Number)]
     pub client_id: i64,
@@ -129,11 +135,12 @@ pub struct CreateCarPayload {
     pub model: String,
     #[specta(type = specta_typescript::Number)]
     pub year: i64,
-    pub registration: Option<String>,
+    pub license_plate: Option<String>,
     pub vin: Option<String>,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateCarPayload {
     #[specta(type = specta_typescript::Number)]
     pub client_id: i64,
@@ -142,7 +149,7 @@ pub struct UpdateCarPayload {
     pub model: String,
     #[specta(type = specta_typescript::Number)]
     pub year: i64,
-    pub registration: Option<String>,
+    pub license_plate: Option<String>,
     pub vin: Option<String>,
 }
 
@@ -158,6 +165,7 @@ pub struct UpdateCarPayload {
     // Thrid-party: Specta
     specta::Type,
 )]
+#[serde(rename_all = "camelCase")]
 pub struct Service {
     #[specta(type = specta_typescript::Number)]
     pub id: i64,
@@ -168,6 +176,7 @@ pub struct Service {
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateServicePayload {
     pub code: Option<String>,
     pub name: String,
@@ -176,6 +185,7 @@ pub struct CreateServicePayload {
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateServicePayload {
     pub code: Option<String>,
     pub name: String,
@@ -214,57 +224,42 @@ pub enum WorkOrderStatus {
     // Builtins
     Debug,
     Clone,
+    Copy,
+    // Comparisons and hashing
+    PartialEq,
+    Eq,
     // Thrid-party: Serde
     Serialize,
     Deserialize,
     // Thrid-party: Sqlx
-    FromRow,
-    // Thrid-party: Specta
+    sqlx::Type,
     specta::Type,
 )]
-pub struct WorkOrder {
-    pub id: String,
-    #[specta(type = specta_typescript::Number)]
-    pub car_id: i64,
-    pub created_at: String,
-    pub started_at: Option<String>,
-    pub completed_at: Option<String>,
-    pub odometer_in: i32,
-    pub customer_complaint: Option<String>,
-    pub mechanic_notes: Option<String>,
-    pub status: WorkOrderStatus,
-    #[specta(type = specta_typescript::Number)]
-    pub rate: i64,
-    pub is_archived: bool,
+#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+pub enum DiscountType {
+    Fixed,
+    Percentage,
 }
 
-#[derive(Debug, Deserialize, specta::Type)]
-pub struct CreateWorkOrderPayload {
-    pub id: String,
-    #[specta(type = specta_typescript::Number)]
-    pub car_id: i64,
-    pub created_at: String,
-    pub odometer_in: i32,
-    pub customer_complaint: Option<String>,
-    pub mechanic_notes: Option<String>,
-    pub status: WorkOrderStatus,
-    #[specta(type = specta_typescript::Number)]
-    pub rate: i64,
-}
-
-#[derive(Debug, Deserialize, specta::Type)]
-pub struct UpdateWorkOrderPayload {
-    pub id: String,
-    #[specta(type = specta_typescript::Number)]
-    pub car_id: i64,
-    pub started_at: Option<String>,
-    pub completed_at: Option<String>,
-    pub odometer_in: i32,
-    pub customer_complaint: Option<String>,
-    pub mechanic_notes: Option<String>,
-    pub status: WorkOrderStatus,
-    #[specta(type = specta_typescript::Number)]
-    pub rate: i64,
+#[derive(
+    // Builtins
+    Debug,
+    Clone,
+    Copy,
+    // Comparisons and hashing
+    PartialEq,
+    Eq,
+    // Thrid-party: Serde
+    Serialize,
+    Deserialize,
+    // Thrid-party: Sqlx
+    sqlx::Type,
+    specta::Type,
+)]
+#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+pub enum PaymentMethod {
+    Cash,
+    Card,
 }
 
 #[derive(
@@ -279,6 +274,84 @@ pub struct UpdateWorkOrderPayload {
     // Thrid-party: Specta
     specta::Type,
 )]
+#[serde(rename_all = "camelCase")]
+pub struct WorkOrder {
+    pub id: String,
+    #[specta(type = specta_typescript::Number)]
+    pub car_id: i64,
+    pub odometer_in: i32,
+    pub customer_complaint: Option<String>,
+    pub mechanic_notes: Option<String>,
+    pub status: WorkOrderStatus,
+    #[specta(type = specta_typescript::Number)]
+    pub rate_cents: i64,
+    pub discount_type: DiscountType,
+    #[specta(type = specta_typescript::Number)]
+    pub discount_cents: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub discount_percent: f64,
+    pub created_at: DateTime<Utc>,
+    pub started_at: Option<DateTime<Utc>>,
+    pub completed_at: Option<DateTime<Utc>>,
+    pub paid_at: Option<DateTime<Utc>>,
+    pub payment_method: Option<PaymentMethod>,
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateWorkOrderPayload {
+    pub id: String,
+    #[specta(type = specta_typescript::Number)]
+    pub car_id: i64,
+    pub odometer_in: i32,
+    pub customer_complaint: Option<String>,
+    pub mechanic_notes: Option<String>,
+    pub status: WorkOrderStatus,
+    #[specta(type = specta_typescript::Number)]
+    pub rate_cents: i64,
+    pub discount_type: DiscountType,
+    #[specta(type = specta_typescript::Number)]
+    pub discount_cents: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub discount_percent: f64,
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateWorkOrderPayload {
+    pub id: String,
+    #[specta(type = specta_typescript::Number)]
+    pub car_id: i64,
+    pub odometer_in: i32,
+    pub customer_complaint: Option<String>,
+    pub mechanic_notes: Option<String>,
+    pub status: WorkOrderStatus,
+    #[specta(type = specta_typescript::Number)]
+    pub rate_cents: i64,
+    pub discount_type: DiscountType,
+    #[specta(type = specta_typescript::Number)]
+    pub discount_cents: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub discount_percent: f64,
+    pub started_at: Option<DateTime<Utc>>,
+    pub completed_at: Option<DateTime<Utc>>,
+    pub paid_at: Option<DateTime<Utc>>,
+    pub payment_method: Option<PaymentMethod>,
+}
+
+#[derive(
+    // Builtins
+    Debug,
+    Clone,
+    // Thrid-party: Serde
+    Serialize,
+    Deserialize,
+    // Thrid-party: Sqlx
+    FromRow,
+    // Thrid-party: Specta
+    specta::Type,
+)]
+#[serde(rename_all = "camelCase")]
 pub struct WorkOrderLaborItem {
     #[specta(type = specta_typescript::Number)]
     pub id: i64,
@@ -292,6 +365,7 @@ pub struct WorkOrderLaborItem {
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateWorkOrderLaborItemPayload {
     pub work_order_id: String,
     #[specta(type = Option<specta_typescript::Number>)]
@@ -303,6 +377,7 @@ pub struct CreateWorkOrderLaborItemPayload {
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateWorkOrderLaborItemPayload {
     #[specta(type = Option<specta_typescript::Number>)]
     pub service_id: Option<i64>,
@@ -351,6 +426,7 @@ pub enum PartStatus {
     // Thrid-party: Specta
     specta::Type,
 )]
+#[serde(rename_all = "camelCase")]
 pub struct WorkOrderPartItem {
     #[specta(type = specta_typescript::Number)]
     pub id: i64,
@@ -361,11 +437,14 @@ pub struct WorkOrderPartItem {
     pub quantity: f64,
     pub unit_type: String,
     #[specta(type = specta_typescript::Number)]
-    pub unit_price_cents: i64,
+    pub cost_cents: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub markup: f64,
     pub status: PartStatus,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateWorkOrderPartItemPayload {
     pub work_order_id: String,
     pub code: Option<String>,
@@ -374,11 +453,14 @@ pub struct CreateWorkOrderPartItemPayload {
     pub quantity: f64,
     pub unit_type: String,
     #[specta(type = specta_typescript::Number)]
-    pub unit_price_cents: i64,
+    pub cost_cents: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub markup: f64,
     pub status: PartStatus,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateWorkOrderPartItemPayload {
     pub code: Option<String>,
     pub name: String,
@@ -386,6 +468,8 @@ pub struct UpdateWorkOrderPartItemPayload {
     pub quantity: f64,
     pub unit_type: String,
     #[specta(type = specta_typescript::Number)]
-    pub unit_price_cents: i64,
+    pub cost_cents: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub markup: f64,
     pub status: PartStatus,
 }

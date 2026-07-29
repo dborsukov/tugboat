@@ -2,7 +2,6 @@
   import { MaskPatterns, PatternText } from "svelte-number-format";
 
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
-  import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
   import PhoneIcon from "@lucide/svelte/icons/phone";
 
   import { goto } from "$app/navigation";
@@ -13,7 +12,6 @@
 
   import { prettifyIsoDateString } from "$lib/misc";
 
-  import Button from "$lib/components/ui/button/button.svelte";
   import * as Card from "$lib/components/ui/card/index.js";
   import * as Details from "$lib/components/ui/details/index";
 
@@ -31,22 +29,28 @@
   let client = $derived(
     appStore.clients.find((c) => c.id.toString() === data.id) as Client,
   );
-  let cars = $derived(appStore.cars.filter((c) => c.client_id === client.id));
+  let cars = $derived(appStore.cars.filter((c) => c.clientId === client.id));
   let clientWorkOrders = $derived.by(() => {
     const carIds = new Set(cars.map((c) => c.id));
-    return appStore.work_orders
-      .filter((wo) => carIds.has(wo.car_id))
+    return appStore.workOrders
+      .filter((wo) => carIds.has(wo.carId))
       .sort(
         (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
   });
 
   const tableData = $derived(
     clientWorkOrders.map((order) => {
-      const car = appStore.cars.find((c) => c.id === order.car_id);
-      const carBrand = appStore.car_brands.find((c) => c.id === car?.brand_id);
-      const client = appStore.clients.find((c) => c.id === car?.client_id);
+      const car = appStore.cars.find((c) => c.id === order.carId);
+      const carBrand = appStore.carBrands.find((c) => c.id === car?.brandId);
+      const client = appStore.clients.find((c) => c.id === car?.clientId);
+      const labor = appStore.workOrderLaborItems.filter(
+        (i) => i.workOrderId === order.id,
+      );
+      const parts = appStore.workOrderPartItems.filter(
+        (i) => i.workOrderId === order.id,
+      );
       if (car === undefined || client === undefined || carBrand === undefined) {
         throw new Error("Elements missing from appStore");
       }
@@ -55,6 +59,8 @@
         car,
         carBrand,
         client,
+        labor,
+        parts,
       };
     }),
   );
@@ -110,7 +116,7 @@
             <Details.Icon icon={CalendarPlusIcon} /> Створено
           </Details.Title>
           <Details.Content>
-            {prettifyIsoDateString(client.created_at, "long")}
+            {prettifyIsoDateString(client.createdAt, "long")}
           </Details.Content>
         </Details.Item>
       </Details.Card>

@@ -31,11 +31,11 @@
     work_order_id = null,
   }: Props = $props();
 
-  let work_order_item = $derived(
-    appStore.work_order_part_items.find((i) => i.id === id) ?? null,
+  let workOrderItem = $derived(
+    appStore.workOrderPartItems.find((i) => i.id === id) ?? null,
   );
 
-  const isEdit = $derived(!!work_order_item);
+  const isEdit = $derived(!!workOrderItem);
   const titleText = $derived(
     isEdit ? "Редагувати запчастину" : "Створити запчастину",
   );
@@ -51,18 +51,23 @@
   );
 
   const workOrderItemSchema = z.object({
+    status: z.string().default("Quoted"),
     code: z.string().nullable(),
     name: z.string().min(1, { error: "Вкажіть назву" }),
     quantity: z
       .number({ error: "Вкажіть кількість" })
       .nonnegative("Неправильна кількість")
       .default(1),
-    unit_type: z.string().min(1, { error: "Вкажіть одиницю вимірювання" }),
-    unit_price_cents: z
+    unitType: z.string().min(1, { error: "Вкажіть одиницю вимірювання" }),
+    cost: z
       .number({ error: "Вкажіть ціну" })
       .nonnegative("Неправильна ціна")
       .default(0),
-    status: z.string().default("Quoted"),
+    markup: z
+      .number({ error: "Вкажіть націнку у відсотках" })
+      .min(0, "Неправильний відсоток")
+      .max(100, "Неправильний відсоток")
+      .default(0),
   });
 
   const form = superForm(defaults(zod4(workOrderItemSchema)), {
@@ -76,12 +81,13 @@
       if (!nativeForm.valid) return;
 
       const payload = {
+        status: nativeForm.data.status as PartStatus,
         code: nativeForm.data.code,
         name: nativeForm.data.name,
         quantity: nativeForm.data.quantity,
-        unit_type: nativeForm.data.unit_type,
-        unit_price_cents: nativeForm.data.unit_price_cents * 100,
-        status: nativeForm.data.status as PartStatus,
+        unitType: nativeForm.data.unitType,
+        costCents: nativeForm.data.cost * 100,
+        markup: nativeForm.data.markup,
       };
 
       if (isEdit && id) {
@@ -99,7 +105,7 @@
           return;
         }
         let res = await commands.createWorkOrderPartItem({
-          work_order_id,
+          workOrderId: work_order_id,
           ...payload,
         });
         if (res.status === "ok") {
@@ -120,16 +126,17 @@
 
   $effect(() => {
     if (open) {
-      if (work_order_item) {
-        $formData.code = work_order_item.code;
-        $formData.name = work_order_item.name;
-        $formData.quantity = work_order_item.quantity;
-        $formData.unit_type = work_order_item.unit_type;
-        $formData.unit_price_cents = work_order_item.unit_price_cents / 100;
-        $formData.status = work_order_item.status;
+      if (workOrderItem) {
+        $formData.status = workOrderItem.status;
+        $formData.code = workOrderItem.code;
+        $formData.name = workOrderItem.name;
+        $formData.quantity = workOrderItem.quantity;
+        $formData.unitType = workOrderItem.unitType;
+        $formData.cost = workOrderItem.costCents / 100;
+        $formData.markup = workOrderItem.markup;
       } else {
         form.reset();
-        $formData.unit_type = "штука";
+        $formData.unitType = "штука";
       }
     }
   });
@@ -207,11 +214,11 @@
         <Form.FieldErrors />
       </Form.Field>
 
-      <Form.Field {form} name="unit_type">
+      <Form.Field {form} name="unitType">
         <Form.Control>
           {#snippet children({ props })}
             <Label>Одиниці вимірювання</Label>
-            <Input {...props} bind:value={$formData.unit_type} />
+            <Input {...props} bind:value={$formData.unitType} />
           {/snippet}
         </Form.Control>
         <div class="flex gap-2 items-center">
@@ -219,27 +226,27 @@
             variant="outline"
             size="sm"
             onclick={() => {
-              $formData.unit_type = "штука";
+              $formData.unitType = "штука";
             }}>штука</Button
           >
           <Button
             variant="outline"
             size="sm"
             onclick={() => {
-              $formData.unit_type = "літр";
+              $formData.unitType = "літр";
             }}>літр</Button
           >
         </div>
         <Form.FieldErrors />
       </Form.Field>
 
-      <Form.Field {form} name="unit_price_cents">
+      <Form.Field {form} name="cost">
         <Form.Control>
           {#snippet children({ props })}
             <Label>Ціна</Label>
             <div class="flex gap-2 items-baseline" {...props}>
               <NumericFormat
-                bind:value={$formData.unit_price_cents}
+                bind:value={$formData.cost}
                 onkeydown={(e: KeyboardEvent) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -257,6 +264,24 @@
                 class="flex-1 bg-input/50 focus-visible:border-ring focus-visible:ring-ring/30 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 h-8 rounded-2xl border border-transparent px-2.5 py-1 text-base transition-[color,box-shadow] duration-200 file:h-6 file:text-sm file:font-medium focus-visible:ring-3 aria-invalid:ring-3 md:text-sm file:text-foreground placeholder:text-muted-foreground w-full min-w-0 outline-none file:inline-flex file:border-0 file:bg-transparent disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
               />
               <p>грн.</p>
+            </div>
+          {/snippet}
+        </Form.Control>
+        <Form.FieldErrors />
+      </Form.Field>
+
+      <Form.Field {form} name="markup">
+        <Form.Control>
+          {#snippet children({ props })}
+            <Label>Націнка</Label>
+            <div class="flex gap-2 items-baseline" {...props}>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                bind:value={$formData.markup}
+              />
+              <p>%</p>
             </div>
           {/snippet}
         </Form.Control>

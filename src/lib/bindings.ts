@@ -4,8 +4,6 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
 /** Commands */
 export const commands = {
-	archiveService: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("archive_service", { id })),
-	archiveWorkOrder: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("archive_work_order", { id })),
 	createCar: (payload: CreateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("create_car", { payload })),
 	createClient: (payload: CreateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("create_client", { payload })),
 	createService: (payload: CreateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("create_service", { payload })),
@@ -14,6 +12,8 @@ export const commands = {
 	createWorkOrderPartItem: (payload: CreateWorkOrderPartItemPayload) => typedError<WorkOrderPartItem, AppError>(__TAURI_INVOKE("create_work_order_part_item", { payload })),
 	deleteCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_car", { id })),
 	deleteClient: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_client", { id })),
+	deleteService: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_service", { id })),
+	deleteWorkOrder: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order", { id })),
 	deleteWorkOrderLaborItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order_labor_item", { id })),
 	deleteWorkOrderPartItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order_part_item", { id })),
 	fetchCarBrands: () => typedError<CarBrand[], AppError>(__TAURI_INVOKE("fetch_car_brands")),
@@ -43,34 +43,34 @@ export type AppSettings = {
 
 export type Car = {
 	id: number,
-	client_id: number,
-	brand_id: number,
-	created_at: string,
+	clientId: number,
+	brandId: number,
 	model: string,
 	year: number,
-	registration: string | null,
+	licensePlate: string | null,
 	vin: string | null,
+	createdAt: string,
 };
 
 export type CarBrand = {
 	id: number,
 	name: string,
-	icon_slug: string,
+	iconSlug: string,
 };
 
 export type Client = {
 	id: number,
-	created_at: string,
 	name: string,
 	phone: string | null,
+	createdAt: string,
 };
 
 export type CreateCarPayload = {
-	client_id: number,
-	brand_id: number,
+	clientId: number,
+	brandId: number,
 	model: string,
 	year: number,
-	registration: string | null,
+	licensePlate: string | null,
 	vin: string | null,
 };
 
@@ -82,55 +82,62 @@ export type CreateClientPayload = {
 export type CreateServicePayload = {
 	code: string | null,
 	name: string,
-	labor_hours: number,
+	laborHours: number,
 };
 
 export type CreateWorkOrderLaborItemPayload = {
-	work_order_id: string,
-	service_id: number | null,
+	workOrderId: string,
+	serviceId: number | null,
 	code: string | null,
 	name: string,
-	labor_hours: number,
+	laborHours: number,
 };
 
 export type CreateWorkOrderPartItemPayload = {
-	work_order_id: string,
+	workOrderId: string,
 	code: string | null,
 	name: string,
 	quantity: number,
-	unit_type: string,
-	unit_price_cents: number,
+	unitType: string,
+	costCents: number,
+	markup: number,
 	status: PartStatus,
 };
 
 export type CreateWorkOrderPayload = {
 	id: string,
-	car_id: number,
-	created_at: string,
-	odometer_in: number,
-	customer_complaint: string | null,
-	mechanic_notes: string | null,
+	carId: number,
+	odometerIn: number,
+	customerComplaint: string | null,
+	mechanicNotes: string | null,
 	status: WorkOrderStatus,
-	rate: number,
+	rateCents: number,
+	discountType: DiscountType,
+	discountCents: number,
+	discountPercent: number,
 };
 
+export type DiscountType = "Fixed" | "Percentage";
+
 export type PartStatus = "Quoted" | "Ordered" | "InStock" | "Installing" | "Installed" | "AwaitingReturn" | "Returned" | "Warranty";
+
+export type PaymentMethod = "Cash" | "Card";
 
 export type Service = {
 	id: number,
 	code: string | null,
 	name: string,
-	labor_hours: number,
+	laborHours: number,
 };
 
 export type ThemeMode = "light" | "dark" | "system";
 
 export type UpdateCarPayload = {
-	client_id: number,
-	brand_id: number,
+	clientId: number,
+	brandId: number,
 	model: string,
 	year: number,
-	registration: string | null,
+	licensePlate: string | null,
 	vin: string | null,
 };
 
@@ -142,68 +149,79 @@ export type UpdateClientPayload = {
 export type UpdateServicePayload = {
 	code: string | null,
 	name: string,
-	labor_hours: number,
+	laborHours: number,
 };
 
 export type UpdateWorkOrderLaborItemPayload = {
-	service_id: number | null,
+	serviceId: number | null,
 	code: string | null,
 	name: string,
-	labor_hours: number,
+	laborHours: number,
 };
 
 export type UpdateWorkOrderPartItemPayload = {
 	code: string | null,
 	name: string,
 	quantity: number,
-	unit_type: string,
-	unit_price_cents: number,
+	unitType: string,
+	costCents: number,
+	markup: number,
 	status: PartStatus,
 };
 
 export type UpdateWorkOrderPayload = {
 	id: string,
-	car_id: number,
-	started_at: string | null,
-	completed_at: string | null,
-	odometer_in: number,
-	customer_complaint: string | null,
-	mechanic_notes: string | null,
+	carId: number,
+	odometerIn: number,
+	customerComplaint: string | null,
+	mechanicNotes: string | null,
 	status: WorkOrderStatus,
-	rate: number,
+	rateCents: number,
+	discountType: DiscountType,
+	discountCents: number,
+	discountPercent: number,
+	startedAt: string | null,
+	completedAt: string | null,
+	paidAt: string | null,
+	paymentMethod: PaymentMethod | null,
 };
 
 export type WorkOrder = {
 	id: string,
-	car_id: number,
-	created_at: string,
-	started_at: string | null,
-	completed_at: string | null,
-	odometer_in: number,
-	customer_complaint: string | null,
-	mechanic_notes: string | null,
+	carId: number,
+	odometerIn: number,
+	customerComplaint: string | null,
+	mechanicNotes: string | null,
 	status: WorkOrderStatus,
-	rate: number,
-	is_archived: boolean,
+	rateCents: number,
+	discountType: DiscountType,
+	discountCents: number,
+	discountPercent: number,
+	createdAt: string,
+	startedAt: string | null,
+	completedAt: string | null,
+	paidAt: string | null,
+	paymentMethod: PaymentMethod | null,
 };
 
 export type WorkOrderLaborItem = {
 	id: number,
-	work_order_id: string,
-	service_id: number | null,
+	workOrderId: string,
+	serviceId: number | null,
 	code: string | null,
 	name: string,
-	labor_hours: number,
+	laborHours: number,
 };
 
 export type WorkOrderPartItem = {
 	id: number,
-	work_order_id: string,
+	workOrderId: string,
 	code: string | null,
 	name: string,
 	quantity: number,
-	unit_type: string,
-	unit_price_cents: number,
+	unitType: string,
+	costCents: number,
+	markup: number,
 	status: PartStatus,
 };
 

@@ -10,11 +10,6 @@ import CurrencyDisplay from "$lib/components/currency-display.svelte";
 import DataTableActions from "./data-table-part-actions.svelte";
 import PartStatusSelector from "./part-status-selector.svelte";
 
-const currencyFormatter = new Intl.NumberFormat("uk-UA", {
-  style: "currency",
-  currency: "UAH",
-});
-
 export const columns: ColumnDef<WorkOrderPartItem>[] = [
   {
     accessorKey: "status",
@@ -54,13 +49,33 @@ export const columns: ColumnDef<WorkOrderPartItem>[] = [
   {
     accessorKey: "quantity",
     header: "Кількість",
+    cell: ({ row }) => {
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () =>
+              `<div class="text-center">${row.original.quantity}</div>`,
+          };
+        }),
+      );
+    },
   },
   {
-    accessorKey: "unit_type",
+    accessorKey: "unitType",
     header: "Од. вим.",
+    cell: ({ row }) => {
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () =>
+              `<div class="text-center">${row.original.unitType}</div>`,
+          };
+        }),
+      );
+    },
   },
   {
-    accessorKey: "unit_price_cents",
+    accessorKey: "costCents",
     header: () => {
       return renderSnippet(
         createRawSnippet(() => {
@@ -72,9 +87,52 @@ export const columns: ColumnDef<WorkOrderPartItem>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(CurrencyDisplay, {
-        cents: row.original.unit_price_cents,
+        cents: row.original.costCents,
         suffix: "грн.",
-        class: "font-medium justify-end",
+        class: "justify-end",
+      });
+    },
+  },
+  {
+    id: "markup",
+    header: () => {
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () => `<div class="text-end">Націнка</div>`,
+          };
+        }),
+      );
+    },
+    cell: ({ row }) => {
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () =>
+              `<div class="text-center">${row.original.markup} %</div>`,
+          };
+        }),
+      );
+    },
+  },
+  {
+    id: "price_cents",
+    header: () => {
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () => `<div class="text-end">Відпускна ціна</div>`,
+          };
+        }),
+      );
+    },
+    cell: ({ row }) => {
+      return renderComponent(CurrencyDisplay, {
+        cents: Math.round(
+          row.original.costCents * (1 + row.original.markup / 100),
+        ),
+        suffix: "грн.",
+        class: "justify-end",
       });
     },
   },
@@ -91,7 +149,9 @@ export const columns: ColumnDef<WorkOrderPartItem>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(CurrencyDisplay, {
-        cents: row.original.quantity * row.original.unit_price_cents,
+        cents:
+          row.original.quantity *
+          Math.round(row.original.costCents * (1 + row.original.markup / 100)),
         suffix: "грн.",
         class: "font-medium justify-end",
       });

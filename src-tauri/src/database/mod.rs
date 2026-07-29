@@ -32,7 +32,7 @@ pub async fn update_settings(
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_clients(state: State<'_, crate::AppState>) -> AppResult<Vec<Client>> {
-    let clients: Vec<Client> = sqlx::query_as("SELECT * FROM clients")
+    let clients: Vec<Client> = sqlx::query_as("SELECT id, name, phone, created_at FROM clients")
         .fetch_all(&state.db_pool)
         .await?;
     Ok(clients)
@@ -41,16 +41,18 @@ pub async fn fetch_clients(state: State<'_, crate::AppState>) -> AppResult<Vec<C
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_cars(state: State<'_, crate::AppState>) -> AppResult<Vec<Car>> {
-    let cars: Vec<Car> = sqlx::query_as("SELECT * FROM cars")
-        .fetch_all(&state.db_pool)
-        .await?;
+    let cars: Vec<Car> = sqlx::query_as(
+        "SELECT id, client_id, brand_id, model, year, license_plate, vin, created_at FROM cars",
+    )
+    .fetch_all(&state.db_pool)
+    .await?;
     Ok(cars)
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_car_brands(state: State<'_, crate::AppState>) -> AppResult<Vec<CarBrand>> {
-    let car_brands: Vec<CarBrand> = sqlx::query_as("SELECT * FROM car_brands")
+    let car_brands: Vec<CarBrand> = sqlx::query_as("SELECT id, name, icon_slug FROM car_brands")
         .fetch_all(&state.db_pool)
         .await?;
     Ok(car_brands)
@@ -59,7 +61,7 @@ pub async fn fetch_car_brands(state: State<'_, crate::AppState>) -> AppResult<Ve
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_services(state: State<'_, crate::AppState>) -> AppResult<Vec<Service>> {
-    let services: Vec<Service> = sqlx::query_as("SELECT * FROM services")
+    let services: Vec<Service> = sqlx::query_as("SELECT id, code, name, labor_hours FROM services")
         .fetch_all(&state.db_pool)
         .await?;
     Ok(services)
@@ -68,7 +70,7 @@ pub async fn fetch_services(state: State<'_, crate::AppState>) -> AppResult<Vec<
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_work_orders(state: State<'_, crate::AppState>) -> AppResult<Vec<WorkOrder>> {
-    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT * FROM work_orders")
+    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate_cents, discount_type, discount_cents, discount_percent, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders")
         .fetch_all(&state.db_pool)
         .await?;
     Ok(work_orders)
@@ -79,10 +81,11 @@ pub async fn fetch_work_orders(state: State<'_, crate::AppState>) -> AppResult<V
 pub async fn fetch_work_order_labor_items(
     state: State<'_, crate::AppState>,
 ) -> AppResult<Vec<WorkOrderLaborItem>> {
-    let work_order_labor_items: Vec<WorkOrderLaborItem> =
-        sqlx::query_as("SELECT * FROM work_order_labor_items")
-            .fetch_all(&state.db_pool)
-            .await?;
+    let work_order_labor_items: Vec<WorkOrderLaborItem> = sqlx::query_as(
+        "SELECT id, work_order_id, service_id, code, name, labor_hours FROM work_order_labor_items",
+    )
+    .fetch_all(&state.db_pool)
+    .await?;
     Ok(work_order_labor_items)
 }
 
@@ -92,7 +95,7 @@ pub async fn fetch_work_order_part_items(
     state: State<'_, crate::AppState>,
 ) -> AppResult<Vec<WorkOrderPartItem>> {
     let work_order_part_items: Vec<WorkOrderPartItem> =
-        sqlx::query_as("SELECT * FROM work_order_part_items")
+        sqlx::query_as("SELECT id, work_order_id, code, name, quantity, unit_type, cost_cents, markup, status FROM work_order_part_items")
             .fetch_all(&state.db_pool)
             .await?;
     Ok(work_order_part_items)
@@ -121,10 +124,10 @@ pub async fn update_client(
     payload: UpdateClientPayload,
 ) -> AppResult<Client> {
     let client: Client =
-        sqlx::query_as("UPDATE clients SET name = $1, phone = $2 WHERE id = $3 RETURNING *")
+        sqlx::query_as("UPDATE clients SET name = $2, phone = $3 WHERE id = $1 RETURNING *")
+            .bind(id)
             .bind(payload.name)
             .bind(payload.phone)
-            .bind(id)
             .fetch_one(&state.db_pool)
             .await?;
     Ok(client)
@@ -152,12 +155,12 @@ pub async fn create_car(
     payload: CreateCarPayload,
 ) -> AppResult<Car> {
     let car: Car =
-        sqlx::query_as("INSERT INTO cars (client_id, brand_id, model, year, registration, vin) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *")
+        sqlx::query_as("INSERT INTO cars (client_id, brand_id, model, year, license_plate, vin) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *")
             .bind(payload.client_id)
             .bind(payload.brand_id)
             .bind(payload.model)
             .bind(payload.year)
-            .bind(payload.registration)
+            .bind(payload.license_plate)
             .bind(payload.vin)
             .fetch_one(&state.db_pool)
             .await?;
@@ -172,13 +175,13 @@ pub async fn update_car(
     payload: UpdateCarPayload,
 ) -> AppResult<Car> {
     let car: Car =
-        sqlx::query_as("UPDATE cars SET client_id = $2, brand_id = $3, model = $4, year = $5, registration = $6, vin = $7  WHERE id = $1 RETURNING *")
+        sqlx::query_as("UPDATE cars SET client_id = $2, brand_id = $3, model = $4, year = $5, license_plate = $6, vin = $7  WHERE id = $1 RETURNING *")
             .bind(id)
             .bind(payload.client_id)
             .bind(payload.brand_id)
             .bind(payload.model)
             .bind(payload.year)
-            .bind(payload.registration)
+            .bind(payload.license_plate)
             .bind(payload.vin)
             .fetch_one(&state.db_pool)
             .await?;
@@ -238,8 +241,8 @@ pub async fn update_service(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn archive_service(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
-    let result = sqlx::query("UPDATE services SET is_archived = 1 WHERE id = $1")
+pub async fn delete_service(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
+    let result = sqlx::query("DELETE FROM services WHERE id = $1")
         .bind(id)
         .execute(&state.db_pool)
         .await?;
@@ -258,15 +261,17 @@ pub async fn create_work_order(
     payload: CreateWorkOrderPayload,
 ) -> AppResult<WorkOrder> {
     let work_order: WorkOrder =
-        sqlx::query_as("INSERT INTO work_orders (id, car_id, created_at, odometer_in, customer_complaint, mechanic_notes, status, rate) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *")
+        sqlx::query_as("INSERT INTO work_orders (id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate_cents, discount_type, discount_cents, discount_percent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *")
             .bind(payload.id)
             .bind(payload.car_id)
-            .bind(payload.created_at)
             .bind(payload.odometer_in)
             .bind(payload.customer_complaint)
             .bind(payload.mechanic_notes)
             .bind(payload.status)
-            .bind(payload.rate)
+            .bind(payload.rate_cents)
+            .bind(payload.discount_type)
+            .bind(payload.discount_cents)
+            .bind(payload.discount_percent)
             .fetch_one(&state.db_pool)
             .await?;
     Ok(work_order)
@@ -279,16 +284,22 @@ pub async fn update_work_order(
     payload: UpdateWorkOrderPayload,
 ) -> AppResult<WorkOrder> {
     let work_order: WorkOrder = sqlx::query_as(
-        "UPDATE work_orders SET car_id = $2, completed_at = $3, odometer_in = $4, customer_complaint = $5, mechanic_notes = $6, status = $7, rate = $8 WHERE id = $1 RETURNING *",
+        "UPDATE work_orders SET car_id = $2, odometer_in = $3, customer_complaint = $4, mechanic_notes = $5, status = $6, rate_cents = $7, discount_type = $8, discount_cents = $9, discount_percent = $10, started_at = $11, completed_at = $12, paid_at = $13, payment_method = $14 WHERE id = $1 RETURNING *",
     )
     .bind(payload.id)
     .bind(payload.car_id)
-    .bind(payload.completed_at)
     .bind(payload.odometer_in)
     .bind(payload.customer_complaint)
     .bind(payload.mechanic_notes)
     .bind(payload.status)
-    .bind(payload.rate)
+    .bind(payload.rate_cents)
+    .bind(payload.discount_type)
+    .bind(payload.discount_cents)
+    .bind(payload.discount_percent)
+    .bind(payload.started_at)
+    .bind(payload.completed_at)
+    .bind(payload.paid_at)
+    .bind(payload.payment_method)
     .fetch_one(&state.db_pool)
     .await?;
     Ok(work_order)
@@ -296,8 +307,8 @@ pub async fn update_work_order(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn archive_work_order(state: State<'_, crate::AppState>, id: String) -> AppResult<()> {
-    let result = sqlx::query("UPDATE work_orders SET is_archived = 1 WHERE id = $1")
+pub async fn delete_work_order(state: State<'_, crate::AppState>, id: String) -> AppResult<()> {
+    let result = sqlx::query("DELETE FROM work_orders WHERE id = $1")
         .bind(id)
         .execute(&state.db_pool)
         .await?;
@@ -372,13 +383,14 @@ pub async fn create_work_order_part_item(
     payload: CreateWorkOrderPartItemPayload,
 ) -> AppResult<WorkOrderPartItem> {
     let work_order_part_item: WorkOrderPartItem =
-        sqlx::query_as("INSERT INTO work_order_part_items (work_order_id, code, name, quantity, unit_type, unit_price_cents, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *")
+        sqlx::query_as("INSERT INTO work_order_part_items (work_order_id, code, name, quantity, unit_type, cost_cents, markup, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *")
             .bind(payload.work_order_id)
             .bind(payload.code)
             .bind(payload.name)
             .bind(payload.quantity)
             .bind(payload.unit_type)
-            .bind(payload.unit_price_cents)
+            .bind(payload.cost_cents)
+            .bind(payload.markup)
             .bind(payload.status)
             .fetch_one(&state.db_pool)
             .await?;
@@ -393,14 +405,15 @@ pub async fn update_work_order_part_item(
     payload: UpdateWorkOrderPartItemPayload,
 ) -> AppResult<WorkOrderPartItem> {
     let work_order_part_item: WorkOrderPartItem = sqlx::query_as(
-        "UPDATE work_order_part_items SET code = $2, name = $3, quantity = $4, unit_type = $5, unit_price_cents = $6, status = $7 WHERE id = $1 RETURNING *",
+        "UPDATE work_order_part_items SET code = $2, name = $3, quantity = $4, unit_type = $5, cost_cents = $6, markup = $7, status = $8 WHERE id = $1 RETURNING *",
     )
         .bind(id)
         .bind(payload.code)
         .bind(payload.name)
         .bind(payload.quantity)
         .bind(payload.unit_type)
-        .bind(payload.unit_price_cents)
+        .bind(payload.cost_cents)
+        .bind(payload.markup)
         .bind(payload.status)
         .fetch_one(&state.db_pool)
         .await?;

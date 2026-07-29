@@ -21,9 +21,9 @@
   let isDeleteDialogOpen: boolean = $state(false);
 
   async function handleDelete() {
-    let res = await commands.archiveService(id);
+    let res = await commands.deleteService(id);
     if (res.status === "ok") {
-      appStore.archiveService(id);
+      appStore.deleteService(id);
     } else {
       toast.error("Виникла помилка", {
         description: res.error.message,

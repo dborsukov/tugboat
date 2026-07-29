@@ -24,12 +24,11 @@
   }
   let { car, short = false, class: className, ...restProps }: Props = $props();
 
-  let owner = $derived(appStore.clients.find((c) => c.id === car.client_id));
-  let brand = $derived(appStore.car_brands.find((b) => b.id === car.brand_id));
-  let slug = $derived(brand != undefined ? brand.icon_slug : "");
+  let owner = $derived(appStore.clients.find((c) => c.id === car.clientId));
+  let brand = $derived(appStore.carBrands.find((b) => b.id === car.brandId));
+  let slug = $derived(brand != undefined ? brand.iconSlug : "");
 </script>
 
-<!-- TODO: add nav_from prop to add easy reverse navigation -->
 <Card.Root
   class={cn(
     "overflow-hidden transition-all duration-200 rounded hover:shadow-lg hover:border-muted-foreground/30",
@@ -78,11 +77,11 @@
         <span class="text-muted-foreground flex items-center gap-2">
           <HashIcon class="size-4 text-muted-foreground/70" /> Номерний знак
         </span>
-        {#if car.registration}
+        {#if car.licensePlate}
           <span
             class="font-mono font-semibold uppercase tracking-wider bg-muted px-2 py-0.5 rounded text-xs border"
           >
-            {car.registration}
+            {car.licensePlate}
           </span>
         {:else}
           <span class="text-muted-foreground/50 italic text">Не вказано</span>

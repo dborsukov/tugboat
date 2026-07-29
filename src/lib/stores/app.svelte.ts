@@ -26,12 +26,12 @@ class AppStore {
   settings: AppSettings = $state({ theme: "system" });
 
   clients: Client[] = $state([]);
-  car_brands: CarBrand[] = $state([]);
+  carBrands: CarBrand[] = $state([]);
   cars: Car[] = $state([]);
   services: Service[] = $state([]);
-  work_orders: WorkOrder[] = $state([]);
-  work_order_labor_items: WorkOrderLaborItem[] = $state([]);
-  work_order_part_items: WorkOrderPartItem[] = $state([]);
+  workOrders: WorkOrder[] = $state([]);
+  workOrderLaborItems: WorkOrderLaborItem[] = $state([]);
+  workOrderPartItems: WorkOrderPartItem[] = $state([]);
 
   loaded = $state(false);
   loading = $state(false);
@@ -67,12 +67,12 @@ class AppStore {
 
     this.settings = settings;
     this.clients = clients;
-    this.car_brands = brands;
+    this.carBrands = brands;
     this.cars = cars;
     this.services = services;
-    this.work_orders = work_orders;
-    this.work_order_labor_items = work_order_labor_items;
-    this.work_order_part_items = work_order_part_items;
+    this.workOrders = work_orders;
+    this.workOrderLaborItems = work_order_labor_items;
+    this.workOrderPartItems = work_order_part_items;
     this.version = version;
 
     this.loading = false;
@@ -92,21 +92,15 @@ class AppStore {
   }
 
   createWorkOrder(work_order: WorkOrder) {
-    this.work_orders = [...this.work_orders, work_order];
+    this.workOrders = [...this.workOrders, work_order];
   }
 
   createWorkOrderLaborItem(work_order_item: WorkOrderLaborItem) {
-    this.work_order_labor_items = [
-      ...this.work_order_labor_items,
-      work_order_item,
-    ];
+    this.workOrderLaborItems = [...this.workOrderLaborItems, work_order_item];
   }
 
   createWorkOrderPartItem(work_order_item: WorkOrderPartItem) {
-    this.work_order_part_items = [
-      ...this.work_order_part_items,
-      work_order_item,
-    ];
+    this.workOrderPartItems = [...this.workOrderPartItems, work_order_item];
   }
 
   updateSettings(settings: AppSettings) {
@@ -130,22 +124,21 @@ class AppStore {
   }
 
   updateWorkOrder(updated: WorkOrder) {
-    this.work_orders = this.work_orders.map((work_order) =>
+    this.workOrders = this.workOrders.map((work_order) =>
       work_order.id === updated.id ? updated : work_order,
     );
   }
 
   updateWorkOrderLaborItem(updated: WorkOrderLaborItem) {
-    this.work_order_labor_items = this.work_order_labor_items.map(
+    this.workOrderLaborItems = this.workOrderLaborItems.map(
       (work_order_item) =>
         work_order_item.id === updated.id ? updated : work_order_item,
     );
   }
 
   updateWorkOrderPartItem(updated: WorkOrderPartItem) {
-    this.work_order_part_items = this.work_order_part_items.map(
-      (work_order_item) =>
-        work_order_item.id === updated.id ? updated : work_order_item,
+    this.workOrderPartItems = this.workOrderPartItems.map((work_order_item) =>
+      work_order_item.id === updated.id ? updated : work_order_item,
     );
   }
 
@@ -158,25 +151,23 @@ class AppStore {
   }
 
   removeWorkOrderLaborItem(id: number) {
-    this.work_order_labor_items = this.work_order_labor_items.filter(
+    this.workOrderLaborItems = this.workOrderLaborItems.filter(
       (item) => item.id !== id,
     );
   }
 
   removeWorkOrderPartItem(id: number) {
-    this.work_order_part_items = this.work_order_part_items.filter(
+    this.workOrderPartItems = this.workOrderPartItems.filter(
       (item) => item.id !== id,
     );
   }
 
-  // FIXME: actually change is_archive instead of removing
-  archiveService(id: number) {
+  deleteService(id: number) {
     this.services = this.services.filter((service) => service.id !== id);
   }
 
-  // FIXME: actually change is_archive instead of removing
-  archiveWorkOrder(id: string) {
-    this.work_orders = this.work_orders.filter(
+  deleteWorkOrder(id: string) {
+    this.workOrders = this.workOrders.filter(
       (work_order) => work_order.id !== id,
     );
   }

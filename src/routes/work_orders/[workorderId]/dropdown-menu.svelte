@@ -27,10 +27,10 @@
   let isDeleteDialogOpen = $state(false);
 
   async function handleDelete() {
-    let res = await commands.archiveWorkOrder(work_order.id);
+    let res = await commands.deleteWorkOrder(work_order.id);
     if (res.status === "ok") {
       await goto("/work_orders");
-      appStore.archiveWorkOrder(work_order.id);
+      appStore.deleteWorkOrder(work_order.id);
       toast.success("Замовлення видалено");
     } else {
       toast.error("Виникла помилка", {

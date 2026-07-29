@@ -1,7 +1,6 @@
 <script lang="ts">
   import WorkOrderIcon from "@lucide/svelte/icons/briefcase-business";
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
-  import ChevronLeftIcon from "@lucide/svelte/icons/chevron-left";
   import FingerprintIcon from "@lucide/svelte/icons/fingerprint-pattern";
   import HashIcon from "@lucide/svelte/icons/hash";
   import GotoIcon from "@lucide/svelte/icons/square-arrow-out-up-right";
@@ -37,17 +36,23 @@
   let car = $derived(
     appStore.cars.find((c) => c.id.toString() === data.id) as Car,
   );
-  let owner = $derived(appStore.clients.find((c) => c.id === car.client_id));
-  let brand = $derived(appStore.car_brands.find((b) => b.id === car.brand_id));
-  let slug = $derived(brand != undefined ? brand.icon_slug : "");
+  let owner = $derived(appStore.clients.find((c) => c.id === car.clientId));
+  let brand = $derived(appStore.carBrands.find((b) => b.id === car.brandId));
+  let slug = $derived(brand != undefined ? brand.iconSlug : "");
   let carWorkOrders = $derived.by(() => {
-    return appStore.work_orders.filter((wo) => wo.car_id === car.id);
+    return appStore.workOrders.filter((wo) => wo.carId === car.id);
   });
 
   const tableData = $derived(
     carWorkOrders.map((order) => {
-      const carBrand = appStore.car_brands.find((c) => c.id === car?.brand_id);
-      const client = appStore.clients.find((c) => c.id === car?.client_id);
+      const carBrand = appStore.carBrands.find((c) => c.id === car?.brandId);
+      const client = appStore.clients.find((c) => c.id === car?.clientId);
+      const labor = appStore.workOrderLaborItems.filter(
+        (i) => i.workOrderId === order.id,
+      );
+      const parts = appStore.workOrderPartItems.filter(
+        (i) => i.workOrderId === order.id,
+      );
       if (car === undefined || client === undefined || carBrand === undefined) {
         throw new Error("Elements missing from appStore");
       }
@@ -56,6 +61,8 @@
         car,
         carBrand,
         client,
+        labor,
+        parts,
       };
     }),
   );
@@ -144,14 +151,14 @@
             <Details.Icon icon={HashIcon} /> Номерний знак
           </Details.Title>
           <Details.Content>
-            {#if car.registration != undefined}
+            {#if car.licensePlate != undefined}
               <div class="flex items-center gap-2">
                 <p
                   class="px-2 py-0.5 font-mono uppercase tracking-wider bg-muted rounded border"
                 >
-                  {car.registration}
+                  {car.licensePlate}
                 </p>
-                <CopyButton variant="ghost" text={car.registration} />
+                <CopyButton variant="ghost" text={car.licensePlate} />
               </div>
             {:else}
               Не вказано
@@ -184,7 +191,7 @@
             <Details.Icon icon={CalendarPlusIcon} /> Створено
           </Details.Title>
           <Details.Content>
-            {prettifyIsoDateString(car.created_at, "long")}
+            {prettifyIsoDateString(car.createdAt, "long")}
           </Details.Content>
         </Details.Item>
       </Details.Card>
