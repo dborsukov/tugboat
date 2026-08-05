@@ -1,6 +1,8 @@
 <script lang="ts">
   import { createQueries } from "@tanstack/svelte-query";
 
+  import { page } from "$app/state";
+
   import WorkOrdersIcon from "@lucide/svelte/icons/briefcase-business";
   import CarsIcon from "@lucide/svelte/icons/car";
   import CustomerIcon from "@lucide/svelte/icons/circle-user";
@@ -10,16 +12,12 @@
   import SettingsIcon from "@lucide/svelte/icons/settings";
   import WrenchIcon from "@lucide/svelte/icons/wrench";
 
-  import { page } from "$app/state";
-
-  import { commands } from "$lib/bindings";
-
-  import { unwrap } from "$lib/misc";
-
   import { useSidebar } from "$lib/components/ui/sidebar/index.js";
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
 
   import PopeyeIcon from "$lib/components/icons/popeye.svelte";
+
+  import { commands } from "$lib/bindings";
 
   import { carsCountQueryOptions } from "../../routes/cars/queries";
   import { clientsCountQueryOptions } from "../../routes/clients/queries";

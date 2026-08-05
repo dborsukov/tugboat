@@ -1,14 +1,14 @@
 import type { ColumnDef } from "@tanstack/table-core";
 import { createRawSnippet } from "svelte";
 
-import type { WorkOrderPartItem } from "$lib/bindings";
-
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
 import CurrencyDisplay from "$lib/components/currency-display.svelte";
 
-import DataTableActions from "./data-table-part-actions.svelte";
+import type { WorkOrderPartItem } from "$lib/bindings";
+
 import PartStatusSelector from "./part-status-selector.svelte";
+import DataTableActions from "./part-table-actions-cell.svelte";
 
 export interface PartsTableMeta {
   onEdit: (id: number) => void;

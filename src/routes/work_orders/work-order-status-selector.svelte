@@ -3,16 +3,15 @@
 
   import ChevronsUpDown from "@lucide/svelte/icons/chevrons-up-down";
 
-  import { type WorkOrder, type WorkOrderStatus } from "$lib/bindings";
-
-  import { cn } from "$lib/utils";
-
   import { Button } from "$lib/components/ui/button";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
   import Spinner from "$lib/components/ui/spinner/spinner.svelte";
 
+  import { type WorkOrder, type WorkOrderStatus } from "$lib/bindings";
+  import { cn } from "$lib/utils";
+
   import { createUpdateWorkOrderMutation } from "./queries";
-  import { statuses, statusStyles } from "./status";
+  import { statuses, statusStyles } from "./work-order-status";
 
   let {
     workOrder,

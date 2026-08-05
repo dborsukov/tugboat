@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
-  import { cn } from "$lib/utils";
-
   import * as Card from "$lib/components/ui/card/index";
+
+  import { cn } from "$lib/utils";
 
   let {
     children,

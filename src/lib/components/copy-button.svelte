@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { UseClipboard } from "$lib/hooks/use-clipboard.svelte";
-
   import CopiedIcon from "@lucide/svelte/icons/check";
   import CopyIcon from "@lucide/svelte/icons/copy";
+
+  import { UseClipboard } from "$lib/hooks/use-clipboard.svelte";
 
   import Button, { type ButtonProps } from "./ui/button/button.svelte";
 

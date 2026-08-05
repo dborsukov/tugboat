@@ -1,6 +1,8 @@
 <script lang="ts">
   import { createQueries } from "@tanstack/svelte-query";
 
+  import { goto } from "$app/navigation";
+
   import WorkOrderIcon from "@lucide/svelte/icons/briefcase-business";
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
   import FingerprintIcon from "@lucide/svelte/icons/fingerprint-pattern";
@@ -8,23 +10,21 @@
   import GotoIcon from "@lucide/svelte/icons/square-arrow-out-up-right";
   import UserIcon from "@lucide/svelte/icons/user";
 
-  import { goto } from "$app/navigation";
-
-  import { prettifyIsoDateString } from "$lib/misc";
-
   import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
   import * as Card from "$lib/components/ui/card/index";
-  import * as Details from "$lib/components/ui/details/index";
   import Skeleton from "$lib/components/ui/skeleton/skeleton.svelte";
 
   import LogoLoader from "$lib/components/car-logo-loader.svelte";
   import CopyButton from "$lib/components/copy-button.svelte";
   import DataTable from "$lib/components/data-table/data-table.svelte";
   import { buildTable } from "$lib/components/data-table/table-builder.svelte";
+  import * as Details from "$lib/components/details/index";
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
+
+  import { prettifyIsoDateString } from "$lib/tools";
 
   import ClientBadge from "../../clients/client-badge.svelte";
   import { clientsQueryOptions } from "../../clients/queries";

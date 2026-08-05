@@ -10,9 +10,11 @@
   import { Toaster } from "$lib/components/ui/sonner/index.js";
 
   import AppSidebar from "$lib/components/app-sidebar.svelte";
-  import { navHistory } from "$lib/components/nav-history.svelte";
+
+  import { navHistory } from "$lib/states/nav-history.svelte";
 
   let { children } = $props();
+
   const queryClient = new QueryClient();
 
   navHistory.init();

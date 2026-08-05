@@ -1,15 +1,8 @@
 <script lang="ts">
   import { compareItems, rankItem } from "@tanstack/match-sorter-utils";
-  import { createQuery } from "@tanstack/svelte-query";
 
   import SortIcon from "@lucide/svelte/icons/arrow-up-down";
   import PlusIcon from "@lucide/svelte/icons/plus";
-  import RefreshIcon from "@lucide/svelte/icons/refresh-cw";
-
-  import { commands, type Client } from "$lib/bindings";
-
-  import { unwrap } from "$lib/misc";
-  import { keys } from "$lib/query-keys";
 
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";

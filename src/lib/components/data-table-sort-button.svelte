@@ -3,9 +3,9 @@
   import ArrowUpIcon from "@lucide/svelte/icons/chevron-up";
   import ArrowUpDownIcon from "@lucide/svelte/icons/chevrons-up-down";
 
-  import { cn } from "$lib/utils";
-
   import { Button, type ButtonProps } from "$lib/components/ui/button/index.js";
+
+  import { cn } from "$lib/utils";
 
   interface Props extends ButtonProps {
     disabled?: boolean;

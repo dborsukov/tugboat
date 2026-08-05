@@ -6,9 +6,8 @@ import {
 import { toast } from "svelte-sonner";
 
 import { commands, type AppSettings } from "$lib/bindings";
-
-import { unwrap } from "$lib/misc";
 import { keys } from "$lib/query-keys";
+import { unwrap } from "$lib/tools";
 
 export function settingsQueryOptions() {
   return {

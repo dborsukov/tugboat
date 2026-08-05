@@ -1,9 +1,9 @@
 <script lang="ts">
   import { createQueries } from "@tanstack/svelte-query";
 
-  import FunnelXIcon from "@lucide/svelte/icons/funnel-x";
-
   import { goto } from "$app/navigation";
+
+  import FunnelXIcon from "@lucide/svelte/icons/funnel-x";
 
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
@@ -24,8 +24,8 @@
     workOrdersQueryOptions,
     workOrderTotalsQueryOptions,
   } from "./queries";
-  import { statusFilterOptions } from "./status";
   import { buildWorkOrderListItems } from "./types";
+  import { statusFilterOptions } from "./work-order-status";
 
   let inputValue: string = $state("");
   let searchInputEl = $state<HTMLInputElement | null>(null);

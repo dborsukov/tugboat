@@ -4,7 +4,6 @@
     createQueries,
     useQueryClient,
   } from "@tanstack/svelte-query";
-  import { TableActionState } from "$lib/states/table-actions.svelte";
   import { NumericText } from "svelte-number-format";
   import { toast } from "svelte-sonner";
 
@@ -19,15 +18,10 @@
   import ReceiptTextIcon from "@lucide/svelte/icons/receipt-text";
   import WrenchIcon from "@lucide/svelte/icons/wrench";
 
-  import { commands } from "$lib/bindings";
-
-  import { prettifyIsoDateString, unwrap } from "$lib/misc";
-
   import * as ButtonGroup from "$lib/components/ui/button-group/index.js";
   import Button from "$lib/components/ui/button/button.svelte";
   import * as Card from "$lib/components/ui/card/index";
   import * as Command from "$lib/components/ui/command/index.js";
-  import * as Details from "$lib/components/ui/details/index";
   import * as Popover from "$lib/components/ui/popover/index.js";
   import { Skeleton } from "$lib/components/ui/skeleton";
 
@@ -35,9 +29,14 @@
   import DataTable from "$lib/components/data-table/data-table.svelte";
   import { buildTable } from "$lib/components/data-table/table-builder.svelte";
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
+  import * as Details from "$lib/components/details/index";
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
+
+  import { commands } from "$lib/bindings";
+  import { TableActionState } from "$lib/states/table-actions.svelte";
+  import { prettifyIsoDateString, unwrap } from "$lib/tools";
 
   import CarCard from "../../cars/car-card.svelte";
   import { carBrandsQueryOptions, carsQueryOptions } from "../../cars/queries";
@@ -52,19 +51,15 @@
     workOrdersQueryOptions,
     workOrderTotalsQueryOptions,
   } from "../queries";
-  import StatusSelector from "../status-selector.svelte";
+  import StatusSelector from "../work-order-status-selector.svelte";
   import DropdownMenu from "./dropdown-menu.svelte";
   import {
     columns as laborColumns,
     type LaborTableMeta,
   } from "./labor-columns";
-  import {
-    columns as partsColumns,
-    type PartsTableMeta,
-  } from "./parts-columns";
-  import WorkOrderLaborItemMutationSheet from "./work-order-labor-item-mutation-sheet.svelte";
-  import WorkOrderPartItemMutationSheet from "./work-order-parts-item-mutation-sheet.svelte";
-  import WorkOrderPartsItemMutationSheet from "./work-order-parts-item-mutation-sheet.svelte";
+  import WorkOrderLaborItemMutationSheet from "./labor-item-mutation-sheet.svelte";
+  import { columns as partsColumns, type PartsTableMeta } from "./part-columns";
+  import WorkOrderPartsItemMutationSheet from "./part-item-mutation-sheet.svelte";
 
   let { params } = $props();
 

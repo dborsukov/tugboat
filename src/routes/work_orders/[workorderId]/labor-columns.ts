@@ -1,13 +1,13 @@
 import type { ColumnDef } from "@tanstack/table-core";
 import { createRawSnippet } from "svelte";
 
-import type { WorkOrderLaborItem } from "$lib/bindings";
-
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
 import CurrencyDisplay from "$lib/components/currency-display.svelte";
 
-import DataTableActions from "./data-table-labor-actions.svelte";
+import type { WorkOrderLaborItem } from "$lib/bindings";
+
+import DataTableActions from "./labor-table-actions-cell.svelte";
 
 export interface LaborTableMeta {
   rate: number;

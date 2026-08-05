@@ -5,14 +5,13 @@
   import HashIcon from "@lucide/svelte/icons/hash";
   import UserIcon from "@lucide/svelte/icons/user";
 
-  import type { Car, CarBrand, Client } from "$lib/bindings";
-
-  import { cn } from "$lib/utils";
-
   import { Badge } from "$lib/components/ui/badge";
   import * as Card from "$lib/components/ui/card";
 
   import LogoLoader from "$lib/components/car-logo-loader.svelte";
+
+  import type { Car, CarBrand, Client } from "$lib/bindings";
+  import { cn } from "$lib/utils";
 
   import ClientBadge from "../clients/client-badge.svelte";
 

@@ -5,12 +5,11 @@
   import DateIcon from "@lucide/svelte/icons/calendar-plus";
   import PhoneIcon from "@lucide/svelte/icons/phone";
 
-  import type { Client } from "$lib/bindings";
-
-  import { cn } from "$lib/utils";
-  import { prettifyIsoDateString } from "$lib/misc";
-
   import * as Card from "$lib/components/ui/card";
+
+  import type { Client } from "$lib/bindings";
+  import { prettifyIsoDateString } from "$lib/tools";
+  import { cn } from "$lib/utils";
 
   import ClientAvatar from "./client-avatar.svelte";
 

@@ -1,13 +1,13 @@
 import type { ColumnDef } from "@tanstack/table-core";
 import { createRawSnippet } from "svelte";
 
-import type { Service } from "$lib/bindings";
-
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
 import DataTableSortButton from "$lib/components/data-table-sort-button.svelte";
 
-import DataTableActions from "./data-table-actions.svelte";
+import type { Service } from "$lib/bindings";
+
+import DataTableActions from "./table-actions-cell.svelte";
 
 export interface ServiceTableMeta {
   onEdit: (id: number) => void;

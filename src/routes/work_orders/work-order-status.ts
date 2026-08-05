@@ -9,9 +9,9 @@ import PaidIcon from "@lucide/svelte/icons/receipt";
 import InDiagnosticsIcon from "@lucide/svelte/icons/stethoscope";
 import WorkingIcon from "@lucide/svelte/icons/wrench";
 
-import type { WorkOrderStatus } from "$lib/bindings";
-
 import type { FacetedFilterOptions } from "$lib/components/data-table-faceted-filter/faceted-filter-options";
+
+import type { WorkOrderStatus } from "$lib/bindings";
 
 export const statuses: WorkOrderStatus[] = [
   "Received",

@@ -6,11 +6,11 @@
   import ChevronsLeftIcon from "@lucide/svelte/icons/chevrons-left";
   import ChevronsRightIcon from "@lucide/svelte/icons/chevrons-right";
 
-  import { cn } from "$lib/utils";
-
   import { Button } from "$lib/components/ui/button";
   import { FlexRender } from "$lib/components/ui/data-table";
   import * as TableUI from "$lib/components/ui/table/index.js";
+
+  import { cn } from "$lib/utils";
 
   let {
     table,

@@ -1,17 +1,17 @@
 import type { ColumnDef } from "@tanstack/table-core";
 import { createRawSnippet } from "svelte";
 
-import { prettifyIsoDateString } from "$lib/misc";
-
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
 import CurrencyDisplay from "$lib/components/currency-display.svelte";
 import DataTableSortButton from "$lib/components/data-table-sort-button.svelte";
 
+import { prettifyIsoDateString } from "$lib/tools";
+
 import CarBadge from "../cars/car-badge.svelte";
 import ClientBadge from "../clients/client-badge.svelte";
-import StatusSelector from "./status-selector.svelte";
 import type { WorkOrderListItem } from "./types";
+import StatusSelector from "./work-order-status-selector.svelte";
 
 export const columns: ColumnDef<WorkOrderListItem>[] = [
   {

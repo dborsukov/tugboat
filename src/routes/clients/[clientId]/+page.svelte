@@ -1,28 +1,23 @@
 <script lang="ts">
-  import { createQueries, createQuery } from "@tanstack/svelte-query";
+  import { createQueries } from "@tanstack/svelte-query";
   import { MaskPatterns, PatternText } from "svelte-number-format";
-
-  import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
-  import PhoneIcon from "@lucide/svelte/icons/phone";
-  import RefreshIcon from "@lucide/svelte/icons/refresh-cw";
 
   import { goto } from "$app/navigation";
 
-  import { commands } from "$lib/bindings";
+  import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
+  import PhoneIcon from "@lucide/svelte/icons/phone";
 
-  import { prettifyIsoDateString, unwrap } from "$lib/misc";
-  import { keys } from "$lib/query-keys";
-
-  import { Button } from "$lib/components/ui/button";
   import * as Card from "$lib/components/ui/card/index.js";
-  import * as Details from "$lib/components/ui/details/index";
   import { Skeleton } from "$lib/components/ui/skeleton";
 
   import DataTable from "$lib/components/data-table/data-table.svelte";
   import { buildTable } from "$lib/components/data-table/table-builder.svelte";
+  import * as Details from "$lib/components/details/index";
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
+
+  import { prettifyIsoDateString } from "$lib/tools";
 
   import CarCard from "../../cars/car-card.svelte";
   import { carBrandsQueryOptions, carsQueryOptions } from "../../cars/queries";

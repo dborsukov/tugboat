@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { cn } from "$lib/utils.js";
-
   import * as Avatar from "$lib/components/ui/avatar/index.js";
+
+  import { cn } from "$lib/utils.js";
 
   const AVATAR_COLORS = [
     {

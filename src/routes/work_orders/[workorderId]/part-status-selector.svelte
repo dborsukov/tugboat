@@ -11,13 +11,12 @@
   import OrderedIcon from "@lucide/svelte/icons/truck";
   import InstallingIcon from "@lucide/svelte/icons/wrench";
 
-  import { type PartStatus } from "$lib/bindings";
-
-  import { cn } from "$lib/utils";
-
   import { Button } from "$lib/components/ui/button";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
   import Spinner from "$lib/components/ui/spinner/spinner.svelte";
+
+  import { type PartStatus } from "$lib/bindings";
+  import { cn } from "$lib/utils";
 
   let {
     status = $bindable(),

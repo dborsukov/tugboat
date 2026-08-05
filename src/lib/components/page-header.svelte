@@ -6,7 +6,7 @@
 
   import { Button } from "$lib/components/ui/button/index.js";
 
-  import { navHistory } from "./nav-history.svelte.js";
+  import { navHistory } from "../states/nav-history.svelte.js";
 
   let { children }: { children?: Snippet } = $props();
 

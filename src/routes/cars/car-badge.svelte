@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { Car, CarBrand } from "$lib/bindings";
-
   import Badge from "$lib/components/ui/badge/badge.svelte";
 
   import CarLogoLoader from "$lib/components/car-logo-loader.svelte";
+
+  import type { Car, CarBrand } from "$lib/bindings";
 
   let { car, carBrand }: { car: Car; carBrand: CarBrand } = $props();
 

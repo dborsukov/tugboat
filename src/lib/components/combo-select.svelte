@@ -5,11 +5,11 @@
   import CheckIcon from "@lucide/svelte/icons/check";
   import ChevronsUpDownIcon from "@lucide/svelte/icons/chevrons-up-down";
 
-  import { cn } from "$lib/utils";
-
   import { Button } from "$lib/components/ui/button";
   import * as Command from "$lib/components/ui/command";
   import * as Popover from "$lib/components/ui/popover";
+
+  import { cn } from "$lib/utils";
 
   let {
     items,

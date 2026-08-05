@@ -1,9 +1,8 @@
 import { createQuery, QueryClient } from "@tanstack/svelte-query";
 
 import { commands, type Client } from "$lib/bindings";
-
-import { unwrap } from "$lib/misc";
 import { keys } from "$lib/query-keys";
+import { unwrap } from "$lib/tools";
 
 export function clientsQueryOptions() {
   return {

@@ -2,22 +2,20 @@
   import { useQueryClient } from "@tanstack/svelte-query";
   import { resetMode, setMode } from "mode-watcher";
   import { untrack } from "svelte";
-  import { fade, fly } from "svelte/transition";
+  import { fly } from "svelte/transition";
 
   import CheckIcon from "@lucide/svelte/icons/circle-check";
 
-  import { type AppSettings, type ThemeMode } from "$lib/bindings";
-
-  import { keys } from "$lib/query-keys";
-
   import * as Card from "$lib/components/ui/card/index";
-  import { Input } from "$lib/components/ui/input";
   import * as Select from "$lib/components/ui/select/index.js";
   import { Skeleton } from "$lib/components/ui/skeleton";
   import Spinner from "$lib/components/ui/spinner/spinner.svelte";
 
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
+
+  import { type AppSettings, type ThemeMode } from "$lib/bindings";
+  import { keys } from "$lib/query-keys";
 
   import { debounce } from "./debounce";
   import { createSettingsQuery, createUpdateSettingsMutation } from "./queries";

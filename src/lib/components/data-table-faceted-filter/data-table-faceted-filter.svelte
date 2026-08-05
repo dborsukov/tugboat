@@ -4,15 +4,14 @@
 
   import CheckIcon from "@lucide/svelte/icons/check";
   import FunnelIcon from "@lucide/svelte/icons/funnel";
-  import FunnelXIcon from "@lucide/svelte/icons/funnel-x";
-
-  import { cn } from "$lib/utils.js";
 
   import { Badge } from "$lib/components/ui/badge/index.js";
   import { Button } from "$lib/components/ui/button/index.js";
   import * as Command from "$lib/components/ui/command/index.js";
   import * as Popover from "$lib/components/ui/popover/index.js";
   import { Separator } from "$lib/components/ui/separator/index.js";
+
+  import { cn } from "$lib/utils.js";
 
   import type { FacetedFilterOptions } from "./faceted-filter-options";
 
