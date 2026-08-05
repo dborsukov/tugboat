@@ -12,12 +12,11 @@
 
   import { unwrap } from "$lib/misc";
 
-  import { Button } from "$lib/components/ui/button";
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
-  import * as Sheet from "$lib/components/ui/sheet";
-  import { Spinner } from "$lib/components/ui/spinner";
+
+  import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
   import {
     createCreateWorkOrderLaborItemMutation,
@@ -45,10 +44,6 @@
     createCreateWorkOrderLaborItemMutation(queryClient);
 
   const isEdit = $derived(!!laborItem);
-  const titleText = $derived(isEdit ? "Редагувати сервіс" : "Створити сервіс");
-  const descText = $derived(
-    isEdit ? "Змініть дані сервіса тут." : "Внесіть дані нового сервіса тут.",
-  );
   const formID = $derived(
     isEdit
       ? `work-order-labor-item-mutation-form-${id}`
@@ -134,74 +129,54 @@
       }
     }
   });
-
-  function handleCancel() {
-    form.reset();
-    open = false;
-  }
 </script>
 
-<Sheet.Root bind:open>
-  <Sheet.Content
-    side="right"
-    showCloseButton={false}
-    onEscapeKeydown={(e) => e.preventDefault()}
-    onInteractOutside={(e) => e.preventDefault()}
-  >
-    <Sheet.Header>
-      <Sheet.Title>{titleText}</Sheet.Title>
-      <Sheet.Description>{descText}</Sheet.Description>
-    </Sheet.Header>
+<MutationSheetShell
+  bind:open
+  {formID}
+  title={isEdit ? "Редагувати сервіс" : "Створити сервіс"}
+  description={isEdit ? "Змініть дані сервісу" : "Внесіть дані нового сервісу"}
+  submitLabel={isEdit ? "Зберегти зміни" : "Створити"}
+  submitting={$submitting}
+  enhanceAction={enhance}
+  onCancel={() => {
+    form.reset();
+    open = false;
+  }}
+>
+  <Form.Field {form} name="code">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Код</Label>
+        <Input {...props} bind:value={$formData.code} />
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
 
-    <form
-      use:enhance
-      id={formID}
-      class="flex flex-col p-6 gap-4 overflow-y-auto h-full"
-    >
-      <Form.Field {form} name="code">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Label>Код</Label>
-            <Input {...props} bind:value={$formData.code} />
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
+  <Form.Field {form} name="name">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Назва</Label>
+        <Input {...props} bind:value={$formData.name} />
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
 
-      <Form.Field {form} name="name">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Label>Назва</Label>
-            <Input {...props} bind:value={$formData.name} />
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
-
-      <Form.Field {form} name="laborHours">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Label>Норм-години</Label>
-            <Input
-              type="number"
-              step="0.1"
-              min="0"
-              {...props}
-              bind:value={$formData.laborHours}
-            />
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
-    </form>
-    <Sheet.Footer>
-      <Button type="submit" disabled={$submitting} form={formID}>
-        {#if $submitting}<Spinner />{/if}
-        {isEdit ? "Зберегти зміни" : "Створити"}
-      </Button>
-      <Button variant="outline" disabled={$submitting} onclick={handleCancel}>
-        Відмінити та закрити
-      </Button>
-    </Sheet.Footer>
-  </Sheet.Content>
-</Sheet.Root>
+  <Form.Field {form} name="laborHours">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Норм-години</Label>
+        <Input
+          type="number"
+          step="0.1"
+          min="0"
+          {...props}
+          bind:value={$formData.laborHours}
+        />
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+</MutationSheetShell>

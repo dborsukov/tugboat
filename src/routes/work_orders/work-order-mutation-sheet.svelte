@@ -1,9 +1,5 @@
 <script lang="ts">
-  import {
-    createMutation,
-    createQueries,
-    useQueryClient,
-  } from "@tanstack/svelte-query";
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { NumberFormatStyle, NumericFormat } from "svelte-number-format";
   import { toast } from "svelte-sonner";
   import { defaults, superForm } from "sveltekit-superforms";
@@ -12,11 +8,7 @@
 
   import { goto } from "$app/navigation";
 
-  import {
-    commands,
-    type CreateWorkOrderPayload,
-    type UpdateWorkOrderPayload,
-  } from "$lib/bindings";
+  import { commands, type CreateWorkOrderPayload } from "$lib/bindings";
 
   import { sqidsEncode, unwrap } from "$lib/misc";
 
@@ -24,13 +16,13 @@
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
-  import * as Sheet from "$lib/components/ui/sheet";
-  import { Spinner } from "$lib/components/ui/spinner";
+
+  import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
   import {
     createUpdateWorkOrderMutation,
+    createWorkOrdersQuery,
     invalidateWorkOrderLists,
-    workOrdersQueryOptions,
   } from "./queries";
 
   let {
@@ -45,36 +37,11 @@
 
   const queryClient = useQueryClient();
 
-  const combinedQueries = createQueries(() => ({
-    queries: [workOrdersQueryOptions()],
-    combine: (results) => {
-      return {
-        workOrders: results[0],
-
-        isReady: results.every((r) => r.isSuccess),
-        isLoading: results.some((r) => r.isPending),
-        isError: results.some((r) => r.isError),
-        firstError: results.find((r) => r.isError)?.error,
-
-        refetchAll: () => {
-          results.forEach((r) => r.refetch());
-        },
-      };
-    },
-  }));
-
-  let workOrdersList = $derived(combinedQueries.workOrders.data ?? []);
+  let workOrdersQuery = createWorkOrdersQuery();
+  let workOrdersList = $derived(workOrdersQuery.data ?? []);
   let workOrder = $derived(workOrdersList.find((wo) => wo.id === woId) ?? null);
 
   const isEdit = $derived(!!woId);
-  const titleText = $derived(
-    isEdit ? "Редагувати наряд-замовлення" : "Створити наряд-замовлення",
-  );
-  const descText = $derived(
-    isEdit
-      ? "Змініть дані замовлення тут."
-      : "Внесіть дані нового замовлення тут.",
-  );
   const formID = "work-order-mutation-form";
 
   export const workOrderSchema = z
@@ -220,144 +187,126 @@
       }
     }
   });
-
-  function handleCancel() {
-    form.reset();
-    open = false;
-  }
 </script>
 
-<Sheet.Root bind:open>
-  <Sheet.Content
-    side="right"
-    showCloseButton={false}
-    onEscapeKeydown={(e) => e.preventDefault()}
-    onInteractOutside={(e) => e.preventDefault()}
-  >
-    <Sheet.Header>
-      <Sheet.Title>{titleText}</Sheet.Title>
-      <Sheet.Description>{descText}</Sheet.Description>
-    </Sheet.Header>
+<MutationSheetShell
+  bind:open
+  {formID}
+  title={isEdit ? "Редагувати наряд-замовлення" : "Створити наряд-замовлення"}
+  description={isEdit
+    ? "Змініть дані наряду-замовлення"
+    : "Внесіть дані нового наряду-замовлення"}
+  submitLabel={isEdit ? "Зберегти зміни" : "Створити"}
+  submitting={$submitting}
+  enhanceAction={enhance}
+  onCancel={() => {
+    form.reset();
+    open = false;
+  }}
+>
+  <Form.Field {form} name="odometerIn">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Одометр(пробіг)</Label>
+        <div class="flex gap-2 items-baseline">
+          <Input
+            type="number"
+            min="0"
+            {...props}
+            bind:value={$formData.odometerIn}
+            class="flex-1"
+          />
+          <p>км.</p>
+        </div>
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
 
-    <form
-      use:enhance
-      id={formID}
-      class="flex flex-col p-6 gap-4 overflow-y-auto h-full"
-    >
-      <Form.Field {form} name="odometerIn">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Label>Одометр(пробіг)</Label>
-            <div class="flex gap-2 items-baseline">
+  <Form.Field {form} name="rate">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Тариф</Label>
+        <div class="flex gap-2 items-baseline" {...props}>
+          <NumericFormat
+            bind:value={$formData.rate}
+            onkeydown={(e: KeyboardEvent) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const input = e.currentTarget as HTMLInputElement;
+                input.blur();
+                input.closest("form")?.requestSubmit();
+              }
+            }}
+            locale="ua-UK"
+            options={{
+              formatStyle: NumberFormatStyle.Decimal,
+              currency: "UAH",
+              precision: 2,
+            }}
+            class="flex-1 bg-input/50 focus-visible:border-ring focus-visible:ring-ring/30 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 h-8 rounded-2xl border border-transparent px-2.5 py-1 text-base transition-[color,box-shadow] duration-200 file:h-6 file:text-sm file:font-medium focus-visible:ring-3 aria-invalid:ring-3 md:text-sm file:text-foreground placeholder:text-muted-foreground w-full min-w-0 outline-none file:inline-flex file:border-0 file:bg-transparent disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+          />
+          <p>грн./год.</p>
+        </div>
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+
+  <Form.Field {form} name="discount">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Знижка</Label>
+        <div class="flex flex-col gap-2">
+          <div class="flex gap-2">
+            <Button
+              type="button"
+              variant={$formData.discountType === "Fixed"
+                ? "default"
+                : "outline"}
+              class="flex-1"
+              onclick={() => ($formData.discountType = "Fixed")}
+            >
+              Фіксована
+            </Button>
+            <Button
+              type="button"
+              variant={$formData.discountType === "Percentage"
+                ? "default"
+                : "outline"}
+              class="flex-1"
+              onclick={() => ($formData.discountType = "Percentage")}
+            >
+              Відсоток
+            </Button>
+          </div>
+          <div class="flex gap-2 items-baseline">
+            {#if $formData.discountType === "Fixed"}
               <Input
                 type="number"
                 min="0"
+                step="0.01"
                 {...props}
-                bind:value={$formData.odometerIn}
+                bind:value={$formData.discount}
                 class="flex-1"
               />
-              <p>км.</p>
-            </div>
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
-
-      <Form.Field {form} name="rate">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Label>Тариф</Label>
-            <div class="flex gap-2 items-baseline" {...props}>
-              <NumericFormat
-                bind:value={$formData.rate}
-                onkeydown={(e: KeyboardEvent) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    const input = e.currentTarget as HTMLInputElement;
-                    input.blur();
-                    input.closest("form")?.requestSubmit();
-                  }
-                }}
-                locale="ua-UK"
-                options={{
-                  formatStyle: NumberFormatStyle.Decimal,
-                  currency: "UAH",
-                  precision: 2,
-                }}
-                class="flex-1 bg-input/50 focus-visible:border-ring focus-visible:ring-ring/30 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:aria-invalid:border-destructive/50 h-8 rounded-2xl border border-transparent px-2.5 py-1 text-base transition-[color,box-shadow] duration-200 file:h-6 file:text-sm file:font-medium focus-visible:ring-3 aria-invalid:ring-3 md:text-sm file:text-foreground placeholder:text-muted-foreground w-full min-w-0 outline-none file:inline-flex file:border-0 file:bg-transparent disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50"
+              <p>грн.</p>
+            {:else}
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                {...props}
+                bind:value={$formData.discount}
+                class="flex-1"
               />
-              <p>грн./год.</p>
-            </div>
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
-
-      <Form.Field {form} name="discount">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Label>Знижка</Label>
-            <div class="flex flex-col gap-2">
-              <div class="flex gap-2">
-                <Button
-                  type="button"
-                  variant={$formData.discountType === "Fixed"
-                    ? "default"
-                    : "outline"}
-                  class="flex-1"
-                  onclick={() => ($formData.discountType = "Fixed")}
-                >
-                  Фіксована
-                </Button>
-                <Button
-                  type="button"
-                  variant={$formData.discountType === "Percentage"
-                    ? "default"
-                    : "outline"}
-                  class="flex-1"
-                  onclick={() => ($formData.discountType = "Percentage")}
-                >
-                  Відсоток
-                </Button>
-              </div>
-              <div class="flex gap-2 items-baseline">
-                {#if $formData.discountType === "Fixed"}
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    {...props}
-                    bind:value={$formData.discount}
-                    class="flex-1"
-                  />
-                  <p>грн.</p>
-                {:else}
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    {...props}
-                    bind:value={$formData.discount}
-                    class="flex-1"
-                  />
-                  <p>%</p>
-                {/if}
-              </div>
-            </div>
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
-    </form>
-    <Sheet.Footer>
-      <Button type="submit" disabled={$submitting} form={formID}>
-        {#if $submitting}<Spinner />{/if}
-        {isEdit ? "Зберегти зміни" : "Створити"}
-      </Button>
-      <Button variant="outline" disabled={$submitting} onclick={handleCancel}>
-        Відмінити та закрити
-      </Button>
-    </Sheet.Footer>
-  </Sheet.Content>
-</Sheet.Root>
+              <p>%</p>
+            {/if}
+          </div>
+        </div>
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+</MutationSheetShell>

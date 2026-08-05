@@ -4,28 +4,22 @@
     createQueries,
     useQueryClient,
   } from "@tanstack/svelte-query";
-  import { tick } from "svelte";
   import { toast } from "svelte-sonner";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
-
-  import CheckIcon from "@lucide/svelte/icons/check";
-  import ChevronsUpDownIcon from "@lucide/svelte/icons/chevrons-up-down";
 
   import { commands } from "$lib/bindings";
 
   import { cn } from "$lib/utils";
   import { unwrap } from "$lib/misc";
 
-  import { Button } from "$lib/components/ui/button";
-  import * as Command from "$lib/components/ui/command";
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
-  import * as Popover from "$lib/components/ui/popover";
-  import * as Sheet from "$lib/components/ui/sheet";
-  import { Spinner } from "$lib/components/ui/spinner";
+
+  import ComboSelect from "$lib/components/combo-select.svelte";
+  import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
   import ClientBadge from "../clients/client-badge.svelte";
   import { clientsQueryOptions } from "../clients/queries";
@@ -70,32 +64,7 @@
   let car = $derived(carsList.find((c) => c.id === id) ?? null);
 
   const isEdit = $derived(!!car);
-  const titleText = $derived(
-    isEdit ? "Редагувати автомобіль" : "Створити автомобіль",
-  );
-  const descText = $derived(
-    isEdit
-      ? "Змініть дані автомобіля тут."
-      : "Внесіть дані нового автомобіля тут.",
-  );
   const formID = "car-mutation-form";
-
-  let clientComboOpen = $state(false);
-  let clientComboTriggerRef = $state<HTMLButtonElement>(null!);
-  let brandComboOpen = $state(false);
-  let brandComboTriggerRef = $state<HTMLButtonElement>(null!);
-
-  let brandComboSelectedValue = $derived(
-    (combinedQueries.carBrands.data ?? []).find(
-      (b) => b.id === $formData.brandId,
-    )?.name,
-  );
-
-  let selectedClient = $derived(
-    (combinedQueries.clients.data ?? []).find(
-      (c) => c.id === $formData.clientId,
-    ),
-  );
 
   // Standard 2004+ format: 2 region letters, 4 digits, 2 series letters.
   // Only Cyrillic letters that resemble Latin ones are used on real UA plates.
@@ -167,7 +136,6 @@
           (c) => c.licensePlate === data.licensePlate,
         );
         if (!duplicateCar) return true;
-        // Avoid record matching with itself (when editing)
         if (isEdit && duplicateCar.id === car?.id) return true;
         return false;
       },
@@ -180,7 +148,6 @@
       (data) => {
         const duplicateCar = carsList.find((c) => c.vin === data.vin);
         if (!duplicateCar) return true;
-        // Avoid record matching with itself (when editing)
         if (isEdit && duplicateCar.id === car?.id) return true;
         return false;
       },
@@ -272,224 +239,132 @@
       }
     }
   });
-
-  function closeAndFocusClient() {
-    clientComboOpen = false;
-    tick().then(() => clientComboTriggerRef?.focus());
-  }
-
-  function closeAndFocusBrand() {
-    brandComboOpen = false;
-    tick().then(() => brandComboTriggerRef?.focus());
-  }
-
-  function handleCancel() {
-    form.reset();
-    open = false;
-  }
 </script>
 
-<Sheet.Root bind:open>
-  <Sheet.Content
-    side="right"
-    showCloseButton={false}
-    onEscapeKeydown={(e) => e.preventDefault()}
-    onInteractOutside={(e) => e.preventDefault()}
-  >
-    <Sheet.Header>
-      <Sheet.Title>{titleText}</Sheet.Title>
-      <Sheet.Description>{descText}</Sheet.Description>
-    </Sheet.Header>
-
-    <form
-      use:enhance
-      id={formID}
-      class="flex flex-col p-6 gap-4 overflow-y-auto h-full"
-    >
-      <Form.Field {form} name="clientId">
-        <Form.Control>
-          {#snippet children({ props: formProps })}
-            <Label>Власник</Label>
-            <Popover.Root bind:open={clientComboOpen}>
-              <Popover.Trigger bind:ref={clientComboTriggerRef}>
-                {#snippet child({ props: triggerProps })}
-                  <Button
-                    {...formProps}
-                    {...triggerProps}
-                    variant="outline"
-                    class={cn(
-                      "w-full justify-between",
-                      $formData.clientId != -1 && "pl-2",
-                    )}
-                    role="combobox"
-                    aria-expanded={clientComboOpen}
-                  >
-                    {#if selectedClient}
-                      <ClientBadge
-                        name={selectedClient.name}
-                        iconSize="size-5"
-                      />
-                    {:else}
-                      Оберіть власника...
-                    {/if}
-                    <ChevronsUpDownIcon class="opacity-50" />
-                  </Button>
-                {/snippet}
-              </Popover.Trigger>
-              <Popover.Content class="w-full p-0" align="start">
-                <Command.Root>
-                  <Command.Input placeholder="Пошук клієнтів..." />
-                  <Command.List>
-                    <Command.Empty>Клієнта не знайдено.</Command.Empty>
-                    <Command.Group>
-                      {#each combinedQueries.clients.data ?? [] as client (client.id)}
-                        <Command.Item
-                          value={`${client.name}-${client.id}`}
-                          onSelect={() => {
-                            $formData.clientId = client.id;
-                            closeAndFocusClient();
-                          }}
-                        >
-                          <CheckIcon
-                            class={cn(
-                              $formData.clientId !== client.id &&
-                                "text-transparent",
-                            )}
-                          />
-                          <ClientBadge name={client.name} />
-                        </Command.Item>
-                      {/each}
-                    </Command.Group>
-                  </Command.List>
-                </Command.Root>
-              </Popover.Content>
-            </Popover.Root>
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
-
-      <Form.Field {form} name="brandId">
-        <Form.Control>
-          {#snippet children({ props: formProps })}
-            <Label>Марка</Label>
-            <Popover.Root bind:open={brandComboOpen}>
-              <Popover.Trigger bind:ref={brandComboTriggerRef}>
-                {#snippet child({ props: triggerProps })}
-                  <Button
-                    {...formProps}
-                    {...triggerProps}
-                    variant="outline"
-                    class="w-full justify-between"
-                    role="combobox"
-                    aria-expanded={brandComboOpen}
-                  >
-                    {brandComboSelectedValue || "Оберіть марку авто..."}
-                    <ChevronsUpDownIcon class="opacity-50" />
-                  </Button>
-                {/snippet}
-              </Popover.Trigger>
-              <Popover.Content class="w-48 p-0" align="start">
-                <Command.Root>
-                  <Command.Input placeholder="Пошук марки..." />
-                  <Command.List>
-                    <Command.Empty>Марку не знайдено.</Command.Empty>
-                    <Command.Group>
-                      {#each combinedQueries.carBrands.data ?? [] as brand (brand.id)}
-                        <Command.Item
-                          value={brand.name}
-                          onSelect={() => {
-                            $formData.brandId = brand.id;
-                            closeAndFocusBrand();
-                          }}
-                        >
-                          <CheckIcon
-                            class={cn(
-                              $formData.brandId !== brand.id &&
-                                "text-transparent",
-                            )}
-                          />
-                          {brand.name}
-                        </Command.Item>
-                      {/each}
-                    </Command.Group>
-                  </Command.List>
-                </Command.Root>
-              </Popover.Content>
-            </Popover.Root>
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
-
-      <Form.Field {form} name="model">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Label>Модель</Label>
-            <Input {...props} bind:value={$formData.model} />
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
-
-      <Form.Field {form} name="year">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Label>Рік випуску</Label>
-            <Input type="number" {...props} bind:value={$formData.year} />
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
-
-      <Form.Field {form} name="licensePlate">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Label>Номерний знак</Label>
-            <Input
-              {...props}
-              value={$formData.licensePlate}
-              oninput={(e) => {
-                $formData.licensePlate = normalizePlate(e.currentTarget.value);
-              }}
-              class="uppercase"
-            />
-            {#if licensePlateLooksNonStandard}
-              <p class="text-xs text-muted-foreground">
-                Не схоже на стандартний номер — це нормально для старих,
-                тимчасових чи спецтранспортних номерів.
-              </p>
+<MutationSheetShell
+  bind:open
+  {formID}
+  title={isEdit ? "Редагувати автомобіль" : "Створити автомобіль"}
+  description={isEdit
+    ? "Змініть дані автомобіля"
+    : "Внесіть дані нового автомобіля"}
+  submitLabel={isEdit ? "Зберегти зміни" : "Створити"}
+  submitting={$submitting}
+  enhanceAction={enhance}
+  onCancel={() => {
+    form.reset();
+    open = false;
+  }}
+>
+  <Form.Field {form} name="clientId">
+    <Form.Control>
+      {#snippet children({ props: formProps })}
+        <Label>Власник</Label>
+        <ComboSelect
+          items={combinedQueries.clients.data ?? []}
+          bind:value={$formData.clientId}
+          getKey={(c) => c.id}
+          getLabel={(c) => c.name}
+          getSearchValue={(c) => c.name}
+          placeholder="Оберіть власника..."
+          searchPlaceholder="Пошук клієнтів..."
+          emptyText="Клієнта не знайдено."
+          triggerClass={cn($formData.clientId != -1 && "pl-2")}
+          {formProps}
+        >
+          {#snippet trigger(selected)}
+            {#if selected}
+              <ClientBadge name={selected.name} iconSize="size-5" />
+            {:else}
+              Оберіть власника...
             {/if}
           {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
-
-      <Form.Field {form} name="vin">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Label>VIN-код</Label>
-            <Input
-              {...props}
-              value={$formData.vin}
-              oninput={(e) => {
-                $formData.vin = normalizeVin(e.currentTarget.value);
-              }}
-              class="uppercase"
-            />
+          {#snippet item(client)}
+            <ClientBadge name={client.name} />
           {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
-    </form>
-    <Sheet.Footer>
-      <Button type="submit" disabled={$submitting} form={formID}>
-        {#if $submitting}<Spinner />{/if}
-        {isEdit ? "Зберегти зміни" : "Створити"}
-      </Button>
-      <Button variant="outline" disabled={$submitting} onclick={handleCancel}>
-        Відмінити та закрити
-      </Button>
-    </Sheet.Footer>
-  </Sheet.Content>
-</Sheet.Root>
+        </ComboSelect>
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+
+  <Form.Field {form} name="brandId">
+    <Form.Control>
+      {#snippet children({ props: formProps })}
+        <Label>Марка</Label>
+        <ComboSelect
+          items={combinedQueries.carBrands.data ?? []}
+          bind:value={$formData.brandId}
+          getKey={(b) => b.id}
+          getLabel={(b) => b.name}
+          placeholder="Оберіть марку авто..."
+          searchPlaceholder="Пошук марки..."
+          emptyText="Марку не знайдено."
+          contentClass="w-48 p-0"
+          {formProps}
+        />
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+
+  <Form.Field {form} name="model">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Модель</Label>
+        <Input {...props} bind:value={$formData.model} />
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+
+  <Form.Field {form} name="year">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Рік випуску</Label>
+        <Input type="number" {...props} bind:value={$formData.year} />
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+
+  <Form.Field {form} name="licensePlate">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Номерний знак</Label>
+        <Input
+          {...props}
+          value={$formData.licensePlate}
+          oninput={(e) => {
+            $formData.licensePlate = normalizePlate(e.currentTarget.value);
+          }}
+          class="uppercase"
+        />
+        {#if licensePlateLooksNonStandard}
+          <p class="text-xs text-muted-foreground">
+            Не схоже на стандартний номер — це нормально для старих, тимчасових
+            чи спецтранспортних номерів.
+          </p>
+        {/if}
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+
+  <Form.Field {form} name="vin">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>VIN-код</Label>
+        <Input
+          {...props}
+          value={$formData.vin}
+          oninput={(e) => {
+            $formData.vin = normalizeVin(e.currentTarget.value);
+          }}
+          class="uppercase"
+        />
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+</MutationSheetShell>
