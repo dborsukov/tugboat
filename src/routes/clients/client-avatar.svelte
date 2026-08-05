@@ -1,4 +1,3 @@
-<!-- lib/components/ui/UserAvatar.svelte -->
 <script lang="ts">
   import { cn } from "$lib/utils.js";
 
@@ -56,12 +55,11 @@
     src = undefined,
     class: className,
     ...restProps
-  } = $props<{
+  }: {
     name?: string;
     src?: string;
     class?: string;
-    [key: string]: any;
-  }>();
+  } = $props();
 
   const initials = $derived(getInitials(name));
   const colors = $derived(getAvatarColor(name));

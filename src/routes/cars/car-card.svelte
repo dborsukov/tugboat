@@ -5,9 +5,7 @@
   import HashIcon from "@lucide/svelte/icons/hash";
   import UserIcon from "@lucide/svelte/icons/user";
 
-  import type { Car } from "$lib/bindings";
-
-  import { appStore } from "$lib/stores/app.svelte";
+  import type { Car, CarBrand, Client } from "$lib/bindings";
 
   import { cn } from "$lib/utils";
 
@@ -20,13 +18,19 @@
 
   interface Props extends ComponentProps<typeof Card.Root> {
     car: Car;
+    client: Client;
+    brand: CarBrand;
     short?: boolean;
   }
-  let { car, short = false, class: className, ...restProps }: Props = $props();
 
-  let owner = $derived(appStore.clients.find((c) => c.id === car.clientId));
-  let brand = $derived(appStore.carBrands.find((b) => b.id === car.brandId));
-  let slug = $derived(brand != undefined ? brand.iconSlug : "");
+  let {
+    car,
+    client,
+    brand,
+    short = false,
+    class: className,
+    ...restProps
+  }: Props = $props();
 </script>
 
 <Card.Root
@@ -39,7 +43,7 @@
   <Card.Header
     class="flex flex-row h-15 justify-center items-center gap-4 space-y-0"
   >
-    <LogoLoader {slug} />
+    <LogoLoader slug={brand.iconSlug} />
     <div class="flex-1 min-w-0">
       <Card.Title class="text-xl font-semibold tracking-tight truncate">
         {#if brand != undefined}
@@ -66,8 +70,8 @@
         <span class="text-muted-foreground flex items-center gap-2">
           <UserIcon class="size-4 text-muted-foreground/70" /> Власник
         </span>
-        {#if owner != undefined}
-          <ClientBadge client={owner} iconSize="size-6" />
+        {#if client != undefined}
+          <ClientBadge name={client.name} iconSize="size-6" />
         {:else}
           <span class="text-muted-foreground/50 italic text">Не вказано</span>
         {/if}

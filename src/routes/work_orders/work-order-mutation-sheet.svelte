@@ -1,4 +1,9 @@
 <script lang="ts">
+  import {
+    createMutation,
+    createQueries,
+    useQueryClient,
+  } from "@tanstack/svelte-query";
   import { NumberFormatStyle, NumericFormat } from "svelte-number-format";
   import { toast } from "svelte-sonner";
   import { defaults, superForm } from "sveltekit-superforms";
@@ -7,11 +12,13 @@
 
   import { goto } from "$app/navigation";
 
-  import { commands, type WorkOrder } from "$lib/bindings";
+  import {
+    commands,
+    type CreateWorkOrderPayload,
+    type UpdateWorkOrderPayload,
+  } from "$lib/bindings";
 
-  import { appStore } from "$lib/stores/app.svelte";
-
-  import { sqidsEncode } from "$lib/misc";
+  import { sqidsEncode, unwrap } from "$lib/misc";
 
   import { Button } from "$lib/components/ui/button";
   import * as Form from "$lib/components/ui/form";
@@ -20,19 +27,46 @@
   import * as Sheet from "$lib/components/ui/sheet";
   import { Spinner } from "$lib/components/ui/spinner";
 
-  interface Props {
-    open: boolean;
-    work_order?: WorkOrder | null;
-    car_id?: number | null;
-  }
+  import {
+    createUpdateWorkOrderMutation,
+    invalidateWorkOrderLists,
+    workOrdersQueryOptions,
+  } from "./queries";
 
   let {
+    woId = null,
+    carId = null,
     open = $bindable(false),
-    work_order: workOrder = null,
-    car_id = null,
-  }: Props = $props();
+  }: {
+    woId?: string | null;
+    carId?: number | null;
+    open: boolean;
+  } = $props();
 
-  const isEdit = $derived(!!workOrder);
+  const queryClient = useQueryClient();
+
+  const combinedQueries = createQueries(() => ({
+    queries: [workOrdersQueryOptions()],
+    combine: (results) => {
+      return {
+        workOrders: results[0],
+
+        isReady: results.every((r) => r.isSuccess),
+        isLoading: results.some((r) => r.isPending),
+        isError: results.some((r) => r.isError),
+        firstError: results.find((r) => r.isError)?.error,
+
+        refetchAll: () => {
+          results.forEach((r) => r.refetch());
+        },
+      };
+    },
+  }));
+
+  let workOrdersList = $derived(combinedQueries.workOrders.data ?? []);
+  let workOrder = $derived(workOrdersList.find((wo) => wo.id === woId) ?? null);
+
+  const isEdit = $derived(!!woId);
   const titleText = $derived(
     isEdit ? "Редагувати наряд-замовлення" : "Створити наряд-замовлення",
   );
@@ -83,6 +117,22 @@
       }
     });
 
+  const createWorkOrderMutation = createMutation(() => ({
+    mutationFn: (payload: CreateWorkOrderPayload) =>
+      unwrap(commands.createWorkOrder(payload)),
+    onSuccess: () => {
+      invalidateWorkOrderLists(queryClient);
+    },
+    onError: (error) => {
+      toast.error("Виникла помилка", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  }));
+
+  const updateWorkOrderMutation = createUpdateWorkOrderMutation(queryClient);
+
   const form = superForm(defaults(zod4(workOrderSchema)), {
     SPA: true,
     validators: zod4Client(workOrderSchema),
@@ -91,6 +141,8 @@
     id: formID,
     async onUpdate({ form: nativeForm }) {
       if (!nativeForm.valid) return;
+
+      let new_id = `WO-${sqidsEncode(Date.now())}`;
 
       const rateInCents = Math.round(nativeForm.data.rate * 100);
       const discountCents =
@@ -102,69 +154,50 @@
           ? nativeForm.data.discount
           : 0;
 
-      if (isEdit) {
-        if (workOrder === null) {
-          return toast.error("Критична помилка", {
-            description:
-              'Некоректний стан застосунку("work_order" не ініціалізовано.)',
-            position: "bottom-left",
-          });
-        }
-        let res = await commands.updateWorkOrder({
-          id: workOrder.id,
-          carId: workOrder.carId,
-          odometerIn: nativeForm.data.odometerIn,
-          customerComplaint: workOrder.customerComplaint,
-          mechanicNotes: workOrder.mechanicNotes,
-          status: workOrder.status,
-          rateCents: rateInCents,
-          discountType: nativeForm.data.discountType,
-          discountCents,
-          discountPercent,
-          startedAt: workOrder.startedAt,
-          completedAt: workOrder.completedAt,
-          paidAt: workOrder.paidAt,
-          paymentMethod: workOrder.paymentMethod,
+      if (!isEdit && !carId) {
+        toast.error("Виникла помилка", {
+          description: "Prop 'carId' missing",
+          position: "bottom-left",
         });
-        if (res.status === "ok") {
-          appStore.updateWorkOrder(res.data);
-        } else {
-          return toast.error("Виникла помилка", {
-            description: res.error.message,
-            position: "bottom-left",
-          });
-        }
-      } else {
-        if (car_id === null) {
-          return toast.error("Критична помилка", {
-            description:
-              'Некоректний стан застосунку("car_id" не ініціалізовано.)',
-            position: "bottom-left",
-          });
-        }
-        let new_id = `WO-${sqidsEncode(Date.now())}`;
-        let res = await commands.createWorkOrder({
-          id: new_id,
-          carId: car_id,
-          odometerIn: nativeForm.data.odometerIn,
-          status: "Received",
-          customerComplaint: null,
-          mechanicNotes: null,
-          rateCents: rateInCents,
-          discountType: nativeForm.data.discountType,
-          discountCents,
-          discountPercent,
-        });
-        if (res.status === "ok") {
-          appStore.createWorkOrder(res.data);
-          await goto(`/work_orders/${new_id}`);
-        } else {
-          return toast.error("Виникла помилка", {
-            description: res.error.message,
-            position: "bottom-left",
-          });
-        }
       }
+
+      const result =
+        isEdit && woId
+          ? await updateWorkOrderMutation
+              .mutateAsync({
+                id: workOrder!.id,
+                carId: workOrder!.carId,
+                odometerIn: nativeForm.data.odometerIn,
+                customerComplaint: workOrder!.customerComplaint,
+                mechanicNotes: workOrder!.mechanicNotes,
+                status: workOrder!.status,
+                rateCents: rateInCents,
+                discountType: nativeForm.data.discountType,
+                discountCents,
+                discountPercent,
+                startedAt: workOrder!.startedAt,
+                completedAt: workOrder!.completedAt,
+                paidAt: workOrder!.paidAt,
+                paymentMethod: workOrder!.paymentMethod,
+              })
+              .catch(() => null)
+          : await createWorkOrderMutation
+              .mutateAsync({
+                id: new_id,
+                carId: carId!,
+                odometerIn: nativeForm.data.odometerIn,
+                status: "Received",
+                customerComplaint: null,
+                mechanicNotes: null,
+                rateCents: rateInCents,
+                discountType: nativeForm.data.discountType,
+                discountCents,
+                discountPercent,
+              })
+              .catch(() => null);
+
+      if (!result) return;
+      if (!isEdit) await goto(`/work_orders/${new_id}`);
       open = false;
       form.reset();
     },

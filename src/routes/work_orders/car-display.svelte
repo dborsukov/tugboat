@@ -5,12 +5,7 @@
 
   import CarLogoLoader from "$lib/components/car-logo-loader.svelte";
 
-  interface Props {
-    car: Car;
-    carBrand: CarBrand;
-  }
-
-  let { car, carBrand }: Props = $props();
+  let { car, carBrand }: { car: Car; carBrand: CarBrand } = $props();
 
   const brandName = $derived(carBrand.id != 0 ? `${carBrand.name} ` : "");
 </script>

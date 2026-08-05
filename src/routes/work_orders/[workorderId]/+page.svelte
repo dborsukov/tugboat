@@ -1,6 +1,6 @@
 <script lang="ts">
+  import { createQueries, useQueryClient } from "@tanstack/svelte-query";
   import { NumericText } from "svelte-number-format";
-  import { toast } from "svelte-sonner";
 
   import DiscountIcon from "@lucide/svelte/icons/badge-percent";
   import CalendarCheckIcon from "@lucide/svelte/icons/calendar-check";
@@ -13,10 +13,6 @@
   import ReceiptTextIcon from "@lucide/svelte/icons/receipt-text";
   import WrenchIcon from "@lucide/svelte/icons/wrench";
 
-  import { commands, type WorkOrder } from "$lib/bindings";
-
-  import { appStore } from "$lib/stores/app.svelte";
-
   import { prettifyIsoDateString } from "$lib/misc";
 
   import * as ButtonGroup from "$lib/components/ui/button-group/index.js";
@@ -25,68 +21,126 @@
   import * as Command from "$lib/components/ui/command/index.js";
   import * as Details from "$lib/components/ui/details/index";
   import * as Popover from "$lib/components/ui/popover/index.js";
+  import { Skeleton } from "$lib/components/ui/skeleton";
 
   import CurrencyDisplay from "$lib/components/currency-display.svelte";
   import DataTable from "$lib/components/data-table/data-table.svelte";
   import { buildTable } from "$lib/components/data-table/table-builder.svelte";
+  import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
+  import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import CarCard from "../../cars/car-card.svelte";
+  import { carBrandsQueryOptions, carsQueryOptions } from "../../cars/queries";
   import ClientCard from "../../clients/client-card.svelte";
+  import { clientsQueryOptions } from "../../clients/queries";
+  import { servicesQueryOptions } from "../../services/queries";
+  import {
+    createCreateWorkOrderLaborItemMutation,
+    workOrderLaborItemsQueryOptions,
+    workOrderPartItemsQueryOptions,
+    workOrdersQueryOptions,
+    workOrderTotalsQueryOptions,
+  } from "../queries";
   import StatusSelector from "../status-selector.svelte";
   import DropdownMenu from "./dropdown-menu.svelte";
-  import { columns as laborColumns } from "./labor-columns";
+  import {
+    columns as laborColumns,
+    type LaborTableMeta,
+  } from "./labor-columns";
   import { columns as partsColumns } from "./parts-columns";
   import WorkOrderLaborItemMutationSheet from "./work-order-labor-item-mutation-sheet.svelte";
   import WorkOrderPartItemMutationSheet from "./work-order-parts-item-mutation-sheet.svelte";
 
-  let { data } = $props();
+  let { params } = $props();
+
+  const queryClient = useQueryClient();
+
+  const createItemMutation =
+    createCreateWorkOrderLaborItemMutation(queryClient);
+
+  const combinedQueries = createQueries(() => ({
+    queries: [
+      workOrdersQueryOptions(),
+      carsQueryOptions(),
+      clientsQueryOptions(),
+      carBrandsQueryOptions(),
+      workOrderLaborItemsQueryOptions(),
+      workOrderPartItemsQueryOptions(),
+      workOrderTotalsQueryOptions(),
+      servicesQueryOptions(),
+    ],
+    combine: (results) => {
+      return {
+        workOrders: results[0],
+        cars: results[1],
+        clients: results[2],
+        carBrands: results[3],
+        laborItems: results[4],
+        partItems: results[5],
+        totals: results[6],
+        services: results[7],
+
+        isReady: results.every((r) => r.isSuccess),
+        isLoading: results.some((r) => r.isPending),
+        isError: results.some((r) => r.isError),
+        firstError: results.find((r) => r.isError)?.error,
+
+        refetchAll: () => {
+          results.forEach((r) => r.refetch());
+        },
+      };
+    },
+  }));
 
   let workOrder = $derived(
-    appStore.workOrders.find((w) => w.id === data.id) as WorkOrder,
+    combinedQueries.workOrders.data?.find((wo) => wo.id === params.workorderId),
+  );
+  let laborItems = $derived(
+    combinedQueries.laborItems.data?.filter(
+      (i) => i.workOrderId === workOrder?.id,
+    ) ?? [],
+  );
+  let partItems = $derived(
+    combinedQueries.partItems.data?.filter(
+      (i) => i.workOrderId === workOrder?.id,
+    ) ?? [],
+  );
+  let totals = $derived(
+    combinedQueries.totals.data?.find((t) => t.workOrderId === workOrder?.id),
+  );
+  let car = $derived(
+    combinedQueries.cars.data?.find((c) => c.id === workOrder?.carId),
+  );
+  let carBrand = $derived(
+    combinedQueries.carBrands.data?.find((c) => c.id === car?.brandId),
+  );
+  let client = $derived(
+    combinedQueries.clients.data?.find((c) => c.id === car?.clientId),
   );
 
   let isLaborSheetOpen: boolean = $state(false);
   let isPartsSheetOpen: boolean = $state(false);
   let isPopoverOpen: boolean = $state(false);
 
-  const car = appStore.cars.find((c) => c.id === workOrder.carId);
-  const carBrand = appStore.carBrands.find((c) => c.id === car?.brandId);
-  const client = appStore.clients.find((c) => c.id === car?.clientId);
-  if (car === undefined || client === undefined || carBrand === undefined) {
-    throw new Error("Elements missing from appStore");
-  }
-
-  const laborData = $derived(
-    appStore.workOrderLaborItems
-      .filter((i) => i.workOrderId === workOrder.id)
-      .map((item) => {
-        return {
-          ...item,
-          rate: workOrder.rateCents,
-        };
-      }),
-  );
-
   let laborTable = buildTable({
     get data() {
-      return laborData;
+      return laborItems;
     },
     get columns() {
       return laborColumns;
+    },
+    get meta() {
+      return { rate: workOrder?.rateCents ?? 0 } satisfies LaborTableMeta;
     },
     disableSorting: true,
     disableFiltering: true,
     disablePagination: true,
   });
 
-  const partsData = $derived(
-    appStore.workOrderPartItems.filter((i) => i.workOrderId === workOrder.id),
-  );
-
   let partsTable = buildTable({
     get data() {
-      return partsData;
+      return partItems;
     },
     get columns() {
       return partsColumns;
@@ -94,34 +148,6 @@
     disableSorting: true,
     disableFiltering: true,
     disablePagination: true,
-  });
-
-  const laborTotalCents = $derived(
-    laborData.reduce(
-      (sum, item) => sum + Math.round(item.laborHours * item.rate),
-      0,
-    ),
-  );
-
-  const partsTotalCents = $derived(
-    partsData.reduce(
-      (sum, item) =>
-        sum +
-        Math.round(item.quantity * (item.costCents * (1 + item.markup / 100))),
-      0,
-    ),
-  );
-
-  const grandTotalCents = $derived.by(() => {
-    let flatTotal = laborTotalCents + partsTotalCents;
-    if (workOrder.discountCents != 0 || workOrder.discountPercent != 0) {
-      if (workOrder.discountType === "Fixed") {
-        return flatTotal - workOrder.discountCents;
-      } else {
-        return flatTotal * (1 - workOrder.discountPercent / 100);
-      }
-    }
-    return flatTotal;
   });
 </script>
 
@@ -138,12 +164,18 @@
 
         <div class="hidden md:block h-9/12 w-px bg-border shrink-0"></div>
 
-        <div class="h-full flex items-center gap-4 flex-1 min-w-0">
+        <div
+          class="h-full flex items-center gap-4 flex-1 min-w-0"
+          hidden={!combinedQueries.isReady}
+        >
           <div class="hidden md:flex items-center gap-2">
             <WrenchIcon class="size-5 text-muted-foreground" />
             <div class="flex flex-col leading-tight">
               <span class="text-xs text-muted-foreground">Роботи</span>
-              <CurrencyDisplay cents={laborTotalCents} suffix="грн." />
+              <CurrencyDisplay
+                cents={totals?.laborTotalCents ?? 0}
+                suffix="грн."
+              />
             </div>
           </div>
 
@@ -151,7 +183,10 @@
             <PackageIcon class="size-5 text-muted-foreground" />
             <div class="flex flex-col leading-tight">
               <span class="text-xs text-muted-foreground">Запчастини</span>
-              <CurrencyDisplay cents={partsTotalCents} suffix="грн." />
+              <CurrencyDisplay
+                cents={totals?.partsTotalCents ?? 0}
+                suffix="грн."
+              />
             </div>
           </div>
 
@@ -191,7 +226,7 @@
                 >Разом</span
               >
               <CurrencyDisplay
-                cents={grandTotalCents}
+                cents={totals?.grandTotalCents ?? 0}
                 class="font-semibold"
                 suffix="грн."
               />
@@ -199,192 +234,209 @@
           </div>
         </div>
 
-        <div class="flex gap-2 items-center">
-          <StatusSelector work_order={workOrder} />
-          <DropdownMenu work_order={workOrder} />
+        <div class="flex gap-2 items-center" hidden={!combinedQueries.isReady}>
+          <StatusSelector {workOrder} />
+          <DropdownMenu id={workOrder.id} />
         </div>
       </div>
     {/snippet}
     <div class="h-full w-full p-4">
-      <div class="flex flex-col sm:flex-row w-full items-stretch gap-4">
-        <a href="/cars/{car.id}" class="flex flex-1">
-          <CarCard
-            {car}
-            short
-            class="w-full h-full flex flex-col justify-center"
-          />
-        </a>
-        <a href="/clients/{client.id}" class="flex flex-1">
-          <ClientCard
-            {client}
-            short
-            class="w-full h-full flex flex-col justify-center"
-          />
-        </a>
-      </div>
-
-      <Details.Card class="mt-4">
-        <Details.Item>
-          <Details.Title>
-            <Details.Icon icon={GaugeIcon} /> Одометр
-          </Details.Title>
-          <Details.Content>
-            <div class="flex gap-2">
-              <NumericText
-                value={workOrder.odometerIn}
-                class="text-end select-none!"
-              />
-              <p class="text-muted-foreground">км.</p>
-            </div>
-          </Details.Content>
-        </Details.Item>
-
-        <Details.Item>
-          <Details.Title>
-            <Details.Icon icon={RateIcon} /> Тариф
-          </Details.Title>
-          <Details.Content>
-            <CurrencyDisplay
-              cents={workOrder.rateCents}
-              suffix="грн./год."
-              suffix_muted
+      {#if combinedQueries.isError}
+        <FetchErrorDisplay
+          message={combinedQueries.firstError?.message}
+          onRetry={combinedQueries.refetchAll}
+          class="mt-20"
+        />
+      {:else if combinedQueries.isLoading}
+        <div class="flex w-full h-30 items-stretch gap-4">
+          <Skeleton class="flex-1" />
+          <Skeleton class="flex-1" />
+        </div>
+        <Skeleton class="mt-4 w-full h-35" />
+        <Skeleton class="mt-4 w-full h-50" />
+        <Skeleton class="mt-4 w-full h-50" />
+      {:else if !workOrder}
+        <NotFound
+          message={`Замовлення не знайдено (ID: ${params.workorderId})`}
+          class="mt-20"
+        />
+      {:else}
+        <div class="flex flex-col sm:flex-row w-full items-stretch gap-4">
+          <a href="/cars/{car?.id}" class="flex flex-1">
+            <CarCard
+              car={car!}
+              client={client!}
+              brand={carBrand!}
+              short
+              class="w-full h-full flex flex-col justify-center"
             />
-          </Details.Content>
-        </Details.Item>
+          </a>
+          <a href="/clients/{client?.id}" class="flex flex-1">
+            <ClientCard
+              client={client!}
+              short
+              class="w-full h-full flex flex-col justify-center"
+            />
+          </a>
+        </div>
 
-        <Details.Item>
-          <Details.Title>
-            <Details.Icon icon={CalendarPlusIcon} /> Створено
-          </Details.Title>
-          <Details.Content>
-            {prettifyIsoDateString(workOrder.createdAt, "datetime")}
-          </Details.Content>
-        </Details.Item>
-
-        {#if workOrder.startedAt}
+        <Details.Card class="mt-4">
           <Details.Item>
             <Details.Title>
-              <Details.Icon icon={CalendarClockIcon} /> Почато
+              <Details.Icon icon={GaugeIcon} /> Одометр
             </Details.Title>
             <Details.Content>
-              {prettifyIsoDateString(workOrder.startedAt, "datetime")}
+              <div class="flex gap-2">
+                <NumericText
+                  value={workOrder.odometerIn}
+                  class="text-end select-none!"
+                />
+                <p class="text-muted-foreground">км.</p>
+              </div>
             </Details.Content>
           </Details.Item>
-        {/if}
 
-        {#if workOrder.completedAt}
           <Details.Item>
             <Details.Title>
-              <Details.Icon icon={CalendarCheckIcon} /> Завершено
+              <Details.Icon icon={RateIcon} /> Тариф
             </Details.Title>
             <Details.Content>
-              {prettifyIsoDateString(workOrder.completedAt, "datetime")}
+              <CurrencyDisplay
+                cents={workOrder.rateCents}
+                suffix="грн./год."
+                suffix_muted
+              />
             </Details.Content>
           </Details.Item>
-        {/if}
-      </Details.Card>
 
-      <Card.Root class="mt-4">
-        <Card.Header>
-          <Card.Title class="flex gap-2 text-xl">
-            <p>Сервіси</p>
-            <p class="text-muted-foreground">{laborData.length}</p>
-          </Card.Title>
-          <Card.Action>
-            <ButtonGroup.Root>
-              <Button
-                variant="outline"
-                onclick={() => (isLaborSheetOpen = !isLaborSheetOpen)}
-                >Створити</Button
-              >
-              <Popover.Root bind:open={isPopoverOpen}>
-                <Popover.Trigger>
-                  {#snippet child({ props })}
-                    <Button {...props}>
-                      Додати з бази
-                      <ChevronDownIcon />
-                    </Button>
-                  {/snippet}
-                </Popover.Trigger>
-                <Popover.Content class="w-80 p-0">
-                  <Command.Root>
-                    <Command.Input placeholder="Пошук сервісів..." />
-                    <Command.List>
-                      <Command.Empty>Сервісів не знайдено...</Command.Empty>
-                      <Command.Group value="services">
-                        {#each appStore.services as service (service.id)}
-                          <Command.Item
-                            value={service.name}
-                            onSelect={async () => {
-                              let res = await commands.createWorkOrderLaborItem(
-                                {
+          <Details.Item>
+            <Details.Title>
+              <Details.Icon icon={CalendarPlusIcon} /> Створено
+            </Details.Title>
+            <Details.Content>
+              {prettifyIsoDateString(workOrder.createdAt, "datetime")}
+            </Details.Content>
+          </Details.Item>
+
+          {#if workOrder.startedAt}
+            <Details.Item>
+              <Details.Title>
+                <Details.Icon icon={CalendarClockIcon} /> Почато
+              </Details.Title>
+              <Details.Content>
+                {prettifyIsoDateString(workOrder.startedAt, "datetime")}
+              </Details.Content>
+            </Details.Item>
+          {/if}
+
+          {#if workOrder.completedAt}
+            <Details.Item>
+              <Details.Title>
+                <Details.Icon icon={CalendarCheckIcon} /> Завершено
+              </Details.Title>
+              <Details.Content>
+                {prettifyIsoDateString(workOrder.completedAt, "datetime")}
+              </Details.Content>
+            </Details.Item>
+          {/if}
+        </Details.Card>
+
+        <Card.Root class="mt-4">
+          <Card.Header>
+            <Card.Title class="flex gap-2 text-xl">
+              <p>Сервіси</p>
+              <p class="text-muted-foreground">
+                {laborItems.length}
+              </p>
+            </Card.Title>
+            <Card.Action>
+              <ButtonGroup.Root>
+                <Button
+                  variant="outline"
+                  onclick={() => (isLaborSheetOpen = !isLaborSheetOpen)}
+                  >Створити</Button
+                >
+                <Popover.Root bind:open={isPopoverOpen}>
+                  <Popover.Trigger>
+                    {#snippet child({ props })}
+                      <Button {...props}>
+                        Додати з бази
+                        <ChevronDownIcon />
+                      </Button>
+                    {/snippet}
+                  </Popover.Trigger>
+                  <Popover.Content class="w-80 p-0">
+                    <Command.Root>
+                      <Command.Input placeholder="Пошук сервісів..." />
+                      <Command.List>
+                        <Command.Empty>Сервісів не знайдено...</Command.Empty>
+                        <Command.Group value="services">
+                          {#each combinedQueries.services.data ?? [] as service (service.id)}
+                            <Command.Item
+                              value={service.name}
+                              onSelect={async () => {
+                                createItemMutation.mutateAsync({
                                   workOrderId: workOrder.id,
                                   serviceId: service.id,
                                   code: service.code,
                                   name: service.name,
                                   laborHours: service.laborHours,
-                                },
-                              );
-                              isPopoverOpen = false;
-                              if (res.status === "ok") {
-                                appStore.createWorkOrderLaborItem(res.data);
-                              } else {
-                                return toast.error("Виникла помилка", {
-                                  description: res.error.message,
-                                  position: "bottom-left",
                                 });
-                              }
-                            }}
-                          >
-                            {service.name}
-                          </Command.Item>
-                        {/each}
-                      </Command.Group>
-                    </Command.List>
-                  </Command.Root>
-                </Popover.Content>
-              </Popover.Root>
-            </ButtonGroup.Root>
-          </Card.Action>
-        </Card.Header>
-        <Card.Content>
-          <DataTable
-            table={laborTable}
-            emptyMessage="Сервісів не знайдено..."
-            headerClasses={{ name: "w-full" }}
-          />
-        </Card.Content>
-      </Card.Root>
+                                isPopoverOpen = false;
+                              }}
+                            >
+                              {service.name}
+                            </Command.Item>
+                          {/each}
+                        </Command.Group>
+                      </Command.List>
+                    </Command.Root>
+                  </Popover.Content>
+                </Popover.Root>
+              </ButtonGroup.Root>
+            </Card.Action>
+          </Card.Header>
+          <Card.Content>
+            <DataTable
+              table={laborTable}
+              emptyMessage="Сервісів не знайдено..."
+              headerClasses={{ name: "w-full" }}
+            />
+          </Card.Content>
+        </Card.Root>
 
-      <Card.Root class="mt-4">
-        <Card.Header>
-          <Card.Title class="flex gap-2 text-xl">
-            <p>Запчастини</p>
-            <p class="text-muted-foreground">{partsData.length}</p>
-          </Card.Title>
-          <Card.Action>
-            <Button onclick={() => (isPartsSheetOpen = !isPartsSheetOpen)}
-              >Створити</Button
-            >
-          </Card.Action>
-        </Card.Header>
-        <Card.Content>
-          <DataTable
-            table={partsTable}
-            emptyMessage="Запчастин не знайдено..."
-            headerClasses={{ name: "w-full" }}
-          />
-        </Card.Content>
-      </Card.Root>
+        <Card.Root class="mt-4">
+          <Card.Header>
+            <Card.Title class="flex gap-2 text-xl">
+              <p>Запчастини</p>
+              <p class="text-muted-foreground">
+                {partItems.length}
+              </p>
+            </Card.Title>
+            <Card.Action>
+              <Button onclick={() => (isPartsSheetOpen = !isPartsSheetOpen)}
+                >Створити</Button
+              >
+            </Card.Action>
+          </Card.Header>
+          <Card.Content>
+            <DataTable
+              table={partsTable}
+              emptyMessage="Запчастин не знайдено..."
+              headerClasses={{ name: "w-full" }}
+            />
+          </Card.Content>
+        </Card.Root>
 
-      <WorkOrderLaborItemMutationSheet
-        bind:open={isLaborSheetOpen}
-        work_order_id={workOrder.id}
-      />
-      <WorkOrderPartItemMutationSheet
-        bind:open={isPartsSheetOpen}
-        work_order_id={workOrder.id}
-      />
+        <WorkOrderLaborItemMutationSheet
+          bind:open={isLaborSheetOpen}
+          woId={workOrder.id}
+        />
+        <WorkOrderPartItemMutationSheet
+          bind:open={isPartsSheetOpen}
+          woId={workOrder.id}
+        />
+      {/if}
     </div></PageLayout
   >
 {/if}

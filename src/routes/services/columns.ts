@@ -8,7 +8,6 @@ import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 import DataTableSortButton from "$lib/components/data-table-sort-button.svelte";
 
 import DataTableActions from "./data-table-actions.svelte";
-import DataTableCodeCell from "./data-table-code-cell.svelte";
 
 export const columns: ColumnDef<Service>[] = [
   {
@@ -23,7 +22,13 @@ export const columns: ColumnDef<Service>[] = [
       );
     },
     cell: ({ row }) => {
-      return renderComponent(DataTableCodeCell, { code: row.original.code });
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () => `<div class="font-mono">${row.original.code}</div>`,
+          };
+        }),
+      );
     },
   },
   {

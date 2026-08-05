@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { tick } from "svelte";
   import { NumberFormatStyle, NumericFormat } from "svelte-number-format";
   import { toast } from "svelte-sonner";
@@ -6,9 +7,14 @@
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
 
-  import { commands, type PartStatus } from "$lib/bindings";
+  import {
+    commands,
+    type CreateWorkOrderPartItemPayload,
+    type PartStatus,
+    type UpdateWorkOrderPartItemPayload,
+  } from "$lib/bindings";
 
-  import { appStore } from "$lib/stores/app.svelte";
+  import { unwrap } from "$lib/misc";
 
   import { Button } from "$lib/components/ui/button";
   import * as Form from "$lib/components/ui/form";
@@ -17,25 +23,35 @@
   import * as Sheet from "$lib/components/ui/sheet";
   import { Spinner } from "$lib/components/ui/spinner";
 
+  import {
+    createWorkOrderPartItemsQuery,
+    invalidateWorkOrderLists,
+  } from "../queries";
   import PartStatusSelector from "./part-status-selector.svelte";
 
   interface Props {
     open: boolean;
     id?: number | null;
-    work_order_id?: string | null;
+    woId?: string | null;
   }
 
   let {
-    open = $bindable(false),
     id = null,
-    work_order_id = null,
-  }: Props = $props();
+    woId = null,
+    open = $bindable(false),
+  }: {
+    id?: number | null;
+    woId?: string | null;
+    open: boolean;
+  } = $props();
 
-  let workOrderItem = $derived(
-    appStore.workOrderPartItems.find((i) => i.id === id) ?? null,
-  );
+  const queryClient = useQueryClient();
 
-  const isEdit = $derived(!!workOrderItem);
+  let partItemsQuery = createWorkOrderPartItemsQuery();
+  let partItems = $derived(partItemsQuery.data ?? []);
+  let partItem = $derived(partItems.find((c) => c.id === id) ?? null);
+
+  const isEdit = $derived(!!partItem);
   const titleText = $derived(
     isEdit ? "Редагувати запчастину" : "Створити запчастину",
   );
@@ -50,7 +66,7 @@
       : "work-order-part-item-mutation-form-create",
   );
 
-  const workOrderItemSchema = z.object({
+  const partItemSchema = z.object({
     status: z.string().default("Quoted"),
     code: z.string().nullable(),
     name: z.string().min(1, { error: "Вкажіть назву" }),
@@ -70,9 +86,40 @@
       .default(0),
   });
 
-  const form = superForm(defaults(zod4(workOrderItemSchema)), {
+  const createWorkOrderPartItemMutation = createMutation(() => ({
+    mutationFn: async (payload: CreateWorkOrderPartItemPayload) =>
+      unwrap(commands.createWorkOrderPartItem(payload)),
+    onSuccess: () => {
+      invalidateWorkOrderLists(queryClient);
+    },
+    onError: (error) => {
+      toast.error("Виникла помилка", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  }));
+
+  const updateWorkOrderPartItemMutation = createMutation(() => ({
+    mutationFn: async (variables: {
+      id: number;
+      payload: UpdateWorkOrderPartItemPayload;
+    }) =>
+      unwrap(commands.updateWorkOrderPartItem(variables.id, variables.payload)),
+    onSuccess: () => {
+      invalidateWorkOrderLists(queryClient);
+    },
+    onError: (error) => {
+      toast.error("Виникла помилка", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  }));
+
+  const form = superForm(defaults(zod4(partItemSchema)), {
     SPA: true,
-    validators: zod4Client(workOrderItemSchema),
+    validators: zod4Client(partItemSchema),
     validationMethod: "oninput",
     resetForm: false,
     // svelte-ignore state_referenced_locally
@@ -91,31 +138,22 @@
       };
 
       if (isEdit && id) {
-        let res = await commands.updateWorkOrderPartItem(id, payload);
-        if (res.status === "ok") {
-          appStore.updateWorkOrderPartItem(res.data);
-        } else {
-          return toast.error("Виникла помилка", {
-            description: res.error.message,
-            position: "bottom-left",
-          });
-        }
+        await updateWorkOrderPartItemMutation
+          .mutateAsync({ id, payload })
+          .catch(() => {});
       } else {
-        if (!work_order_id) {
-          return;
-        }
-        let res = await commands.createWorkOrderPartItem({
-          workOrderId: work_order_id,
-          ...payload,
-        });
-        if (res.status === "ok") {
-          appStore.createWorkOrderPartItem(res.data);
-        } else {
-          return toast.error("Виникла помилка", {
-            description: res.error.message,
-            position: "bottom-left",
-          });
-        }
+        await createWorkOrderPartItemMutation
+          .mutateAsync({
+            workOrderId: woId!,
+            status: nativeForm.data.status as PartStatus,
+            code: nativeForm.data.code,
+            name: nativeForm.data.name,
+            quantity: nativeForm.data.quantity,
+            unitType: nativeForm.data.unitType,
+            costCents: nativeForm.data.cost * 100,
+            markup: nativeForm.data.markup,
+          })
+          .catch(() => {});
       }
       open = false;
       form.reset();
@@ -126,14 +164,14 @@
 
   $effect(() => {
     if (open) {
-      if (workOrderItem) {
-        $formData.status = workOrderItem.status;
-        $formData.code = workOrderItem.code;
-        $formData.name = workOrderItem.name;
-        $formData.quantity = workOrderItem.quantity;
-        $formData.unitType = workOrderItem.unitType;
-        $formData.cost = workOrderItem.costCents / 100;
-        $formData.markup = workOrderItem.markup;
+      if (partItem) {
+        $formData.status = partItem.status;
+        $formData.code = partItem.code;
+        $formData.name = partItem.name;
+        $formData.quantity = partItem.quantity;
+        $formData.unitType = partItem.unitType;
+        $formData.cost = partItem.costCents / 100;
+        $formData.markup = partItem.markup;
       } else {
         form.reset();
         $formData.unitType = "штука";

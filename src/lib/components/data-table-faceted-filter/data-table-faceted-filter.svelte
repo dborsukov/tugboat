@@ -20,10 +20,12 @@
     column,
     title,
     options,
+    disabled = false,
   }: {
     column: Column<TData, TValue>;
     title: string;
     options: FacetedFilterOptions[];
+    disabled?: boolean;
   } = $props();
 
   const facets = $derived(column?.getFacetedUniqueValues());
@@ -33,7 +35,7 @@
 </script>
 
 <Popover.Root>
-  <Popover.Trigger>
+  <Popover.Trigger {disabled}>
     {#snippet child({ props })}
       <Button {...props} variant="outline" size="sm" class="h-8 border-dashed">
         <FunnelIcon />

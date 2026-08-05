@@ -1,13 +1,16 @@
 <script lang="ts">
-  import { tick } from "svelte";
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { toast } from "svelte-sonner";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
 
-  import { commands } from "$lib/bindings";
+  import {
+    commands,
+    type UpdateWorkOrderLaborItemPayload,
+  } from "$lib/bindings";
 
-  import { appStore } from "$lib/stores/app.svelte";
+  import { unwrap } from "$lib/misc";
 
   import { Button } from "$lib/components/ui/button";
   import * as Form from "$lib/components/ui/form";
@@ -16,23 +19,32 @@
   import * as Sheet from "$lib/components/ui/sheet";
   import { Spinner } from "$lib/components/ui/spinner";
 
-  interface Props {
-    open: boolean;
-    id?: number | null;
-    work_order_id?: string | null;
-  }
+  import {
+    createCreateWorkOrderLaborItemMutation,
+    createWorkOrderLaborItemsQuery,
+    invalidateWorkOrderLists,
+  } from "../queries";
 
   let {
-    open = $bindable(false),
     id = null,
-    work_order_id = null,
-  }: Props = $props();
+    woId = null,
+    open = $bindable(false),
+  }: {
+    id?: number | null;
+    woId?: string | null;
+    open: boolean;
+  } = $props();
 
-  let work_order_item = $derived(
-    appStore.workOrderLaborItems.find((i) => i.id === id) ?? null,
-  );
+  const queryClient = useQueryClient();
 
-  const isEdit = $derived(!!work_order_item);
+  let laborItemsQuery = createWorkOrderLaborItemsQuery();
+  let laborItems = $derived(laborItemsQuery.data ?? []);
+  let laborItem = $derived(laborItems.find((c) => c.id === id) ?? null);
+
+  const createItemMutation =
+    createCreateWorkOrderLaborItemMutation(queryClient);
+
+  const isEdit = $derived(!!laborItem);
   const titleText = $derived(isEdit ? "Редагувати сервіс" : "Створити сервіс");
   const descText = $derived(
     isEdit ? "Змініть дані сервіса тут." : "Внесіть дані нового сервіса тут.",
@@ -43,7 +55,7 @@
       : "work-order-labor-item-mutation-form-create",
   );
 
-  const workOrderItemSchema = z.object({
+  const laborItemSchema = z.object({
     code: z.string().nullable(),
     name: z.string().min(1, { error: "Вкажіть назву" }),
     laborHours: z
@@ -52,9 +64,28 @@
       .default(0),
   });
 
-  const form = superForm(defaults(zod4(workOrderItemSchema)), {
+  const updateWorkOrderLaborItemMutation = createMutation(() => ({
+    mutationFn: async (variables: {
+      id: number;
+      payload: UpdateWorkOrderLaborItemPayload;
+    }) =>
+      unwrap(
+        commands.updateWorkOrderLaborItem(variables.id, variables.payload),
+      ),
+    onSuccess: () => {
+      invalidateWorkOrderLists(queryClient);
+    },
+    onError: (error) => {
+      toast.error("Виникла помилка", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  }));
+
+  const form = superForm(defaults(zod4(laborItemSchema)), {
     SPA: true,
-    validators: zod4Client(workOrderItemSchema),
+    validators: zod4Client(laborItemSchema),
     validationMethod: "oninput",
     resetForm: false,
     // svelte-ignore state_referenced_locally
@@ -62,40 +93,28 @@
     async onUpdate({ form: nativeForm }) {
       if (!nativeForm.valid) return;
 
-      const payload = {
-        serviceId: null,
-        code: nativeForm.data.code,
-        name: nativeForm.data.name,
-        laborHours: nativeForm.data.laborHours,
-      };
-
       if (isEdit && id) {
-        let res = await commands.updateWorkOrderLaborItem(id, payload);
-        if (res.status === "ok") {
-          appStore.updateWorkOrderLaborItem(res.data);
-        } else {
-          return toast.error("Виникла помилка", {
-            description: res.error.message,
-            position: "bottom-left",
-          });
-        }
+        await updateWorkOrderLaborItemMutation
+          .mutateAsync({
+            id,
+            payload: {
+              serviceId: null,
+              code: nativeForm.data.code,
+              name: nativeForm.data.name,
+              laborHours: nativeForm.data.laborHours,
+            },
+          })
+          .catch(() => {});
       } else {
-        if (!work_order_id) {
-          return;
-        }
-        const create_payload = {
-          workOrderId: work_order_id,
-          ...payload,
-        };
-        let res = await commands.createWorkOrderLaborItem(create_payload);
-        if (res.status === "ok") {
-          appStore.createWorkOrderLaborItem(res.data);
-        } else {
-          return toast.error("Виникла помилка", {
-            description: res.error.message,
-            position: "bottom-left",
-          });
-        }
+        await createItemMutation
+          .mutateAsync({
+            workOrderId: woId!,
+            serviceId: null,
+            code: nativeForm.data.code,
+            name: nativeForm.data.name,
+            laborHours: nativeForm.data.laborHours,
+          })
+          .catch(() => {});
       }
       open = false;
       form.reset();
@@ -106,10 +125,10 @@
 
   $effect(() => {
     if (open) {
-      if (work_order_item) {
-        $formData.code = work_order_item.code;
-        $formData.name = work_order_item.name;
-        $formData.laborHours = work_order_item.laborHours;
+      if (laborItem) {
+        $formData.code = laborItem.code;
+        $formData.name = laborItem.name;
+        $formData.laborHours = laborItem.laborHours;
       } else {
         form.reset();
       }

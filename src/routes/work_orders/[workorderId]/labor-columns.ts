@@ -9,11 +9,11 @@ import CurrencyDisplay from "$lib/components/currency-display.svelte";
 
 import DataTableActions from "./data-table-labor-actions.svelte";
 
-export type WorkOrderLaborItemTableData = WorkOrderLaborItem & {
+export type LaborTableMeta = {
   rate: number;
 };
 
-export const columns: ColumnDef<WorkOrderLaborItemTableData>[] = [
+export const columns: ColumnDef<WorkOrderLaborItem>[] = [
   {
     accessorKey: "code",
     header: () => {
@@ -71,9 +71,10 @@ export const columns: ColumnDef<WorkOrderLaborItemTableData>[] = [
         }),
       );
     },
-    cell: ({ row }) => {
+    cell: ({ row, table }) => {
+      let { rate } = table.options.meta as LaborTableMeta;
       return renderComponent(CurrencyDisplay, {
-        cents: row.original.rate * row.original.laborHours,
+        cents: rate * row.original.laborHours,
         suffix: "грн.",
         class: "font-medium justify-end",
       });

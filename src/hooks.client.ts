@@ -1,11 +1,7 @@
 import type { HandleClientError } from "@sveltejs/kit";
 import { error as logError } from "@tauri-apps/plugin-log";
 
-import { appStore } from "$lib/stores/app.svelte";
-
 function handleCrash(msg: string) {
-  appStore.error = msg;
-  appStore.loading = false;
   logError(`[Unhandled Critical Error]: ${msg}`);
 }
 
@@ -15,7 +11,6 @@ export const handleError: HandleClientError = ({ error }) => {
   return { message: "Помилка бібліотеки рендерінгу." };
 };
 
-// Catch detached async promise rejections (Tauri fallback)
 if (typeof window !== "undefined") {
   window.addEventListener("unhandledrejection", (event) => {
     const msg =

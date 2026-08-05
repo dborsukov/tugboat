@@ -1,6 +1,9 @@
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, time::Duration};
 
-use sqlx::{Pool, Sqlite};
+use sqlx::{
+    sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
+    Pool, Sqlite,
+};
 use tauri::Manager;
 use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 use tauri_specta::{collect_commands, Builder};
@@ -19,33 +22,38 @@ pub struct AppState {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let specta_builder = Builder::<tauri::Wry>::new().commands(collect_commands![
-        database::create_car,
-        database::create_client,
-        database::create_service,
-        database::create_work_order,
-        database::create_work_order_labor_item,
-        database::create_work_order_part_item,
-        database::delete_car,
-        database::delete_client,
-        database::delete_service,
-        database::delete_work_order,
-        database::delete_work_order_labor_item,
-        database::delete_work_order_part_item,
-        database::fetch_car_brands,
-        database::fetch_cars,
-        database::fetch_clients,
-        database::fetch_services,
-        database::fetch_settings,
-        database::fetch_work_order_labor_items,
-        database::fetch_work_order_part_items,
-        database::fetch_work_orders,
-        database::update_car,
-        database::update_client,
-        database::update_service,
-        database::update_settings,
-        database::update_work_order,
-        database::update_work_order_labor_item,
-        database::update_work_order_part_item,
+        database::cars::fetch_cars_count,
+        database::cars::fetch_cars_list,
+        database::cars::create_car,
+        database::cars::update_car,
+        database::cars::delete_car,
+        database::cars::fetch_car_brands,
+        database::clients::fetch_clients_count,
+        database::clients::fetch_clients_list,
+        database::clients::create_client,
+        database::clients::update_client,
+        database::clients::delete_client,
+        database::services::fetch_services_count,
+        database::services::fetch_services_list,
+        database::services::create_service,
+        database::services::update_service,
+        database::services::delete_service,
+        database::settings::fetch_settings,
+        database::settings::update_settings,
+        database::work_orders::fetch_work_orders_count,
+        database::work_orders::fetch_work_orders_list,
+        database::work_orders::create_work_order,
+        database::work_orders::update_work_order,
+        database::work_orders::delete_work_order,
+        database::work_orders::fetch_work_order_labor_items_list,
+        database::work_orders::create_work_order_labor_item,
+        database::work_orders::update_work_order_labor_item,
+        database::work_orders::delete_work_order_labor_item,
+        database::work_orders::fetch_work_order_part_items_list,
+        database::work_orders::create_work_order_part_item,
+        database::work_orders::update_work_order_part_item,
+        database::work_orders::delete_work_order_part_item,
+        database::work_orders::fetch_work_order_totals,
         utils::get_app_version
     ]);
 
@@ -68,11 +76,19 @@ pub fn run() {
             fs::create_dir_all(&app_dir).unwrap();
 
             let db_path = app_dir.join("main.db");
-            let options = sqlx::sqlite::SqliteConnectOptions::new()
+            let options = SqliteConnectOptions::new()
                 .filename(db_path)
-                .create_if_missing(true);
+                .create_if_missing(true)
+                .journal_mode(SqliteJournalMode::Wal)
+                .synchronous(SqliteSynchronous::Normal)
+                .foreign_keys(true);
             let db_pool = tauri::async_runtime::block_on(async {
-                let pool = sqlx::SqlitePool::connect_with(options).await.unwrap();
+                let pool = SqlitePoolOptions::new()
+                    .max_connections(5)
+                    .acquire_timeout(Duration::from_secs(5))
+                    .connect_with(options)
+                    .await
+                    .unwrap();
                 sqlx::migrate!("./migrations").run(&pool).await.unwrap();
                 pool
             });

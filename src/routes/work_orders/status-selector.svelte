@@ -1,15 +1,9 @@
 <script lang="ts">
-  import { toast } from "svelte-sonner";
+  import { useQueryClient } from "@tanstack/svelte-query";
 
   import ChevronsUpDown from "@lucide/svelte/icons/chevrons-up-down";
 
-  import {
-    commands,
-    type WorkOrder,
-    type WorkOrderStatus,
-  } from "$lib/bindings";
-
-  import { appStore } from "$lib/stores/app.svelte";
+  import { type WorkOrder, type WorkOrderStatus } from "$lib/bindings";
 
   import { cn } from "$lib/utils";
 
@@ -17,46 +11,33 @@
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
   import Spinner from "$lib/components/ui/spinner/spinner.svelte";
 
-  import { statuses, statusStyles } from "./work-order-status";
+  import { createUpdateWorkOrderMutation } from "./queries";
+  import { statuses, statusStyles } from "./status";
 
   let {
-    work_order,
+    workOrder,
     status = "Received",
     interactive = true,
   }: {
-    work_order?: WorkOrder;
+    workOrder?: WorkOrder;
     status?: WorkOrderStatus;
     interactive?: boolean;
   } = $props();
 
-  let loading = $state(false);
   const localStatus = $derived(
-    work_order != undefined ? work_order.status : status,
+    workOrder != undefined ? workOrder.status : status,
   );
-
   const styles = $derived(statusStyles[localStatus]);
 
-  async function updateStatus(newValue: string) {
-    if (work_order === undefined) {
-      return;
-    }
-    loading = true;
-    const typedStatus = newValue as WorkOrderStatus;
-    const payload = {
-      ...work_order,
-      status: typedStatus,
-    };
-    console.log(payload);
-    let res = await commands.updateWorkOrder(payload);
-    if (res.status === "ok") {
-      appStore.updateWorkOrder(res.data);
-    } else {
-      toast.error("Виникла помилка", {
-        description: res.error.message,
-        position: "bottom-left",
-      });
-    }
-    loading = false;
+  const queryClient = useQueryClient();
+  const updateWorkOrderMutation = createUpdateWorkOrderMutation(queryClient);
+
+  function updateStatus(newValue: string) {
+    if (workOrder === undefined) return;
+    updateWorkOrderMutation.mutate({
+      ...workOrder,
+      status: newValue as WorkOrderStatus,
+    });
   }
 </script>
 
@@ -67,7 +48,8 @@
         <Button
           variant="outline"
           class={cn(
-            loading && "opacity-75 pointer-events-none",
+            updateWorkOrderMutation.isPending &&
+              "opacity-75 pointer-events-none",
             styles.base,
             styles.highlighted,
             styles.border,
@@ -76,7 +58,7 @@
         >
           <styles.icon />
           <p>{styles.text}</p>
-          {#if loading}
+          {#if updateWorkOrderMutation.isPending}
             <Spinner />
           {:else}
             <ChevronsUpDown />

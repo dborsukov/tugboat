@@ -1,15 +1,6 @@
 import type { ColumnDef } from "@tanstack/table-core";
 import { createRawSnippet } from "svelte";
 
-import type {
-  Car,
-  CarBrand,
-  Client,
-  WorkOrder,
-  WorkOrderLaborItem,
-  WorkOrderPartItem,
-} from "$lib/bindings";
-
 import { prettifyIsoDateString } from "$lib/misc";
 
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
@@ -20,16 +11,9 @@ import DataTableSortButton from "$lib/components/data-table-sort-button.svelte";
 import ClientBadge from "../clients/client-badge.svelte";
 import CarDisplay from "./car-display.svelte";
 import StatusSelector from "./status-selector.svelte";
+import type { WorkOrderListItem } from "./types";
 
-export type WorkOrderTableData = WorkOrder & {
-  car: Car;
-  carBrand: CarBrand;
-  client: Client;
-  labor: WorkOrderLaborItem[];
-  parts: WorkOrderPartItem[];
-};
-
-export const columns: ColumnDef<WorkOrderTableData>[] = [
+export const columns: ColumnDef<WorkOrderListItem>[] = [
   {
     accessorKey: "id",
     header: () => {
@@ -68,7 +52,7 @@ export const columns: ColumnDef<WorkOrderTableData>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(ClientBadge, {
-        client: row.original.client,
+        name: row.original.client.name,
       });
     },
   },
@@ -122,11 +106,11 @@ export const columns: ColumnDef<WorkOrderTableData>[] = [
   {
     id: "total",
     accessorFn: (row) => {
-      let laborTotal = row.labor.reduce(
+      let laborTotal = row.laborItems.reduce(
         (sum, item) => sum + Math.round(item.laborHours * row.rateCents),
         0,
       );
-      let partsTotal = row.parts.reduce(
+      let partsTotal = row.partsItems.reduce(
         (sum, item) =>
           sum +
           Math.round(

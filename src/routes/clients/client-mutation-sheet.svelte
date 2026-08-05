@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { toast } from "svelte-sonner";
   import { TelInput } from "svelte-tel-input";
   import type { CountryCode } from "svelte-tel-input/types";
@@ -9,7 +10,7 @@
 
   import { commands } from "$lib/bindings";
 
-  import { appStore } from "$lib/stores/app.svelte";
+  import { unwrap } from "$lib/misc";
 
   import { Button } from "$lib/components/ui/button";
   import * as Form from "$lib/components/ui/form";
@@ -18,12 +19,18 @@
   import * as Sheet from "$lib/components/ui/sheet";
   import { Spinner } from "$lib/components/ui/spinner";
 
-  interface Props {
-    open: boolean;
-    client?: any | null;
-  }
+  import { createClientsQuery, invalidateClientsLists } from "./queries";
 
-  let { open = $bindable(false), client = null }: Props = $props();
+  let {
+    id = null,
+    open = $bindable(false),
+  }: { id?: number | null; open: boolean } = $props();
+
+  const queryClient = useQueryClient();
+
+  let clientsQuery = createClientsQuery();
+  let clientsList = $derived(clientsQuery.data ?? []);
+  let client = $derived(clientsList.find((c) => c.id === id) ?? null);
 
   const isEdit = $derived(!!client);
   const titleText = $derived(
@@ -54,7 +61,6 @@
 
   const extendedSchema = clientSchema.refine(
     (data) => {
-      const clientsList = appStore.clients || [];
       const duplicateClient = clientsList.find((c) => c.phone === data.phone);
       if (!duplicateClient) return true;
       // Avoid record matching with itself (when editing)
@@ -66,6 +72,36 @@
       path: ["phone"],
     },
   );
+
+  const createClientMutation = createMutation(() => ({
+    mutationFn: async (payload: z.infer<typeof clientSchema>) =>
+      unwrap(commands.createClient(payload)),
+    onSuccess: () => {
+      invalidateClientsLists(queryClient);
+    },
+    onError: (error) => {
+      toast.error("Виникла помилка", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  }));
+
+  const updateClientMutation = createMutation(() => ({
+    mutationFn: async (variables: {
+      id: number;
+      payload: z.infer<typeof clientSchema>;
+    }) => unwrap(commands.updateClient(variables.id, variables.payload)),
+    onSuccess: () => {
+      invalidateClientsLists(queryClient);
+    },
+    onError: (error) => {
+      toast.error("Виникла помилка", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  }));
 
   const form = superForm(defaults(zod4(extendedSchema)), {
     SPA: true,
@@ -81,26 +117,10 @@
         phone: nativeForm.data.phone,
       };
 
-      if (isEdit) {
-        let res = await commands.updateClient(client.id, payload);
-        if (res.status === "ok") {
-          appStore.updateClient(res.data);
-        } else {
-          return toast.error("Виникла помилка", {
-            description: res.error.message,
-            position: "bottom-left",
-          });
-        }
+      if (isEdit && id) {
+        await updateClientMutation.mutateAsync({ id, payload }).catch(() => {});
       } else {
-        let res = await commands.createClient(payload);
-        if (res.status === "ok") {
-          appStore.createClient(res.data);
-        } else {
-          return toast.error("Виникла помилка", {
-            description: res.error.message,
-            position: "bottom-left",
-          });
-        }
+        await createClientMutation.mutateAsync(payload).catch(() => {});
       }
       open = false;
       form.reset();
@@ -113,7 +133,7 @@
     if (open) {
       if (client) {
         $formData.name = client.name;
-        $formData.phone = client.phone;
+        $formData.phone = client.phone ?? "";
       } else {
         form.reset();
       }

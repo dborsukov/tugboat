@@ -1,20 +1,24 @@
 <script lang="ts">
   import { compareItems, rankItem } from "@tanstack/match-sorter-utils";
+  import { createQueries } from "@tanstack/svelte-query";
 
   import SortIcon from "@lucide/svelte/icons/arrow-up-down";
   import PlusIcon from "@lucide/svelte/icons/plus";
-
-  import { appStore } from "$lib/stores/app.svelte";
 
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import * as Pagination from "$lib/components/ui/pagination/index.js";
   import * as Select from "$lib/components/ui/select/index.js";
+  import { Skeleton } from "$lib/components/ui/skeleton";
 
+  import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
+  import { clientsQueryOptions } from "../clients/queries";
   import CarCard from "./car-card.svelte";
   import CarMutationSheet from "./car-mutation-sheet.svelte";
+  import { carBrandsQueryOptions, carsQueryOptions } from "./queries";
+  import { buildCarListItems } from "./types";
 
   type SortOption = "date-desc" | "date-asc";
 
@@ -28,35 +32,65 @@
   let searchQuery = $state("");
   let isSheetOpen = $state(false);
   let sortBy = $state<SortOption>("date-desc");
+  let searchInputEl = $state<HTMLInputElement | null>(null);
 
-  let filteredCars = $derived.by(() => {
+  const combinedQueries = createQueries(() => ({
+    queries: [
+      carsQueryOptions(),
+      clientsQueryOptions(),
+      carBrandsQueryOptions(),
+    ],
+    combine: (results) => {
+      return {
+        cars: results[0],
+        clients: results[1],
+        carBrands: results[2],
+
+        isReady: results.every((r) => r.isSuccess),
+        isLoading: results.some((r) => r.isPending),
+        isError: results.some((r) => r.isError),
+        firstError: results.find((r) => r.isError)?.error,
+
+        refetchAll: () => {
+          results.forEach((r) => r.refetch());
+        },
+      };
+    },
+  }));
+
+  let carListItems = $derived(
+    combinedQueries.isReady
+      ? buildCarListItems(
+          combinedQueries.cars.data!,
+          combinedQueries.clients.data!,
+          combinedQueries.carBrands.data!,
+        )
+      : [],
+  );
+
+  let filteredCarListItems = $derived.by(() => {
     const query = searchQuery.trim();
-    if (!query) return appStore.cars;
+    if (!query) return carListItems;
 
-    return appStore.cars
-      .map((car) => {
-        const brand = appStore.carBrands.find((b) => b.id === car.brandId);
-        const modelName = `${brand?.name ?? ""} ${car.model ?? ""}`.trim();
-        const owner = appStore.clients.find((c) => c.id === car.clientId);
+    return carListItems
+      .map((cli) => {
+        const modelRank = rankItem(`${cli.brand.name} ${cli.car.model}`, query);
+        const plateRank = rankItem(cli.car.licensePlate ?? "", query);
+        const vinRank = rankItem(cli.car.vin ?? "", query);
+        const clientRank = rankItem(cli.client.name, query);
 
-        const modelRank = rankItem(modelName, query);
-        const plateRank = rankItem(car.licensePlate ?? "", query);
-        const vinRank = rankItem(car.vin ?? "", query);
-        const ownerRank = rankItem(owner?.name ?? "", query);
-
-        // keep whichever field matched best for this car
-        const bestRank = [modelRank, plateRank, vinRank, ownerRank].reduce(
+        const bestRank = [modelRank, plateRank, vinRank, clientRank].reduce(
           (best, rank) => (rank.rank > best.rank ? rank : best),
         );
 
         return {
-          car,
+          car: cli,
           bestRank,
           passed:
             modelRank.passed ||
             plateRank.passed ||
             vinRank.passed ||
-            ownerRank.passed,
+            clientRank.passed,
         };
       })
       .filter(({ passed }) => passed)
@@ -64,21 +98,23 @@
       .map(({ car }) => car);
   });
 
-  let sortedCars = $derived.by(() => {
-    const sorted = [...filteredCars];
+  let sortedCarListItems = $derived.by(() => {
+    const sorted = [...filteredCarListItems];
 
     switch (sortBy) {
       case "date-asc":
         sorted.sort(
           (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+            new Date(a.car.createdAt).getTime() -
+            new Date(b.car.createdAt).getTime(),
         );
         break;
       case "date-desc":
       default:
         sorted.sort(
           (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+            new Date(b.car.createdAt).getTime() -
+            new Date(a.car.createdAt).getTime(),
         );
         break;
     }
@@ -86,8 +122,11 @@
     return sorted;
   });
 
-  let paginatedCars = $derived(
-    sortedCars.slice((currentPage - 1) * perPage, currentPage * perPage),
+  let paginatedCarListItems = $derived(
+    sortedCarListItems.slice(
+      (currentPage - 1) * perPage,
+      currentPage * perPage,
+    ),
   );
 
   function handleSearchInput() {
@@ -97,21 +136,28 @@
   function handleSortChange() {
     currentPage = 1;
   }
+
+  $effect(() => searchInputEl?.focus());
 </script>
 
 <PageLayout>
   {#snippet header()}
     <div class="h-full pl-1 flex items-center gap-2">
       <Input
-        placeholder="Пошук за моделлю, номером, VIN-кодом або власником..."
-        class="w-full"
+        bind:ref={searchInputEl}
         bind:value={searchQuery}
+        placeholder="Пошук за моделлю, номером, VIN-кодом або власником..."
         oninput={handleSearchInput}
+        disabled={!combinedQueries.isReady ||
+          paginatedCarListItems.length === 0}
+        class="w-full"
       />
       <Select.Root
-        type="single"
         bind:value={sortBy}
+        type="single"
         onValueChange={handleSortChange}
+        disabled={!combinedQueries.isReady ||
+          paginatedCarListItems.length === 0}
       >
         <Select.Trigger class="w-45 shrink-0">
           <SortIcon />
@@ -128,17 +174,34 @@
       <CarMutationSheet bind:open={isSheetOpen} />
     </div>
   {/snippet}
-  {#if paginatedCars.length === 0}
-    <div class="flex h-40 items-center justify-center text-muted-foreground">
-      Автомобілей не знайдено
+  {#if combinedQueries.isError}
+    <FetchErrorDisplay
+      message={combinedQueries.firstError?.message}
+      onRetry={combinedQueries.refetchAll}
+      class="mt-20"
+    />
+  {:else if combinedQueries.isLoading}
+    <div
+      class="grid gap-4 p-4 grid-cols-[repeat(auto-fit,minmax(200px,405px))] justify-center"
+    >
+      <Skeleton class="w-full h-55" />
+      <Skeleton class="w-full h-55" />
+      <Skeleton class="w-full h-55" />
+      <Skeleton class="w-full h-55" />
+      <Skeleton class="w-full h-55" />
+      <Skeleton class="w-full h-55" />
     </div>
+  {:else if paginatedCarListItems.length === 0}
+    <p class="text-center text-muted-foreground mt-20">
+      Автомобілей не знайдено
+    </p>
   {:else}
     <div
       class="grid gap-4 p-4 grid-cols-[repeat(auto-fit,minmax(200px,405px))] justify-center"
     >
-      {#each paginatedCars as car (car.id)}
-        <a href="/cars/{car.id}" class="w-full">
-          <CarCard {car} />
+      {#each paginatedCarListItems as cli (cli.car.id)}
+        <a href="/cars/{cli.car.id}" class="w-full">
+          <CarCard car={cli.car} client={cli.client} brand={cli.brand} />
         </a>
       {/each}
     </div>
@@ -146,7 +209,7 @@
   {#snippet footer()}
     <div class="p-4 flex items-center justify-center">
       <Pagination.Root
-        count={filteredCars.length}
+        count={filteredCarListItems.length}
         {perPage}
         bind:page={currentPage}
       >

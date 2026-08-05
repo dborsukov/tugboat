@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { toast } from "svelte-sonner";
 
   import EllipsisIcon from "@lucide/svelte/icons/ellipsis";
@@ -7,37 +8,41 @@
 
   import { goto } from "$app/navigation";
 
-  import { commands, type WorkOrder } from "$lib/bindings";
+  import { commands } from "$lib/bindings";
 
-  import { appStore } from "$lib/stores/app.svelte";
+  import { unwrap } from "$lib/misc";
 
   import { buttonVariants } from "$lib/components/ui/button/index.js";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
 
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
 
+  import { invalidateWorkOrderLists } from "../queries";
   import WorkOrderMutationSheet from "../work-order-mutation-sheet.svelte";
 
-  interface Props {
-    work_order: WorkOrder;
-  }
-  let { work_order }: Props = $props();
-
+  let { id }: { id: string } = $props();
   let isSheetOpen = $state(false);
   let isDeleteDialogOpen = $state(false);
 
-  async function handleDelete() {
-    let res = await commands.deleteWorkOrder(work_order.id);
-    if (res.status === "ok") {
+  const queryClient = useQueryClient();
+
+  const workOrderDeleteMutation = createMutation(() => ({
+    mutationFn: (id: string) => unwrap(commands.deleteWorkOrder(id)),
+    onSuccess: async () => {
+      invalidateWorkOrderLists(queryClient);
+      isDeleteDialogOpen = false;
       await goto("/work_orders");
-      appStore.deleteWorkOrder(work_order.id);
-      toast.success("Замовлення видалено");
-    } else {
+    },
+    onError: (error) => {
       toast.error("Виникла помилка", {
-        description: res.error.message,
-        position: "bottom-center",
+        description: error.message,
+        position: "bottom-left",
       });
-    }
+    },
+  }));
+
+  async function handleDelete() {
+    workOrderDeleteMutation.mutate(id);
   }
 </script>
 
@@ -65,7 +70,7 @@
   </DropdownMenu.Content>
 </DropdownMenu.Root>
 
-<WorkOrderMutationSheet bind:open={isSheetOpen} {work_order} />
+<WorkOrderMutationSheet bind:open={isSheetOpen} woId={id} />
 <DeleteDialog
   bind:open={isDeleteDialogOpen}
   onDelete={handleDelete}

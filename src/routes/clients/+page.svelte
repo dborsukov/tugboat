@@ -1,20 +1,28 @@
 <script lang="ts">
   import { compareItems, rankItem } from "@tanstack/match-sorter-utils";
+  import { createQuery } from "@tanstack/svelte-query";
 
   import SortIcon from "@lucide/svelte/icons/arrow-up-down";
   import PlusIcon from "@lucide/svelte/icons/plus";
+  import RefreshIcon from "@lucide/svelte/icons/refresh-cw";
 
-  import { appStore } from "$lib/stores/app.svelte";
+  import { commands, type Client } from "$lib/bindings";
+
+  import { unwrap } from "$lib/misc";
+  import { keys } from "$lib/query-keys";
 
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import * as Pagination from "$lib/components/ui/pagination/index.js";
   import * as Select from "$lib/components/ui/select/index.js";
+  import { Skeleton } from "$lib/components/ui/skeleton";
 
+  import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import ClientCard from "./client-card.svelte";
   import ClientMutationSheet from "./client-mutation-sheet.svelte";
+  import { createClientsQuery } from "./queries";
 
   type SortOption = "date-desc" | "date-asc" | "name-asc" | "name-desc";
 
@@ -32,13 +40,14 @@
   let sortBy = $state<SortOption>("date-desc");
   let searchInputEl = $state<HTMLInputElement | null>(null);
 
-  $effect(() => searchInputEl?.focus());
+  const clientsQuery = createClientsQuery();
 
   let filteredClients = $derived.by(() => {
+    let clients = clientsQuery.isSuccess ? clientsQuery.data : [];
     const query = searchQuery.trim();
-    if (!query) return appStore.clients;
+    if (!query) return clients;
 
-    return appStore.clients
+    return clients
       .map((client) => {
         const nameRank = rankItem(client.name, query);
         const phoneRank = rankItem(client.phone ?? "", query);
@@ -93,6 +102,8 @@
   function handleSortChange() {
     currentPage = 1;
   }
+
+  $effect(() => searchInputEl?.focus());
 </script>
 
 <PageLayout>
@@ -104,11 +115,13 @@
         class="w-full"
         bind:value={searchQuery}
         oninput={handleSearchInput}
+        disabled={!clientsQuery.isSuccess || paginatedClients.length === 0}
       />
       <Select.Root
         type="single"
         bind:value={sortBy}
         onValueChange={handleSortChange}
+        disabled={!clientsQuery.isSuccess || paginatedClients.length === 0}
       >
         <Select.Trigger class="w-45 shrink-0">
           <SortIcon />
@@ -127,10 +140,26 @@
       <ClientMutationSheet bind:open={isSheetOpen} />
     </div>
   {/snippet}
-  {#if paginatedClients.length === 0}
-    <div class="flex h-40 items-center justify-center text-muted-foreground">
-      Клієнтів не знайдено
+
+  {#if clientsQuery.isError}
+    <FetchErrorDisplay
+      message={clientsQuery.error?.message}
+      onRetry={clientsQuery.refetch}
+      class="mt-20"
+    />
+  {:else if clientsQuery.isLoading}
+    <div
+      class="grid gap-4 p-4 grid-cols-[repeat(auto-fit,minmax(200px,405px))] justify-center"
+    >
+      <Skeleton class="w-full h-35" />
+      <Skeleton class="w-full h-35" />
+      <Skeleton class="w-full h-35" />
+      <Skeleton class="w-full h-35" />
+      <Skeleton class="w-full h-35" />
+      <Skeleton class="w-full h-35" />
     </div>
+  {:else if paginatedClients.length === 0}
+    <p class="text-center text-muted-foreground mt-20">Клієнтів не знайдено</p>
   {:else}
     <div
       class="grid gap-4 p-4 grid-cols-[repeat(auto-fit,minmax(200px,405px))] justify-center"
@@ -142,6 +171,7 @@
       {/each}
     </div>
   {/if}
+
   {#snippet footer()}
     <div class="p-4 flex items-center justify-center">
       <Pagination.Root

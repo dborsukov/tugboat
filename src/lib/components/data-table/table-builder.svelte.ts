@@ -11,6 +11,7 @@ import {
   type FilterFn,
   type PaginationState,
   type SortingState,
+  type TableMeta,
   type VisibilityState,
 } from "@tanstack/table-core";
 
@@ -22,9 +23,10 @@ declare module "@tanstack/table-core" {
   }
 }
 
-export type TableBuilderOptions<TData, TValue> = {
+export type TableBuilderOptions<TData, TValue, TMeta> = {
   data: TData[];
   columns: ColumnDef<TData, TValue>[];
+  meta?: TMeta;
   searchTerm?: string;
   disableSorting?: boolean;
   disableFiltering?: boolean;
@@ -39,8 +41,8 @@ const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
   return itemRank.passed;
 };
 
-export function buildTable<TData, TValue>(
-  options: TableBuilderOptions<TData, TValue>,
+export function buildTable<TData, TValue, TMeta>(
+  options: TableBuilderOptions<TData, TValue, TMeta>,
 ) {
   let sorting = $state<SortingState>(options?.initialSorting || []);
   let pagination = $state<PaginationState>({ pageIndex: 0, pageSize: 10 });
@@ -58,6 +60,9 @@ export function buildTable<TData, TValue>(
     },
     get columns() {
       return options.columns;
+    },
+    get meta() {
+      return options.meta as TableMeta<TData> | undefined;
     },
 
     state: {

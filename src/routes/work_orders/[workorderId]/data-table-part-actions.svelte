@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { toast } from "svelte-sonner";
 
   import EllipsisIcon from "@lucide/svelte/icons/ellipsis";
@@ -7,30 +8,38 @@
 
   import { commands } from "$lib/bindings";
 
-  import { appStore } from "$lib/stores/app.svelte";
+  import { unwrap } from "$lib/misc";
 
   import { Button } from "$lib/components/ui/button/index.js";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
 
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
 
+  import { invalidateWorkOrderLists } from "../queries";
   import WorkOrderPartItemMutationSheet from "./work-order-parts-item-mutation-sheet.svelte";
 
   let { id }: { id: number } = $props();
   let isSheetOpen: boolean = $state(false);
   let isDeleteDialogOpen: boolean = $state(false);
 
-  async function handleDelete() {
-    let res = await commands.deleteWorkOrderPartItem(id);
-    if (res.status === "ok") {
-      appStore.removeWorkOrderPartItem(id);
-    } else {
+  const queryClient = useQueryClient();
+
+  const workOrderPartItemDeleteMutation = createMutation(() => ({
+    mutationFn: (id: number) => unwrap(commands.deleteWorkOrderPartItem(id)),
+    onSuccess: async () => {
+      invalidateWorkOrderLists(queryClient);
+      isDeleteDialogOpen = false;
+    },
+    onError: (error) => {
       toast.error("Виникла помилка", {
-        description: res.error.message,
-        position: "bottom-center",
+        description: error.message,
+        position: "bottom-left",
       });
-    }
-    isDeleteDialogOpen = false;
+    },
+  }));
+
+  async function handleDelete() {
+    workOrderPartItemDeleteMutation.mutate(id);
   }
 </script>
 

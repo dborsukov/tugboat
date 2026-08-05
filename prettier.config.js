@@ -26,6 +26,7 @@ export default {
     "",
     "^\\$lib/utils(.*)$",
     "^\\$lib/misc(.*)$",
+    "^\\$lib/query-keys(.*)$",
     "",
     "^\\$lib/components/ui/(.*)$",
     "",

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { toast } from "svelte-sonner";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
@@ -6,7 +7,7 @@
 
   import { commands } from "$lib/bindings";
 
-  import { appStore } from "$lib/stores/app.svelte";
+  import { unwrap } from "$lib/misc";
 
   import { Button } from "$lib/components/ui/button";
   import * as Form from "$lib/components/ui/form";
@@ -15,14 +16,18 @@
   import * as Sheet from "$lib/components/ui/sheet";
   import { Spinner } from "$lib/components/ui/spinner";
 
-  interface Props {
-    open: boolean;
-    id?: number | null;
-  }
+  import { createServicesQuery, invalidateServiceLists } from "./queries";
 
-  let { open = $bindable(false), id = null }: Props = $props();
+  let {
+    open = $bindable(false),
+    id = null,
+  }: { open: boolean; id?: number | null } = $props();
 
-  let service = $derived(appStore.services.find((s) => s.id === id) ?? null);
+  const queryClient = useQueryClient();
+
+  let servicesQuery = createServicesQuery();
+  let servicesList = $derived(servicesQuery.data ?? []);
+  let service = $derived(servicesList.find((s) => s.id === id) ?? null);
 
   const isEdit = $derived(!!id);
   const titleText = $derived(isEdit ? "Редагувати сервіс" : "Додати сервіс");
@@ -48,7 +53,6 @@
     .refine(
       (data) => {
         if (data.code == null) return true;
-        const servicesList = appStore.services || [];
         const duplicateService = servicesList.find(
           (c) =>
             c.code?.trim().toLowerCase() === data.code?.trim().toLowerCase(),
@@ -65,7 +69,6 @@
     )
     .refine(
       (data) => {
-        const servicesList = appStore.services || [];
         const duplicateService = servicesList.find(
           (c) => c.name.toLowerCase() === data.name.toLowerCase(),
         );
@@ -79,6 +82,40 @@
         path: ["name"],
       },
     );
+
+  const createServiceMutation = createMutation(() => ({
+    mutationFn: async (payload: z.infer<typeof serviceSchema>) =>
+      unwrap(commands.createService(payload)),
+    onSuccess: () => {
+      invalidateServiceLists(queryClient);
+      open = false;
+      form.reset();
+    },
+    onError: (error) => {
+      toast.error("Виникла помилка", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  }));
+
+  const updateServiceMutation = createMutation(() => ({
+    mutationFn: async (variables: {
+      id: number;
+      payload: z.infer<typeof serviceSchema>;
+    }) => unwrap(commands.updateService(variables.id, variables.payload)),
+    onSuccess: () => {
+      invalidateServiceLists(queryClient);
+      open = false;
+      form.reset();
+    },
+    onError: (error) => {
+      toast.error("Виникла помилка", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  }));
 
   const form = superForm(defaults(zod4(extendedSchema)), {
     SPA: true,
@@ -97,25 +134,11 @@
       };
 
       if (isEdit && id) {
-        let res = await commands.updateService(id, payload);
-        if (res.status === "ok") {
-          appStore.updateService(res.data);
-        } else {
-          return toast.error("Виникла помилка", {
-            description: res.error.message,
-            position: "bottom-left",
-          });
-        }
+        await updateServiceMutation
+          .mutateAsync({ id, payload })
+          .catch(() => {});
       } else {
-        let res = await commands.createService(payload);
-        if (res.status === "ok") {
-          appStore.createService(res.data);
-        } else {
-          return toast.error("Виникла помилка", {
-            description: res.error.message,
-            position: "bottom-left",
-          });
-        }
+        await createServiceMutation.mutateAsync(payload).catch(() => {});
       }
       open = false;
       form.reset();
@@ -127,9 +150,13 @@
   $effect(() => {
     if (open) {
       if (service) {
-        $formData.code = service.code;
-        $formData.name = service.name;
-        $formData.laborHours = service.laborHours;
+        form.reset({
+          data: {
+            code: service.code,
+            name: service.name,
+            laborHours: service.laborHours,
+          },
+        });
       } else {
         form.reset();
       }

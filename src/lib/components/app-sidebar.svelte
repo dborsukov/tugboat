@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { createQueries } from "@tanstack/svelte-query";
+
   import WorkOrdersIcon from "@lucide/svelte/icons/briefcase-business";
   import CarsIcon from "@lucide/svelte/icons/car";
   import CustomerIcon from "@lucide/svelte/icons/circle-user";
@@ -10,19 +12,57 @@
 
   import { page } from "$app/state";
 
-  import { appStore } from "$lib/stores/app.svelte";
+  import { commands } from "$lib/bindings";
+
+  import { unwrap } from "$lib/misc";
 
   import { useSidebar } from "$lib/components/ui/sidebar/index.js";
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
 
   import PopeyeIcon from "$lib/components/icons/popeye.svelte";
 
+  import { carsCountQueryOptions } from "../../routes/cars/queries";
+  import { clientsCountQueryOptions } from "../../routes/clients/queries";
+  import { servicesCountQueryOptions } from "../../routes/services/queries";
+  import { workOrdersCountQueryOptions } from "../../routes/work_orders/queries";
   import Button from "./ui/button/button.svelte";
   import SidebarFooter from "./ui/sidebar/sidebar-footer.svelte";
   import SidebarMenuBadge from "./ui/sidebar/sidebar-menu-badge.svelte";
 
   const sidebar = useSidebar();
 
+  const combinedQueries = createQueries(() => ({
+    queries: [
+      clientsCountQueryOptions(),
+      carsCountQueryOptions(),
+      workOrdersCountQueryOptions(),
+      servicesCountQueryOptions(),
+      {
+        queryKey: ["version"],
+        queryFn: () => commands.getAppVersion(),
+        staleTime: Infinity,
+        gcTime: Infinity,
+      },
+    ],
+    combine: (results) => {
+      return {
+        clientsCount: results[0],
+        carsCount: results[1],
+        workOrdersCount: results[2],
+        servicesCount: results[3],
+        appVersion: results[4],
+
+        isReady: results.every((r) => r.isSuccess),
+        isLoading: results.some((r) => r.isPending),
+        isError: results.some((r) => r.isError),
+        firstError: results.find((r) => r.isError)?.error,
+
+        refetchAll: () => {
+          results.forEach((r) => r.refetch());
+        },
+      };
+    },
+  }));
   const top_level_menu = $derived([
     {
       title: "Головна",
@@ -37,19 +77,21 @@
       title: "Клієнти",
       url: "/clients",
       icon: CustomerIcon,
-      badge: appStore.clients.length,
+      badge: combinedQueries.isReady ? combinedQueries.clientsCount.data : null,
     },
     {
       title: "Автомобілі",
       url: "/cars",
       icon: CarsIcon,
-      badge: appStore.cars.length,
+      badge: combinedQueries.isReady ? combinedQueries.carsCount.data : null,
     },
     {
       title: "Замовлення",
       url: "/work_orders",
       icon: WorkOrdersIcon,
-      badge: appStore.workOrders.length,
+      badge: combinedQueries.isReady
+        ? combinedQueries.workOrdersCount.data
+        : null,
     },
   ]);
 
@@ -58,7 +100,9 @@
       title: "Сервіси",
       url: "/services",
       icon: WrenchIcon,
-      badge: appStore.services.length,
+      badge: combinedQueries.isReady
+        ? combinedQueries.servicesCount.data
+        : null,
     },
   ]);
   const footer_menu = [
@@ -86,7 +130,9 @@
       >
         <span class="truncate">Папай CRM</span>
         <span class="truncate text-xs text-muted-foreground"
-          >Версія {appStore.version}</span
+          >Версія {combinedQueries.isReady
+            ? combinedQueries.appVersion.data
+            : "?"}</span
         >
       </div>
 

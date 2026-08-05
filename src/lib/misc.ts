@@ -1,5 +1,19 @@
 import Sqids from "sqids";
 
+type SpectaResult<T, E> =
+  | { status: "ok"; data: T }
+  | { status: "error"; error: E };
+
+export async function unwrap<T, E>(
+  promise: Promise<SpectaResult<T, E>>,
+): Promise<T> {
+  const result = await promise;
+  if (result.status === "error") {
+    throw result.error;
+  }
+  return result.data;
+}
+
 let squids_counter = 0;
 let date_locale = "uk-UA";
 const sqids = new Sqids({

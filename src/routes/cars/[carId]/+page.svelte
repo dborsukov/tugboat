@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { createQueries } from "@tanstack/svelte-query";
+
   import WorkOrderIcon from "@lucide/svelte/icons/briefcase-business";
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
   import FingerprintIcon from "@lucide/svelte/icons/fingerprint-pattern";
@@ -8,68 +10,99 @@
 
   import { goto } from "$app/navigation";
 
-  import type { Car } from "$lib/bindings";
-
-  import { appStore } from "$lib/stores/app.svelte";
-
   import { prettifyIsoDateString } from "$lib/misc";
 
   import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
   import * as Card from "$lib/components/ui/card/index";
   import * as Details from "$lib/components/ui/details/index";
+  import Skeleton from "$lib/components/ui/skeleton/skeleton.svelte";
 
   import LogoLoader from "$lib/components/car-logo-loader.svelte";
   import CopyButton from "$lib/components/copy-button.svelte";
   import DataTable from "$lib/components/data-table/data-table.svelte";
   import { buildTable } from "$lib/components/data-table/table-builder.svelte";
+  import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
+  import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import ClientBadge from "../../clients/client-badge.svelte";
+  import { clientsQueryOptions } from "../../clients/queries";
   import { columns } from "../../work_orders/columns";
+  import {
+    workOrderLaborItemsQueryOptions,
+    workOrderPartItemsQueryOptions,
+    workOrdersQueryOptions,
+    workOrderTotalsQueryOptions,
+  } from "../../work_orders/queries";
+  import { buildWorkOrderListItems } from "../../work_orders/types";
   import WorkOrderMutationSheet from "../../work_orders/work-order-mutation-sheet.svelte";
+  import { carBrandsQueryOptions, carsQueryOptions } from "../queries";
   import DropdownMenu from "./dropdown-menu.svelte";
 
-  let { data } = $props();
+  let { params } = $props();
   let isSheetOpen: boolean = $state(false);
 
-  let car = $derived(
-    appStore.cars.find((c) => c.id.toString() === data.id) as Car,
-  );
-  let owner = $derived(appStore.clients.find((c) => c.id === car.clientId));
-  let brand = $derived(appStore.carBrands.find((b) => b.id === car.brandId));
-  let slug = $derived(brand != undefined ? brand.iconSlug : "");
-  let carWorkOrders = $derived.by(() => {
-    return appStore.workOrders.filter((wo) => wo.carId === car.id);
-  });
-
-  const tableData = $derived(
-    carWorkOrders.map((order) => {
-      const carBrand = appStore.carBrands.find((c) => c.id === car?.brandId);
-      const client = appStore.clients.find((c) => c.id === car?.clientId);
-      const labor = appStore.workOrderLaborItems.filter(
-        (i) => i.workOrderId === order.id,
-      );
-      const parts = appStore.workOrderPartItems.filter(
-        (i) => i.workOrderId === order.id,
-      );
-      if (car === undefined || client === undefined || carBrand === undefined) {
-        throw new Error("Elements missing from appStore");
-      }
+  const combinedQueries = createQueries(() => ({
+    queries: [
+      workOrdersQueryOptions(),
+      carsQueryOptions(),
+      clientsQueryOptions(),
+      carBrandsQueryOptions(),
+      workOrderLaborItemsQueryOptions(),
+      workOrderPartItemsQueryOptions(),
+      workOrderTotalsQueryOptions(),
+    ],
+    combine: (results) => {
       return {
-        ...order,
-        car,
-        carBrand,
-        client,
-        labor,
-        parts,
+        workOrders: results[0],
+        cars: results[1],
+        clients: results[2],
+        carBrands: results[3],
+        laborItems: results[4],
+        partItems: results[5],
+        totals: results[6],
+
+        isReady: results.every((r) => r.isSuccess),
+        isLoading: results.some((r) => r.isPending),
+        isError: results.some((r) => r.isError),
+        firstError: results.find((r) => r.isError)?.error,
+
+        refetchAll: () => {
+          results.forEach((r) => r.refetch());
+        },
       };
-    }),
+    },
+  }));
+
+  let car = $derived(
+    combinedQueries.cars.data?.find((c) => c.id.toString() === params.carId),
+  );
+  let brand = $derived(
+    combinedQueries.carBrands.data?.find((c) => c.id === car?.brandId),
+  );
+  let owner = $derived(
+    combinedQueries.clients.data?.find((c) => c.id === car?.clientId),
+  );
+
+  let workOrderListItems = $derived(
+    combinedQueries.isReady
+      ? buildWorkOrderListItems(
+          combinedQueries.workOrders.data!,
+          combinedQueries.cars.data!,
+          combinedQueries.carBrands.data!,
+          combinedQueries.clients.data!,
+          combinedQueries.laborItems.data!,
+          combinedQueries.partItems.data!,
+          combinedQueries.totals.data!,
+          (wo) => wo.carId === car!.id,
+        )
+      : [],
   );
 
   let table = buildTable({
     get data() {
-      return tableData;
+      return workOrderListItems;
     },
     get columns() {
       return columns;
@@ -81,9 +114,9 @@
   });
 </script>
 
-{#if car}
-  <PageLayout>
-    {#snippet header()}
+<PageLayout>
+  {#snippet header()}
+    {#if car}
       <div class="h-full flex items-center">
         <Button
           variant="outline"
@@ -92,15 +125,32 @@
         >
           <WorkOrderIcon /> Нове замовлення
         </Button>
-        <DropdownMenu {car} />
-        <WorkOrderMutationSheet bind:open={isSheetOpen} car_id={car.id} />
+        <DropdownMenu carId={car.id} />
+        <WorkOrderMutationSheet bind:open={isSheetOpen} carId={car.id} />
       </div>
-    {/snippet}
-    <div class="p-4">
+    {/if}
+  {/snippet}
+  <div class="p-4">
+    {#if combinedQueries.isError}
+      <FetchErrorDisplay
+        message={combinedQueries.firstError?.message}
+        onRetry={combinedQueries.refetchAll}
+        class="mt-20"
+      />
+    {:else if combinedQueries.isLoading}
+      <Skeleton class="w-full h-25" />
+      <Skeleton class="mt-4 w-full h-40" />
+      <Skeleton class="mt-4 w-full h-40" />
+    {:else if !car}
+      <NotFound
+        message={`Автомобіль не знайдено (ID: ${params.carId})`}
+        class="mt-20"
+      />
+    {:else}
       <Card.Root>
         <Card.Content class="flex flex-row items-center justify-center gap-4">
           <div class="h-15">
-            <LogoLoader {slug} />
+            <LogoLoader slug={brand?.iconSlug} />
           </div>
           <div class="flex-1 min-w-0">
             <div class="text-xl font-semibold tracking-tight truncate">
@@ -131,7 +181,7 @@
           <Details.Content>
             {#if owner != undefined}
               <div class="flex justify-end gap-2">
-                <ClientBadge client={owner} />
+                <ClientBadge name={owner.name} />
                 <Button
                   size="icon"
                   variant="ghost"
@@ -200,10 +250,10 @@
         <Card.Header>
           <Card.Title class="flex gap-2 text-xl">
             <p>Замовлення</p>
-            <p class="text-muted-foreground">{carWorkOrders.length}</p>
+            <p class="text-muted-foreground">{workOrderListItems.length}</p>
           </Card.Title>
         </Card.Header>
-        {#if carWorkOrders.length != 0}
+        {#if workOrderListItems.length != 0}
           <Card.Content>
             <DataTable
               {table}
@@ -213,6 +263,6 @@
           </Card.Content>
         {/if}
       </Card.Root>
-    </div>
-  </PageLayout>
-{/if}
+    {/if}
+  </div>
+</PageLayout>

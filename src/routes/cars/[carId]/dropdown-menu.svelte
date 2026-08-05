@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
   import { toast } from "svelte-sonner";
 
   import EllipsisIcon from "@lucide/svelte/icons/ellipsis";
@@ -7,9 +8,9 @@
 
   import { goto } from "$app/navigation";
 
-  import { commands, type Car } from "$lib/bindings";
+  import { commands } from "$lib/bindings";
 
-  import { appStore } from "$lib/stores/app.svelte";
+  import { unwrap } from "$lib/misc";
 
   import { buttonVariants } from "$lib/components/ui/button/index.js";
   import * as DropdownMenu from "$lib/components/ui/dropdown-menu/index.js";
@@ -17,28 +18,28 @@
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
 
   import CarMutationSheet from "../car-mutation-sheet.svelte";
+  import { invalidateCarsLists } from "../queries";
 
-  interface Props {
-    car: Car;
-  }
-  let { car }: Props = $props();
+  let { carId }: { carId: number } = $props();
 
   let isSheetOpen = $state(false);
   let isDeleteDialogOpen = $state(false);
 
-  async function handleDelete() {
-    let res = await commands.deleteCar(car.id);
-    if (res.status === "ok") {
+  const queryClient = useQueryClient();
+
+  const createCarDeleteMutation = createMutation(() => ({
+    mutationFn: (id: number) => unwrap(commands.deleteCar(id)),
+    onSuccess: async () => {
+      invalidateCarsLists(queryClient);
       await goto("/cars");
-      appStore.removeCar(car.id);
-      toast.success("Автомобіль видалено");
-    } else {
+    },
+    onError: (error) => {
       toast.error("Виникла помилка", {
-        description: res.error.message,
-        position: "bottom-center",
+        description: error.message,
+        position: "bottom-left",
       });
-    }
-  }
+    },
+  }));
 </script>
 
 <DropdownMenu.Root>
@@ -65,9 +66,9 @@
   </DropdownMenu.Content>
 </DropdownMenu.Root>
 
-<CarMutationSheet bind:open={isSheetOpen} {car} />
+<CarMutationSheet bind:open={isSheetOpen} id={carId} />
 <DeleteDialog
   bind:open={isDeleteDialogOpen}
-  onDelete={handleDelete}
+  onDelete={() => createCarDeleteMutation.mutate(carId)}
   description="Цю дію неможливо відмінити. Усі пов'язані з цим автомобілем дані будуть видалені."
 />

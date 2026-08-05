@@ -4,33 +4,38 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 
 /** Commands */
 export const commands = {
+	fetchCarsCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_cars_count")),
+	fetchCarsList: () => typedError<Car[], AppError>(__TAURI_INVOKE("fetch_cars_list")),
 	createCar: (payload: CreateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("create_car", { payload })),
-	createClient: (payload: CreateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("create_client", { payload })),
-	createService: (payload: CreateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("create_service", { payload })),
-	createWorkOrder: (payload: CreateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("create_work_order", { payload })),
-	createWorkOrderLaborItem: (payload: CreateWorkOrderLaborItemPayload) => typedError<WorkOrderLaborItem, AppError>(__TAURI_INVOKE("create_work_order_labor_item", { payload })),
-	createWorkOrderPartItem: (payload: CreateWorkOrderPartItemPayload) => typedError<WorkOrderPartItem, AppError>(__TAURI_INVOKE("create_work_order_part_item", { payload })),
-	deleteCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_car", { id })),
-	deleteClient: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_client", { id })),
-	deleteService: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_service", { id })),
-	deleteWorkOrder: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order", { id })),
-	deleteWorkOrderLaborItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order_labor_item", { id })),
-	deleteWorkOrderPartItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order_part_item", { id })),
-	fetchCarBrands: () => typedError<CarBrand[], AppError>(__TAURI_INVOKE("fetch_car_brands")),
-	fetchCars: () => typedError<Car[], AppError>(__TAURI_INVOKE("fetch_cars")),
-	fetchClients: () => typedError<Client[], AppError>(__TAURI_INVOKE("fetch_clients")),
-	fetchServices: () => typedError<Service[], AppError>(__TAURI_INVOKE("fetch_services")),
-	fetchSettings: () => typedError<AppSettings, AppError>(__TAURI_INVOKE("fetch_settings")),
-	fetchWorkOrderLaborItems: () => typedError<WorkOrderLaborItem[], AppError>(__TAURI_INVOKE("fetch_work_order_labor_items")),
-	fetchWorkOrderPartItems: () => typedError<WorkOrderPartItem[], AppError>(__TAURI_INVOKE("fetch_work_order_part_items")),
-	fetchWorkOrders: () => typedError<WorkOrder[], AppError>(__TAURI_INVOKE("fetch_work_orders")),
 	updateCar: (id: number, payload: UpdateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("update_car", { id, payload })),
+	deleteCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_car", { id })),
+	fetchCarBrands: () => typedError<CarBrand[], AppError>(__TAURI_INVOKE("fetch_car_brands")),
+	fetchClientsCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_clients_count")),
+	fetchClientsList: () => typedError<Client[], AppError>(__TAURI_INVOKE("fetch_clients_list")),
+	createClient: (payload: CreateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("create_client", { payload })),
 	updateClient: (id: number, payload: UpdateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("update_client", { id, payload })),
+	deleteClient: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_client", { id })),
+	fetchServicesCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_services_count")),
+	fetchServicesList: () => typedError<Service[], AppError>(__TAURI_INVOKE("fetch_services_list")),
+	createService: (payload: CreateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("create_service", { payload })),
 	updateService: (id: number, payload: UpdateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("update_service", { id, payload })),
+	deleteService: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_service", { id })),
+	fetchSettings: () => typedError<AppSettings, AppError>(__TAURI_INVOKE("fetch_settings")),
 	updateSettings: (settings: AppSettings) => typedError<AppSettings, AppError>(__TAURI_INVOKE("update_settings", { settings })),
+	fetchWorkOrdersCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_work_orders_count")),
+	fetchWorkOrdersList: () => typedError<WorkOrder[], AppError>(__TAURI_INVOKE("fetch_work_orders_list")),
+	createWorkOrder: (payload: CreateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("create_work_order", { payload })),
 	updateWorkOrder: (payload: UpdateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("update_work_order", { payload })),
+	deleteWorkOrder: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order", { id })),
+	fetchWorkOrderLaborItemsList: () => typedError<WorkOrderLaborItem[], AppError>(__TAURI_INVOKE("fetch_work_order_labor_items_list")),
+	createWorkOrderLaborItem: (payload: CreateWorkOrderLaborItemPayload) => typedError<WorkOrderLaborItem, AppError>(__TAURI_INVOKE("create_work_order_labor_item", { payload })),
 	updateWorkOrderLaborItem: (id: number, payload: UpdateWorkOrderLaborItemPayload) => typedError<WorkOrderLaborItem, AppError>(__TAURI_INVOKE("update_work_order_labor_item", { id, payload })),
+	deleteWorkOrderLaborItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order_labor_item", { id })),
+	fetchWorkOrderPartItemsList: () => typedError<WorkOrderPartItem[], AppError>(__TAURI_INVOKE("fetch_work_order_part_items_list")),
+	createWorkOrderPartItem: (payload: CreateWorkOrderPartItemPayload) => typedError<WorkOrderPartItem, AppError>(__TAURI_INVOKE("create_work_order_part_item", { payload })),
 	updateWorkOrderPartItem: (id: number, payload: UpdateWorkOrderPartItemPayload) => typedError<WorkOrderPartItem, AppError>(__TAURI_INVOKE("update_work_order_part_item", { id, payload })),
+	deleteWorkOrderPartItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order_part_item", { id })),
+	fetchWorkOrderTotals: () => typedError<WorkOrderTotal[], AppError>(__TAURI_INVOKE("fetch_work_order_totals")),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
 };
 
@@ -226,6 +231,14 @@ export type WorkOrderPartItem = {
 };
 
 export type WorkOrderStatus = "Received" | "InDiagnostics" | "AwaitingApproval" | "AwaitingParts" | "Working" | "ReadyForPickup" | "Paid" | "Canceled";
+
+export type WorkOrderTotal = {
+	workOrderId: string,
+	laborTotalCents: number,
+	partsTotalCents: number,
+	subtotalCents: number,
+	grandTotalCents: number,
+};
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

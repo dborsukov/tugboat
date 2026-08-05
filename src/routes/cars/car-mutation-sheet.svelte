@@ -1,18 +1,22 @@
 <script lang="ts">
+  import {
+    createMutation,
+    createQueries,
+    useQueryClient,
+  } from "@tanstack/svelte-query";
   import { tick } from "svelte";
   import { toast } from "svelte-sonner";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
-  import z, { string } from "zod";
+  import z from "zod";
 
   import CheckIcon from "@lucide/svelte/icons/check";
   import ChevronsUpDownIcon from "@lucide/svelte/icons/chevrons-up-down";
 
   import { commands } from "$lib/bindings";
 
-  import { appStore } from "$lib/stores/app.svelte";
-
   import { cn } from "$lib/utils";
+  import { unwrap } from "$lib/misc";
 
   import { Button } from "$lib/components/ui/button";
   import * as Command from "$lib/components/ui/command";
@@ -24,13 +28,46 @@
   import { Spinner } from "$lib/components/ui/spinner";
 
   import ClientBadge from "../clients/client-badge.svelte";
+  import { clientsQueryOptions } from "../clients/queries";
+  import {
+    carBrandsQueryOptions,
+    carsQueryOptions,
+    invalidateCarsLists,
+  } from "./queries";
 
-  interface Props {
-    open: boolean;
-    car?: any | null;
-  }
+  let {
+    id = null,
+    open = $bindable(false),
+  }: { id?: number | null; open: boolean } = $props();
 
-  let { open = $bindable(false), car = null }: Props = $props();
+  const queryClient = useQueryClient();
+
+  const combinedQueries = createQueries(() => ({
+    queries: [
+      carsQueryOptions(),
+      clientsQueryOptions(),
+      carBrandsQueryOptions(),
+    ],
+    combine: (results) => {
+      return {
+        cars: results[0],
+        clients: results[1],
+        carBrands: results[2],
+
+        isReady: results.every((r) => r.isSuccess),
+        isLoading: results.some((r) => r.isPending),
+        isError: results.some((r) => r.isError),
+        firstError: results.find((r) => r.isError)?.error,
+
+        refetchAll: () => {
+          results.forEach((r) => r.refetch());
+        },
+      };
+    },
+  }));
+
+  let carsList = $derived(combinedQueries.cars.data ?? []);
+  let car = $derived(carsList.find((c) => c.id === id) ?? null);
 
   const isEdit = $derived(!!car);
   const titleText = $derived(
@@ -48,8 +85,16 @@
   let brandComboOpen = $state(false);
   let brandComboTriggerRef = $state<HTMLButtonElement>(null!);
 
-  const brandComboSelectedValue = $derived(
-    appStore.carBrands.find((b) => b.id === $formData.brandId)?.name,
+  let brandComboSelectedValue = $derived(
+    (combinedQueries.carBrands.data ?? []).find(
+      (b) => b.id === $formData.brandId,
+    )?.name,
+  );
+
+  let selectedClient = $derived(
+    (combinedQueries.clients.data ?? []).find(
+      (c) => c.id === $formData.clientId,
+    ),
   );
 
   // Standard 2004+ format: 2 region letters, 4 digits, 2 series letters.
@@ -118,7 +163,6 @@
   const extendedSchema = carSchema
     .refine(
       (data) => {
-        const carsList = appStore.cars || [];
         const duplicateCar = carsList.find(
           (c) => c.licensePlate === data.licensePlate,
         );
@@ -134,7 +178,6 @@
     )
     .refine(
       (data) => {
-        const carsList = appStore.cars || [];
         const duplicateCar = carsList.find((c) => c.vin === data.vin);
         if (!duplicateCar) return true;
         // Avoid record matching with itself (when editing)
@@ -146,6 +189,36 @@
         path: ["vin"],
       },
     );
+
+  const createCarMutation = createMutation(() => ({
+    mutationFn: async (payload: z.infer<typeof carSchema>) =>
+      unwrap(commands.createCar(payload)),
+    onSuccess: () => {
+      invalidateCarsLists(queryClient);
+    },
+    onError: (error) => {
+      toast.error("Виникла помилка", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  }));
+
+  const updateCarMutation = createMutation(() => ({
+    mutationFn: async (variables: {
+      id: number;
+      payload: z.infer<typeof carSchema>;
+    }) => unwrap(commands.updateCar(variables.id, variables.payload)),
+    onSuccess: () => {
+      invalidateCarsLists(queryClient);
+    },
+    onError: (error) => {
+      toast.error("Виникла помилка", {
+        description: error.message,
+        position: "bottom-left",
+      });
+    },
+  }));
 
   const form = superForm(defaults(zod4(extendedSchema)), {
     SPA: true,
@@ -165,27 +238,14 @@
         vin: nativeForm.data.vin,
       };
 
-      if (isEdit) {
-        let res = await commands.updateCar(car.id, payload);
-        if (res.status === "ok") {
-          appStore.updateCar(res.data);
-        } else {
-          return toast.error("Виникла помилка", {
-            description: res.error.message,
-            position: "bottom-left",
-          });
-        }
-      } else {
-        let res = await commands.createCar(payload);
-        if (res.status === "ok") {
-          appStore.createCar(res.data);
-        } else {
-          return toast.error("Виникла помилка", {
-            description: res.error.message,
-            position: "bottom-left",
-          });
-        }
-      }
+      const result =
+        isEdit && id
+          ? await updateCarMutation
+              .mutateAsync({ id, payload })
+              .catch(() => null)
+          : await createCarMutation.mutateAsync(payload).catch(() => null);
+
+      if (!result) return;
       open = false;
       form.reset();
     },
@@ -264,9 +324,9 @@
                     role="combobox"
                     aria-expanded={clientComboOpen}
                   >
-                    {#if $formData.clientId != -1}
+                    {#if selectedClient}
                       <ClientBadge
-                        clientId={$formData.clientId}
+                        name={selectedClient.name}
                         iconSize="size-5"
                       />
                     {:else}
@@ -282,7 +342,7 @@
                   <Command.List>
                     <Command.Empty>Клієнта не знайдено.</Command.Empty>
                     <Command.Group>
-                      {#each appStore.clients as client (client.id)}
+                      {#each combinedQueries.clients.data ?? [] as client (client.id)}
                         <Command.Item
                           value={`${client.name}-${client.id}`}
                           onSelect={() => {
@@ -296,7 +356,7 @@
                                 "text-transparent",
                             )}
                           />
-                          <ClientBadge {client} />
+                          <ClientBadge name={client.name} />
                         </Command.Item>
                       {/each}
                     </Command.Group>
@@ -329,13 +389,13 @@
                   </Button>
                 {/snippet}
               </Popover.Trigger>
-              <Popover.Content class="w-50 p-0" align="start">
+              <Popover.Content class="w-48 p-0" align="start">
                 <Command.Root>
                   <Command.Input placeholder="Пошук марки..." />
                   <Command.List>
                     <Command.Empty>Марку не знайдено.</Command.Empty>
                     <Command.Group>
-                      {#each appStore.carBrands as brand (brand.id)}
+                      {#each combinedQueries.carBrands.data ?? [] as brand (brand.id)}
                         <Command.Item
                           value={brand.name}
                           onSelect={() => {
