@@ -8,8 +8,8 @@ import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 import CurrencyDisplay from "$lib/components/currency-display.svelte";
 import DataTableSortButton from "$lib/components/data-table-sort-button.svelte";
 
+import CarBadge from "../cars/car-badge.svelte";
 import ClientBadge from "../clients/client-badge.svelte";
-import CarDisplay from "./car-display.svelte";
 import StatusSelector from "./status-selector.svelte";
 import type { WorkOrderListItem } from "./types";
 
@@ -74,7 +74,7 @@ export const columns: ColumnDef<WorkOrderListItem>[] = [
       });
     },
     cell: ({ row }) => {
-      return renderComponent(CarDisplay, {
+      return renderComponent(CarBadge, {
         car: row.original.car,
         carBrand: row.original.carBrand,
       });
