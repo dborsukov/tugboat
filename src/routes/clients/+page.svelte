@@ -96,6 +96,10 @@
     currentPage = 1;
   }
 
+  let controlsDisabled = $derived(
+    !clientsQuery.isSuccess || (paginatedClients.length === 0 && !searchQuery),
+  );
+
   $effect(() => searchInputEl?.focus());
 </script>
 
@@ -108,13 +112,13 @@
         class="w-full"
         bind:value={searchQuery}
         oninput={handleSearchInput}
-        disabled={!clientsQuery.isSuccess || paginatedClients.length === 0}
+        disabled={controlsDisabled}
       />
       <Select.Root
         type="single"
         bind:value={sortBy}
         onValueChange={handleSortChange}
-        disabled={!clientsQuery.isSuccess || paginatedClients.length === 0}
+        disabled={controlsDisabled}
       >
         <Select.Trigger class="w-45 shrink-0">
           <SortIcon />

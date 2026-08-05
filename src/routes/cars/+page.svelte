@@ -137,6 +137,11 @@
     currentPage = 1;
   }
 
+  let controlsDisabled = $derived(
+    !combinedQueries.isReady ||
+      (paginatedCarListItems.length === 0 && !searchQuery),
+  );
+
   $effect(() => searchInputEl?.focus());
 </script>
 
@@ -148,16 +153,14 @@
         bind:value={searchQuery}
         placeholder="Пошук за моделлю, номером, VIN-кодом або власником..."
         oninput={handleSearchInput}
-        disabled={!combinedQueries.isReady ||
-          paginatedCarListItems.length === 0}
+        disabled={controlsDisabled}
         class="w-full"
       />
       <Select.Root
         bind:value={sortBy}
         type="single"
         onValueChange={handleSortChange}
-        disabled={!combinedQueries.isReady ||
-          paginatedCarListItems.length === 0}
+        disabled={controlsDisabled}
       >
         <Select.Trigger class="w-45 shrink-0">
           <SortIcon />
