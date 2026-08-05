@@ -5,6 +5,8 @@
   import { SvelteQueryDevtools } from "@tanstack/svelte-query-devtools";
   import { ModeWatcher } from "mode-watcher";
 
+  import { dev } from "$app/environment";
+
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
   import SidebarInset from "$lib/components/ui/sidebar/sidebar-inset.svelte";
   import { Toaster } from "$lib/components/ui/sonner/index.js";
@@ -21,8 +23,11 @@
 </script>
 
 <QueryClientProvider client={queryClient}>
+  {#if dev}
+    <SvelteQueryDevtools />
+  {/if}
+
   <ModeWatcher />
-  <SvelteQueryDevtools />
   <Toaster position="bottom-center" richColors />
 
   <Sidebar.Provider>
