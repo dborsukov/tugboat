@@ -9,9 +9,11 @@ import CurrencyDisplay from "$lib/components/currency-display.svelte";
 
 import DataTableActions from "./data-table-labor-actions.svelte";
 
-export type LaborTableMeta = {
+export interface LaborTableMeta {
   rate: number;
-};
+  onEdit: (id: number) => void;
+  onDelete: (id: number) => void;
+}
 
 export const columns: ColumnDef<WorkOrderLaborItem>[] = [
   {
@@ -82,8 +84,13 @@ export const columns: ColumnDef<WorkOrderLaborItem>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      return renderComponent(DataTableActions, { id: row.original.id });
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as LaborTableMeta | undefined;
+      return renderComponent(DataTableActions, {
+        id: row.original.id,
+        onEdit: (id: number) => meta?.onEdit?.(id),
+        onDelete: (id: number) => meta?.onDelete?.(id),
+      });
     },
   },
 ];

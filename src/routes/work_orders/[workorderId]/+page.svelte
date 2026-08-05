@@ -1,6 +1,12 @@
 <script lang="ts">
-  import { createQueries, useQueryClient } from "@tanstack/svelte-query";
+  import {
+    createMutation,
+    createQueries,
+    useQueryClient,
+  } from "@tanstack/svelte-query";
+  import { TableActionState } from "$lib/states/table-actions.svelte";
   import { NumericText } from "svelte-number-format";
+  import { toast } from "svelte-sonner";
 
   import DiscountIcon from "@lucide/svelte/icons/badge-percent";
   import CalendarCheckIcon from "@lucide/svelte/icons/calendar-check";
@@ -13,7 +19,9 @@
   import ReceiptTextIcon from "@lucide/svelte/icons/receipt-text";
   import WrenchIcon from "@lucide/svelte/icons/wrench";
 
-  import { prettifyIsoDateString } from "$lib/misc";
+  import { commands } from "$lib/bindings";
+
+  import { prettifyIsoDateString, unwrap } from "$lib/misc";
 
   import * as ButtonGroup from "$lib/components/ui/button-group/index.js";
   import Button from "$lib/components/ui/button/button.svelte";
@@ -26,6 +34,7 @@
   import CurrencyDisplay from "$lib/components/currency-display.svelte";
   import DataTable from "$lib/components/data-table/data-table.svelte";
   import { buildTable } from "$lib/components/data-table/table-builder.svelte";
+  import DeleteDialog from "$lib/components/delete-dialog.svelte";
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
@@ -37,6 +46,7 @@
   import { servicesQueryOptions } from "../../services/queries";
   import {
     createCreateWorkOrderLaborItemMutation,
+    invalidateWorkOrderLists,
     workOrderLaborItemsQueryOptions,
     workOrderPartItemsQueryOptions,
     workOrdersQueryOptions,
@@ -48,11 +58,17 @@
     columns as laborColumns,
     type LaborTableMeta,
   } from "./labor-columns";
-  import { columns as partsColumns } from "./parts-columns";
+  import {
+    columns as partsColumns,
+    type PartsTableMeta,
+  } from "./parts-columns";
   import WorkOrderLaborItemMutationSheet from "./work-order-labor-item-mutation-sheet.svelte";
   import WorkOrderPartItemMutationSheet from "./work-order-parts-item-mutation-sheet.svelte";
+  import WorkOrderPartsItemMutationSheet from "./work-order-parts-item-mutation-sheet.svelte";
 
   let { params } = $props();
+
+  let isPopoverOpen: boolean = $state(false);
 
   const queryClient = useQueryClient();
 
@@ -119,9 +135,48 @@
     combinedQueries.clients.data?.find((c) => c.id === car?.clientId),
   );
 
-  let isLaborSheetOpen: boolean = $state(false);
-  let isPartsSheetOpen: boolean = $state(false);
-  let isPopoverOpen: boolean = $state(false);
+  let partsTableActions = new TableActionState<number>();
+  let laborTableActions = new TableActionState<number>();
+
+  const partDeleteMutation = createMutation(() => ({
+    mutationFn: (id: number) => unwrap(commands.deleteWorkOrderPartItem(id)),
+    onSuccess: () => {
+      invalidateWorkOrderLists(queryClient);
+      partsTableActions.resetDelete();
+    },
+    onError: (error) => {
+      toast.error("Виникла помилка", { description: error.message });
+    },
+  }));
+
+  const laborDeleteMutation = createMutation(() => ({
+    mutationFn: (id: number) => unwrap(commands.deleteWorkOrderLaborItem(id)),
+    onSuccess: () => {
+      invalidateWorkOrderLists(queryClient);
+      laborTableActions.resetDelete();
+    },
+    onError: (error) => {
+      toast.error("Виникла помилка", { description: error.message });
+    },
+  }));
+
+  let partsTable = buildTable({
+    get data() {
+      return partItems;
+    },
+    get columns() {
+      return partsColumns;
+    },
+    get meta() {
+      return {
+        onEdit: partsTableActions.openEdit,
+        onDelete: partsTableActions.openDelete,
+      } satisfies PartsTableMeta;
+    },
+    disableSorting: true,
+    disableFiltering: true,
+    disablePagination: true,
+  });
 
   let laborTable = buildTable({
     get data() {
@@ -131,24 +186,28 @@
       return laborColumns;
     },
     get meta() {
-      return { rate: workOrder?.rateCents ?? 0 } satisfies LaborTableMeta;
+      return {
+        rate: workOrder?.rateCents ?? 0,
+        onEdit: laborTableActions.openEdit,
+        onDelete: laborTableActions.openDelete,
+      } satisfies LaborTableMeta;
     },
     disableSorting: true,
     disableFiltering: true,
     disablePagination: true,
   });
 
-  let partsTable = buildTable({
-    get data() {
-      return partItems;
-    },
-    get columns() {
-      return partsColumns;
-    },
-    disableSorting: true,
-    disableFiltering: true,
-    disablePagination: true,
-  });
+  function confirmPartDelete() {
+    if (partsTableActions.deleteId !== null) {
+      partDeleteMutation.mutate(partsTableActions.deleteId);
+    }
+  }
+
+  function confirmLaborDelete() {
+    if (laborTableActions.deleteId !== null) {
+      laborDeleteMutation.mutate(laborTableActions.deleteId);
+    }
+  }
 </script>
 
 {#if workOrder}
@@ -351,9 +410,7 @@
             </Card.Title>
             <Card.Action>
               <ButtonGroup.Root>
-                <Button
-                  variant="outline"
-                  onclick={() => (isLaborSheetOpen = !isLaborSheetOpen)}
+                <Button variant="outline" onclick={laborTableActions.openCreate}
                   >Створити</Button
                 >
                 <Popover.Root bind:open={isPopoverOpen}>
@@ -414,9 +471,7 @@
               </p>
             </Card.Title>
             <Card.Action>
-              <Button onclick={() => (isPartsSheetOpen = !isPartsSheetOpen)}
-                >Створити</Button
-              >
+              <Button onclick={partsTableActions.openCreate}>Створити</Button>
             </Card.Action>
           </Card.Header>
           <Card.Content>
@@ -427,16 +482,28 @@
             />
           </Card.Content>
         </Card.Root>
-
-        <WorkOrderLaborItemMutationSheet
-          bind:open={isLaborSheetOpen}
-          woId={workOrder.id}
-        />
-        <WorkOrderPartItemMutationSheet
-          bind:open={isPartsSheetOpen}
-          woId={workOrder.id}
-        />
       {/if}
     </div></PageLayout
   >
+  <WorkOrderLaborItemMutationSheet
+    bind:open={laborTableActions.isMutationOpen}
+    id={laborTableActions.editId}
+    woId={workOrder.id}
+  />
+  <DeleteDialog
+    bind:open={laborTableActions.isDeleteOpen}
+    onDelete={confirmLaborDelete}
+    description="Цю дію неможливо відмінити."
+  />
+
+  <WorkOrderPartsItemMutationSheet
+    bind:open={partsTableActions.isMutationOpen}
+    id={partsTableActions.editId}
+    woId={workOrder.id}
+  />
+  <DeleteDialog
+    bind:open={partsTableActions.isDeleteOpen}
+    onDelete={confirmPartDelete}
+    description="Цю дію неможливо відмінити."
+  />
 {/if}

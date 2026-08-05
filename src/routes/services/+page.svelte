@@ -1,5 +1,13 @@
 <script lang="ts">
+  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
+  import { TableActionState } from "$lib/states/table-actions.svelte";
+  import { toast } from "svelte-sonner";
+
   import PlusIcon from "@lucide/svelte/icons/plus";
+
+  import { commands } from "$lib/bindings";
+
+  import { unwrap } from "$lib/misc";
 
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
@@ -7,17 +15,31 @@
 
   import DataTable from "$lib/components/data-table/data-table.svelte";
   import { buildTable } from "$lib/components/data-table/table-builder.svelte";
+  import DeleteDialog from "$lib/components/delete-dialog.svelte";
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
-  import { columns } from "./columns";
-  import { createServicesQuery } from "./queries";
+  import { columns, type ServiceTableMeta } from "./columns";
+  import { createServicesQuery, invalidateServiceLists } from "./queries";
   import ServiceMutationSheet from "./service-mutation-sheet.svelte";
 
   let inputValue: string = $state("");
-  let isSheetOpen: boolean = $state(false);
 
+  const queryClient = useQueryClient();
   const servicesQuery = createServicesQuery();
+
+  const deleteMutation = createMutation(() => ({
+    mutationFn: (id: number) => unwrap(commands.deleteService(id)),
+    onSuccess: () => {
+      invalidateServiceLists(queryClient);
+      tableActions.resetDelete();
+    },
+    onError: (error) => {
+      toast.error("Виникла помилка", { description: error.message });
+    },
+  }));
+
+  const tableActions = new TableActionState<number>();
 
   let table = buildTable({
     get data() {
@@ -29,12 +51,23 @@
     get searchTerm() {
       return inputValue;
     },
+    get meta() {
+      return {
+        onEdit: tableActions.openEdit,
+        onDelete: tableActions.openDelete,
+      } satisfies ServiceTableMeta;
+    },
     initialSorting: [{ id: "name", desc: true }],
   });
+
+  function confirmDelete() {
+    if (tableActions.deleteId !== null) {
+      deleteMutation.mutate(tableActions.deleteId);
+    }
+  }
 </script>
 
 <PageLayout>
-  <ServiceMutationSheet bind:open={isSheetOpen} />
   {#snippet header()}
     <div class="h-full pl-1 flex items-center gap-2">
       <Input
@@ -46,9 +79,7 @@
       <Button
         variant="outline"
         disabled={!servicesQuery.isSuccess}
-        onclick={() => {
-          isSheetOpen = !isSheetOpen;
-        }}
+        onclick={tableActions.openCreate}
       >
         Додати <PlusIcon />
       </Button>
@@ -73,3 +104,13 @@
     {/if}
   </div>
 </PageLayout>
+
+<ServiceMutationSheet
+  bind:open={tableActions.isMutationOpen}
+  id={tableActions.editId}
+/>
+<DeleteDialog
+  bind:open={tableActions.isDeleteOpen}
+  onDelete={confirmDelete}
+  description="Цю дію неможливо відмінити."
+/>

@@ -18,9 +18,9 @@
   import { createServicesQuery, invalidateServiceLists } from "./queries";
 
   let {
-    open = $bindable(false),
     id = null,
-  }: { open: boolean; id?: number | null } = $props();
+    open = $bindable(false),
+  }: { id?: number | null; open: boolean } = $props();
 
   const queryClient = useQueryClient();
 
@@ -29,9 +29,7 @@
   let service = $derived(servicesList.find((s) => s.id === id) ?? null);
 
   const isEdit = $derived(!!id);
-  const formID = $derived(
-    isEdit ? `service-mutation-form-${id}` : "service-mutation-form-create",
-  );
+  const formID = $derived(`service-mutation-form-${id}`);
 
   export const serviceSchema = z.object({
     code: z.string().nullable(),

@@ -10,6 +10,11 @@ import CurrencyDisplay from "$lib/components/currency-display.svelte";
 import DataTableActions from "./data-table-part-actions.svelte";
 import PartStatusSelector from "./part-status-selector.svelte";
 
+export interface PartsTableMeta {
+  onEdit: (id: number) => void;
+  onDelete: (id: number) => void;
+}
+
 export const columns: ColumnDef<WorkOrderPartItem>[] = [
   {
     accessorKey: "status",
@@ -159,8 +164,13 @@ export const columns: ColumnDef<WorkOrderPartItem>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      return renderComponent(DataTableActions, { id: row.original.id });
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as PartsTableMeta | undefined;
+      return renderComponent(DataTableActions, {
+        id: row.original.id,
+        onEdit: (id: number) => meta?.onEdit?.(id),
+        onDelete: (id: number) => meta?.onDelete?.(id),
+      });
     },
   },
 ];

@@ -9,6 +9,11 @@ import DataTableSortButton from "$lib/components/data-table-sort-button.svelte";
 
 import DataTableActions from "./data-table-actions.svelte";
 
+export interface ServiceTableMeta {
+  onEdit: (id: number) => void;
+  onDelete: (id: number) => void;
+}
+
 export const columns: ColumnDef<Service>[] = [
   {
     accessorKey: "code",
@@ -81,8 +86,13 @@ export const columns: ColumnDef<Service>[] = [
   },
   {
     id: "actions",
-    cell: ({ row }) => {
-      return renderComponent(DataTableActions, { id: row.original.id });
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as ServiceTableMeta | undefined;
+      return renderComponent(DataTableActions, {
+        id: row.original.id,
+        onEdit: (id: number) => meta?.onEdit?.(id),
+        onDelete: (id: number) => meta?.onDelete?.(id),
+      });
     },
   },
 ];
