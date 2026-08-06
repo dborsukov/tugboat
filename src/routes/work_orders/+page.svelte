@@ -97,7 +97,7 @@
 
 <PageLayout>
   {#snippet header()}
-    <div class="h-full pl-1 flex items-center gap-2">
+    <div class="h-full flex items-center gap-2">
       <Input
         placeholder="Пошук за кодом, клієнтом, автомобілем, статусом, або датою..."
         bind:value={inputValue}

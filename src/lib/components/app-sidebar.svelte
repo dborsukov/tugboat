@@ -7,12 +7,9 @@
   import CarsIcon from "@lucide/svelte/icons/car";
   import CustomerIcon from "@lucide/svelte/icons/circle-user";
   import HomeIcon from "@lucide/svelte/icons/home";
-  import PanelCloseIcon from "@lucide/svelte/icons/panel-left-close";
-  import PanelOpenIcon from "@lucide/svelte/icons/panel-left-open";
   import SettingsIcon from "@lucide/svelte/icons/settings";
   import WrenchIcon from "@lucide/svelte/icons/wrench";
 
-  import { useSidebar } from "$lib/components/ui/sidebar/index.js";
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
 
   import PopeyeIcon from "$lib/components/icons/popeye.svelte";
@@ -23,11 +20,8 @@
   import { clientsCountQueryOptions } from "../../routes/clients/queries";
   import { servicesCountQueryOptions } from "../../routes/services/queries";
   import { workOrdersCountQueryOptions } from "../../routes/work_orders/queries";
-  import Button from "./ui/button/button.svelte";
   import SidebarFooter from "./ui/sidebar/sidebar-footer.svelte";
   import SidebarMenuBadge from "./ui/sidebar/sidebar-menu-badge.svelte";
-
-  const sidebar = useSidebar();
 
   const combinedQueries = createQueries(() => ({
     queries: [
@@ -113,18 +107,18 @@
 </script>
 
 <Sidebar.Root collapsible="icon" variant="sidebar">
-  <Sidebar.Header class="h-16 border-b">
-    <div
-      class="flex h-full w-full items-center justify-center group-data-[collapsible=]:pl-2 transition-all duration-300"
-    >
+  <Sidebar.Header
+    class="h-16 overflow-hidden border-b transition-all duration-300 ease-in-out group-data-[collapsible=icon]:h-0 group-data-[collapsible=icon]:border-none group-data-[collapsible=icon]:p-0"
+  >
+    <div class="flex h-full w-full items-center pl-2">
       <div
-        class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg text-sidebar-primary-foreground transition-all duration-300 ease-in-out group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0"
+        class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg text-sidebar-primary-foreground transition-all duration-300 ease-in-out group-data-[collapsible=icon]:opacity-0"
       >
         <PopeyeIcon class="size-9! shrink-0" />
       </div>
 
       <div
-        class="flex flex-1 flex-col justify-center overflow-hidden px-2 text-sm font-semibold leading-tight transition-all duration-300 ease-in-out group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:opacity-0"
+        class="flex flex-1 flex-col justify-center overflow-hidden whitespace-nowrap px-2 text-sm font-semibold leading-tight transition-all duration-300 ease-in-out group-data-[collapsible=icon]:opacity-0"
       >
         <span class="truncate">Папай CRM</span>
         <span class="truncate text-xs text-muted-foreground"
@@ -133,27 +127,11 @@
             : "?"}</span
         >
       </div>
-
-      <div class="flex shrink-0 items-center justify-center">
-        <Button
-          size="icon-lg"
-          variant="ghost"
-          class="hover:cursor-pointer"
-          onclick={() => sidebar.toggle()}
-        >
-          <PanelCloseIcon
-            class="absolute transition-all duration-300 ease-in-out group-data-[collapsible=icon]:scale-50 group-data-[collapsible=icon]:opacity-0"
-          />
-          <PanelOpenIcon
-            class="absolute scale-50 opacity-0 transition-all duration-300 ease-in-out group-data-[collapsible=icon]:scale-100 group-data-[collapsible=icon]:opacity-100"
-          />
-        </Button>
-      </div>
     </div>
   </Sidebar.Header>
 
-  <Sidebar.Content>
-    <Sidebar.Group>
+  <Sidebar.Content class="gap-0">
+    <Sidebar.Group class="py-1 group-data-[collapsible=]:mt-2">
       <Sidebar.GroupContent>
         <Sidebar.Menu>
           {#each top_level_menu as item (item.title)}
@@ -174,8 +152,12 @@
         </Sidebar.Menu>
       </Sidebar.GroupContent>
     </Sidebar.Group>
-    <Sidebar.Group>
-      <Sidebar.GroupLabel>База</Sidebar.GroupLabel>
+
+    <Sidebar.Group class="py-1">
+      <Sidebar.GroupLabel
+        class="group-data-[collapsible=icon]:pointer-events-none"
+        >База</Sidebar.GroupLabel
+      >
       <Sidebar.GroupContent>
         <Sidebar.Menu>
           {#each crm_menu as item (item.title)}
@@ -196,8 +178,12 @@
         </Sidebar.Menu>
       </Sidebar.GroupContent>
     </Sidebar.Group>
-    <Sidebar.Group>
-      <Sidebar.GroupLabel>Управління</Sidebar.GroupLabel>
+
+    <Sidebar.Group class="py-1">
+      <Sidebar.GroupLabel
+        class="group-data-[collapsible=icon]:pointer-events-none"
+        >Управління</Sidebar.GroupLabel
+      >
       <Sidebar.GroupContent>
         <Sidebar.Menu>
           {#each management_menu as item (item.title)}

@@ -10,13 +10,14 @@
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
   import SidebarInset from "$lib/components/ui/sidebar/sidebar-inset.svelte";
   import { Toaster } from "$lib/components/ui/sonner/index.js";
+  import * as Tooltip from "$lib/components/ui/tooltip/index.js";
 
   import AppSidebar from "$lib/components/app-sidebar.svelte";
+  import TitleBar from "$lib/components/title-bar.svelte";
 
   import { navHistory } from "$lib/states/nav-history.svelte";
 
   let { children } = $props();
-
   const queryClient = new QueryClient();
 
   navHistory.init();
@@ -30,12 +31,19 @@
   <ModeWatcher />
   <Toaster position="bottom-center" richColors />
 
-  <Sidebar.Provider>
-    <AppSidebar />
-    <SidebarInset class="h-screen flex flex-col overflow-hidden">
-      <main class="flex-1 flex flex-col min-h-0">
-        {@render children?.()}
-      </main>
-    </SidebarInset>
-  </Sidebar.Provider>
+  <Tooltip.Provider>
+    <Sidebar.Provider>
+      <div class="flex h-screen w-screen flex-col overflow-hidden">
+        <TitleBar />
+        <div class="flex flex-1 overflow-hidden transform-gpu">
+          <AppSidebar />
+          <SidebarInset class="h-full flex flex-col overflow-hidden">
+            <main class="flex-1 flex flex-col min-h-0">
+              {@render children?.()}
+            </main>
+          </SidebarInset>
+        </div>
+      </div>
+    </Sidebar.Provider>
+  </Tooltip.Provider>
 </QueryClientProvider>

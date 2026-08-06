@@ -208,9 +208,7 @@
 {#if workOrder}
   <PageLayout>
     {#snippet header()}
-      <div class="ml-2 h-full flex items-center gap-4">
-        <div class="hidden md:block h-9/12 w-px bg-border shrink-0"></div>
-
+      <div class="h-full flex items-center gap-4">
         <div class="flex flex-col justify-center leading-tight shrink-0">
           <span class="text-xs text-muted-foreground">Наряд-замовлення</span>
           <h2 class="text-lg font-mono font-medium">{workOrder.id}</h2>
