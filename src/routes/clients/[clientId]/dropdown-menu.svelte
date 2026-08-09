@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
-  import { toast } from "svelte-sonner";
+  import { useQueryClient } from "@tanstack/svelte-query";
 
   import { goto } from "$app/navigation";
 
@@ -13,11 +12,8 @@
 
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
 
-  import { commands } from "$lib/bindings";
-  import { unwrap } from "$lib/tools";
-
   import ClientMutationSheet from "../client-mutation-sheet.svelte";
-  import { invalidateClientsLists } from "../queries";
+  import { createDeleteClientMutation } from "../queries";
 
   let { clientId }: { clientId: number } = $props();
 
@@ -26,19 +22,15 @@
 
   const queryClient = useQueryClient();
 
-  const createClientDeleteMutation = createMutation(() => ({
-    mutationFn: (id: number) => unwrap(commands.deleteClient(id)),
-    onSuccess: async () => {
-      invalidateClientsLists(queryClient);
-      await goto("/clients");
-    },
-    onError: (error) => {
-      toast.error("Виникла помилка", {
-        description: error.message,
-        position: "bottom-left",
-      });
-    },
-  }));
+  const deleteClientMutation = createDeleteClientMutation(queryClient);
+
+  function handleDelete() {
+    deleteClientMutation.mutate(clientId, {
+      onSuccess: async () => {
+        await goto("/clients");
+      },
+    });
+  }
 </script>
 
 <DropdownMenu.Root>
@@ -65,9 +57,9 @@
   </DropdownMenu.Content>
 </DropdownMenu.Root>
 
-<ClientMutationSheet id={clientId} bind:open={isSheetOpen} />
+<ClientMutationSheet {clientId} bind:open={isSheetOpen} />
 <DeleteDialog
   bind:open={isDeleteDialogOpen}
-  onDelete={() => createClientDeleteMutation.mutate(clientId)}
+  onDelete={handleDelete}
   description="Цю дію неможливо відмінити. Усі пов'язані з цим клієнтом дані будуть видалені."
 />

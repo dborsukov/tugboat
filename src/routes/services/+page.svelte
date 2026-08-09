@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
-  import { toast } from "svelte-sonner";
+  import { useQueryClient } from "@tanstack/svelte-query";
 
   import PlusIcon from "@lucide/svelte/icons/plus";
 
@@ -14,29 +13,19 @@
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
-  import { commands } from "$lib/bindings";
   import { TableActionState } from "$lib/states/table-actions.svelte";
-  import { unwrap } from "$lib/tools";
 
   import { columns, type ServiceTableMeta } from "./columns";
-  import { createServicesQuery, invalidateServiceLists } from "./queries";
+  import { createDeleteServiceMutation, createServicesQuery } from "./queries";
   import ServiceMutationSheet from "./service-mutation-sheet.svelte";
 
   let inputValue: string = $state("");
 
   const queryClient = useQueryClient();
-  const servicesQuery = createServicesQuery();
 
-  const deleteMutation = createMutation(() => ({
-    mutationFn: (id: number) => unwrap(commands.deleteService(id)),
-    onSuccess: () => {
-      invalidateServiceLists(queryClient);
-      tableActions.resetDelete();
-    },
-    onError: (error) => {
-      toast.error("Виникла помилка", { description: error.message });
-    },
-  }));
+  const deleteServiceMutation = createDeleteServiceMutation(queryClient);
+
+  const servicesQuery = createServicesQuery();
 
   const tableActions = new TableActionState<number>();
 
@@ -61,7 +50,9 @@
 
   function confirmDelete() {
     if (tableActions.deleteId !== null) {
-      deleteMutation.mutate(tableActions.deleteId);
+      deleteServiceMutation.mutate(tableActions.deleteId, {
+        onSuccess: tableActions.resetDelete,
+      });
     }
   }
 </script>
@@ -106,7 +97,7 @@
 
 <ServiceMutationSheet
   bind:open={tableActions.isMutationOpen}
-  id={tableActions.editId}
+  serviceId={tableActions.editId}
 />
 <DeleteDialog
   bind:open={tableActions.isDeleteOpen}

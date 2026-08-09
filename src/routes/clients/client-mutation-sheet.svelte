@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
-  import { toast } from "svelte-sonner";
+  import { useQueryClient } from "@tanstack/svelte-query";
   import type { CountryCode } from "svelte-tel-input/types";
   import { validateTelInput } from "svelte-tel-input/validators";
   import { defaults, superForm } from "sveltekit-superforms";
@@ -14,24 +13,28 @@
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
   import PhoneInput from "$lib/components/phone-input.svelte";
 
-  import { commands } from "$lib/bindings";
-  import { unwrap } from "$lib/tools";
-
-  import { createClientsQuery, invalidateClientsLists } from "./queries";
+  import {
+    createClientsQuery,
+    createCreateClientMutation,
+    createUpdateClientMutation,
+  } from "./queries";
 
   let {
-    id = null,
+    clientId = null,
     open = $bindable(false),
-  }: { id?: number | null; open: boolean } = $props();
+  }: { clientId?: number | null; open: boolean } = $props();
+
+  const formID = "client-mutation-form";
+  const isEdit = $derived(clientId != null);
 
   const queryClient = useQueryClient();
 
+  const createClientMutation = createCreateClientMutation(queryClient);
+  const updateClientMutation = createUpdateClientMutation(queryClient);
+
   let clientsQuery = createClientsQuery();
   let clientsList = $derived(clientsQuery.data ?? []);
-  let client = $derived(clientsList.find((c) => c.id === id) ?? null);
-
-  const isEdit = $derived(!!client);
-  const formID = "client-mutation-form";
+  let client = $derived(clientsList.find((c) => c.id === clientId) ?? null);
 
   let phoneCountry = $state<CountryCode>("UA");
 
@@ -64,36 +67,6 @@
     },
   );
 
-  const createClientMutation = createMutation(() => ({
-    mutationFn: async (payload: z.infer<typeof clientSchema>) =>
-      unwrap(commands.createClient(payload)),
-    onSuccess: () => {
-      invalidateClientsLists(queryClient);
-    },
-    onError: (error) => {
-      toast.error("Виникла помилка", {
-        description: error.message,
-        position: "bottom-left",
-      });
-    },
-  }));
-
-  const updateClientMutation = createMutation(() => ({
-    mutationFn: async (variables: {
-      id: number;
-      payload: z.infer<typeof clientSchema>;
-    }) => unwrap(commands.updateClient(variables.id, variables.payload)),
-    onSuccess: () => {
-      invalidateClientsLists(queryClient);
-    },
-    onError: (error) => {
-      toast.error("Виникла помилка", {
-        description: error.message,
-        position: "bottom-left",
-      });
-    },
-  }));
-
   const form = superForm(defaults(zod4(extendedSchema)), {
     SPA: true,
     validators: zod4Client(extendedSchema),
@@ -108,8 +81,10 @@
         phone: nativeForm.data.phone,
       };
 
-      if (isEdit && id) {
-        await updateClientMutation.mutateAsync({ id, payload }).catch(() => {});
+      if (isEdit && clientId) {
+        await updateClientMutation
+          .mutateAsync({ id: clientId, payload })
+          .catch(() => {});
       } else {
         await createClientMutation.mutateAsync(payload).catch(() => {});
       }

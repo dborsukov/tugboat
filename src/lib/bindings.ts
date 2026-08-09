@@ -5,37 +5,47 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 /** Commands */
 export const commands = {
 	fetchCarsCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_cars_count")),
-	fetchCarsList: () => typedError<Car[], AppError>(__TAURI_INVOKE("fetch_cars_list")),
+	fetchCarById: (id: number) => typedError<CarDto, AppError>(__TAURI_INVOKE("fetch_car_by_id", { id })),
+	fetchCarsList: () => typedError<CarDto[], AppError>(__TAURI_INVOKE("fetch_cars_list")),
+	fetchCarDetails: (id: number) => typedError<CarDetailsDto, AppError>(__TAURI_INVOKE("fetch_car_details", { id })),
+	fetchCarDetailsList: () => typedError<CarDetailsDto[], AppError>(__TAURI_INVOKE("fetch_car_details_list")),
 	createCar: (payload: CreateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("create_car", { payload })),
 	updateCar: (id: number, payload: UpdateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("update_car", { id, payload })),
 	deleteCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_car", { id })),
 	fetchCarBrands: () => typedError<CarBrand[], AppError>(__TAURI_INVOKE("fetch_car_brands")),
 	fetchClientsCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_clients_count")),
 	fetchClientsList: () => typedError<Client[], AppError>(__TAURI_INVOKE("fetch_clients_list")),
+	fetchClientDetailsDto: (id: number) => typedError<ClientDetailsDto, AppError>(__TAURI_INVOKE("fetch_client_details_dto", { id })),
 	createClient: (payload: CreateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("create_client", { payload })),
 	updateClient: (id: number, payload: UpdateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("update_client", { id, payload })),
 	deleteClient: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_client", { id })),
 	fetchServicesCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_services_count")),
+	fetchServiceById: (id: number) => typedError<Service, AppError>(__TAURI_INVOKE("fetch_service_by_id", { id })),
 	fetchServicesList: () => typedError<Service[], AppError>(__TAURI_INVOKE("fetch_services_list")),
 	createService: (payload: CreateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("create_service", { payload })),
 	updateService: (id: number, payload: UpdateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("update_service", { id, payload })),
 	deleteService: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_service", { id })),
 	fetchSettings: () => typedError<AppSettings, AppError>(__TAURI_INVOKE("fetch_settings")),
 	updateSettings: (settings: AppSettings) => typedError<AppSettings, AppError>(__TAURI_INVOKE("update_settings", { settings })),
+	fetchWorkOrderDetailsDto: (id: string) => typedError<WorkOrderDetailsDto, AppError>(__TAURI_INVOKE("fetch_work_order_details_dto", { id })),
+	fetchWorkOrderDetailsDtoByCarId: (carId: number) => typedError<WorkOrderDetailsDto[], AppError>(__TAURI_INVOKE("fetch_work_order_details_dto_by_car_id", { carId })),
+	fetchWorkOrderDetailsDtoByClientId: (clientId: number) => typedError<WorkOrderDetailsDto[], AppError>(__TAURI_INVOKE("fetch_work_order_details_dto_by_client_id", { clientId })),
+	fetchWorkOrderDetailsDtoList: () => typedError<WorkOrderDetailsDto[], AppError>(__TAURI_INVOKE("fetch_work_order_details_dto_list")),
 	fetchWorkOrdersCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_work_orders_count")),
 	fetchWorkOrdersList: () => typedError<WorkOrder[], AppError>(__TAURI_INVOKE("fetch_work_orders_list")),
 	createWorkOrder: (payload: CreateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("create_work_order", { payload })),
 	updateWorkOrder: (payload: UpdateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("update_work_order", { payload })),
 	deleteWorkOrder: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order", { id })),
-	fetchWorkOrderLaborItemsList: () => typedError<WorkOrderLaborItem[], AppError>(__TAURI_INVOKE("fetch_work_order_labor_items_list")),
-	createWorkOrderLaborItem: (payload: CreateWorkOrderLaborItemPayload) => typedError<WorkOrderLaborItem, AppError>(__TAURI_INVOKE("create_work_order_labor_item", { payload })),
-	updateWorkOrderLaborItem: (id: number, payload: UpdateWorkOrderLaborItemPayload) => typedError<WorkOrderLaborItem, AppError>(__TAURI_INVOKE("update_work_order_labor_item", { id, payload })),
-	deleteWorkOrderLaborItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order_labor_item", { id })),
-	fetchWorkOrderPartItemsList: () => typedError<WorkOrderPartItem[], AppError>(__TAURI_INVOKE("fetch_work_order_part_items_list")),
-	createWorkOrderPartItem: (payload: CreateWorkOrderPartItemPayload) => typedError<WorkOrderPartItem, AppError>(__TAURI_INVOKE("create_work_order_part_item", { payload })),
-	updateWorkOrderPartItem: (id: number, payload: UpdateWorkOrderPartItemPayload) => typedError<WorkOrderPartItem, AppError>(__TAURI_INVOKE("update_work_order_part_item", { id, payload })),
-	deleteWorkOrderPartItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order_part_item", { id })),
-	fetchWorkOrderTotals: () => typedError<WorkOrderTotal[], AppError>(__TAURI_INVOKE("fetch_work_order_totals")),
+	fetchLaborItemById: (id: number) => typedError<LaborItem, AppError>(__TAURI_INVOKE("fetch_labor_item_by_id", { id })),
+	fetchLaborItemsList: () => typedError<LaborItem[], AppError>(__TAURI_INVOKE("fetch_labor_items_list")),
+	createLaborItem: (payload: CreateLaborItemPayload) => typedError<LaborItem, AppError>(__TAURI_INVOKE("create_labor_item", { payload })),
+	updateLaborItem: (id: number, payload: UpdateLaborItemPayload) => typedError<LaborItem, AppError>(__TAURI_INVOKE("update_labor_item", { id, payload })),
+	deleteLaborItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_labor_item", { id })),
+	fetchPartItemById: (id: number) => typedError<PartItem, AppError>(__TAURI_INVOKE("fetch_part_item_by_id", { id })),
+	fetchPartItemsList: () => typedError<PartItem[], AppError>(__TAURI_INVOKE("fetch_part_items_list")),
+	createPartItem: (payload: CreatePartItemPayload) => typedError<PartItem, AppError>(__TAURI_INVOKE("create_part_item", { payload })),
+	updatePartItem: (id: number, payload: UpdatePartItemPayload) => typedError<PartItem, AppError>(__TAURI_INVOKE("update_part_item", { id, payload })),
+	deletePartItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_part_item", { id })),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
 };
 
@@ -63,11 +73,26 @@ export type CarBrand = {
 	iconSlug: string,
 };
 
+export type CarDetailsDto = {
+	carDto: CarDto,
+	client: Client,
+};
+
+export type CarDto = {
+	car: Car,
+	brand: CarBrand,
+};
+
 export type Client = {
 	id: number,
 	name: string,
 	phone: string | null,
 	createdAt: string,
+};
+
+export type ClientDetailsDto = {
+	client: Client,
+	cars: CarDto[],
 };
 
 export type CreateCarPayload = {
@@ -84,29 +109,35 @@ export type CreateClientPayload = {
 	phone: string | null,
 };
 
-export type CreateServicePayload = {
-	code: string | null,
-	name: string,
-	laborHours: number,
-};
-
-export type CreateWorkOrderLaborItemPayload = {
+export type CreateLaborItemPayload = {
 	workOrderId: string,
 	serviceId: number | null,
 	code: string | null,
 	name: string,
 	laborHours: number,
+	discountType: DiscountType,
+	discountCents: number,
+	discountPercent: number,
 };
 
-export type CreateWorkOrderPartItemPayload = {
+export type CreatePartItemPayload = {
 	workOrderId: string,
+	status: PartStatus,
 	code: string | null,
 	name: string,
 	quantity: number,
 	unitType: string,
-	costCents: number,
+	baseCostCents: number,
 	markup: number,
-	status: PartStatus,
+	discountType: DiscountType,
+	discountCents: number,
+	discountPercent: number,
+};
+
+export type CreateServicePayload = {
+	code: string | null,
+	name: string,
+	laborHours: number,
 };
 
 export type CreateWorkOrderPayload = {
@@ -123,6 +154,52 @@ export type CreateWorkOrderPayload = {
 };
 
 export type DiscountType = "Fixed" | "Percentage";
+
+export type LaborItem = {
+	id: number,
+	serviceId: number | null,
+	workOrderId: string,
+	code: string | null,
+	name: string,
+	laborHours: number,
+	discountType: DiscountType,
+	discountCents: number,
+	discountPercent: number,
+};
+
+export type LaborItemDto = {
+	totals: LaborItemTotals,
+} & LaborItem;
+
+export type LaborItemTotals = {
+	subtotalCents: number,
+	totalCents: number,
+};
+
+export type PartItem = {
+	id: number,
+	workOrderId: string,
+	status: PartStatus,
+	code: string | null,
+	name: string,
+	quantity: number,
+	unitType: string,
+	baseCostCents: number,
+	markup: number,
+	discountType: DiscountType,
+	discountCents: number,
+	discountPercent: number,
+};
+
+export type PartItemDto = {
+	totals: PartItemTotals,
+} & PartItem;
+
+export type PartItemTotals = {
+	retailPriceCents: number,
+	discountedPriceCents: number,
+	totalCents: number,
+};
 
 export type PartStatus = "Quoted" | "Ordered" | "InStock" | "Installing" | "Installed" | "AwaitingReturn" | "Returned" | "Warranty";
 
@@ -151,27 +228,33 @@ export type UpdateClientPayload = {
 	phone: string | null,
 };
 
-export type UpdateServicePayload = {
-	code: string | null,
-	name: string,
-	laborHours: number,
-};
-
-export type UpdateWorkOrderLaborItemPayload = {
+export type UpdateLaborItemPayload = {
 	serviceId: number | null,
 	code: string | null,
 	name: string,
 	laborHours: number,
+	discountType: DiscountType,
+	discountCents: number,
+	discountPercent: number,
 };
 
-export type UpdateWorkOrderPartItemPayload = {
+export type UpdatePartItemPayload = {
+	status: PartStatus,
 	code: string | null,
 	name: string,
 	quantity: number,
 	unitType: string,
-	costCents: number,
+	baseCostCents: number,
 	markup: number,
-	status: PartStatus,
+	discountType: DiscountType,
+	discountCents: number,
+	discountPercent: number,
+};
+
+export type UpdateServicePayload = {
+	code: string | null,
+	name: string,
+	laborHours: number,
 };
 
 export type UpdateWorkOrderPayload = {
@@ -209,31 +292,18 @@ export type WorkOrder = {
 	paymentMethod: PaymentMethod | null,
 };
 
-export type WorkOrderLaborItem = {
-	id: number,
-	workOrderId: string,
-	serviceId: number | null,
-	code: string | null,
-	name: string,
-	laborHours: number,
-};
-
-export type WorkOrderPartItem = {
-	id: number,
-	workOrderId: string,
-	code: string | null,
-	name: string,
-	quantity: number,
-	unitType: string,
-	costCents: number,
-	markup: number,
-	status: PartStatus,
+export type WorkOrderDetailsDto = {
+	workOrder: WorkOrder,
+	carDto: CarDto,
+	client: Client,
+	laborItems: LaborItemDto[],
+	partItems: PartItemDto[],
+	totals: WorkOrderTotals,
 };
 
 export type WorkOrderStatus = "Received" | "InDiagnostics" | "AwaitingApproval" | "AwaitingParts" | "Working" | "ReadyForPickup" | "Paid" | "Canceled";
 
-export type WorkOrderTotal = {
-	workOrderId: string,
+export type WorkOrderTotals = {
 	laborTotalCents: number,
 	partsTotalCents: number,
 	subtotalCents: number,

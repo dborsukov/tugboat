@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
-  import { toast } from "svelte-sonner";
+  import { useQueryClient } from "@tanstack/svelte-query";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
@@ -11,24 +10,28 @@
 
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
-  import { commands } from "$lib/bindings";
-  import { unwrap } from "$lib/tools";
-
-  import { createServicesQuery, invalidateServiceLists } from "./queries";
+  import {
+    createCreateServiceMutation,
+    createServicesQuery,
+    createUpdateServiceMutation,
+  } from "./queries";
 
   let {
-    id = null,
+    serviceId = null,
     open = $bindable(false),
-  }: { id?: number | null; open: boolean } = $props();
+  }: { serviceId?: number | null; open: boolean } = $props();
+
+  const formID = "service-mutation-form";
+  const isEdit = $derived(serviceId != null);
 
   const queryClient = useQueryClient();
 
+  const createServiceMutation = createCreateServiceMutation(queryClient);
+  const updateServiceMutation = createUpdateServiceMutation(queryClient);
+
   let servicesQuery = createServicesQuery();
   let servicesList = $derived(servicesQuery.data ?? []);
-  let service = $derived(servicesList.find((s) => s.id === id) ?? null);
-
-  const isEdit = $derived(!!id);
-  const formID = $derived(`service-mutation-form-${id}`);
+  let service = $derived(servicesList.find((s) => s.id === serviceId) ?? null);
 
   export const serviceSchema = z.object({
     code: z.string().nullable(),
@@ -71,36 +74,6 @@
       },
     );
 
-  const createServiceMutation = createMutation(() => ({
-    mutationFn: async (payload: z.infer<typeof serviceSchema>) =>
-      unwrap(commands.createService(payload)),
-    onSuccess: () => {
-      invalidateServiceLists(queryClient);
-    },
-    onError: (error) => {
-      toast.error("Виникла помилка", {
-        description: error.message,
-        position: "bottom-left",
-      });
-    },
-  }));
-
-  const updateServiceMutation = createMutation(() => ({
-    mutationFn: async (variables: {
-      id: number;
-      payload: z.infer<typeof serviceSchema>;
-    }) => unwrap(commands.updateService(variables.id, variables.payload)),
-    onSuccess: () => {
-      invalidateServiceLists(queryClient);
-    },
-    onError: (error) => {
-      toast.error("Виникла помилка", {
-        description: error.message,
-        position: "bottom-left",
-      });
-    },
-  }));
-
   const form = superForm(defaults(zod4(extendedSchema)), {
     SPA: true,
     validators: zod4Client(extendedSchema),
@@ -117,9 +90,9 @@
         laborHours: nativeForm.data.laborHours,
       };
 
-      if (isEdit && id) {
+      if (isEdit && serviceId) {
         await updateServiceMutation
-          .mutateAsync({ id, payload })
+          .mutateAsync({ id: serviceId, payload })
           .catch(() => {});
       } else {
         await createServiceMutation.mutateAsync(payload).catch(() => {});

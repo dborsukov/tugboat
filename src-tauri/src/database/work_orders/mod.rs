@@ -1,10 +1,20 @@
+pub mod dtos;
 pub mod pricing;
 pub mod structs;
+
+use std::collections::HashMap;
 
 use structs::*;
 use tauri::State;
 
-use crate::error::{AppError, AppResult};
+use crate::{
+    database::{
+        cars::{dtos::CarDto, fetch_car_by_id},
+        clients::{fetch_client_by_id, structs::Client},
+        work_orders::dtos::{LaborItemDto, PartItemDto, WorkOrderDetailsDto},
+    },
+    error::{AppError, AppResult},
+};
 
 #[tauri::command]
 #[specta::specta]
@@ -13,6 +23,19 @@ pub async fn fetch_work_orders_count(state: State<'_, crate::AppState>) -> AppRe
         .fetch_one(&state.db_pool)
         .await?;
     Ok(count as i32)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_work_order_by_id(
+    state: &State<'_, crate::AppState>,
+    id: &String,
+) -> AppResult<WorkOrder> {
+    let work_order: WorkOrder = sqlx::query_as("SELECT id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate_cents, discount_type, discount_cents, discount_percent, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders WHERE id = $1")
+        .bind(id)
+        .fetch_one(&state.db_pool)
+        .await?;
+    Ok(work_order)
 }
 
 #[tauri::command]
@@ -26,38 +49,179 @@ pub async fn fetch_work_orders_list(
     Ok(work_orders)
 }
 
-#[tauri::command]
-#[specta::specta]
-pub async fn fetch_work_order_totals(
-    state: State<'_, crate::AppState>,
-) -> AppResult<Vec<WorkOrderTotal>> {
-    let work_orders: Vec<WorkOrder> = fetch_work_orders_list(state.clone()).await?;
-    let labor_items = fetch_work_order_labor_items_list(state.clone()).await?;
-    let part_items = fetch_work_order_part_items_list(state.clone()).await?;
+async fn build_work_order_details_dto(
+    state: &State<'_, crate::AppState>,
+    work_order: WorkOrder,
+) -> AppResult<WorkOrderDetailsDto> {
+    let car_dto = fetch_car_by_id(state.clone(), work_order.car_id as i32).await?;
+    let client = fetch_client_by_id(state.clone(), car_dto.car.client_id as i32).await?;
 
-    let totals = work_orders
-        .iter()
-        .map(|work_order| {
-            let wo_labor: Vec<&WorkOrderLaborItem> = labor_items
-                .iter()
-                .filter(|item| item.work_order_id == work_order.id)
-                .collect();
-            let wo_parts: Vec<&WorkOrderPartItem> = part_items
-                .iter()
-                .filter(|item| item.work_order_id == work_order.id)
-                .collect();
-            let totals = pricing::calculate_totals(work_order, &wo_labor, &wo_parts);
-            WorkOrderTotal {
-                work_order_id: work_order.id.clone(),
-                labor_total_cents: totals.labor_total_cents,
-                parts_total_cents: totals.parts_total_cents,
-                subtotal_cents: totals.subtotal_cents,
-                grand_total_cents: totals.grand_total_cents,
+    build_work_order_details_dto_with_context(state.clone(), work_order, car_dto, client).await
+}
+
+async fn build_work_order_details_dto_with_context(
+    state: State<'_, crate::AppState>,
+    work_order: WorkOrder,
+    car_dto: CarDto,
+    client: Client,
+) -> AppResult<WorkOrderDetailsDto> {
+    let labor_items: Vec<LaborItem> = sqlx::query_as(
+        "SELECT id, service_id, work_order_id, code, name, labor_hours, discount_type, discount_cents, discount_percent FROM labor_items WHERE work_order_id = $1",
+    )
+    .bind(&work_order.id)
+    .fetch_all(&state.db_pool)
+    .await?;
+
+    let part_items: Vec<PartItem> = sqlx::query_as(
+        "SELECT id, work_order_id, status, code, name, quantity, unit_type, base_cost_cents, markup, discount_type, discount_cents, discount_percent FROM part_items WHERE work_order_id = $1",
+    )
+    .bind(&work_order.id)
+    .fetch_all(&state.db_pool)
+    .await?;
+
+    let labor_item_dtos: Vec<LaborItemDto> = labor_items
+        .into_iter()
+        .map(|item| {
+            let item_totals = pricing::calculate_labor_item_totals(&item, work_order.rate_cents);
+            LaborItemDto {
+                item,
+                totals: item_totals,
             }
         })
         .collect();
 
-    Ok(totals)
+    let part_item_dtos: Vec<PartItemDto> = part_items
+        .into_iter()
+        .map(|item| {
+            let item_totals = pricing::calculate_part_item_totals(&item);
+            PartItemDto {
+                item,
+                totals: item_totals,
+            }
+        })
+        .collect();
+
+    let labor_sum_cents: i64 = labor_item_dtos
+        .iter()
+        .map(|dto| dto.totals.total_cents)
+        .sum();
+    let part_sum_cents: i64 = part_item_dtos
+        .iter()
+        .map(|dto| dto.totals.total_cents)
+        .sum();
+
+    let totals = pricing::calculate_work_order_totals(&work_order, labor_sum_cents, part_sum_cents);
+
+    Ok(WorkOrderDetailsDto {
+        work_order,
+        car_dto,
+        client,
+        labor_items: labor_item_dtos,
+        part_items: part_item_dtos,
+        totals,
+    })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_work_order_details_dto(
+    state: State<'_, crate::AppState>,
+    id: String,
+) -> AppResult<WorkOrderDetailsDto> {
+    let work_order: WorkOrder = fetch_work_order_by_id(&state, &id).await?;
+    build_work_order_details_dto(&state, work_order).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_work_order_details_dto_list(
+    state: State<'_, crate::AppState>,
+) -> AppResult<Vec<WorkOrderDetailsDto>> {
+    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate_cents, discount_type, discount_cents, discount_percent, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders")
+        .fetch_all(&state.db_pool)
+        .await?;
+
+    let mut details_list: Vec<WorkOrderDetailsDto> = Vec::with_capacity(work_orders.len());
+    for work_order in work_orders {
+        let details = build_work_order_details_dto(&state, work_order).await?;
+        details_list.push(details);
+    }
+
+    Ok(details_list)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_work_order_details_dto_by_car_id(
+    state: State<'_, crate::AppState>,
+    car_id: i32,
+) -> AppResult<Vec<WorkOrderDetailsDto>> {
+    let car_dto = fetch_car_by_id(state.clone(), car_id).await?;
+    let client = fetch_client_by_id(state.clone(), car_dto.car.client_id as i32).await?;
+
+    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate_cents, discount_type, discount_cents, discount_percent, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders WHERE car_id = $1")
+        .bind(car_id)
+        .fetch_all(&state.db_pool)
+        .await?;
+
+    let mut details_list: Vec<WorkOrderDetailsDto> = Vec::with_capacity(work_orders.len());
+    for work_order in work_orders {
+        let details = build_work_order_details_dto_with_context(
+            state.clone(),
+            work_order,
+            car_dto.clone(),
+            client.clone(),
+        )
+        .await?;
+        details_list.push(details);
+    }
+
+    Ok(details_list)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_work_order_details_dto_by_client_id(
+    state: State<'_, crate::AppState>,
+    client_id: i32,
+) -> AppResult<Vec<WorkOrderDetailsDto>> {
+    let client = fetch_client_by_id(state.clone(), client_id).await?;
+
+    let work_orders: Vec<WorkOrder> = sqlx::query_as(
+        "SELECT wo.id, wo.car_id, wo.odometer_in, wo.customer_complaint, wo.mechanic_notes, wo.status, wo.rate_cents, wo.discount_type, wo.discount_cents, wo.discount_percent, wo.created_at, wo.started_at, wo.completed_at, wo.paid_at, wo.payment_method \
+         FROM work_orders wo \
+         JOIN cars c ON c.id = wo.car_id \
+         WHERE c.client_id = $1",
+    )
+    .bind(client_id)
+    .fetch_all(&state.db_pool)
+    .await?;
+
+    // Cache car_dto lookups so a client with many work orders on the same car
+    // doesn't refetch that car for every single one.
+    let mut car_cache: HashMap<i64, CarDto> = HashMap::new();
+    let mut details_list: Vec<WorkOrderDetailsDto> = Vec::with_capacity(work_orders.len());
+
+    for work_order in work_orders {
+        let car_dto = if let Some(cached) = car_cache.get(&work_order.car_id) {
+            cached.clone()
+        } else {
+            let fetched = fetch_car_by_id(state.clone(), work_order.car_id as i32).await?;
+            car_cache.insert(work_order.car_id, fetched.clone());
+            fetched
+        };
+
+        let details = build_work_order_details_dto_with_context(
+            state.clone(),
+            work_order,
+            car_dto,
+            client.clone(),
+        )
+        .await?;
+        details_list.push(details);
+    }
+
+    Ok(details_list)
 }
 
 #[tauri::command]
@@ -128,62 +292,80 @@ pub async fn delete_work_order(state: State<'_, crate::AppState>, id: String) ->
 
 #[tauri::command]
 #[specta::specta]
-pub async fn fetch_work_order_labor_items_list(
+pub async fn fetch_labor_items_list(
     state: State<'_, crate::AppState>,
-) -> AppResult<Vec<WorkOrderLaborItem>> {
-    let work_order_labor_items: Vec<WorkOrderLaborItem> = sqlx::query_as(
-        "SELECT id, work_order_id, service_id, code, name, labor_hours FROM work_order_labor_items",
+) -> AppResult<Vec<LaborItem>> {
+    let labor_items: Vec<LaborItem> = sqlx::query_as(
+        "SELECT id, service_id, work_order_id, code, name, labor_hours, discount_type, discount_cents, discount_percent FROM labor_items",
     )
     .fetch_all(&state.db_pool)
     .await?;
-    Ok(work_order_labor_items)
+    Ok(labor_items)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn create_work_order_labor_item(
+pub async fn fetch_labor_item_by_id(
     state: State<'_, crate::AppState>,
-    payload: CreateWorkOrderLaborItemPayload,
-) -> AppResult<WorkOrderLaborItem> {
-    let work_order_labor_item: WorkOrderLaborItem =
-        sqlx::query_as("INSERT INTO work_order_labor_items (work_order_id, service_id, code, name, labor_hours) VALUES ($1, $2, $3, $4, $5) RETURNING *")
-            .bind(payload.work_order_id)
+    id: i32,
+) -> AppResult<LaborItem> {
+    let labor_item: LaborItem = sqlx::query_as(
+        "SELECT id, service_id, work_order_id, code, name, labor_hours, discount_type, discount_cents, discount_percent FROM labor_items WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_one(&state.db_pool)
+    .await?;
+    Ok(labor_item)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn create_labor_item(
+    state: State<'_, crate::AppState>,
+    payload: CreateLaborItemPayload,
+) -> AppResult<LaborItem> {
+    let labor_item: LaborItem =
+        sqlx::query_as("INSERT INTO labor_items (service_id, work_order_id, code, name, labor_hours, discount_type, discount_cents, discount_percent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *")
             .bind(payload.service_id)
+            .bind(payload.work_order_id)
             .bind(payload.code)
             .bind(payload.name)
             .bind(payload.labor_hours)
+            .bind(payload.discount_type)
+            .bind(payload.discount_cents)
+            .bind(payload.discount_percent)
             .fetch_one(&state.db_pool)
             .await?;
-    Ok(work_order_labor_item)
+    Ok(labor_item)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn update_work_order_labor_item(
+pub async fn update_labor_item(
     state: State<'_, crate::AppState>,
     id: i32,
-    payload: UpdateWorkOrderLaborItemPayload,
-) -> AppResult<WorkOrderLaborItem> {
-    let work_order_labor_item: WorkOrderLaborItem = sqlx::query_as(
-        "UPDATE work_order_labor_items SET service_id = $2, code = $3, name = $4, labor_hours = $5 WHERE id = $1 RETURNING *",
+    payload: UpdateLaborItemPayload,
+) -> AppResult<LaborItem> {
+    let labor_item: LaborItem = sqlx::query_as(
+        "UPDATE labor_items SET service_id = $2, code = $3, name = $4, labor_hours = $5, discount_type = $6, discount_cents = $7, discount_percent = $8 WHERE id = $1 RETURNING *",
     )
         .bind(id)
         .bind(payload.service_id)
         .bind(payload.code)
         .bind(payload.name)
         .bind(payload.labor_hours)
+        .bind(payload.discount_type)
+        .bind(payload.discount_cents)
+        .bind(payload.discount_percent)
         .fetch_one(&state.db_pool)
         .await?;
-    Ok(work_order_labor_item)
+    Ok(labor_item)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn delete_work_order_labor_item(
-    state: State<'_, crate::AppState>,
-    id: i32,
-) -> AppResult<()> {
-    let result = sqlx::query("DELETE FROM work_order_labor_items WHERE id = $1")
+pub async fn delete_labor_item(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
+    let result = sqlx::query("DELETE FROM labor_items WHERE id = $1")
         .bind(id)
         .execute(&state.db_pool)
         .await?;
@@ -197,67 +379,82 @@ pub async fn delete_work_order_labor_item(
 
 #[tauri::command]
 #[specta::specta]
-pub async fn fetch_work_order_part_items_list(
-    state: State<'_, crate::AppState>,
-) -> AppResult<Vec<WorkOrderPartItem>> {
-    let work_order_part_items: Vec<WorkOrderPartItem> =
-        sqlx::query_as("SELECT id, work_order_id, code, name, quantity, unit_type, cost_cents, markup, status FROM work_order_part_items")
+pub async fn fetch_part_items_list(state: State<'_, crate::AppState>) -> AppResult<Vec<PartItem>> {
+    let part_items: Vec<PartItem> =
+        sqlx::query_as("SELECT id, work_order_id, status, code, name, quantity, unit_type, base_cost_cents, markup, discount_type, discount_cents, discount_percent FROM part_items")
             .fetch_all(&state.db_pool)
             .await?;
-    Ok(work_order_part_items)
+    Ok(part_items)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn create_work_order_part_item(
+pub async fn fetch_part_item_by_id(
     state: State<'_, crate::AppState>,
-    payload: CreateWorkOrderPartItemPayload,
-) -> AppResult<WorkOrderPartItem> {
-    let work_order_part_item: WorkOrderPartItem =
-        sqlx::query_as("INSERT INTO work_order_part_items (work_order_id, code, name, quantity, unit_type, cost_cents, markup, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *")
+    id: i32,
+) -> AppResult<PartItem> {
+    let part_item: PartItem =
+        sqlx::query_as("SELECT id, work_order_id, status, code, name, quantity, unit_type, base_cost_cents, markup, discount_type, discount_cents, discount_percent FROM part_items WHERE id = $1")
+            .bind(id)
+            .fetch_one(&state.db_pool)
+            .await?;
+    Ok(part_item)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn create_part_item(
+    state: State<'_, crate::AppState>,
+    payload: CreatePartItemPayload,
+) -> AppResult<PartItem> {
+    let part_item: PartItem =
+        sqlx::query_as("INSERT INTO part_items (work_order_id, status, code, name, quantity, unit_type, base_cost_cents, markup, discount_type, discount_cents, discount_percent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *")
             .bind(payload.work_order_id)
+            .bind(payload.status)
             .bind(payload.code)
             .bind(payload.name)
             .bind(payload.quantity)
             .bind(payload.unit_type)
-            .bind(payload.cost_cents)
+            .bind(payload.base_cost_cents)
             .bind(payload.markup)
-            .bind(payload.status)
+            .bind(payload.discount_type)
+            .bind(payload.discount_cents)
+            .bind(payload.discount_percent)
             .fetch_one(&state.db_pool)
             .await?;
-    Ok(work_order_part_item)
+    Ok(part_item)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn update_work_order_part_item(
+pub async fn update_part_item(
     state: State<'_, crate::AppState>,
     id: i32,
-    payload: UpdateWorkOrderPartItemPayload,
-) -> AppResult<WorkOrderPartItem> {
-    let work_order_part_item: WorkOrderPartItem = sqlx::query_as(
-        "UPDATE work_order_part_items SET code = $2, name = $3, quantity = $4, unit_type = $5, cost_cents = $6, markup = $7, status = $8 WHERE id = $1 RETURNING *",
+    payload: UpdatePartItemPayload,
+) -> AppResult<PartItem> {
+    let part_item: PartItem = sqlx::query_as(
+        "UPDATE part_items SET status = $2, code = $3, name = $4, quantity = $5, unit_type = $6, base_cost_cents = $7, markup = $8, discount_type = $9, discount_cents = $10, discount_percent = $11 WHERE id = $1 RETURNING *",
     )
         .bind(id)
+        .bind(payload.status)
         .bind(payload.code)
         .bind(payload.name)
         .bind(payload.quantity)
         .bind(payload.unit_type)
-        .bind(payload.cost_cents)
+        .bind(payload.base_cost_cents)
         .bind(payload.markup)
-        .bind(payload.status)
+        .bind(payload.discount_type)
+        .bind(payload.discount_cents)
+        .bind(payload.discount_percent)
         .fetch_one(&state.db_pool)
         .await?;
-    Ok(work_order_part_item)
+    Ok(part_item)
 }
 
 #[tauri::command]
 #[specta::specta]
-pub async fn delete_work_order_part_item(
-    state: State<'_, crate::AppState>,
-    id: i32,
-) -> AppResult<()> {
-    let result = sqlx::query("DELETE FROM work_order_part_items WHERE id = $1")
+pub async fn delete_part_item(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
+    let result = sqlx::query("DELETE FROM part_items WHERE id = $1")
         .bind(id)
         .execute(&state.db_pool)
         .await?;

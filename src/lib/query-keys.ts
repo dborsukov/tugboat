@@ -9,23 +9,32 @@ export const keys = {
   cars: {
     all: ["cars"] as const,
     list: () => [...keys.cars.all, "list"] as const,
+    listDetails: () => [...keys.cars.all, "list-details"] as const,
     count: () => [...keys.cars.all, "count"] as const,
+    details: () => [...keys.cars.all, "detail"] as const,
+    detail: (id: string | number) => [...keys.cars.details(), id] as const,
   },
   carBrand: ["carBrand"] as const,
   workOrders: {
     all: ["work-orders"] as const,
-    lists: () => [...keys.workOrders.all, "list"] as const,
+    list: () => [...keys.workOrders.all, "list"] as const,
     count: () => [...keys.workOrders.all, "count"] as const,
-    laborItems: () => [...keys.workOrders.all, "labor-items"] as const,
+    laborItems: () => [...keys.workOrders.all, "labor-item"] as const,
+    laborItem: (id: string | number) =>
+      [...keys.workOrders.laborItems(), id] as const,
     partItems: () => [...keys.workOrders.all, "part-items"] as const,
-    totals: () => [...keys.workOrders.all, "totals"] as const,
+    partItem: (id: string | number) =>
+      [...keys.workOrders.partItems(), id] as const,
+    details: () => [...keys.workOrders.all, "detail"] as const,
+    detail: (id: string | number) =>
+      [...keys.workOrders.details(), id] as const,
   },
   services: {
     all: ["services"] as const,
     list: () => [...keys.services.all, "list"] as const,
     count: () => [...keys.services.all, "count"] as const,
-    details: () => [...keys.clients.all, "detail"] as const,
-    detail: (id: string | number) => [...keys.clients.details(), id] as const,
+    details: () => [...keys.services.all, "detail"] as const,
+    detail: (id: string | number) => [...keys.services.details(), id] as const,
   },
   settings: {
     all: ["settings"] as const,

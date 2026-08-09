@@ -1,10 +1,5 @@
 <script lang="ts">
-  import {
-    createMutation,
-    createQueries,
-    useQueryClient,
-  } from "@tanstack/svelte-query";
-  import { toast } from "svelte-sonner";
+  import { createQueries, useQueryClient } from "@tanstack/svelte-query";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
@@ -16,28 +11,33 @@
   import ComboSelect from "$lib/components/combo-select.svelte";
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
-  import { commands } from "$lib/bindings";
-  import { unwrap } from "$lib/tools";
   import { cn } from "$lib/utils";
 
   import ClientBadge from "../clients/client-badge.svelte";
   import { clientsQueryOptions } from "../clients/queries";
   import {
     carBrandsQueryOptions,
-    carsQueryOptions,
-    invalidateCarsLists,
+    carsListQueryOptions,
+    createCreateCarMutation,
+    createUpdateCarMutation,
   } from "./queries";
 
   let {
-    id = null,
+    carId = null,
     open = $bindable(false),
-  }: { id?: number | null; open: boolean } = $props();
+  }: { carId?: number | null; open: boolean } = $props();
+
+  const formID = "car-mutation-form";
+  const isEdit = $derived(carId != null);
 
   const queryClient = useQueryClient();
 
+  const createCarMutation = createCreateCarMutation(queryClient);
+  const updateCarMutation = createUpdateCarMutation(queryClient);
+
   const combinedQueries = createQueries(() => ({
     queries: [
-      carsQueryOptions(),
+      carsListQueryOptions(),
       clientsQueryOptions(),
       carBrandsQueryOptions(),
     ],
@@ -60,10 +60,7 @@
   }));
 
   let carsList = $derived(combinedQueries.cars.data ?? []);
-  let car = $derived(carsList.find((c) => c.id === id) ?? null);
-
-  const isEdit = $derived(!!car);
-  const formID = "car-mutation-form";
+  let carDto = $derived(carsList.find((c) => c.car.id === carId) ?? null);
 
   // Standard 2004+ format: 2 region letters, 4 digits, 2 series letters.
   // Only Cyrillic letters that resemble Latin ones are used on real UA plates.
@@ -132,10 +129,10 @@
     .refine(
       (data) => {
         const duplicateCar = carsList.find(
-          (c) => c.licensePlate === data.licensePlate,
+          (dto) => dto.car.licensePlate === data.licensePlate,
         );
         if (!duplicateCar) return true;
-        if (isEdit && duplicateCar.id === car?.id) return true;
+        if (isEdit && duplicateCar?.car?.id === carDto?.car?.id) return true;
         return false;
       },
       {
@@ -145,9 +142,9 @@
     )
     .refine(
       (data) => {
-        const duplicateCar = carsList.find((c) => c.vin === data.vin);
+        const duplicateCar = carsList.find((dto) => dto?.car?.vin === data.vin);
         if (!duplicateCar) return true;
-        if (isEdit && duplicateCar.id === car?.id) return true;
+        if (isEdit && duplicateCar.car?.id === carDto?.car?.id) return true;
         return false;
       },
       {
@@ -155,36 +152,6 @@
         path: ["vin"],
       },
     );
-
-  const createCarMutation = createMutation(() => ({
-    mutationFn: async (payload: z.infer<typeof carSchema>) =>
-      unwrap(commands.createCar(payload)),
-    onSuccess: () => {
-      invalidateCarsLists(queryClient);
-    },
-    onError: (error) => {
-      toast.error("Виникла помилка", {
-        description: error.message,
-        position: "bottom-left",
-      });
-    },
-  }));
-
-  const updateCarMutation = createMutation(() => ({
-    mutationFn: async (variables: {
-      id: number;
-      payload: z.infer<typeof carSchema>;
-    }) => unwrap(commands.updateCar(variables.id, variables.payload)),
-    onSuccess: () => {
-      invalidateCarsLists(queryClient);
-    },
-    onError: (error) => {
-      toast.error("Виникла помилка", {
-        description: error.message,
-        position: "bottom-left",
-      });
-    },
-  }));
 
   const form = superForm(defaults(zod4(extendedSchema)), {
     SPA: true,
@@ -205,9 +172,9 @@
       };
 
       const result =
-        isEdit && id
+        isEdit && carId
           ? await updateCarMutation
-              .mutateAsync({ id, payload })
+              .mutateAsync({ id: carId, payload })
               .catch(() => null)
           : await createCarMutation.mutateAsync(payload).catch(() => null);
 
@@ -226,13 +193,13 @@
 
   $effect(() => {
     if (open) {
-      if (car) {
-        $formData.clientId = car.clientId;
-        $formData.brandId = car.brandId;
-        $formData.model = car.model;
-        $formData.year = car.year;
-        $formData.licensePlate = car.licensePlate ?? "";
-        $formData.vin = car.vin ?? "";
+      if (carDto) {
+        $formData.clientId = carDto.car.clientId;
+        $formData.brandId = carDto.car.brandId;
+        $formData.model = carDto.car.model;
+        $formData.year = carDto.car.year;
+        $formData.licensePlate = carDto.car.licensePlate ?? "";
+        $formData.vin = carDto.car.vin ?? "";
       } else {
         form.reset();
       }

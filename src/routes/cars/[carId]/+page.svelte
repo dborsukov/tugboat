@@ -27,41 +27,25 @@
   import { prettifyIsoDateString } from "$lib/tools";
 
   import ClientBadge from "../../clients/client-badge.svelte";
-  import { clientsQueryOptions } from "../../clients/queries";
   import { columns } from "../../work_orders/columns";
-  import {
-    workOrderLaborItemsQueryOptions,
-    workOrderPartItemsQueryOptions,
-    workOrdersQueryOptions,
-    workOrderTotalsQueryOptions,
-  } from "../../work_orders/queries";
-  import { buildWorkOrderListItems } from "../../work_orders/types";
+  import { workOrderDetailsListByCarIdQueryOptions } from "../../work_orders/queries";
   import WorkOrderMutationSheet from "../../work_orders/work-order-mutation-sheet.svelte";
-  import { carBrandsQueryOptions, carsQueryOptions } from "../queries";
+  import { carDetailsQueryOptions } from "../queries";
   import DropdownMenu from "./dropdown-menu.svelte";
 
   let { params } = $props();
   let isSheetOpen: boolean = $state(false);
+  let carId = $derived(Number(params.carId));
 
   const combinedQueries = createQueries(() => ({
     queries: [
-      workOrdersQueryOptions(),
-      carsQueryOptions(),
-      clientsQueryOptions(),
-      carBrandsQueryOptions(),
-      workOrderLaborItemsQueryOptions(),
-      workOrderPartItemsQueryOptions(),
-      workOrderTotalsQueryOptions(),
+      carDetailsQueryOptions(carId),
+      workOrderDetailsListByCarIdQueryOptions(carId),
     ],
     combine: (results) => {
       return {
-        workOrders: results[0],
-        cars: results[1],
-        clients: results[2],
-        carBrands: results[3],
-        laborItems: results[4],
-        partItems: results[5],
-        totals: results[6],
+        carDetailsDto: results[0],
+        workOrderDetailsDtoList: results[1],
 
         isReady: results.every((r) => r.isSuccess),
         isLoading: results.some((r) => r.isPending),
@@ -75,29 +59,9 @@
     },
   }));
 
-  let car = $derived(
-    combinedQueries.cars.data?.find((c) => c.id.toString() === params.carId),
-  );
-  let brand = $derived(
-    combinedQueries.carBrands.data?.find((c) => c.id === car?.brandId),
-  );
-  let owner = $derived(
-    combinedQueries.clients.data?.find((c) => c.id === car?.clientId),
-  );
-
+  let carDetails = $derived(combinedQueries.carDetailsDto.data);
   let workOrderListItems = $derived(
-    combinedQueries.isReady
-      ? buildWorkOrderListItems(
-          combinedQueries.workOrders.data!,
-          combinedQueries.cars.data!,
-          combinedQueries.carBrands.data!,
-          combinedQueries.clients.data!,
-          combinedQueries.laborItems.data!,
-          combinedQueries.partItems.data!,
-          combinedQueries.totals.data!,
-          (wo) => wo.carId === car!.id,
-        )
-      : [],
+    combinedQueries.workOrderDetailsDtoList.data ?? [],
   );
 
   let table = buildTable({
@@ -116,7 +80,7 @@
 
 <PageLayout>
   {#snippet header()}
-    {#if car}
+    {#if carDetails}
       <div class="h-full flex items-center">
         <Button
           variant="outline"
@@ -125,8 +89,12 @@
         >
           <WorkOrderIcon /> Нове замовлення
         </Button>
-        <DropdownMenu carId={car.id} />
-        <WorkOrderMutationSheet bind:open={isSheetOpen} carId={car.id} />
+        <DropdownMenu carId={carDetails?.carDto?.car?.id} />
+        <WorkOrderMutationSheet
+          bind:open={isSheetOpen}
+          mode="create"
+          carId={carDetails?.carDto?.car?.id}
+        />
       </div>
     {/if}
   {/snippet}
@@ -141,7 +109,7 @@
       <Skeleton class="w-full h-25" />
       <Skeleton class="mt-4 w-full h-40" />
       <Skeleton class="mt-4 w-full h-40" />
-    {:else if !car}
+    {:else if !carDetails}
       <NotFound
         message={`Автомобіль не знайдено (ID: ${params.carId})`}
         class="mt-20"
@@ -150,25 +118,25 @@
       <Card.Root>
         <Card.Content class="flex flex-row items-center justify-center gap-4">
           <div class="h-15">
-            <LogoLoader slug={brand?.iconSlug} />
+            <LogoLoader slug={carDetails?.carDto?.brand?.iconSlug} />
           </div>
           <div class="flex-1 min-w-0">
             <div class="text-xl font-semibold tracking-tight truncate">
-              {#if brand != undefined}
-                {brand.name}
+              {#if carDetails?.carDto?.brand != undefined}
+                {carDetails?.carDto?.brand?.name}
               {:else}
                 ?
               {/if}
             </div>
             <div class="text-lg tracking-tight mt-0.5">
-              {car.model}
+              {carDetails.carDto.car.model}
             </div>
           </div>
           <div class="flex flex-col gap-1 justify-between items-end">
             <Badge variant="outline" class="text-lg px-3 py-3.5 bg-background">
-              {car.year}
+              {carDetails.carDto.car.year}
             </Badge>
-            <p class="text-muted-foreground">ID: {car.id}</p>
+            <p class="text-muted-foreground">ID: {carDetails.carDto.car.id}</p>
           </div>
         </Card.Content>
       </Card.Root>
@@ -179,13 +147,13 @@
             <Details.Icon icon={UserIcon} /> Власник
           </Details.Title>
           <Details.Content>
-            {#if owner != undefined}
+            {#if carDetails.client != undefined}
               <div class="flex justify-end gap-2">
-                <ClientBadge name={owner.name} />
+                <ClientBadge name={carDetails.client.name} />
                 <Button
                   size="icon"
                   variant="ghost"
-                  onclick={() => goto(`/clients/${owner.id}`)}
+                  onclick={() => goto(`/clients/${carDetails.client.id}`)}
                 >
                   <GotoIcon />
                 </Button>
@@ -201,14 +169,17 @@
             <Details.Icon icon={HashIcon} /> Номерний знак
           </Details.Title>
           <Details.Content>
-            {#if car.licensePlate != undefined}
+            {#if carDetails.carDto.car.licensePlate != undefined}
               <div class="flex items-center gap-2">
                 <p
                   class="px-2 py-0.5 font-mono uppercase tracking-wider bg-muted rounded border"
                 >
-                  {car.licensePlate}
+                  {carDetails.carDto.car.licensePlate}
                 </p>
-                <CopyButton variant="ghost" text={car.licensePlate} />
+                <CopyButton
+                  variant="ghost"
+                  text={carDetails.carDto.car.licensePlate ?? ""}
+                />
               </div>
             {:else}
               Не вказано
@@ -221,14 +192,17 @@
             <Details.Icon icon={FingerprintIcon} /> VIN-код
           </Details.Title>
           <Details.Content>
-            {#if car.vin != undefined}
+            {#if carDetails.carDto.car.vin != undefined}
               <div class="flex items-center gap-2">
                 <p
                   class="px-2 py-0.5 font-mono uppercase tracking-wider bg-muted rounded border"
                 >
-                  {car.vin}
+                  {carDetails.carDto.car.vin}
                 </p>
-                <CopyButton text={car.vin} variant="ghost" />
+                <CopyButton
+                  text={carDetails.carDto.car.vin ?? ""}
+                  variant="ghost"
+                />
               </div>
             {:else}
               Не вказано
@@ -241,7 +215,7 @@
             <Details.Icon icon={CalendarPlusIcon} /> Створено
           </Details.Title>
           <Details.Content>
-            {prettifyIsoDateString(car.createdAt, "long")}
+            {prettifyIsoDateString(carDetails.carDto.car.createdAt, "long")}
           </Details.Content>
         </Details.Item>
       </Details.Card>
@@ -258,7 +232,7 @@
             <DataTable
               {table}
               emptyMessage="Замовлень не знайдено..."
-              onRowClick={(row) => goto(`/work_orders/${row.id}`)}
+              onRowClick={(row) => goto(`/work_orders/${row.workOrder.id}`)}
             />
           </Card.Content>
         {/if}

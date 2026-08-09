@@ -1,11 +1,6 @@
 <script lang="ts">
-  import {
-    createMutation,
-    createQueries,
-    useQueryClient,
-  } from "@tanstack/svelte-query";
+  import { createQueries, useQueryClient } from "@tanstack/svelte-query";
   import { NumericText } from "svelte-number-format";
-  import { toast } from "svelte-sonner";
 
   import DiscountIcon from "@lucide/svelte/icons/badge-percent";
   import CalendarCheckIcon from "@lucide/svelte/icons/calendar-check";
@@ -34,22 +29,17 @@
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
-  import { commands } from "$lib/bindings";
   import { TableActionState } from "$lib/states/table-actions.svelte";
-  import { prettifyIsoDateString, unwrap } from "$lib/tools";
+  import { prettifyIsoDateString } from "$lib/tools";
 
   import CarCard from "../../cars/car-card.svelte";
-  import { carBrandsQueryOptions, carsQueryOptions } from "../../cars/queries";
   import ClientCard from "../../clients/client-card.svelte";
-  import { clientsQueryOptions } from "../../clients/queries";
   import { servicesQueryOptions } from "../../services/queries";
   import {
-    createCreateWorkOrderLaborItemMutation,
-    invalidateWorkOrderLists,
-    workOrderLaborItemsQueryOptions,
-    workOrderPartItemsQueryOptions,
-    workOrdersQueryOptions,
-    workOrderTotalsQueryOptions,
+    createCreateLaborItemMutation,
+    createDeleteLaborItemMutation,
+    createDeletePartItemMutation,
+    workOrderDetailsQueryOptions,
   } from "../queries";
   import StatusSelector from "../work-order-status-selector.svelte";
   import DropdownMenu from "./dropdown-menu.svelte";
@@ -67,30 +57,19 @@
 
   const queryClient = useQueryClient();
 
-  const createItemMutation =
-    createCreateWorkOrderLaborItemMutation(queryClient);
+  const deletePartItemMutation = createDeletePartItemMutation(queryClient);
+  const createLaborItemMutation = createCreateLaborItemMutation(queryClient);
+  const deleteLaborItemMutation = createDeleteLaborItemMutation(queryClient);
 
   const combinedQueries = createQueries(() => ({
     queries: [
-      workOrdersQueryOptions(),
-      carsQueryOptions(),
-      clientsQueryOptions(),
-      carBrandsQueryOptions(),
-      workOrderLaborItemsQueryOptions(),
-      workOrderPartItemsQueryOptions(),
-      workOrderTotalsQueryOptions(),
+      workOrderDetailsQueryOptions(params.workorderId),
       servicesQueryOptions(),
     ],
     combine: (results) => {
       return {
-        workOrders: results[0],
-        cars: results[1],
-        clients: results[2],
-        carBrands: results[3],
-        laborItems: results[4],
-        partItems: results[5],
-        totals: results[6],
-        services: results[7],
+        workOrderDetails: results[0],
+        services: results[1],
 
         isReady: results.every((r) => r.isSuccess),
         isLoading: results.some((r) => r.isPending),
@@ -104,60 +83,15 @@
     },
   }));
 
-  let workOrder = $derived(
-    combinedQueries.workOrders.data?.find((wo) => wo.id === params.workorderId),
-  );
-  let laborItems = $derived(
-    combinedQueries.laborItems.data?.filter(
-      (i) => i.workOrderId === workOrder?.id,
-    ) ?? [],
-  );
-  let partItems = $derived(
-    combinedQueries.partItems.data?.filter(
-      (i) => i.workOrderId === workOrder?.id,
-    ) ?? [],
-  );
-  let totals = $derived(
-    combinedQueries.totals.data?.find((t) => t.workOrderId === workOrder?.id),
-  );
-  let car = $derived(
-    combinedQueries.cars.data?.find((c) => c.id === workOrder?.carId),
-  );
-  let carBrand = $derived(
-    combinedQueries.carBrands.data?.find((c) => c.id === car?.brandId),
-  );
-  let client = $derived(
-    combinedQueries.clients.data?.find((c) => c.id === car?.clientId),
-  );
+  let services = $derived(combinedQueries.services.data);
+  let workOrderDetails = $derived(combinedQueries.workOrderDetails.data);
 
   let partsTableActions = new TableActionState<number>();
   let laborTableActions = new TableActionState<number>();
 
-  const partDeleteMutation = createMutation(() => ({
-    mutationFn: (id: number) => unwrap(commands.deleteWorkOrderPartItem(id)),
-    onSuccess: () => {
-      invalidateWorkOrderLists(queryClient);
-      partsTableActions.resetDelete();
-    },
-    onError: (error) => {
-      toast.error("Виникла помилка", { description: error.message });
-    },
-  }));
-
-  const laborDeleteMutation = createMutation(() => ({
-    mutationFn: (id: number) => unwrap(commands.deleteWorkOrderLaborItem(id)),
-    onSuccess: () => {
-      invalidateWorkOrderLists(queryClient);
-      laborTableActions.resetDelete();
-    },
-    onError: (error) => {
-      toast.error("Виникла помилка", { description: error.message });
-    },
-  }));
-
   let partsTable = buildTable({
     get data() {
-      return partItems;
+      return combinedQueries.workOrderDetails.data?.partItems ?? [];
     },
     get columns() {
       return partsColumns;
@@ -175,14 +109,13 @@
 
   let laborTable = buildTable({
     get data() {
-      return laborItems;
+      return combinedQueries.workOrderDetails.data?.laborItems ?? [];
     },
     get columns() {
       return laborColumns;
     },
     get meta() {
       return {
-        rate: workOrder?.rateCents ?? 0,
         onEdit: laborTableActions.openEdit,
         onDelete: laborTableActions.openDelete,
       } satisfies LaborTableMeta;
@@ -194,24 +127,38 @@
 
   function confirmPartDelete() {
     if (partsTableActions.deleteId !== null) {
-      partDeleteMutation.mutate(partsTableActions.deleteId);
+      deletePartItemMutation.mutate(partsTableActions.deleteId, {
+        onSuccess: partsTableActions.resetDelete,
+      });
     }
   }
 
   function confirmLaborDelete() {
     if (laborTableActions.deleteId !== null) {
-      laborDeleteMutation.mutate(laborTableActions.deleteId);
+      deleteLaborItemMutation.mutate(laborTableActions.deleteId, {
+        onSuccess: laborTableActions.resetDelete,
+      });
     }
   }
 </script>
 
-{#if workOrder}
-  <PageLayout>
-    {#snippet header()}
+<PageLayout>
+  {#snippet header()}
+    {#if combinedQueries.isLoading}
+      <div class="flex gap-4 py-2 w-full h-full">
+        <Skeleton class="w-1/7 h-full" />
+        <Skeleton class="w-1/7 h-full" />
+        <Skeleton class="w-1/7 h-full" />
+        <Skeleton class="w-1/7 h-full" />
+        <Skeleton class="ml-auto h-full aspect-square" />
+      </div>
+    {:else if !combinedQueries.isError && workOrderDetails}
       <div class="h-full flex items-center gap-4">
         <div class="flex flex-col justify-center leading-tight shrink-0">
           <span class="text-xs text-muted-foreground">Наряд-замовлення</span>
-          <h2 class="text-lg font-mono font-medium">{workOrder.id}</h2>
+          <h2 class="text-lg font-mono font-medium">
+            {workOrderDetails.workOrder?.id}
+          </h2>
         </div>
 
         <div class="hidden md:block h-9/12 w-px bg-border shrink-0"></div>
@@ -225,7 +172,7 @@
             <div class="flex flex-col leading-tight">
               <span class="text-xs text-muted-foreground">Роботи</span>
               <CurrencyDisplay
-                cents={totals?.laborTotalCents ?? 0}
+                cents={workOrderDetails.totals?.laborTotalCents ?? 0}
                 suffix="грн."
               />
             </div>
@@ -236,13 +183,13 @@
             <div class="flex flex-col leading-tight">
               <span class="text-xs text-muted-foreground">Запчастини</span>
               <CurrencyDisplay
-                cents={totals?.partsTotalCents ?? 0}
+                cents={workOrderDetails.totals?.partsTotalCents ?? 0}
                 suffix="грн."
               />
             </div>
           </div>
 
-          {#if workOrder.discountCents != 0 || workOrder.discountPercent != 0}
+          {#if workOrderDetails.workOrder?.discountCents != 0 || workOrderDetails.workOrder?.discountPercent != 0}
             <div class="h-9/12 w-px bg-border shrink-0"></div>
 
             <div
@@ -253,13 +200,13 @@
                 <span class="text-xs text-amber-700 dark:text-amber-200"
                   >Знижка</span
                 >
-                {#if workOrder.discountType === "Fixed"}
+                {#if workOrderDetails.workOrder?.discountType === "Fixed"}
                   <CurrencyDisplay
-                    cents={workOrder.discountCents}
+                    cents={workOrderDetails.workOrder?.discountCents}
                     suffix="грн."
                   />
                 {:else}
-                  {workOrder.discountPercent}%
+                  {workOrderDetails.workOrder?.discountPercent}%
                 {/if}
               </div>
             </div>
@@ -278,7 +225,7 @@
                 >Разом</span
               >
               <CurrencyDisplay
-                cents={totals?.grandTotalCents ?? 0}
+                cents={workOrderDetails.totals?.grandTotalCents ?? 0}
                 class="font-semibold"
                 suffix="грн."
               />
@@ -287,216 +234,229 @@
         </div>
 
         <div class="flex gap-2 items-center" hidden={!combinedQueries.isReady}>
-          <StatusSelector {workOrder} />
-          <DropdownMenu id={workOrder.id} />
+          <StatusSelector workOrder={workOrderDetails.workOrder} />
+          <DropdownMenu id={workOrderDetails.workOrder?.id ?? ""} />
         </div>
       </div>
-    {/snippet}
-    <div class="h-full w-full p-4">
-      {#if combinedQueries.isError}
-        <FetchErrorDisplay
-          message={combinedQueries.firstError?.message}
-          onRetry={combinedQueries.refetchAll}
-          class="mt-20"
-        />
-      {:else if combinedQueries.isLoading}
-        <div class="flex w-full h-30 items-stretch gap-4">
-          <Skeleton class="flex-1" />
-          <Skeleton class="flex-1" />
-        </div>
-        <Skeleton class="mt-4 w-full h-35" />
-        <Skeleton class="mt-4 w-full h-50" />
-        <Skeleton class="mt-4 w-full h-50" />
-      {:else if !workOrder}
-        <NotFound
-          message={`Замовлення не знайдено (ID: ${params.workorderId})`}
-          class="mt-20"
-        />
-      {:else}
-        <div class="flex flex-col sm:flex-row w-full items-stretch gap-4">
-          <a href="/cars/{car?.id}" class="flex flex-1">
-            <CarCard
-              car={car!}
-              client={client!}
-              brand={carBrand!}
-              short
-              class="w-full h-full flex flex-col justify-center"
-            />
-          </a>
-          <a href="/clients/{client?.id}" class="flex flex-1">
-            <ClientCard
-              client={client!}
-              short
-              class="w-full h-full flex flex-col justify-center"
-            />
-          </a>
-        </div>
+    {/if}
+  {/snippet}
 
-        <Details.Card class="mt-4">
-          <Details.Item>
-            <Details.Title>
-              <Details.Icon icon={GaugeIcon} /> Одометр
-            </Details.Title>
-            <Details.Content>
-              <div class="flex gap-2">
-                <NumericText
-                  value={workOrder.odometerIn}
-                  class="text-end select-none!"
-                />
-                <p class="text-muted-foreground">км.</p>
-              </div>
-            </Details.Content>
-          </Details.Item>
+  <div class="h-full w-full p-4">
+    {#if combinedQueries.isError}
+      <FetchErrorDisplay
+        message={combinedQueries.firstError?.message}
+        onRetry={combinedQueries.refetchAll}
+        class="mt-20"
+      />
+    {:else if combinedQueries.isLoading}
+      <div class="flex w-full h-30 items-stretch gap-4">
+        <Skeleton class="flex-1" />
+        <Skeleton class="flex-1" />
+      </div>
+      <Skeleton class="mt-4 w-full h-35" />
+      <Skeleton class="mt-4 w-full h-50" />
+      <Skeleton class="mt-4 w-full h-50" />
+    {:else if !workOrderDetails?.workOrder}
+      <NotFound
+        message={`Замовлення не знайдено (ID: ${params.workorderId})`}
+        class="mt-20"
+      />
+    {:else}
+      <div class="flex flex-col sm:flex-row w-full items-stretch gap-4">
+        <a href="/cars/{workOrderDetails?.carDto?.car?.id}" class="flex flex-1">
+          <CarCard
+            car={workOrderDetails?.carDto.car}
+            client={workOrderDetails?.client}
+            brand={workOrderDetails?.carDto?.brand}
+            short
+            class="w-full h-full flex flex-col justify-center"
+          />
+        </a>
+        <a href="/clients/{workOrderDetails?.client?.id}" class="flex flex-1">
+          <ClientCard
+            client={workOrderDetails?.client}
+            short
+            class="w-full h-full flex flex-col justify-center"
+          />
+        </a>
+      </div>
 
-          <Details.Item>
-            <Details.Title>
-              <Details.Icon icon={RateIcon} /> Тариф
-            </Details.Title>
-            <Details.Content>
-              <CurrencyDisplay
-                cents={workOrder.rateCents}
-                suffix="грн./год."
-                suffix_muted
+      <Details.Card class="mt-4">
+        <Details.Item>
+          <Details.Title>
+            <Details.Icon icon={GaugeIcon} /> Одометр
+          </Details.Title>
+          <Details.Content>
+            <div class="flex gap-2">
+              <NumericText
+                value={workOrderDetails?.workOrder.odometerIn}
+                class="text-end select-none!"
               />
-            </Details.Content>
-          </Details.Item>
+              <p class="text-muted-foreground">км.</p>
+            </div>
+          </Details.Content>
+        </Details.Item>
 
+        <Details.Item>
+          <Details.Title>
+            <Details.Icon icon={RateIcon} /> Тариф
+          </Details.Title>
+          <Details.Content>
+            <CurrencyDisplay
+              cents={workOrderDetails?.workOrder.rateCents}
+              suffix="грн./год."
+              suffix_muted
+            />
+          </Details.Content>
+        </Details.Item>
+
+        <Details.Item>
+          <Details.Title>
+            <Details.Icon icon={CalendarPlusIcon} /> Створено
+          </Details.Title>
+          <Details.Content>
+            {prettifyIsoDateString(
+              workOrderDetails?.workOrder.createdAt,
+              "datetime",
+            )}
+          </Details.Content>
+        </Details.Item>
+
+        {#if workOrderDetails?.workOrder.startedAt}
           <Details.Item>
             <Details.Title>
-              <Details.Icon icon={CalendarPlusIcon} /> Створено
+              <Details.Icon icon={CalendarClockIcon} /> Почато
             </Details.Title>
             <Details.Content>
-              {prettifyIsoDateString(workOrder.createdAt, "datetime")}
+              {prettifyIsoDateString(
+                workOrderDetails?.workOrder.startedAt,
+                "datetime",
+              )}
             </Details.Content>
           </Details.Item>
+        {/if}
 
-          {#if workOrder.startedAt}
-            <Details.Item>
-              <Details.Title>
-                <Details.Icon icon={CalendarClockIcon} /> Почато
-              </Details.Title>
-              <Details.Content>
-                {prettifyIsoDateString(workOrder.startedAt, "datetime")}
-              </Details.Content>
-            </Details.Item>
-          {/if}
+        {#if workOrderDetails?.workOrder.completedAt}
+          <Details.Item>
+            <Details.Title>
+              <Details.Icon icon={CalendarCheckIcon} /> Завершено
+            </Details.Title>
+            <Details.Content>
+              {prettifyIsoDateString(
+                workOrderDetails?.workOrder.completedAt,
+                "datetime",
+              )}
+            </Details.Content>
+          </Details.Item>
+        {/if}
+      </Details.Card>
 
-          {#if workOrder.completedAt}
-            <Details.Item>
-              <Details.Title>
-                <Details.Icon icon={CalendarCheckIcon} /> Завершено
-              </Details.Title>
-              <Details.Content>
-                {prettifyIsoDateString(workOrder.completedAt, "datetime")}
-              </Details.Content>
-            </Details.Item>
-          {/if}
-        </Details.Card>
+      <Card.Root class="mt-4">
+        <Card.Header>
+          <Card.Title class="flex gap-2 text-xl">
+            <p>Сервіси</p>
+            <p class="text-muted-foreground">
+              {workOrderDetails?.laborItems.length}
+            </p>
+          </Card.Title>
+          <Card.Action>
+            <ButtonGroup.Root>
+              <Button variant="outline" onclick={laborTableActions.openCreate}
+                >Створити</Button
+              >
+              <Popover.Root bind:open={isPopoverOpen}>
+                <Popover.Trigger>
+                  {#snippet child({ props })}
+                    <Button {...props}>
+                      Додати з бази
+                      <ChevronDownIcon />
+                    </Button>
+                  {/snippet}
+                </Popover.Trigger>
+                <Popover.Content class="w-80 p-0">
+                  <Command.Root>
+                    <Command.Input placeholder="Пошук сервісів..." />
+                    <Command.List>
+                      <Command.Empty>Сервісів не знайдено...</Command.Empty>
+                      <Command.Group value="services">
+                        {#each services ?? [] as service (service.id)}
+                          <Command.Item
+                            value={service.name}
+                            onSelect={async () => {
+                              createLaborItemMutation.mutateAsync({
+                                workOrderId: params.workorderId,
+                                serviceId: service.id,
+                                code: service.code,
+                                name: service.name,
+                                laborHours: service.laborHours,
+                                discountType: "Fixed",
+                                discountCents: 0,
+                                discountPercent: 0,
+                              });
+                              isPopoverOpen = false;
+                            }}
+                          >
+                            {service.name}
+                          </Command.Item>
+                        {/each}
+                      </Command.Group>
+                    </Command.List>
+                  </Command.Root>
+                </Popover.Content>
+              </Popover.Root>
+            </ButtonGroup.Root>
+          </Card.Action>
+        </Card.Header>
+        <Card.Content>
+          <DataTable
+            table={laborTable}
+            emptyMessage="Сервісів не знайдено..."
+            headerClasses={{ name: "w-full" }}
+          />
+        </Card.Content>
+      </Card.Root>
 
-        <Card.Root class="mt-4">
-          <Card.Header>
-            <Card.Title class="flex gap-2 text-xl">
-              <p>Сервіси</p>
-              <p class="text-muted-foreground">
-                {laborItems.length}
-              </p>
-            </Card.Title>
-            <Card.Action>
-              <ButtonGroup.Root>
-                <Button variant="outline" onclick={laborTableActions.openCreate}
-                  >Створити</Button
-                >
-                <Popover.Root bind:open={isPopoverOpen}>
-                  <Popover.Trigger>
-                    {#snippet child({ props })}
-                      <Button {...props}>
-                        Додати з бази
-                        <ChevronDownIcon />
-                      </Button>
-                    {/snippet}
-                  </Popover.Trigger>
-                  <Popover.Content class="w-80 p-0">
-                    <Command.Root>
-                      <Command.Input placeholder="Пошук сервісів..." />
-                      <Command.List>
-                        <Command.Empty>Сервісів не знайдено...</Command.Empty>
-                        <Command.Group value="services">
-                          {#each combinedQueries.services.data ?? [] as service (service.id)}
-                            <Command.Item
-                              value={service.name}
-                              onSelect={async () => {
-                                createItemMutation.mutateAsync({
-                                  workOrderId: workOrder.id,
-                                  serviceId: service.id,
-                                  code: service.code,
-                                  name: service.name,
-                                  laborHours: service.laborHours,
-                                });
-                                isPopoverOpen = false;
-                              }}
-                            >
-                              {service.name}
-                            </Command.Item>
-                          {/each}
-                        </Command.Group>
-                      </Command.List>
-                    </Command.Root>
-                  </Popover.Content>
-                </Popover.Root>
-              </ButtonGroup.Root>
-            </Card.Action>
-          </Card.Header>
-          <Card.Content>
-            <DataTable
-              table={laborTable}
-              emptyMessage="Сервісів не знайдено..."
-              headerClasses={{ name: "w-full" }}
-            />
-          </Card.Content>
-        </Card.Root>
+      <Card.Root class="mt-4">
+        <Card.Header>
+          <Card.Title class="flex gap-2 text-xl">
+            <p>Запчастини</p>
+            <p class="text-muted-foreground">
+              {workOrderDetails?.partItems.length}
+            </p>
+          </Card.Title>
+          <Card.Action>
+            <Button onclick={partsTableActions.openCreate}>Створити</Button>
+          </Card.Action>
+        </Card.Header>
+        <Card.Content>
+          <DataTable
+            table={partsTable}
+            emptyMessage="Запчастин не знайдено..."
+            headerClasses={{ name: "w-full" }}
+          />
+        </Card.Content>
+      </Card.Root>
 
-        <Card.Root class="mt-4">
-          <Card.Header>
-            <Card.Title class="flex gap-2 text-xl">
-              <p>Запчастини</p>
-              <p class="text-muted-foreground">
-                {partItems.length}
-              </p>
-            </Card.Title>
-            <Card.Action>
-              <Button onclick={partsTableActions.openCreate}>Створити</Button>
-            </Card.Action>
-          </Card.Header>
-          <Card.Content>
-            <DataTable
-              table={partsTable}
-              emptyMessage="Запчастин не знайдено..."
-              headerClasses={{ name: "w-full" }}
-            />
-          </Card.Content>
-        </Card.Root>
-      {/if}
-    </div></PageLayout
-  >
-  <WorkOrderLaborItemMutationSheet
-    bind:open={laborTableActions.isMutationOpen}
-    id={laborTableActions.editId}
-    woId={workOrder.id}
-  />
-  <DeleteDialog
-    bind:open={laborTableActions.isDeleteOpen}
-    onDelete={confirmLaborDelete}
-    description="Цю дію неможливо відмінити."
-  />
-
-  <WorkOrderPartsItemMutationSheet
-    bind:open={partsTableActions.isMutationOpen}
-    id={partsTableActions.editId}
-    woId={workOrder.id}
-  />
-  <DeleteDialog
-    bind:open={partsTableActions.isDeleteOpen}
-    onDelete={confirmPartDelete}
-    description="Цю дію неможливо відмінити."
-  />
-{/if}
+      <WorkOrderLaborItemMutationSheet
+        bind:open={laborTableActions.isMutationOpen}
+        laborItemId={laborTableActions.editId}
+        workOrderId={workOrderDetails?.workOrder?.id}
+      />
+      <DeleteDialog
+        bind:open={laborTableActions.isDeleteOpen}
+        onDelete={confirmLaborDelete}
+        description="Цю дію неможливо відмінити."
+      />
+      <WorkOrderPartsItemMutationSheet
+        bind:open={partsTableActions.isMutationOpen}
+        partItemId={partsTableActions.editId}
+        workOrderId={workOrderDetails?.workOrder?.id}
+      />
+      <DeleteDialog
+        bind:open={partsTableActions.isDeleteOpen}
+        onDelete={confirmPartDelete}
+        description="Цю дію неможливо відмінити."
+      />
+    {/if}
+  </div></PageLayout
+>

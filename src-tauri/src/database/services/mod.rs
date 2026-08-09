@@ -25,6 +25,17 @@ pub async fn fetch_services_list(state: State<'_, crate::AppState>) -> AppResult
 
 #[tauri::command]
 #[specta::specta]
+pub async fn fetch_service_by_id(state: State<'_, crate::AppState>, id: i32) -> AppResult<Service> {
+    let service: Service =
+        sqlx::query_as("SELECT id, code, name, labor_hours FROM services WHERE id = $1")
+            .bind(id)
+            .fetch_one(&state.db_pool)
+            .await?;
+    Ok(service)
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn create_service(
     state: State<'_, crate::AppState>,
     payload: CreateServicePayload,

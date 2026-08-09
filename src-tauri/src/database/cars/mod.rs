@@ -1,9 +1,18 @@
+pub mod dtos;
 pub mod structs;
+
+use std::collections::HashMap;
 
 use structs::*;
 use tauri::State;
 
-use crate::error::{AppError, AppResult};
+use crate::{
+    database::{
+        cars::dtos::{CarDetailsDto, CarDto},
+        clients::{fetch_client_by_id, fetch_clients_list, structs::Client},
+    },
+    error::{AppError, AppResult},
+};
 
 #[tauri::command]
 #[specta::specta]
@@ -16,13 +25,105 @@ pub async fn fetch_cars_count(state: State<'_, crate::AppState>) -> AppResult<i3
 
 #[tauri::command]
 #[specta::specta]
-pub async fn fetch_cars_list(state: State<'_, crate::AppState>) -> AppResult<Vec<Car>> {
+pub async fn fetch_cars_list(state: State<'_, crate::AppState>) -> AppResult<Vec<CarDto>> {
     let cars: Vec<Car> = sqlx::query_as(
         "SELECT id, client_id, brand_id, model, year, license_plate, vin, created_at FROM cars",
     )
     .fetch_all(&state.db_pool)
     .await?;
-    Ok(cars)
+
+    build_car_dtos(state.clone(), cars).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_cars_list_by_client_id(
+    state: State<'_, crate::AppState>,
+    client_id: i32,
+) -> AppResult<Vec<CarDto>> {
+    let cars: Vec<Car> = sqlx::query_as(
+        "SELECT id, client_id, brand_id, model, year, license_plate, vin, created_at FROM cars WHERE client_id = $1",
+    )
+    .bind(client_id)
+    .fetch_all(&state.db_pool)
+    .await?;
+
+    build_car_dtos(state.clone(), cars).await
+}
+
+pub async fn build_car_dtos(
+    state: State<'_, crate::AppState>,
+    cars: Vec<Car>,
+) -> AppResult<Vec<CarDto>> {
+    let brands: Vec<CarBrand> = fetch_car_brands(state).await?;
+
+    let brands_by_id: HashMap<i64, CarBrand> =
+        brands.into_iter().map(|brand| (brand.id, brand)).collect();
+
+    let car_dtos: Vec<CarDto> = cars
+        .into_iter()
+        .filter_map(|car| {
+            brands_by_id
+                .get(&car.brand_id)
+                .cloned()
+                .map(|brand| CarDto { car, brand })
+        })
+        .collect();
+
+    Ok(car_dtos)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_car_details_list(
+    state: State<'_, crate::AppState>,
+) -> AppResult<Vec<CarDetailsDto>> {
+    let car_dtos: Vec<CarDto> = fetch_cars_list(state.clone()).await?;
+
+    let clients: Vec<Client> = fetch_clients_list(state).await?;
+
+    let clients_by_id: HashMap<i64, Client> = clients
+        .into_iter()
+        .map(|client| (client.id, client))
+        .collect();
+
+    let car_details_dtos: Vec<CarDetailsDto> = car_dtos
+        .into_iter()
+        .filter_map(|car_dto| {
+            clients_by_id
+                .get(&car_dto.car.client_id)
+                .cloned()
+                .map(|client| CarDetailsDto { car_dto, client })
+        })
+        .collect();
+
+    Ok(car_details_dtos)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_car_details(
+    state: State<'_, crate::AppState>,
+    id: i32,
+) -> AppResult<CarDetailsDto> {
+    let car_dto: CarDto = fetch_car_by_id(state.clone(), id).await?;
+    let client: Client = fetch_client_by_id(state.clone(), car_dto.car.client_id as i32).await?;
+    Ok(CarDetailsDto { car_dto, client })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_car_by_id(state: State<'_, crate::AppState>, id: i32) -> AppResult<CarDto> {
+    let car: Car = sqlx::query_as(
+        "SELECT id, client_id, brand_id, model, year, license_plate, vin, created_at FROM cars WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_one(&state.db_pool)
+    .await?;
+
+    let brand = fetch_car_brand_by_id(state, car.brand_id as i32).await?;
+
+    Ok(CarDto { car, brand })
 }
 
 #[tauri::command]
@@ -32,6 +133,20 @@ pub async fn fetch_car_brands(state: State<'_, crate::AppState>) -> AppResult<Ve
         .fetch_all(&state.db_pool)
         .await?;
     Ok(car_brands)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_car_brand_by_id(
+    state: State<'_, crate::AppState>,
+    id: i32,
+) -> AppResult<CarBrand> {
+    let car_brand: CarBrand =
+        sqlx::query_as("SELECT id, name, icon_slug FROM car_brands WHERE id = $1")
+            .bind(id)
+            .fetch_one(&state.db_pool)
+            .await?;
+    Ok(car_brand)
 }
 
 #[tauri::command]

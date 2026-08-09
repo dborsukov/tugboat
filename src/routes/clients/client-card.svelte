@@ -20,7 +20,6 @@
   let { client, short, class: className, ...restProps }: Props = $props();
 </script>
 
-<!-- TODO: add nav_from prop to add easy reverse navigation -->
 <Card.Root
   class={cn(
     "overflow-hidden transition-all duration-200 rounded hover:shadow-lg hover:border-muted-foreground/30",

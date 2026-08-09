@@ -6,14 +6,14 @@ import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 import CurrencyDisplay from "$lib/components/currency-display.svelte";
 import DataTableSortButton from "$lib/components/data-table-sort-button.svelte";
 
+import type { WorkOrderDetailsDto } from "$lib/bindings";
 import { prettifyIsoDateString } from "$lib/tools";
 
 import CarBadge from "../cars/car-badge.svelte";
 import ClientBadge from "../clients/client-badge.svelte";
-import type { WorkOrderListItem } from "./types";
 import StatusSelector from "./work-order-status-selector.svelte";
 
-export const columns: ColumnDef<WorkOrderListItem>[] = [
+export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
   {
     accessorKey: "id",
     header: () => {
@@ -28,7 +28,7 @@ export const columns: ColumnDef<WorkOrderListItem>[] = [
       const nameCellSnippet = createRawSnippet(() => {
         return {
           render: () =>
-            `<div class="px-2 font-mono tracking-wider">${row.original.id}</div>`,
+            `<div class="px-2 font-mono tracking-wider">${row.original.workOrder.id}</div>`,
         };
       });
       return renderSnippet(nameCellSnippet);
@@ -59,7 +59,7 @@ export const columns: ColumnDef<WorkOrderListItem>[] = [
   {
     id: "car_id",
     accessorFn: (row) =>
-      `${row.carBrand.name} ${row.car.model} ${row.car.year}`,
+      `${row.carDto.brand.name} ${row.carDto.car.model} ${row.carDto.car.year}`,
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
@@ -75,8 +75,8 @@ export const columns: ColumnDef<WorkOrderListItem>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(CarBadge, {
-        car: row.original.car,
-        carBrand: row.original.carBrand,
+        car: row.original.carDto.car,
+        carBrand: row.original.carDto.brand,
       });
     },
   },
@@ -98,36 +98,14 @@ export const columns: ColumnDef<WorkOrderListItem>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(StatusSelector, {
-        status: row.original.status,
+        status: row.original.workOrder.status,
         interactive: false,
       });
     },
   },
   {
     id: "total",
-    accessorFn: (row) => {
-      let laborTotal = row.laborItems.reduce(
-        (sum, item) => sum + Math.round(item.laborHours * row.rateCents),
-        0,
-      );
-      let partsTotal = row.partsItems.reduce(
-        (sum, item) =>
-          sum +
-          Math.round(
-            item.quantity * (item.costCents * (1 + item.markup / 100)),
-          ),
-        0,
-      );
-      let flatTotal = laborTotal + partsTotal;
-      if (row.discountCents != 0 || row.discountPercent != 0) {
-        if (row.discountType === "Fixed") {
-          return flatTotal - row.discountCents;
-        } else {
-          return flatTotal * (1 - row.discountPercent / 100);
-        }
-      }
-      return flatTotal;
-    },
+    accessorFn: (row) => row.totals.grandTotalCents,
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
@@ -151,7 +129,8 @@ export const columns: ColumnDef<WorkOrderListItem>[] = [
   },
   {
     id: "created_at",
-    accessorFn: (row) => prettifyIsoDateString(row.createdAt, "datetime"),
+    accessorFn: (row) =>
+      prettifyIsoDateString(row.workOrder.createdAt, "datetime"),
     sortingFn: "datetime",
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
@@ -170,7 +149,7 @@ export const columns: ColumnDef<WorkOrderListItem>[] = [
       const createdCellSnippet = createRawSnippet(() => {
         return {
           render: () =>
-            `<div class="px-2">${prettifyIsoDateString(row.original.createdAt, "datetime")}</div>`,
+            `<div class="px-2">${prettifyIsoDateString(row.original.workOrder.createdAt, "datetime")}</div>`,
         };
       });
       return renderSnippet(createdCellSnippet);

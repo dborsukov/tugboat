@@ -5,29 +5,26 @@ import {
 } from "@tanstack/svelte-query";
 import { toast } from "svelte-sonner";
 
-import {
-  commands,
-  type WorkOrderPartItem,
-  type WorkOrderTotal,
-} from "$lib/bindings";
+import { commands } from "$lib/bindings";
 import type {
-  CreateWorkOrderLaborItemPayload,
+  CreateLaborItemPayload,
+  CreatePartItemPayload,
+  CreateWorkOrderPayload,
+  LaborItem,
+  PartItem,
+  UpdateLaborItemPayload,
+  UpdatePartItemPayload,
   UpdateWorkOrderPayload,
-  WorkOrder,
-  WorkOrderLaborItem,
+  WorkOrderDetailsDto,
 } from "$lib/bindings";
 import { keys } from "$lib/query-keys";
 import { unwrap } from "$lib/tools";
 
-export function workOrdersQueryOptions() {
-  return {
-    queryKey: keys.workOrders.lists(),
-    queryFn: () => unwrap(commands.fetchWorkOrdersList()),
-  };
-}
-
-export function createWorkOrdersQuery() {
-  return createQuery<WorkOrder[]>(() => workOrdersQueryOptions());
+function showMutationErrorToast(error: Error) {
+  toast.error("Виникла помилка", {
+    description: error.message,
+    position: "bottom-left",
+  });
 }
 
 export function workOrdersCountQueryOptions() {
@@ -41,41 +38,77 @@ export function createWorkOrdersCountQuery() {
   return createQuery<number>(() => workOrdersCountQueryOptions());
 }
 
-export function workOrderLaborItemsQueryOptions() {
+export function workOrderDetailsQueryOptions(id: string | null) {
   return {
-    queryKey: keys.workOrders.laborItems(),
-    queryFn: () => unwrap(commands.fetchWorkOrderLaborItemsList()),
+    enabled: id != null,
+    queryKey: keys.workOrders.detail(id!),
+    queryFn: () => unwrap(commands.fetchWorkOrderDetailsDto(id!)),
   };
 }
 
-export function createWorkOrderLaborItemsQuery() {
-  return createQuery<WorkOrderLaborItem[]>(() =>
-    workOrderLaborItemsQueryOptions(),
+export function createWorkOrderDetailsQuery(getId: () => string | null) {
+  return createQuery<WorkOrderDetailsDto>(() =>
+    workOrderDetailsQueryOptions(getId()),
   );
 }
 
-export function workOrderPartItemsQueryOptions() {
+export function workOrderDetailsListByCarIdQueryOptions(id: number | null) {
   return {
-    queryKey: keys.workOrders.partItems(),
-    queryFn: () => unwrap(commands.fetchWorkOrderPartItemsList()),
+    enabled: id != null,
+    queryKey: keys.workOrders.detail(id!),
+    queryFn: () => unwrap(commands.fetchWorkOrderDetailsDtoByCarId(id!)),
   };
 }
 
-export function createWorkOrderPartItemsQuery() {
-  return createQuery<WorkOrderPartItem[]>(() =>
-    workOrderPartItemsQueryOptions(),
+export function createWorkOrderDetailsListByCarIdQuery(
+  getId: () => number | null,
+) {
+  return createQuery<WorkOrderDetailsDto[]>(() =>
+    workOrderDetailsListByCarIdQueryOptions(getId()),
   );
 }
 
-export function workOrderTotalsQueryOptions() {
+export function workOrderDetailsListByClientIdQueryOptions(id: number | null) {
   return {
-    queryKey: keys.workOrders.totals(),
-    queryFn: () => unwrap(commands.fetchWorkOrderTotals()),
+    enabled: id != null,
+    queryKey: keys.workOrders.detail(id!),
+    queryFn: () => unwrap(commands.fetchWorkOrderDetailsDtoByClientId(id!)),
   };
 }
 
-export function createWorkOrderTotalsQuery() {
-  return createQuery<WorkOrderTotal[]>(() => workOrderTotalsQueryOptions());
+export function createWorkOrderDetailsListByClientIdQuery(
+  getId: () => number | null,
+) {
+  return createQuery<WorkOrderDetailsDto[]>(() =>
+    workOrderDetailsListByClientIdQueryOptions(getId()),
+  );
+}
+
+export function workOrderDetailsListQueryOptions() {
+  return {
+    queryKey: keys.workOrders.list(),
+    queryFn: () => unwrap(commands.fetchWorkOrderDetailsDtoList()),
+  };
+}
+
+export function createWorkOrderDetailsDtoListQuery() {
+  return createQuery<WorkOrderDetailsDto[]>(() =>
+    workOrderDetailsListQueryOptions(),
+  );
+}
+
+export function createCreateWorkOrderMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (payload: CreateWorkOrderPayload) =>
+        unwrap(commands.createWorkOrder(payload)),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
 }
 
 export function createUpdateWorkOrderMutation(queryClient: QueryClient) {
@@ -86,33 +119,150 @@ export function createUpdateWorkOrderMutation(queryClient: QueryClient) {
       onSuccess: () => {
         invalidateWorkOrderLists(queryClient);
       },
-      onError: (error) => {
-        toast.error("Виникла помилка", {
-          description: error.message,
-          position: "bottom-left",
-        });
-      },
+      onError: showMutationErrorToast,
     }),
     () => queryClient,
   );
 }
 
-export function createCreateWorkOrderLaborItemMutation(
-  queryClient: QueryClient,
-) {
+export function createDeleteWorkOrderMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
-      mutationFn: async (payload: CreateWorkOrderLaborItemPayload) =>
-        unwrap(commands.createWorkOrderLaborItem(payload)),
+      mutationFn: (id: string) => unwrap(commands.deleteWorkOrder(id)),
+      onSuccess: async () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function laborItemByIdQueryOptions(id: number | null) {
+  return {
+    enabled: id != null,
+    queryKey: keys.workOrders.laborItem(id!),
+    queryFn: () => unwrap(commands.fetchLaborItemById(id!)),
+  };
+}
+
+export function createLaborItemByIdQuery(getId: () => number | null) {
+  return createQuery<LaborItem>(() => laborItemByIdQueryOptions(getId()));
+}
+
+export function laborItemsQueryOptions() {
+  return {
+    queryKey: keys.workOrders.laborItems(),
+    queryFn: () => unwrap(commands.fetchLaborItemsList()),
+  };
+}
+
+export function createLaborItemsQuery() {
+  return createQuery<LaborItem[]>(() => laborItemsQueryOptions());
+}
+
+export function createCreateLaborItemMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: async (payload: CreateLaborItemPayload) =>
+        unwrap(commands.createLaborItem(payload)),
       onSuccess: () => {
         invalidateWorkOrderLists(queryClient);
       },
-      onError: (error) => {
-        toast.error("Виникла помилка", {
-          description: error.message,
-          position: "bottom-left",
-        });
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createUpdateLaborItemMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: async (variables: {
+        id: number;
+        payload: UpdateLaborItemPayload;
+      }) => unwrap(commands.updateLaborItem(variables.id, variables.payload)),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
       },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createDeleteLaborItemMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (id: number) => unwrap(commands.deleteLaborItem(id)),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function partItemByIdQueryOptions(id: number | null) {
+  return {
+    enabled: id != null,
+    queryKey: keys.workOrders.partItem(id!),
+    queryFn: () => unwrap(commands.fetchPartItemById(id!)),
+  };
+}
+
+export function createPartItemByIdQuery(getId: () => number | null) {
+  return createQuery<PartItem>(() => partItemByIdQueryOptions(getId()));
+}
+
+export function partItemsQueryOptions() {
+  return {
+    queryKey: keys.workOrders.partItems(),
+    queryFn: () => unwrap(commands.fetchPartItemsList()),
+  };
+}
+
+export function createPartItemsQuery() {
+  return createQuery<PartItem[]>(() => partItemsQueryOptions());
+}
+
+export function createCreatePartItemMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (payload: CreatePartItemPayload) =>
+        unwrap(commands.createPartItem(payload)),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createUpdatePartItemMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (variables: { id: number; payload: UpdatePartItemPayload }) =>
+        unwrap(commands.updatePartItem(variables.id, variables.payload)),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createDeletePartItemMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (id: number) => unwrap(commands.deletePartItem(id)),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
     }),
     () => queryClient,
   );

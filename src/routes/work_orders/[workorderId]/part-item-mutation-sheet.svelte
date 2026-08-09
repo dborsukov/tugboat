@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
-  import { toast } from "svelte-sonner";
+  import { useQueryClient } from "@tanstack/svelte-query";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
@@ -13,93 +12,65 @@
   import CurrencyInput from "$lib/components/currency-input.svelte";
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
-  import {
-    commands,
-    type CreateWorkOrderPartItemPayload,
-    type PartStatus,
-    type UpdateWorkOrderPartItemPayload,
-  } from "$lib/bindings";
-  import { unwrap } from "$lib/tools";
+  import { type PartStatus } from "$lib/bindings";
 
   import {
-    createWorkOrderPartItemsQuery,
-    invalidateWorkOrderLists,
+    discountFields,
+    discountFromEntity,
+    discountToPayload,
+    refineDiscount,
+  } from "../discount";
+  import DiscountField from "../discount-field.svelte";
+  import {
+    createCreatePartItemMutation,
+    createPartItemByIdQuery,
+    createUpdatePartItemMutation,
   } from "../queries";
   import PartStatusSelector from "./part-status-selector.svelte";
 
   let {
-    id = null,
-    woId = null,
+    partItemId = null,
+    workOrderId = null,
     open = $bindable(false),
   }: {
-    id?: number | null;
-    woId?: string | null;
+    partItemId?: number | null;
+    workOrderId?: string | null;
     open: boolean;
   } = $props();
 
+  const formID = "part-item-mutation-form";
+  const isEdit = $derived(partItemId != null);
+
   const queryClient = useQueryClient();
 
-  let partItemsQuery = createWorkOrderPartItemsQuery();
-  let partItems = $derived(partItemsQuery.data ?? []);
-  let partItem = $derived(partItems.find((c) => c.id === id) ?? null);
+  const createPartItemMutation = createCreatePartItemMutation(queryClient);
+  const updatePartItemMutation = createUpdatePartItemMutation(queryClient);
 
-  const isEdit = $derived(!!partItem);
-  const formID = $derived(
-    isEdit
-      ? `work-order-part-item-mutation-form-${id}`
-      : "work-order-part-item-mutation-form-create",
-  );
+  let partItemsQuery = createPartItemByIdQuery(() => partItemId);
+  let partItem = $derived(partItemsQuery.data);
 
-  const partItemSchema = z.object({
-    status: z.string().default("Quoted"),
-    code: z.string().nullable(),
-    name: z.string().min(1, { error: "Вкажіть назву" }),
-    quantity: z
-      .number({ error: "Вкажіть кількість" })
-      .nonnegative("Неправильна кількість")
-      .default(1),
-    unitType: z.string().min(1, { error: "Вкажіть одиницю вимірювання" }),
-    cost: z
-      .number({ error: "Вкажіть ціну" })
-      .nonnegative("Неправильна ціна")
-      .default(0),
-    markup: z
-      .number({ error: "Вкажіть націнку у відсотках" })
-      .min(0, "Неправильний відсоток")
-      .max(100, "Неправильний відсоток")
-      .default(0),
-  });
-
-  const createWorkOrderPartItemMutation = createMutation(() => ({
-    mutationFn: async (payload: CreateWorkOrderPartItemPayload) =>
-      unwrap(commands.createWorkOrderPartItem(payload)),
-    onSuccess: () => {
-      invalidateWorkOrderLists(queryClient);
-    },
-    onError: (error) => {
-      toast.error("Виникла помилка", {
-        description: error.message,
-        position: "bottom-left",
-      });
-    },
-  }));
-
-  const updateWorkOrderPartItemMutation = createMutation(() => ({
-    mutationFn: async (variables: {
-      id: number;
-      payload: UpdateWorkOrderPartItemPayload;
-    }) =>
-      unwrap(commands.updateWorkOrderPartItem(variables.id, variables.payload)),
-    onSuccess: () => {
-      invalidateWorkOrderLists(queryClient);
-    },
-    onError: (error) => {
-      toast.error("Виникла помилка", {
-        description: error.message,
-        position: "bottom-left",
-      });
-    },
-  }));
+  const partItemSchema = z
+    .object({
+      status: z.string().default("Quoted"),
+      code: z.string().nullable(),
+      name: z.string().min(1, { error: "Вкажіть назву" }),
+      quantity: z
+        .number({ error: "Вкажіть кількість" })
+        .nonnegative("Неправильна кількість")
+        .default(1),
+      unitType: z.string().min(1, { error: "Вкажіть одиницю вимірювання" }),
+      cost: z
+        .number({ error: "Вкажіть ціну" })
+        .nonnegative("Неправильна ціна")
+        .default(0),
+      markup: z
+        .number({ error: "Вкажіть націнку у відсотках" })
+        .min(0, "Неправильний відсоток")
+        .max(100, "Неправильний відсоток")
+        .default(0),
+      ...discountFields,
+    })
+    .superRefine(refineDiscount);
 
   const form = superForm(defaults(zod4(partItemSchema)), {
     SPA: true,
@@ -111,31 +82,38 @@
     async onUpdate({ form: nativeForm }) {
       if (!nativeForm.valid) return;
 
+      const discountPayload = discountToPayload(
+        nativeForm.data.discountType,
+        nativeForm.data.discount,
+      );
+
       const payload = {
         status: nativeForm.data.status as PartStatus,
         code: nativeForm.data.code,
         name: nativeForm.data.name,
         quantity: nativeForm.data.quantity,
         unitType: nativeForm.data.unitType,
-        costCents: nativeForm.data.cost * 100,
+        baseCostCents: nativeForm.data.cost * 100,
         markup: nativeForm.data.markup,
+        ...discountPayload,
       };
 
-      if (isEdit && id) {
-        await updateWorkOrderPartItemMutation
-          .mutateAsync({ id, payload })
+      if (isEdit && partItemId) {
+        await updatePartItemMutation
+          .mutateAsync({ id: partItemId, payload })
           .catch(() => {});
       } else {
-        await createWorkOrderPartItemMutation
+        await createPartItemMutation
           .mutateAsync({
-            workOrderId: woId!,
+            workOrderId: workOrderId!,
             status: nativeForm.data.status as PartStatus,
             code: nativeForm.data.code,
             name: nativeForm.data.name,
             quantity: nativeForm.data.quantity,
             unitType: nativeForm.data.unitType,
-            costCents: nativeForm.data.cost * 100,
+            baseCostCents: nativeForm.data.cost * 100,
             markup: nativeForm.data.markup,
+            ...discountPayload,
           })
           .catch(() => {});
       }
@@ -154,8 +132,10 @@
         $formData.name = partItem.name;
         $formData.quantity = partItem.quantity;
         $formData.unitType = partItem.unitType;
-        $formData.cost = partItem.costCents / 100;
+        $formData.cost = partItem.baseCostCents / 100;
         $formData.markup = partItem.markup;
+        $formData.discountType = partItem.discountType;
+        $formData.discount = discountFromEntity(partItem);
       } else {
         form.reset();
         $formData.unitType = "штука";
@@ -289,6 +269,20 @@
           />
           <p>%</p>
         </div>
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+
+  <Form.Field {form} name="discount">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Знижка</Label>
+        <DiscountField
+          bind:type={$formData.discountType}
+          bind:value={$formData.discount}
+          inputProps={props}
+        />
       {/snippet}
     </Form.Control>
     <Form.FieldErrors />

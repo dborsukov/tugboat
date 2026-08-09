@@ -1,6 +1,5 @@
 <script lang="ts">
   import { compareItems, rankItem } from "@tanstack/match-sorter-utils";
-  import { createQueries } from "@tanstack/svelte-query";
 
   import SortIcon from "@lucide/svelte/icons/arrow-up-down";
   import PlusIcon from "@lucide/svelte/icons/plus";
@@ -14,11 +13,9 @@
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
-  import { clientsQueryOptions } from "../clients/queries";
   import CarCard from "./car-card.svelte";
   import CarMutationSheet from "./car-mutation-sheet.svelte";
-  import { carBrandsQueryOptions, carsQueryOptions } from "./queries";
-  import { buildCarListItems } from "./types";
+  import { createCarDetailsListQuery } from "./queries";
 
   type SortOption = "date-desc" | "date-asc";
 
@@ -34,50 +31,23 @@
   let sortBy = $state<SortOption>("date-desc");
   let searchInputEl = $state<HTMLInputElement | null>(null);
 
-  const combinedQueries = createQueries(() => ({
-    queries: [
-      carsQueryOptions(),
-      clientsQueryOptions(),
-      carBrandsQueryOptions(),
-    ],
-    combine: (results) => {
-      return {
-        cars: results[0],
-        clients: results[1],
-        carBrands: results[2],
-
-        isReady: results.every((r) => r.isSuccess),
-        isLoading: results.some((r) => r.isPending),
-        isError: results.some((r) => r.isError),
-        firstError: results.find((r) => r.isError)?.error,
-
-        refetchAll: () => {
-          results.forEach((r) => r.refetch());
-        },
-      };
-    },
-  }));
-
-  let carListItems = $derived(
-    combinedQueries.isReady
-      ? buildCarListItems(
-          combinedQueries.cars.data!,
-          combinedQueries.clients.data!,
-          combinedQueries.carBrands.data!,
-        )
-      : [],
-  );
+  const carDetailsQuery = createCarDetailsListQuery();
+  const carDetailsList = $derived(carDetailsQuery.data ?? []);
 
   let filteredCarListItems = $derived.by(() => {
+    if (!carDetailsQuery.isSuccess) return [];
     const query = searchQuery.trim();
-    if (!query) return carListItems;
+    if (!query) return carDetailsList;
 
-    return carListItems
+    return carDetailsList
       .map((cli) => {
-        const modelRank = rankItem(`${cli.brand.name} ${cli.car.model}`, query);
-        const plateRank = rankItem(cli.car.licensePlate ?? "", query);
-        const vinRank = rankItem(cli.car.vin ?? "", query);
-        const clientRank = rankItem(cli.client.name, query);
+        const modelRank = rankItem(
+          `${cli.carDto?.brand?.name} ${cli.carDto?.car?.model}`,
+          query,
+        );
+        const plateRank = rankItem(cli.carDto?.car?.licensePlate ?? "", query);
+        const vinRank = rankItem(cli.carDto?.car?.vin ?? "", query);
+        const clientRank = rankItem(cli.client?.name, query);
 
         const bestRank = [modelRank, plateRank, vinRank, clientRank].reduce(
           (best, rank) => (rank.rank > best.rank ? rank : best),
@@ -105,16 +75,16 @@
       case "date-asc":
         sorted.sort(
           (a, b) =>
-            new Date(a.car.createdAt).getTime() -
-            new Date(b.car.createdAt).getTime(),
+            new Date(a.carDto.car.createdAt).getTime() -
+            new Date(b.carDto.car.createdAt).getTime(),
         );
         break;
       case "date-desc":
       default:
         sorted.sort(
           (a, b) =>
-            new Date(b.car.createdAt).getTime() -
-            new Date(a.car.createdAt).getTime(),
+            new Date(b.carDto.car.createdAt).getTime() -
+            new Date(a.carDto.car.createdAt).getTime(),
         );
         break;
     }
@@ -138,7 +108,7 @@
   }
 
   let controlsDisabled = $derived(
-    !combinedQueries.isReady ||
+    !carDetailsQuery.isSuccess ||
       (paginatedCarListItems.length === 0 && !searchQuery),
   );
 
@@ -177,13 +147,13 @@
       <CarMutationSheet bind:open={isSheetOpen} />
     </div>
   {/snippet}
-  {#if combinedQueries.isError}
+  {#if carDetailsQuery.isError}
     <FetchErrorDisplay
-      message={combinedQueries.firstError?.message}
-      onRetry={combinedQueries.refetchAll}
+      message={carDetailsQuery.error?.message}
+      onRetry={carDetailsQuery.refetch}
       class="mt-20"
     />
-  {:else if combinedQueries.isLoading}
+  {:else if carDetailsQuery.isLoading}
     <div
       class="grid gap-4 p-4 grid-cols-[repeat(auto-fit,minmax(200px,405px))] justify-center"
     >
@@ -202,9 +172,13 @@
     <div
       class="grid gap-4 p-4 grid-cols-[repeat(auto-fit,minmax(200px,405px))] justify-center"
     >
-      {#each paginatedCarListItems as cli (cli.car.id)}
-        <a href="/cars/{cli.car.id}" class="w-full">
-          <CarCard car={cli.car} client={cli.client} brand={cli.brand} />
+      {#each paginatedCarListItems as cli (cli.carDto?.car?.id)}
+        <a href="/cars/{cli.carDto?.car?.id}" class="w-full">
+          <CarCard
+            car={cli.carDto?.car}
+            client={cli.client}
+            brand={cli.carDto?.brand}
+          />
         </a>
       {/each}
     </div>

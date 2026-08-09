@@ -1,9 +1,16 @@
+pub mod dtos;
 pub mod structs;
 
 use structs::*;
 use tauri::State;
 
-use crate::error::{AppError, AppResult};
+use crate::{
+    database::{
+        cars::{dtos::CarDto, fetch_cars_list_by_client_id},
+        clients::dtos::ClientDetailsDto,
+    },
+    error::{AppError, AppResult},
+};
 
 #[tauri::command]
 #[specta::specta]
@@ -21,6 +28,28 @@ pub async fn fetch_clients_list(state: State<'_, crate::AppState>) -> AppResult<
         .fetch_all(&state.db_pool)
         .await?;
     Ok(clients)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_client_details_dto(
+    state: State<'_, crate::AppState>,
+    id: i32,
+) -> AppResult<ClientDetailsDto> {
+    let client: Client = fetch_client_by_id(state.clone(), id).await?;
+    let cars: Vec<CarDto> = fetch_cars_list_by_client_id(state.clone(), client.id as i32).await?;
+    Ok(ClientDetailsDto { client, cars })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_client_by_id(state: State<'_, crate::AppState>, id: i32) -> AppResult<Client> {
+    let client: Client =
+        sqlx::query_as("SELECT id, name, phone, created_at FROM clients WHERE id = $1")
+            .bind(id)
+            .fetch_one(&state.db_pool)
+            .await?;
+    Ok(client)
 }
 
 #[tauri::command]

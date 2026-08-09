@@ -5,17 +5,18 @@ import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
 import CurrencyDisplay from "$lib/components/currency-display.svelte";
 
-import type { WorkOrderPartItem } from "$lib/bindings";
+import type { PartItemDto } from "$lib/bindings";
 
 import PartStatusSelector from "./part-status-selector.svelte";
 import DataTableActions from "./part-table-actions-cell.svelte";
+import TableDiscountCell from "./table-discount-cell.svelte";
 
 export interface PartsTableMeta {
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
 }
 
-export const columns: ColumnDef<WorkOrderPartItem>[] = [
+export const columns: ColumnDef<PartItemDto>[] = [
   {
     accessorKey: "status",
     header: "Статус",
@@ -80,19 +81,19 @@ export const columns: ColumnDef<WorkOrderPartItem>[] = [
     },
   },
   {
-    accessorKey: "costCents",
+    accessorKey: "baseCostCents",
     header: () => {
       return renderSnippet(
         createRawSnippet(() => {
           return {
-            render: () => `<div class="text-end">Ціна</div>`,
+            render: () => `<div class="text-end">Ціна закупівлі</div>`,
           };
         }),
       );
     },
     cell: ({ row }) => {
       return renderComponent(CurrencyDisplay, {
-        cents: row.original.costCents,
+        cents: row.original.baseCostCents,
         suffix: "грн.",
         class: "justify-end",
       });
@@ -121,6 +122,47 @@ export const columns: ColumnDef<WorkOrderPartItem>[] = [
     },
   },
   {
+    id: "retailPrice",
+    header: () => {
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () => `<div class="text-end">Ціна продажу</div>`,
+          };
+        }),
+      );
+    },
+    cell: ({ row }) => {
+      return renderComponent(CurrencyDisplay, {
+        cents: row.original.totals.retailPriceCents,
+        suffix: "грн.",
+        class: "justify-end",
+      });
+    },
+  },
+  {
+    id: "discount",
+    header: () => {
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () => `<div class="text-end">Знижка</div>`,
+          };
+        }),
+      );
+    },
+    cell: ({ row }) => {
+      return renderComponent(TableDiscountCell, {
+        amount:
+          row.original.discountCents != 0
+            ? row.original.discountCents
+            : row.original.discountPercent,
+        type: row.original.discountType,
+        class: "justify-center",
+      });
+    },
+  },
+  {
     id: "price_cents",
     header: () => {
       return renderSnippet(
@@ -133,9 +175,7 @@ export const columns: ColumnDef<WorkOrderPartItem>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(CurrencyDisplay, {
-        cents: Math.round(
-          row.original.costCents * (1 + row.original.markup / 100),
-        ),
+        cents: row.original.totals.discountedPriceCents,
         suffix: "грн.",
         class: "justify-end",
       });
@@ -154,9 +194,7 @@ export const columns: ColumnDef<WorkOrderPartItem>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(CurrencyDisplay, {
-        cents:
-          row.original.quantity *
-          Math.round(row.original.costCents * (1 + row.original.markup / 100)),
+        cents: row.original.totals.totalCents,
         suffix: "грн.",
         class: "font-medium justify-end",
       });

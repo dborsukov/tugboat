@@ -8,5 +8,8 @@
   "svelte.enable-ts-plugin": true,
   "[sql]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[rust]": {
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
   }
 }

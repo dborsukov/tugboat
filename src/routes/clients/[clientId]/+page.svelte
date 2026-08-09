@@ -20,41 +20,24 @@
   import { prettifyIsoDateString } from "$lib/tools";
 
   import CarCard from "../../cars/car-card.svelte";
-  import { carBrandsQueryOptions, carsQueryOptions } from "../../cars/queries";
-  import { buildCarListItems } from "../../cars/types";
   import { columns } from "../../work_orders/columns";
-  import {
-    workOrderLaborItemsQueryOptions,
-    workOrderPartItemsQueryOptions,
-    workOrdersQueryOptions,
-    workOrderTotalsQueryOptions,
-  } from "../../work_orders/queries";
-  import { buildWorkOrderListItems } from "../../work_orders/types";
+  import { workOrderDetailsListByClientIdQueryOptions } from "../../work_orders/queries";
   import ClientBadge from "../client-badge.svelte";
-  import { clientsQueryOptions } from "../queries";
+  import { clientDetailsQueryOptions } from "../queries";
   import DropdownMenu from "./dropdown-menu.svelte";
 
   let { params } = $props();
+  let clientId = $derived(Number(params.clientId));
 
   const combinedQueries = createQueries(() => ({
     queries: [
-      workOrdersQueryOptions(),
-      carsQueryOptions(),
-      clientsQueryOptions(),
-      carBrandsQueryOptions(),
-      workOrderLaborItemsQueryOptions(),
-      workOrderPartItemsQueryOptions(),
-      workOrderTotalsQueryOptions(),
+      clientDetailsQueryOptions(clientId),
+      workOrderDetailsListByClientIdQueryOptions(clientId),
     ],
     combine: (results) => {
       return {
-        workOrders: results[0],
-        cars: results[1],
-        clients: results[2],
-        carBrands: results[3],
-        laborItems: results[4],
-        partItems: results[5],
-        totals: results[6],
+        clientDetails: results[0],
+        workOrderDetailsDtoList: results[1],
 
         isReady: results.every((r) => r.isSuccess),
         isLoading: results.some((r) => r.isPending),
@@ -68,42 +51,9 @@
     },
   }));
 
-  let client = $derived(
-    combinedQueries.clients.data?.find(
-      (c) => c.id.toString() === params.clientId,
-    ),
-  );
-  let cars = $derived(
-    combinedQueries.cars.data?.filter((car) => car.clientId === client?.id) ??
-      [],
-  );
-  let clientCarIds = $derived(
-    new Set(cars.filter((c) => c.clientId === client!.id).map((c) => c.id)),
-  );
-
-  let carListItems = $derived(
-    combinedQueries.isReady
-      ? buildCarListItems(
-          cars,
-          combinedQueries.clients.data!,
-          combinedQueries.carBrands.data!,
-        )
-      : [],
-  );
-
+  let clientDetails = $derived(combinedQueries.clientDetails.data);
   let workOrderListItems = $derived(
-    combinedQueries.isReady
-      ? buildWorkOrderListItems(
-          combinedQueries.workOrders.data!,
-          combinedQueries.cars.data!,
-          combinedQueries.carBrands.data!,
-          combinedQueries.clients.data!,
-          combinedQueries.laborItems.data!,
-          combinedQueries.partItems.data!,
-          combinedQueries.totals.data!,
-          (wo) => clientCarIds.has(wo.carId),
-        )
-      : [],
+    combinedQueries.workOrderDetailsDtoList.data ?? [],
   );
 
   let table = buildTable({
@@ -122,9 +72,9 @@
 
 <PageLayout>
   {#snippet header()}
-    {#if client}
+    {#if clientDetails}
       <div class="h-full flex items-center justify-end">
-        <DropdownMenu clientId={client.id} />
+        <DropdownMenu clientId={clientDetails?.client?.id} />
       </div>
     {/if}
   {/snippet}
@@ -138,7 +88,7 @@
     <Skeleton class="w-full h-25" />
     <Skeleton class="mt-4 w-full h-40" />
     <Skeleton class="mt-4 w-full h-40" />
-  {:else if !client}
+  {:else if !clientDetails}
     <NotFound
       message={`Клієнта не знайдено (ID: ${params.clientId})`}
       class="mt-20"
@@ -148,11 +98,11 @@
       <Card.Root>
         <Card.Content class="flex items-center justify-between">
           <ClientBadge
-            name={client.name}
+            name={clientDetails?.client?.name}
             class="text-xl font-semibold"
             iconSize="size-10"
           />
-          <p class="text-muted-foreground">ID: {client.id}</p>
+          <p class="text-muted-foreground">ID: {clientDetails?.client?.id}</p>
         </Card.Content>
       </Card.Root>
       <Details.Card class="mt-4">
@@ -162,7 +112,7 @@
           </Details.Title>
           <Details.Content>
             <PatternText
-              value={client.phone}
+              value={clientDetails?.client?.phone}
               format={MaskPatterns.PHONE_INTERNATIONAL}
               class="text-end select-none!"
             />
@@ -174,7 +124,7 @@
             <Details.Icon icon={CalendarPlusIcon} /> Створено
           </Details.Title>
           <Details.Content>
-            {prettifyIsoDateString(client.createdAt, "long")}
+            {prettifyIsoDateString(clientDetails?.client?.createdAt, "long")}
           </Details.Content>
         </Details.Item>
       </Details.Card>
@@ -183,19 +133,19 @@
         <Card.Header>
           <Card.Title class="flex gap-2 text-xl">
             <p>Автомобілі</p>
-            <p class="text-muted-foreground">{cars.length}</p>
+            <p class="text-muted-foreground">{clientDetails?.cars?.length}</p>
           </Card.Title>
         </Card.Header>
-        {#if cars.length != 0}
+        {#if clientDetails?.cars?.length != 0}
           <Card.Content>
             <div
               class="grid gap-4 grid-cols-[repeat(auto-fit,minmax(100px,390px))] mt-4 w-full"
             >
-              {#each carListItems as cli (cli.car.id)}
+              {#each clientDetails?.cars as cli (cli.car.id)}
                 <a href="/cars/{cli.car.id}" class="w-full">
                   <CarCard
                     car={cli.car}
-                    client={cli.client}
+                    client={clientDetails.client}
                     brand={cli.brand}
                     short
                   />
@@ -218,7 +168,7 @@
             <DataTable
               {table}
               emptyMessage="Замовлень не знайдено..."
-              onRowClick={(row) => goto(`/work_orders/${row.id}`)}
+              onRowClick={(row) => goto(`/work_orders/${row.workOrder.id}`)}
             />
           </Card.Content>
         {/if}

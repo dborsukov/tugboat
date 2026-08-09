@@ -58,27 +58,33 @@ CREATE TABLE work_orders (
     FOREIGN KEY (car_id) REFERENCES cars (id) ON DELETE RESTRICT
 );
 
-CREATE TABLE work_order_labor_items (
+CREATE TABLE labor_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     service_id INTEGER,
     work_order_id TEXT NOT NULL,
     code TEXT,
     name TEXT NOT NULL,
     labor_hours REAL NOT NULL DEFAULT 1.0,
+    discount_type TEXT NOT NULL,
+    discount_cents INTEGER NOT NULL DEFAULT 0,
+    discount_percent REAL NOT NULL DEFAULT 0,
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE,
     FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE SET NULL
 );
 
-CREATE TABLE work_order_part_items (
+CREATE TABLE part_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     work_order_id TEXT NOT NULL,
+    status TEXT NOT NULL,
     code TEXT,
     name TEXT NOT NULL,
     quantity REAL NOT NULL DEFAULT 1.0,
     unit_type TEXT NOT NULL DEFAULT "шт",
-    cost_cents INTEGER NOT NULL DEFAULT 0,
+    base_cost_cents INTEGER NOT NULL DEFAULT 0,
     markup REAL NOT NULL DEFAULT 0,
-    status TEXT NOT NULL,
+    discount_type TEXT NOT NULL,
+    discount_cents INTEGER NOT NULL DEFAULT 0,
+    discount_percent REAL NOT NULL DEFAULT 0,
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE
 );
 
@@ -88,8 +94,8 @@ CREATE INDEX idx_cars_brand_id ON cars (brand_id);
 
 CREATE INDEX idx_work_orders_car_id ON work_orders (car_id);
 
-CREATE INDEX idx_work_order_labor_items_service_id ON work_order_labor_items (service_id);
+CREATE INDEX idx_labor_items_service_id ON labor_items (service_id);
 
-CREATE INDEX idx_work_order_labor_items_work_order_id ON work_order_labor_items (work_order_id);
+CREATE INDEX idx_labor_items_work_order_id ON labor_items (work_order_id);
 
-CREATE INDEX idx_work_order_part_items_work_order_id ON work_order_part_items (work_order_id);
+CREATE INDEX idx_part_items_work_order_id ON part_items (work_order_id);

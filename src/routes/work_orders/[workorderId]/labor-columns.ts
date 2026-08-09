@@ -5,17 +5,17 @@ import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
 import CurrencyDisplay from "$lib/components/currency-display.svelte";
 
-import type { WorkOrderLaborItem } from "$lib/bindings";
+import type { LaborItemDto } from "$lib/bindings";
 
 import DataTableActions from "./labor-table-actions-cell.svelte";
+import TableDiscountCell from "./table-discount-cell.svelte";
 
 export interface LaborTableMeta {
-  rate: number;
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
 }
 
-export const columns: ColumnDef<WorkOrderLaborItem>[] = [
+export const columns: ColumnDef<LaborItemDto>[] = [
   {
     accessorKey: "code",
     header: () => {
@@ -63,6 +63,47 @@ export const columns: ColumnDef<WorkOrderLaborItem>[] = [
     },
   },
   {
+    id: "price",
+    header: () => {
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () => `<div class="text-end">Ціна</div>`,
+          };
+        }),
+      );
+    },
+    cell: ({ row }) => {
+      return renderComponent(CurrencyDisplay, {
+        cents: row.original.totals.subtotalCents,
+        suffix: "грн.",
+        class: "font-medium justify-end",
+      });
+    },
+  },
+  {
+    id: "discount",
+    header: () => {
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () => `<div class="text-end">Знижка</div>`,
+          };
+        }),
+      );
+    },
+    cell: ({ row }) => {
+      return renderComponent(TableDiscountCell, {
+        amount:
+          row.original.discountCents != 0
+            ? row.original.discountCents
+            : row.original.discountPercent,
+        type: row.original.discountType,
+        class: "justify-center",
+      });
+    },
+  },
+  {
     id: "sum",
     header: () => {
       return renderSnippet(
@@ -73,10 +114,9 @@ export const columns: ColumnDef<WorkOrderLaborItem>[] = [
         }),
       );
     },
-    cell: ({ row, table }) => {
-      let { rate } = table.options.meta as LaborTableMeta;
+    cell: ({ row }) => {
       return renderComponent(CurrencyDisplay, {
-        cents: rate * row.original.laborHours,
+        cents: row.original.totals.totalCents,
         suffix: "грн.",
         class: "font-medium justify-end",
       });

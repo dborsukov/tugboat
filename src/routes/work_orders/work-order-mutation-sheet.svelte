@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
+  import { useQueryClient } from "@tanstack/svelte-query";
   import { toast } from "svelte-sonner";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
@@ -7,7 +7,6 @@
 
   import { goto } from "$app/navigation";
 
-  import { Button } from "$lib/components/ui/button";
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
@@ -15,33 +14,40 @@
   import CurrencyInput from "$lib/components/currency-input.svelte";
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
-  import { commands, type CreateWorkOrderPayload } from "$lib/bindings";
-  import { sqidsEncode, unwrap } from "$lib/tools";
+  import { sqidsEncode } from "$lib/tools";
+  import type { CreateOrEditProps } from "$lib/types";
 
   import {
+    discountFields,
+    discountFromEntity,
+    discountToPayload,
+    refineDiscount,
+  } from "./discount";
+  import DiscountField from "./discount-field.svelte";
+  import {
+    createCreateWorkOrderMutation,
     createUpdateWorkOrderMutation,
-    createWorkOrdersQuery,
-    invalidateWorkOrderLists,
+    createWorkOrderDetailsQuery,
   } from "./queries";
 
-  let {
-    woId = null,
-    carId = null,
-    open = $bindable(false),
-  }: {
-    woId?: string | null;
-    carId?: number | null;
+  type Props = CreateOrEditProps<{ carId: number }, { workOrderId: string }> & {
     open: boolean;
-  } = $props();
+  };
+
+  let { open = $bindable(false), ...rest }: Props = $props();
+
+  const formID = "work-order-mutation-form";
+  const isEdit = $derived(rest.mode === "edit");
+  const carId = $derived(rest.mode === "create" ? rest.carId : null);
+  const workOrderId = $derived(rest.mode === "edit" ? rest.workOrderId : null);
 
   const queryClient = useQueryClient();
 
-  let workOrdersQuery = createWorkOrdersQuery();
-  let workOrdersList = $derived(workOrdersQuery.data ?? []);
-  let workOrder = $derived(workOrdersList.find((wo) => wo.id === woId) ?? null);
+  const updateWorkOrderMutation = createUpdateWorkOrderMutation(queryClient);
+  const createWorkOrderMutation = createCreateWorkOrderMutation(queryClient);
 
-  const isEdit = $derived(!!woId);
-  const formID = "work-order-mutation-form";
+  let workOrderDetailsQuery = createWorkOrderDetailsQuery(() => workOrderId);
+  let workOrderDetails = $derived(workOrderDetailsQuery.data);
 
   export const workOrderSchema = z
     .object({
@@ -53,51 +59,9 @@
         .number({ error: "Вкажіть тариф" })
         .nonnegative("Неправильний тариф")
         .default(0),
-      discountType: z.enum(["Fixed", "Percentage"]).default("Fixed"),
-      discount: z.number({ error: "Вкажіть знижку" }).default(0),
+      ...discountFields,
     })
-    .superRefine((data, ctx) => {
-      if (data.discountType === "Fixed") {
-        if (data.discount < 0) {
-          ctx.addIssue({
-            code: "custom",
-            path: ["discount"],
-            message: "Знижка не може бути від'ємною",
-          });
-        }
-      } else {
-        if (data.discount < 0) {
-          ctx.addIssue({
-            code: "custom",
-            path: ["discount"],
-            message: "Відсоток не може бути від'ємним",
-          });
-        }
-        if (data.discount > 100) {
-          ctx.addIssue({
-            code: "custom",
-            path: ["discount"],
-            message: "Відсоток не може перевищувати 100",
-          });
-        }
-      }
-    });
-
-  const createWorkOrderMutation = createMutation(() => ({
-    mutationFn: (payload: CreateWorkOrderPayload) =>
-      unwrap(commands.createWorkOrder(payload)),
-    onSuccess: () => {
-      invalidateWorkOrderLists(queryClient);
-    },
-    onError: (error) => {
-      toast.error("Виникла помилка", {
-        description: error.message,
-        position: "bottom-left",
-      });
-    },
-  }));
-
-  const updateWorkOrderMutation = createUpdateWorkOrderMutation(queryClient);
+    .superRefine(refineDiscount);
 
   const form = superForm(defaults(zod4(workOrderSchema)), {
     SPA: true,
@@ -109,18 +73,13 @@
       if (!nativeForm.valid) return;
 
       let new_id = `WO-${sqidsEncode(Date.now())}`;
-
       const rateInCents = Math.round(nativeForm.data.rate * 100);
-      const discountCents =
-        nativeForm.data.discountType === "Fixed"
-          ? Math.round(nativeForm.data.discount * 100)
-          : 0;
-      const discountPercent =
-        nativeForm.data.discountType === "Percentage"
-          ? nativeForm.data.discount
-          : 0;
+      const discountPayload = discountToPayload(
+        nativeForm.data.discountType,
+        nativeForm.data.discount,
+      );
 
-      if (!isEdit && !carId) {
+      if (!isEdit && !carId && !workOrderDetails) {
         toast.error("Виникла помилка", {
           description: "Prop 'carId' missing",
           position: "bottom-left",
@@ -128,23 +87,22 @@
       }
 
       const result =
-        isEdit && woId
+        isEdit && workOrderId
           ? await updateWorkOrderMutation
               .mutateAsync({
-                id: workOrder!.id,
-                carId: workOrder!.carId,
+                id: workOrderDetails!.workOrder.id,
+                carId: workOrderDetails!.workOrder.carId,
                 odometerIn: nativeForm.data.odometerIn,
-                customerComplaint: workOrder!.customerComplaint,
-                mechanicNotes: workOrder!.mechanicNotes,
-                status: workOrder!.status,
+                customerComplaint:
+                  workOrderDetails!.workOrder.customerComplaint,
+                mechanicNotes: workOrderDetails!.workOrder.mechanicNotes,
+                status: workOrderDetails!.workOrder.status,
                 rateCents: rateInCents,
-                discountType: nativeForm.data.discountType,
-                discountCents,
-                discountPercent,
-                startedAt: workOrder!.startedAt,
-                completedAt: workOrder!.completedAt,
-                paidAt: workOrder!.paidAt,
-                paymentMethod: workOrder!.paymentMethod,
+                ...discountPayload,
+                startedAt: workOrderDetails!.workOrder.startedAt,
+                completedAt: workOrderDetails!.workOrder.completedAt,
+                paidAt: workOrderDetails!.workOrder.paidAt,
+                paymentMethod: workOrderDetails!.workOrder.paymentMethod,
               })
               .catch(() => null)
           : await createWorkOrderMutation
@@ -156,9 +114,7 @@
                 customerComplaint: null,
                 mechanicNotes: null,
                 rateCents: rateInCents,
-                discountType: nativeForm.data.discountType,
-                discountCents,
-                discountPercent,
+                ...discountPayload,
               })
               .catch(() => null);
 
@@ -173,14 +129,11 @@
 
   $effect(() => {
     if (open) {
-      if (workOrder) {
-        $formData.odometerIn = workOrder.odometerIn;
-        $formData.rate = workOrder.rateCents / 100;
-        $formData.discountType = workOrder.discountType;
-        $formData.discount =
-          workOrder.discountType === "Fixed"
-            ? workOrder.discountCents / 100
-            : workOrder.discountPercent;
+      if (workOrderDetails) {
+        $formData.odometerIn = workOrderDetails.workOrder.odometerIn;
+        $formData.rate = workOrderDetails.workOrder.rateCents / 100;
+        $formData.discountType = workOrderDetails.workOrder.discountType;
+        $formData.discount = discountFromEntity(workOrderDetails.workOrder);
       } else {
         form.reset();
       }
@@ -249,54 +202,11 @@
     <Form.Control>
       {#snippet children({ props })}
         <Label>Знижка</Label>
-        <div class="flex flex-col gap-2">
-          <div class="flex gap-2">
-            <Button
-              type="button"
-              variant={$formData.discountType === "Fixed"
-                ? "default"
-                : "outline"}
-              class="flex-1"
-              onclick={() => ($formData.discountType = "Fixed")}
-            >
-              Фіксована
-            </Button>
-            <Button
-              type="button"
-              variant={$formData.discountType === "Percentage"
-                ? "default"
-                : "outline"}
-              class="flex-1"
-              onclick={() => ($formData.discountType = "Percentage")}
-            >
-              Відсоток
-            </Button>
-          </div>
-          <div class="flex gap-2 items-baseline">
-            {#if $formData.discountType === "Fixed"}
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                {...props}
-                bind:value={$formData.discount}
-                class="flex-1"
-              />
-              <p>грн.</p>
-            {:else}
-              <Input
-                type="number"
-                min="0"
-                max="100"
-                step="0.01"
-                {...props}
-                bind:value={$formData.discount}
-                class="flex-1"
-              />
-              <p>%</p>
-            {/if}
-          </div>
-        </div>
+        <DiscountField
+          bind:type={$formData.discountType}
+          bind:value={$formData.discount}
+          inputProps={props}
+        />
       {/snippet}
     </Form.Control>
     <Form.FieldErrors />

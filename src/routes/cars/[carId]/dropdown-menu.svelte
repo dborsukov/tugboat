@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
-  import { toast } from "svelte-sonner";
+  import { useQueryClient } from "@tanstack/svelte-query";
 
   import { goto } from "$app/navigation";
 
@@ -13,11 +12,8 @@
 
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
 
-  import { commands } from "$lib/bindings";
-  import { unwrap } from "$lib/tools";
-
   import CarMutationSheet from "../car-mutation-sheet.svelte";
-  import { invalidateCarsLists } from "../queries";
+  import { createDeleteCarMutation } from "../queries";
 
   let { carId }: { carId: number } = $props();
 
@@ -26,19 +22,15 @@
 
   const queryClient = useQueryClient();
 
-  const createCarDeleteMutation = createMutation(() => ({
-    mutationFn: (id: number) => unwrap(commands.deleteCar(id)),
-    onSuccess: async () => {
-      invalidateCarsLists(queryClient);
-      await goto("/cars");
-    },
-    onError: (error) => {
-      toast.error("Виникла помилка", {
-        description: error.message,
-        position: "bottom-left",
-      });
-    },
-  }));
+  const deleteCarMutation = createDeleteCarMutation(queryClient);
+
+  function handleDelete() {
+    deleteCarMutation.mutate(carId, {
+      onSuccess: async () => {
+        await goto("/cars");
+      },
+    });
+  }
 </script>
 
 <DropdownMenu.Root>
@@ -65,9 +57,9 @@
   </DropdownMenu.Content>
 </DropdownMenu.Root>
 
-<CarMutationSheet bind:open={isSheetOpen} id={carId} />
+<CarMutationSheet bind:open={isSheetOpen} {carId} />
 <DeleteDialog
   bind:open={isDeleteDialogOpen}
-  onDelete={() => createCarDeleteMutation.mutate(carId)}
+  onDelete={handleDelete}
   description="Цю дію неможливо відмінити. Усі пов'язані з цим автомобілем дані будуть видалені."
 />

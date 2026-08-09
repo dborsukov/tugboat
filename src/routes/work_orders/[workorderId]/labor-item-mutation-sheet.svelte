@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { createMutation, useQueryClient } from "@tanstack/svelte-query";
-  import { toast } from "svelte-sonner";
+  import { useQueryClient } from "@tanstack/svelte-query";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
@@ -12,70 +11,50 @@
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
   import {
-    commands,
-    type UpdateWorkOrderLaborItemPayload,
-  } from "$lib/bindings";
-  import { unwrap } from "$lib/tools";
-
+    discountFields,
+    discountFromEntity,
+    discountToPayload,
+    refineDiscount,
+  } from "../discount";
+  import DiscountField from "../discount-field.svelte";
   import {
-    createCreateWorkOrderLaborItemMutation,
-    createWorkOrderLaborItemsQuery,
-    invalidateWorkOrderLists,
+    createCreateLaborItemMutation,
+    createLaborItemByIdQuery,
+    createUpdateLaborItemMutation,
   } from "../queries";
 
   let {
-    id = null,
-    woId = null,
+    laborItemId,
+    workOrderId,
     open = $bindable(false),
   }: {
-    id?: number | null;
-    woId?: string | null;
+    laborItemId: number | null;
+    workOrderId: string | null;
     open: boolean;
   } = $props();
 
+  const formID = "labor-item-mutation-form";
+  const isEdit = $derived(laborItemId != null);
+
   const queryClient = useQueryClient();
 
-  let laborItemsQuery = createWorkOrderLaborItemsQuery();
-  let laborItems = $derived(laborItemsQuery.data ?? []);
-  let laborItem = $derived(laborItems.find((c) => c.id === id) ?? null);
+  const createLaborItemMutation = createCreateLaborItemMutation(queryClient);
+  const updatLaborItemMutation = createUpdateLaborItemMutation(queryClient);
 
-  const createItemMutation =
-    createCreateWorkOrderLaborItemMutation(queryClient);
+  let laborItemByIdQuery = createLaborItemByIdQuery(() => laborItemId);
+  let laborItem = $derived(laborItemByIdQuery.data);
 
-  const isEdit = $derived(!!laborItem);
-  const formID = $derived(
-    isEdit
-      ? `work-order-labor-item-mutation-form-${id}`
-      : "work-order-labor-item-mutation-form-create",
-  );
-
-  const laborItemSchema = z.object({
-    code: z.string().nullable(),
-    name: z.string().min(1, { error: "Вкажіть назву" }),
-    laborHours: z
-      .number({ error: "Вкажіть кількість норм-годин" })
-      .nonnegative("Неправильна кількість")
-      .default(0),
-  });
-
-  const updateWorkOrderLaborItemMutation = createMutation(() => ({
-    mutationFn: async (variables: {
-      id: number;
-      payload: UpdateWorkOrderLaborItemPayload;
-    }) =>
-      unwrap(
-        commands.updateWorkOrderLaborItem(variables.id, variables.payload),
-      ),
-    onSuccess: () => {
-      invalidateWorkOrderLists(queryClient);
-    },
-    onError: (error) => {
-      toast.error("Виникла помилка", {
-        description: error.message,
-        position: "bottom-left",
-      });
-    },
-  }));
+  const laborItemSchema = z
+    .object({
+      code: z.string().nullable(),
+      name: z.string().min(1, { error: "Вкажіть назву" }),
+      laborHours: z
+        .number({ error: "Вкажіть кількість норм-годин" })
+        .nonnegative("Неправильна кількість")
+        .default(0),
+      ...discountFields,
+    })
+    .superRefine(refineDiscount);
 
   const form = superForm(defaults(zod4(laborItemSchema)), {
     SPA: true,
@@ -87,26 +66,33 @@
     async onUpdate({ form: nativeForm }) {
       if (!nativeForm.valid) return;
 
-      if (isEdit && id) {
-        await updateWorkOrderLaborItemMutation
+      const discountPayload = discountToPayload(
+        nativeForm.data.discountType,
+        nativeForm.data.discount,
+      );
+
+      if (isEdit && laborItem) {
+        await updatLaborItemMutation
           .mutateAsync({
-            id,
+            id: laborItem.id,
             payload: {
               serviceId: null,
               code: nativeForm.data.code,
               name: nativeForm.data.name,
               laborHours: nativeForm.data.laborHours,
+              ...discountPayload,
             },
           })
           .catch(() => {});
       } else {
-        await createItemMutation
+        await createLaborItemMutation
           .mutateAsync({
-            workOrderId: woId!,
+            workOrderId: workOrderId!,
             serviceId: null,
             code: nativeForm.data.code,
             name: nativeForm.data.name,
             laborHours: nativeForm.data.laborHours,
+            ...discountPayload,
           })
           .catch(() => {});
       }
@@ -123,6 +109,8 @@
         $formData.code = laborItem.code;
         $formData.name = laborItem.name;
         $formData.laborHours = laborItem.laborHours;
+        $formData.discountType = laborItem.discountType;
+        $formData.discount = discountFromEntity(laborItem);
       } else {
         form.reset();
       }
@@ -173,6 +161,20 @@
           min="0"
           {...props}
           bind:value={$formData.laborHours}
+        />
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+
+  <Form.Field {form} name="discount">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Знижка</Label>
+        <DiscountField
+          bind:type={$formData.discountType}
+          bind:value={$formData.discount}
+          inputProps={props}
         />
       {/snippet}
     </Form.Control>
