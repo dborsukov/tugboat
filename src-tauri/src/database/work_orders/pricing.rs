@@ -1,60 +1,66 @@
+use rust_decimal::Decimal;
+
 use super::structs::{DiscountType, LaborItem, PartItem, WorkOrder};
 use crate::database::work_orders::dtos::{LaborItemTotals, PartItemTotals, WorkOrderTotals};
 
-pub fn calculate_labor_item_totals(labor_item: &LaborItem, rate_cents: i64) -> LaborItemTotals {
-    let subtotal_cents = (labor_item.labor_hours * rate_cents as f64).round() as i64;
+pub fn calculate_labor_item_totals(labor_item: &LaborItem, rate: Decimal) -> LaborItemTotals {
+    let subtotal = (labor_item.labor_hours * rate).round_dp(2);
 
-    let total_cents = match labor_item.discount_type {
-        DiscountType::Fixed => subtotal_cents - labor_item.discount_cents,
-        DiscountType::Percentage => {
-            (subtotal_cents as f64 * (1.0 - labor_item.discount_percent / 100.0)).round() as i64
-        }
+    let total = match labor_item.discount_type {
+        DiscountType::None => subtotal,
+        DiscountType::Fixed => subtotal - labor_item.discount_amount,
+        DiscountType::Percentage => (subtotal
+            * (Decimal::ONE - labor_item.discount_percent / Decimal::ONE_HUNDRED))
+            .round_dp(2),
     };
 
     LaborItemTotals {
-        subtotal_cents,
-        total_cents: total_cents.max(0),
+        subtotal,
+        total: total.max(Decimal::ZERO),
     }
 }
 
 pub fn calculate_part_item_totals(part_item: &PartItem) -> PartItemTotals {
-    let retail_price_cents =
-        (part_item.base_cost_cents as f64 * (1.0 + part_item.markup / 100.0)).round() as i64;
+    let retail_price = (part_item.base_cost
+        * (Decimal::ONE + part_item.markup / Decimal::ONE_HUNDRED))
+        .round_dp(2);
 
-    let discounted_price_cents = match part_item.discount_type {
-        DiscountType::Fixed => retail_price_cents - part_item.discount_cents,
-        DiscountType::Percentage => {
-            (retail_price_cents as f64 * (1.0 - part_item.discount_percent / 100.0)).round() as i64
-        }
+    let discounted_price = match part_item.discount_type {
+        DiscountType::None => retail_price,
+        DiscountType::Fixed => retail_price - part_item.discount_amount,
+        DiscountType::Percentage => (retail_price
+            * (Decimal::ONE - part_item.discount_percent / Decimal::ONE_HUNDRED))
+            .round_dp(2),
     };
 
-    let total_cents = (discounted_price_cents as f64 * part_item.quantity).round() as i64;
+    let total = (discounted_price * part_item.quantity).round_dp(2);
 
     PartItemTotals {
-        retail_price_cents,
-        discounted_price_cents,
-        total_cents: total_cents.max(0),
+        retail_price,
+        discounted_price,
+        total: total.max(Decimal::ZERO),
     }
 }
 
 pub fn calculate_work_order_totals(
     work_order: &WorkOrder,
-    labor_total_cents: i64,
-    parts_total_cents: i64,
+    labor_total: Decimal,
+    parts_total: Decimal,
 ) -> WorkOrderTotals {
-    let subtotal_cents = labor_total_cents + parts_total_cents;
+    let subtotal = labor_total + parts_total;
 
-    let grand_total_cents = match work_order.discount_type {
-        DiscountType::Fixed => subtotal_cents - work_order.discount_cents,
-        DiscountType::Percentage => {
-            (subtotal_cents as f64 * (1.0 - work_order.discount_percent / 100.0)).round() as i64
-        }
+    let grand_total = match work_order.discount_type {
+        DiscountType::None => subtotal,
+        DiscountType::Fixed => subtotal - work_order.discount_amount,
+        DiscountType::Percentage => (subtotal
+            * (Decimal::ONE - work_order.discount_percent / Decimal::ONE_HUNDRED))
+            .round_dp(2),
     };
 
     WorkOrderTotals {
-        labor_total_cents,
-        parts_total_cents,
-        subtotal_cents,
-        grand_total_cents: grand_total_cents.max(0),
+        labor_total,
+        parts_total,
+        subtotal,
+        grand_total: grand_total.max(Decimal::ZERO),
     }
 }

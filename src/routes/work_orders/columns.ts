@@ -105,7 +105,7 @@ export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
   },
   {
     id: "total",
-    accessorFn: (row) => row.totals.grandTotalCents,
+    accessorFn: (row) => row.totals.grandTotal,
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
@@ -121,7 +121,7 @@ export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(CurrencyDisplay, {
-        cents: row.getValue("total") as number,
+        amount: row.original.totals.grandTotal,
         suffix: "грн.",
         class: "px-2 justify-start",
       });

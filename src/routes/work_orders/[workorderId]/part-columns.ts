@@ -93,7 +93,7 @@ export const columns: ColumnDef<PartItemDto>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(CurrencyDisplay, {
-        cents: row.original.baseCostCents,
+        amount: row.original.baseCost,
         suffix: "грн.",
         class: "justify-end",
       });
@@ -134,7 +134,7 @@ export const columns: ColumnDef<PartItemDto>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(CurrencyDisplay, {
-        cents: row.original.totals.retailPriceCents,
+        amount: row.original.totals.retailPrice,
         suffix: "грн.",
         class: "justify-end",
       });
@@ -153,11 +153,9 @@ export const columns: ColumnDef<PartItemDto>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(TableDiscountCell, {
-        amount:
-          row.original.discountCents != 0
-            ? row.original.discountCents
-            : row.original.discountPercent,
         type: row.original.discountType,
+        amount: row.original.discountAmount,
+        percent: row.original.discountPercent,
         class: "justify-center",
       });
     },
@@ -175,7 +173,7 @@ export const columns: ColumnDef<PartItemDto>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(CurrencyDisplay, {
-        cents: row.original.totals.discountedPriceCents,
+        amount: row.original.totals.discountedPrice,
         suffix: "грн.",
         class: "justify-end",
       });
@@ -194,7 +192,7 @@ export const columns: ColumnDef<PartItemDto>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(CurrencyDisplay, {
-        cents: row.original.totals.totalCents,
+        amount: row.original.totals.total,
         suffix: "грн.",
         class: "font-medium justify-end",
       });

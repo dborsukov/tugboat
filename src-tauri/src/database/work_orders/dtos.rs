@@ -1,3 +1,4 @@
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 use crate::database::{
@@ -20,14 +21,10 @@ pub struct WorkOrderDetailsDto {
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkOrderTotals {
-    #[specta(type = specta_typescript::Number)]
-    pub labor_total_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub parts_total_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub subtotal_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub grand_total_cents: i64,
+    pub labor_total: Decimal,
+    pub parts_total: Decimal,
+    pub subtotal: Decimal,
+    pub grand_total: Decimal,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -41,10 +38,8 @@ pub struct LaborItemDto {
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LaborItemTotals {
-    #[specta(type = specta_typescript::Number)]
-    pub subtotal_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub total_cents: i64,
+    pub subtotal: Decimal,
+    pub total: Decimal,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -58,10 +53,7 @@ pub struct PartItemDto {
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PartItemTotals {
-    #[specta(type = specta_typescript::Number)]
-    pub retail_price_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub discounted_price_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub total_cents: i64,
+    pub retail_price: Decimal,
+    pub discounted_price: Decimal,
+    pub total: Decimal,
 }

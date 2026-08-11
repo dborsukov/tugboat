@@ -13,13 +13,14 @@
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
   import { type PartStatus } from "$lib/bindings";
-
+  import { zBigString } from "$lib/schemas/zbig";
   import {
     discountFields,
     discountFromEntity,
     discountToPayload,
     refineDiscount,
-  } from "../discount";
+  } from "$lib/schemas/zdiscount";
+
   import DiscountField from "../discount-field.svelte";
   import {
     createCreatePartItemMutation,
@@ -54,20 +55,26 @@
       status: z.string().default("Quoted"),
       code: z.string().nullable(),
       name: z.string().min(1, { error: "Вкажіть назву" }),
-      quantity: z
-        .number({ error: "Вкажіть кількість" })
-        .nonnegative("Неправильна кількість")
-        .default(1),
+      quantity: zBigString({
+        requiredError: "Вкажіть кількість",
+        min: { value: 0, message: "Кількість не може бути від'ємним числом" },
+      }).default("1"),
       unitType: z.string().min(1, { error: "Вкажіть одиницю вимірювання" }),
-      cost: z
-        .number({ error: "Вкажіть ціну" })
-        .nonnegative("Неправильна ціна")
-        .default(0),
-      markup: z
-        .number({ error: "Вкажіть націнку у відсотках" })
-        .min(0, "Неправильний відсоток")
-        .max(100, "Неправильний відсоток")
-        .default(0),
+      cost: zBigString({
+        requiredError: "Вкажіть ціну",
+        min: { value: 0, message: "Ціна не може бути від'ємним числом" },
+      }).default("0"),
+      markup: zBigString({
+        requiredError: "Вкажіть націнку у відсотках",
+        min: {
+          value: 0,
+          message: "Знижка у відсотках має бути від 0% до 100%",
+        },
+        max: {
+          value: 100,
+          message: "Знижка у відсотках має бути від 0% до 100%",
+        },
+      }).default("0"),
       ...discountFields,
     })
     .superRefine(refineDiscount);
@@ -93,7 +100,7 @@
         name: nativeForm.data.name,
         quantity: nativeForm.data.quantity,
         unitType: nativeForm.data.unitType,
-        baseCostCents: nativeForm.data.cost * 100,
+        baseCost: nativeForm.data.cost,
         markup: nativeForm.data.markup,
         ...discountPayload,
       };
@@ -111,7 +118,7 @@
             name: nativeForm.data.name,
             quantity: nativeForm.data.quantity,
             unitType: nativeForm.data.unitType,
-            baseCostCents: nativeForm.data.cost * 100,
+            baseCost: nativeForm.data.cost,
             markup: nativeForm.data.markup,
             ...discountPayload,
           })
@@ -132,7 +139,7 @@
         $formData.name = partItem.name;
         $formData.quantity = partItem.quantity;
         $formData.unitType = partItem.unitType;
-        $formData.cost = partItem.baseCostCents / 100;
+        $formData.cost = partItem.baseCost;
         $formData.markup = partItem.markup;
         $formData.discountType = partItem.discountType;
         $formData.discount = discountFromEntity(partItem);
@@ -196,11 +203,10 @@
       {#snippet children({ props })}
         <Label>Кількість</Label>
         <Input
-          type="number"
-          step="0.1"
-          min="0"
-          {...props}
           bind:value={$formData.quantity}
+          type="text"
+          inputmode="decimal"
+          {...props}
         />
       {/snippet}
     </Form.Control>
@@ -260,12 +266,12 @@
     <Form.Control>
       {#snippet children({ props })}
         <Label>Націнка</Label>
-        <div class="flex gap-2 items-baseline" {...props}>
+        <div class="flex gap-2 items-baseline">
           <Input
-            type="number"
-            min="0"
-            step="0.01"
             bind:value={$formData.markup}
+            type="text"
+            inputmode="decimal"
+            {...props}
           />
           <p>%</p>
         </div>

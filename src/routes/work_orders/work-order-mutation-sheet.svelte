@@ -14,15 +14,16 @@
   import CurrencyInput from "$lib/components/currency-input.svelte";
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
-  import { sqidsEncode } from "$lib/tools";
-  import type { CreateOrEditProps } from "$lib/types";
-
+  import { zBigString } from "$lib/schemas/zbig";
   import {
     discountFields,
     discountFromEntity,
     discountToPayload,
     refineDiscount,
-  } from "./discount";
+  } from "$lib/schemas/zdiscount";
+  import { sqidsEncode } from "$lib/tools";
+  import type { CreateOrEditProps } from "$lib/types";
+
   import DiscountField from "./discount-field.svelte";
   import {
     createCreateWorkOrderMutation,
@@ -55,10 +56,10 @@
         .number({ error: "Вкажіть пробіг" })
         .nonnegative("Неправильний пробіг")
         .default(0),
-      rate: z
-        .number({ error: "Вкажіть тариф" })
-        .nonnegative("Неправильний тариф")
-        .default(0),
+      rate: zBigString({
+        requiredError: "Вкажіть тариф",
+        min: { value: 0, message: "Тариф не може бути від'ємним числом" },
+      }).default("0"),
       ...discountFields,
     })
     .superRefine(refineDiscount);
@@ -73,7 +74,7 @@
       if (!nativeForm.valid) return;
 
       let new_id = `WO-${sqidsEncode(Date.now())}`;
-      const rateInCents = Math.round(nativeForm.data.rate * 100);
+
       const discountPayload = discountToPayload(
         nativeForm.data.discountType,
         nativeForm.data.discount,
@@ -81,7 +82,6 @@
 
       if (!isEdit && !carId && !workOrderDetails) {
         toast.error("Виникла помилка", {
-          description: "Prop 'carId' missing",
           position: "bottom-left",
         });
       }
@@ -97,7 +97,7 @@
                   workOrderDetails!.workOrder.customerComplaint,
                 mechanicNotes: workOrderDetails!.workOrder.mechanicNotes,
                 status: workOrderDetails!.workOrder.status,
-                rateCents: rateInCents,
+                rate: nativeForm.data.rate,
                 ...discountPayload,
                 startedAt: workOrderDetails!.workOrder.startedAt,
                 completedAt: workOrderDetails!.workOrder.completedAt,
@@ -113,7 +113,7 @@
                 status: "Received",
                 customerComplaint: null,
                 mechanicNotes: null,
-                rateCents: rateInCents,
+                rate: nativeForm.data.rate,
                 ...discountPayload,
               })
               .catch(() => null);
@@ -131,7 +131,7 @@
     if (open) {
       if (workOrderDetails) {
         $formData.odometerIn = workOrderDetails.workOrder.odometerIn;
-        $formData.rate = workOrderDetails.workOrder.rateCents / 100;
+        $formData.rate = workOrderDetails.workOrder.rate;
         $formData.discountType = workOrderDetails.workOrder.discountType;
         $formData.discount = discountFromEntity(workOrderDetails.workOrder);
       } else {

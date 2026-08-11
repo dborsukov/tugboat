@@ -5,20 +5,24 @@
   import { cn } from "$lib/utils";
 
   let {
-    amount,
     type,
+    amount,
+    percent,
     class: className,
   }: {
-    amount: number;
     type: DiscountType;
+    amount: string;
+    percent: string;
     class?: string;
   } = $props();
 </script>
 
 <div class={cn("flex gap-2", className)}>
-  {#if type === "Fixed"}
+  {#if type === "None"}
+    <p class="text-muted-foreground">Не вказано</p>
+  {:else if type === "Fixed"}
     <NumericText
-      value={amount / 100}
+      value={amount}
       formatStyle="currency"
       currency="UAH"
       locale="uk-UA"
@@ -26,6 +30,6 @@
     />
     <p>грн.</p>
   {:else}
-    <p>{amount} %</p>
+    <p>{percent} %</p>
   {/if}
 </div>

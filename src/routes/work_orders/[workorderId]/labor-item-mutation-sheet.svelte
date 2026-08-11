@@ -10,12 +10,14 @@
 
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
+  import { zBigString } from "$lib/schemas/zbig";
   import {
     discountFields,
     discountFromEntity,
     discountToPayload,
     refineDiscount,
-  } from "../discount";
+  } from "$lib/schemas/zdiscount";
+
   import DiscountField from "../discount-field.svelte";
   import {
     createCreateLaborItemMutation,
@@ -48,10 +50,10 @@
     .object({
       code: z.string().nullable(),
       name: z.string().min(1, { error: "Вкажіть назву" }),
-      laborHours: z
-        .number({ error: "Вкажіть кількість норм-годин" })
-        .nonnegative("Неправильна кількість")
-        .default(0),
+      laborHours: zBigString({
+        requiredError: "Вкажіть кількість норм-годин",
+        min: { value: 0, message: "Кількість не може бути від'ємним числом" },
+      }).default("0"),
       ...discountFields,
     })
     .superRefine(refineDiscount);
@@ -156,11 +158,10 @@
       {#snippet children({ props })}
         <Label>Норм-години</Label>
         <Input
-          type="number"
-          step="0.1"
-          min="0"
-          {...props}
           bind:value={$formData.laborHours}
+          type="text"
+          inputmode="decimal"
+          {...props}
         />
       {/snippet}
     </Form.Control>

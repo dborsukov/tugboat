@@ -3,24 +3,22 @@
 
   import { cn } from "$lib/utils";
 
-  interface Props {
-    cents: number;
-    suffix?: string;
-    suffix_muted?: boolean;
-    class?: string;
-  }
-
   let {
-    cents,
+    amount,
     suffix,
     suffix_muted = false,
     class: className,
-  }: Props = $props();
+  }: {
+    amount: string | number;
+    suffix?: string;
+    suffix_muted?: boolean;
+    class?: string;
+  } = $props();
 </script>
 
 <div class={cn("flex gap-2", className)}>
   <NumericText
-    value={cents / 100}
+    value={amount}
     formatStyle="currency"
     currency="UAH"
     locale="uk-UA"

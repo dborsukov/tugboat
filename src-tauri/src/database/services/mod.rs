@@ -45,7 +45,7 @@ pub async fn create_service(
     )
     .bind(payload.code)
     .bind(payload.name)
-    .bind(payload.labor_hours)
+    .bind(payload.labor_hours.to_string())
     .fetch_one(&state.db_pool)
     .await?;
     Ok(service)
@@ -64,7 +64,7 @@ pub async fn update_service(
     .bind(id)
     .bind(payload.code)
     .bind(payload.name)
-    .bind(payload.labor_hours)
+    .bind(payload.labor_hours.to_string())
     .fetch_one(&state.db_pool)
     .await?;
     Ok(service)

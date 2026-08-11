@@ -75,7 +75,7 @@ export const columns: ColumnDef<LaborItemDto>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(CurrencyDisplay, {
-        cents: row.original.totals.subtotalCents,
+        amount: row.original.totals.subtotal,
         suffix: "грн.",
         class: "font-medium justify-end",
       });
@@ -94,11 +94,9 @@ export const columns: ColumnDef<LaborItemDto>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(TableDiscountCell, {
-        amount:
-          row.original.discountCents != 0
-            ? row.original.discountCents
-            : row.original.discountPercent,
         type: row.original.discountType,
+        amount: row.original.discountAmount,
+        percent: row.original.discountPercent,
         class: "justify-center",
       });
     },
@@ -116,7 +114,7 @@ export const columns: ColumnDef<LaborItemDto>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(CurrencyDisplay, {
-        cents: row.original.totals.totalCents,
+        amount: row.original.totals.total,
         suffix: "грн.",
         class: "font-medium justify-end",
       });

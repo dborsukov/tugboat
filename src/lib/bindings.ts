@@ -114,10 +114,10 @@ export type CreateLaborItemPayload = {
 	serviceId: number | null,
 	code: string | null,
 	name: string,
-	laborHours: number,
+	laborHours: string,
 	discountType: DiscountType,
-	discountCents: number,
-	discountPercent: number,
+	discountAmount: string,
+	discountPercent: string,
 };
 
 export type CreatePartItemPayload = {
@@ -125,19 +125,19 @@ export type CreatePartItemPayload = {
 	status: PartStatus,
 	code: string | null,
 	name: string,
-	quantity: number,
+	quantity: string,
 	unitType: string,
-	baseCostCents: number,
-	markup: number,
+	baseCost: string,
+	markup: string,
 	discountType: DiscountType,
-	discountCents: number,
-	discountPercent: number,
+	discountAmount: string,
+	discountPercent: string,
 };
 
 export type CreateServicePayload = {
 	code: string | null,
 	name: string,
-	laborHours: number,
+	laborHours: string,
 };
 
 export type CreateWorkOrderPayload = {
@@ -147,13 +147,13 @@ export type CreateWorkOrderPayload = {
 	customerComplaint: string | null,
 	mechanicNotes: string | null,
 	status: WorkOrderStatus,
-	rateCents: number,
+	rate: string,
 	discountType: DiscountType,
-	discountCents: number,
-	discountPercent: number,
+	discountAmount: string,
+	discountPercent: string,
 };
 
-export type DiscountType = "Fixed" | "Percentage";
+export type DiscountType = "None" | "Fixed" | "Percentage";
 
 export type LaborItem = {
 	id: number,
@@ -161,10 +161,10 @@ export type LaborItem = {
 	workOrderId: string,
 	code: string | null,
 	name: string,
-	laborHours: number,
+	laborHours: string,
 	discountType: DiscountType,
-	discountCents: number,
-	discountPercent: number,
+	discountAmount: string,
+	discountPercent: string,
 };
 
 export type LaborItemDto = {
@@ -172,8 +172,8 @@ export type LaborItemDto = {
 } & LaborItem;
 
 export type LaborItemTotals = {
-	subtotalCents: number,
-	totalCents: number,
+	subtotal: string,
+	total: string,
 };
 
 export type PartItem = {
@@ -182,13 +182,13 @@ export type PartItem = {
 	status: PartStatus,
 	code: string | null,
 	name: string,
-	quantity: number,
+	quantity: string,
 	unitType: string,
-	baseCostCents: number,
-	markup: number,
+	baseCost: string,
+	markup: string,
 	discountType: DiscountType,
-	discountCents: number,
-	discountPercent: number,
+	discountAmount: string,
+	discountPercent: string,
 };
 
 export type PartItemDto = {
@@ -196,9 +196,9 @@ export type PartItemDto = {
 } & PartItem;
 
 export type PartItemTotals = {
-	retailPriceCents: number,
-	discountedPriceCents: number,
-	totalCents: number,
+	retailPrice: string,
+	discountedPrice: string,
+	total: string,
 };
 
 export type PartStatus = "Quoted" | "Ordered" | "InStock" | "Installing" | "Installed" | "AwaitingReturn" | "Returned" | "Warranty";
@@ -209,7 +209,7 @@ export type Service = {
 	id: number,
 	code: string | null,
 	name: string,
-	laborHours: number,
+	laborHours: string,
 };
 
 export type ThemeMode = "light" | "dark" | "system";
@@ -232,29 +232,29 @@ export type UpdateLaborItemPayload = {
 	serviceId: number | null,
 	code: string | null,
 	name: string,
-	laborHours: number,
+	laborHours: string,
 	discountType: DiscountType,
-	discountCents: number,
-	discountPercent: number,
+	discountAmount: string,
+	discountPercent: string,
 };
 
 export type UpdatePartItemPayload = {
 	status: PartStatus,
 	code: string | null,
 	name: string,
-	quantity: number,
+	quantity: string,
 	unitType: string,
-	baseCostCents: number,
-	markup: number,
+	baseCost: string,
+	markup: string,
 	discountType: DiscountType,
-	discountCents: number,
-	discountPercent: number,
+	discountAmount: string,
+	discountPercent: string,
 };
 
 export type UpdateServicePayload = {
 	code: string | null,
 	name: string,
-	laborHours: number,
+	laborHours: string,
 };
 
 export type UpdateWorkOrderPayload = {
@@ -264,10 +264,10 @@ export type UpdateWorkOrderPayload = {
 	customerComplaint: string | null,
 	mechanicNotes: string | null,
 	status: WorkOrderStatus,
-	rateCents: number,
+	rate: string,
 	discountType: DiscountType,
-	discountCents: number,
-	discountPercent: number,
+	discountAmount: string,
+	discountPercent: string,
 	startedAt: string | null,
 	completedAt: string | null,
 	paidAt: string | null,
@@ -281,10 +281,10 @@ export type WorkOrder = {
 	customerComplaint: string | null,
 	mechanicNotes: string | null,
 	status: WorkOrderStatus,
-	rateCents: number,
+	rate: string,
 	discountType: DiscountType,
-	discountCents: number,
-	discountPercent: number,
+	discountAmount: string,
+	discountPercent: string,
 	createdAt: string,
 	startedAt: string | null,
 	completedAt: string | null,
@@ -304,10 +304,10 @@ export type WorkOrderDetailsDto = {
 export type WorkOrderStatus = "Received" | "InDiagnostics" | "AwaitingApproval" | "AwaitingParts" | "Working" | "ReadyForPickup" | "Paid" | "Canceled";
 
 export type WorkOrderTotals = {
-	laborTotalCents: number,
-	partsTotalCents: number,
-	subtotalCents: number,
-	grandTotalCents: number,
+	laborTotal: string,
+	partsTotal: string,
+	subtotal: string,
+	grandTotal: string,
 };
 
 /* Tauri Specta runtime */

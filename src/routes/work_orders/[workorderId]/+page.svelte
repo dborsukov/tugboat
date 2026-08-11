@@ -172,7 +172,7 @@
             <div class="flex flex-col leading-tight">
               <span class="text-xs text-muted-foreground">Роботи</span>
               <CurrencyDisplay
-                cents={workOrderDetails.totals?.laborTotalCents ?? 0}
+                amount={workOrderDetails.totals?.laborTotal ?? "0"}
                 suffix="грн."
               />
             </div>
@@ -183,13 +183,13 @@
             <div class="flex flex-col leading-tight">
               <span class="text-xs text-muted-foreground">Запчастини</span>
               <CurrencyDisplay
-                cents={workOrderDetails.totals?.partsTotalCents ?? 0}
+                amount={workOrderDetails.totals?.partsTotal ?? "0"}
                 suffix="грн."
               />
             </div>
           </div>
 
-          {#if workOrderDetails.workOrder?.discountCents != 0 || workOrderDetails.workOrder?.discountPercent != 0}
+          {#if workOrderDetails.workOrder?.discountType != "None"}
             <div class="h-9/12 w-px bg-border shrink-0"></div>
 
             <div
@@ -202,7 +202,7 @@
                 >
                 {#if workOrderDetails.workOrder?.discountType === "Fixed"}
                   <CurrencyDisplay
-                    cents={workOrderDetails.workOrder?.discountCents}
+                    amount={workOrderDetails.workOrder?.discountAmount}
                     suffix="грн."
                   />
                 {:else}
@@ -225,7 +225,7 @@
                 >Разом</span
               >
               <CurrencyDisplay
-                cents={workOrderDetails.totals?.grandTotalCents ?? 0}
+                amount={workOrderDetails.totals?.grandTotal ?? "0"}
                 class="font-semibold"
                 suffix="грн."
               />
@@ -303,7 +303,7 @@
           </Details.Title>
           <Details.Content>
             <CurrencyDisplay
-              cents={workOrderDetails?.workOrder.rateCents}
+              amount={workOrderDetails?.workOrder.rate}
               suffix="грн./год."
               suffix_muted
             />
@@ -389,9 +389,9 @@
                                 code: service.code,
                                 name: service.name,
                                 laborHours: service.laborHours,
-                                discountType: "Fixed",
-                                discountCents: 0,
-                                discountPercent: 0,
+                                discountType: "None",
+                                discountAmount: "0",
+                                discountPercent: "0",
                               });
                               isPopoverOpen = false;
                             }}

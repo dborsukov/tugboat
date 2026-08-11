@@ -78,7 +78,7 @@ export const columns: ColumnDef<Service>[] = [
       const nameCellSnippet = createRawSnippet(() => {
         return {
           render: () =>
-            `<div class="text-center font-mono">${row.original.laborHours.toFixed(1)}</div>`,
+            `<div class="text-center font-mono">${row.original.laborHours}</div>`,
         };
       });
       return renderSnippet(nameCellSnippet);

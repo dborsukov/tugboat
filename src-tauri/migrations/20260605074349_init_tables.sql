@@ -36,7 +36,7 @@ CREATE TABLE services (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     code TEXT,
     name TEXT NOT NULL,
-    labor_hours REAL NOT NULL DEFAULT 1.0
+    labor_hours TEXT NOT NULL DEFAULT "1.0"
 );
 
 CREATE TABLE work_orders (
@@ -46,10 +46,10 @@ CREATE TABLE work_orders (
     customer_complaint TEXT,
     mechanic_notes TEXT,
     status TEXT NOT NULL,
-    rate_cents INTEGER NOT NULL DEFAULT 0,
+    rate TEXT NOT NULL DEFAULT "0",
     discount_type TEXT NOT NULL,
-    discount_cents INTEGER NOT NULL DEFAULT 0,
-    discount_percent REAL NOT NULL DEFAULT 0,
+    discount_amount TEXT NOT NULL DEFAULT "0",
+    discount_percent TEXT NOT NULL DEFAULT "0",
     created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
     started_at TEXT,
     completed_at TEXT,
@@ -64,10 +64,10 @@ CREATE TABLE labor_items (
     work_order_id TEXT NOT NULL,
     code TEXT,
     name TEXT NOT NULL,
-    labor_hours REAL NOT NULL DEFAULT 1.0,
+    labor_hours TEXT NOT NULL DEFAULT "1.0",
     discount_type TEXT NOT NULL,
-    discount_cents INTEGER NOT NULL DEFAULT 0,
-    discount_percent REAL NOT NULL DEFAULT 0,
+    discount_amount TEXT NOT NULL DEFAULT "0",
+    discount_percent TEXT NOT NULL DEFAULT "0",
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE,
     FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE SET NULL
 );
@@ -78,13 +78,13 @@ CREATE TABLE part_items (
     status TEXT NOT NULL,
     code TEXT,
     name TEXT NOT NULL,
-    quantity REAL NOT NULL DEFAULT 1.0,
+    quantity TEXT NOT NULL DEFAULT "1.0",
     unit_type TEXT NOT NULL DEFAULT "шт",
-    base_cost_cents INTEGER NOT NULL DEFAULT 0,
-    markup REAL NOT NULL DEFAULT 0,
+    base_cost TEXT NOT NULL DEFAULT "0",
+    markup TEXT NOT NULL DEFAULT "0",
     discount_type TEXT NOT NULL,
-    discount_cents INTEGER NOT NULL DEFAULT 0,
-    discount_percent REAL NOT NULL DEFAULT 0,
+    discount_amount TEXT NOT NULL DEFAULT "0",
+    discount_percent TEXT NOT NULL DEFAULT "0",
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE
 );
 

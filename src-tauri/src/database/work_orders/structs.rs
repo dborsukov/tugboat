@@ -1,6 +1,9 @@
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
+use sqlx::{sqlite::SqliteRow, FromRow, Row};
+
+use crate::database::utils::decimal_column;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
 #[sqlx(type_name = "TEXT", rename_all = "lowercase")]
@@ -31,6 +34,7 @@ pub enum PartStatus {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
 #[sqlx(type_name = "TEXT", rename_all = "lowercase")]
 pub enum DiscountType {
+    None,
     Fixed,
     Percentage,
 }
@@ -42,7 +46,7 @@ pub enum PaymentMethod {
     Card,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, specta::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkOrder {
     pub id: String,
@@ -52,18 +56,37 @@ pub struct WorkOrder {
     pub customer_complaint: Option<String>,
     pub mechanic_notes: Option<String>,
     pub status: WorkOrderStatus,
-    #[specta(type = specta_typescript::Number)]
-    pub rate_cents: i64,
+    pub rate: Decimal,
     pub discount_type: DiscountType,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_percent: f64,
+    pub discount_amount: Decimal,
+    pub discount_percent: Decimal,
     pub created_at: DateTime<Utc>,
     pub started_at: Option<DateTime<Utc>>,
     pub completed_at: Option<DateTime<Utc>>,
     pub paid_at: Option<DateTime<Utc>>,
     pub payment_method: Option<PaymentMethod>,
+}
+
+impl<'r> FromRow<'r, SqliteRow> for WorkOrder {
+    fn from_row(row: &'r SqliteRow) -> sqlx::Result<Self> {
+        Ok(Self {
+            id: row.try_get("id")?,
+            car_id: row.try_get("car_id")?,
+            odometer_in: row.try_get("odometer_in")?,
+            customer_complaint: row.try_get("customer_complaint")?,
+            mechanic_notes: row.try_get("mechanic_notes")?,
+            status: row.try_get("status")?,
+            rate: decimal_column(row, "rate")?,
+            discount_type: row.try_get("discount_type")?,
+            discount_amount: decimal_column(row, "discount_amount")?,
+            discount_percent: decimal_column(row, "discount_percent")?,
+            created_at: row.try_get("created_at")?,
+            started_at: row.try_get("started_at")?,
+            completed_at: row.try_get("completed_at")?,
+            paid_at: row.try_get("paid_at")?,
+            payment_method: row.try_get("payment_method")?,
+        })
+    }
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -76,13 +99,10 @@ pub struct CreateWorkOrderPayload {
     pub customer_complaint: Option<String>,
     pub mechanic_notes: Option<String>,
     pub status: WorkOrderStatus,
-    #[specta(type = specta_typescript::Number)]
-    pub rate_cents: i64,
+    pub rate: Decimal,
     pub discount_type: DiscountType,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_percent: f64,
+    pub discount_amount: Decimal,
+    pub discount_percent: Decimal,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -95,20 +115,17 @@ pub struct UpdateWorkOrderPayload {
     pub customer_complaint: Option<String>,
     pub mechanic_notes: Option<String>,
     pub status: WorkOrderStatus,
-    #[specta(type = specta_typescript::Number)]
-    pub rate_cents: i64,
+    pub rate: Decimal,
     pub discount_type: DiscountType,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_percent: f64,
+    pub discount_amount: Decimal,
+    pub discount_percent: Decimal,
     pub started_at: Option<DateTime<Utc>>,
     pub completed_at: Option<DateTime<Utc>>,
     pub paid_at: Option<DateTime<Utc>>,
     pub payment_method: Option<PaymentMethod>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, specta::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LaborItem {
     #[specta(type = specta_typescript::Number)]
@@ -118,13 +135,26 @@ pub struct LaborItem {
     pub work_order_id: String,
     pub code: Option<String>,
     pub name: String,
-    #[specta(type = specta_typescript::Number)]
-    pub labor_hours: f64,
+    pub labor_hours: Decimal,
     pub discount_type: DiscountType,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_percent: f64,
+    pub discount_amount: Decimal,
+    pub discount_percent: Decimal,
+}
+
+impl<'r> FromRow<'r, SqliteRow> for LaborItem {
+    fn from_row(row: &'r SqliteRow) -> sqlx::Result<Self> {
+        Ok(Self {
+            id: row.try_get("id")?,
+            service_id: row.try_get("service_id")?,
+            work_order_id: row.try_get("work_order_id")?,
+            code: row.try_get("code")?,
+            name: row.try_get("name")?,
+            labor_hours: decimal_column(row, "labor_hours")?,
+            discount_type: row.try_get("discount_type")?,
+            discount_amount: decimal_column(row, "discount_amount")?,
+            discount_percent: decimal_column(row, "discount_percent")?,
+        })
+    }
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -135,13 +165,10 @@ pub struct CreateLaborItemPayload {
     pub service_id: Option<i64>,
     pub code: Option<String>,
     pub name: String,
-    #[specta(type = specta_typescript::Number)]
-    pub labor_hours: f64,
+    pub labor_hours: Decimal,
     pub discount_type: DiscountType,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_percent: f64,
+    pub discount_amount: Decimal,
+    pub discount_percent: Decimal,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -151,16 +178,13 @@ pub struct UpdateLaborItemPayload {
     pub service_id: Option<i64>,
     pub code: Option<String>,
     pub name: String,
-    #[specta(type = specta_typescript::Number)]
-    pub labor_hours: f64,
+    pub labor_hours: Decimal,
     pub discount_type: DiscountType,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_percent: f64,
+    pub discount_amount: Decimal,
+    pub discount_percent: Decimal,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, specta::Type)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PartItem {
     #[specta(type = specta_typescript::Number)]
@@ -169,18 +193,32 @@ pub struct PartItem {
     pub status: PartStatus,
     pub code: Option<String>,
     pub name: String,
-    #[specta(type = specta_typescript::Number)]
-    pub quantity: f64,
+    pub quantity: Decimal,
     pub unit_type: String,
-    #[specta(type = specta_typescript::Number)]
-    pub base_cost_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub markup: f64,
+    pub base_cost: Decimal,
+    pub markup: Decimal,
     pub discount_type: DiscountType,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_percent: f64,
+    pub discount_amount: Decimal,
+    pub discount_percent: Decimal,
+}
+
+impl<'r> FromRow<'r, SqliteRow> for PartItem {
+    fn from_row(row: &'r SqliteRow) -> sqlx::Result<Self> {
+        Ok(Self {
+            id: row.try_get("id")?,
+            work_order_id: row.try_get("work_order_id")?,
+            status: row.try_get("status")?,
+            code: row.try_get("code")?,
+            name: row.try_get("name")?,
+            quantity: decimal_column(row, "quantity")?,
+            unit_type: row.try_get("unit_type")?,
+            base_cost: decimal_column(row, "base_cost")?,
+            markup: decimal_column(row, "markup")?,
+            discount_type: row.try_get("discount_type")?,
+            discount_amount: decimal_column(row, "discount_amount")?,
+            discount_percent: decimal_column(row, "discount_percent")?,
+        })
+    }
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -190,18 +228,13 @@ pub struct CreatePartItemPayload {
     pub status: PartStatus,
     pub code: Option<String>,
     pub name: String,
-    #[specta(type = specta_typescript::Number)]
-    pub quantity: f64,
+    pub quantity: Decimal,
     pub unit_type: String,
-    #[specta(type = specta_typescript::Number)]
-    pub base_cost_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub markup: f64,
+    pub base_cost: Decimal,
+    pub markup: Decimal,
     pub discount_type: DiscountType,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_percent: f64,
+    pub discount_amount: Decimal,
+    pub discount_percent: Decimal,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -210,16 +243,11 @@ pub struct UpdatePartItemPayload {
     pub status: PartStatus,
     pub code: Option<String>,
     pub name: String,
-    #[specta(type = specta_typescript::Number)]
-    pub quantity: f64,
+    pub quantity: Decimal,
     pub unit_type: String,
-    #[specta(type = specta_typescript::Number)]
-    pub base_cost_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub markup: f64,
+    pub base_cost: Decimal,
+    pub markup: Decimal,
     pub discount_type: DiscountType,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_cents: i64,
-    #[specta(type = specta_typescript::Number)]
-    pub discount_percent: f64,
+    pub discount_amount: Decimal,
+    pub discount_percent: Decimal,
 }
