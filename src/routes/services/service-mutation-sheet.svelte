@@ -1,6 +1,5 @@
 <script lang="ts">
   import { useQueryClient } from "@tanstack/svelte-query";
-  import Big from "big.js";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
@@ -10,6 +9,8 @@
   import { Label } from "$lib/components/ui/label";
 
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
+
+  import { zBigString } from "$lib/schemas/zbig";
 
   import {
     createCreateServiceMutation,
@@ -34,47 +35,13 @@
   let servicesList = $derived(servicesQuery.data ?? []);
   let service = $derived(servicesList.find((s) => s.id === serviceId) ?? null);
 
-  export const zBig = z
-    .unknown()
-    .transform((val, ctx) => {
-      if (val === "" || val === null || val === undefined) {
-        ctx.addIssue({
-          code: "custom",
-          message: "Вкажіть кількість норм-годин",
-        });
-        return z.NEVER;
-      }
-
-      if (
-        typeof val === "string" ||
-        typeof val === "number" ||
-        val instanceof Big
-      ) {
-        try {
-          return val instanceof Big ? val : Big(val);
-        } catch {
-          ctx.addIssue({
-            code: "custom",
-            message: "Некоректне числове значення",
-          });
-          return z.NEVER;
-        }
-      }
-
-      ctx.addIssue({
-        code: "custom",
-        message: "Вкажіть кількість норм-годин",
-      });
-      return z.NEVER;
-    })
-    .refine((val) => val.gte(0), {
-      message: "Неправильна кількість",
-    });
-
   export const serviceSchema = z.object({
     code: z.string().nullable(),
     name: z.string().min(1, { error: "Вкажіть назву" }),
-    laborHours: zBig,
+    laborHours: zBigString({
+      requiredError: "Обов'язкове поле",
+      min: { value: 0, message: "Кількість не може бути від'ємним числом" },
+    }).default("0"),
   });
 
   const extendedSchema = serviceSchema
@@ -122,7 +89,7 @@
       const payload = {
         code: nativeForm.data.code,
         name: nativeForm.data.name,
-        laborHours: nativeForm.data.laborHours.toString(),
+        laborHours: nativeForm.data.laborHours,
       };
 
       if (isEdit && serviceId) {
@@ -146,7 +113,7 @@
           data: {
             code: service.code,
             name: service.name,
-            laborHours: Big(service.laborHours),
+            laborHours: service.laborHours,
           },
         });
       } else {
@@ -194,11 +161,10 @@
       {#snippet children({ props })}
         <Label>Нормо-години</Label>
         <Input
-          {...props}
-          type="number"
-          step="0.1"
-          min="0"
           bind:value={$formData.laborHours}
+          type="text"
+          inputmode="decimal"
+          {...props}
         />
       {/snippet}
     </Form.Control>

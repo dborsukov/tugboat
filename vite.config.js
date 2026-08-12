@@ -1,6 +1,7 @@
-import { defineConfig } from "vite";
 import { sveltekit } from "@sveltejs/kit/vite";
 import tailwindcss from "@tailwindcss/vite";
+import Icons from "unplugin-icons/vite";
+import { defineConfig } from "vite";
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -9,6 +10,9 @@ export default defineConfig(async () => ({
   plugins: [
     sveltekit(),
     tailwindcss(),
+    Icons({
+      compiler: "svelte",
+    }),
   ],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`

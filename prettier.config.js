@@ -21,6 +21,7 @@ export default {
     "^\\$app/(.*)$",
     "",
     "^\\@lucide/(.*)$",
+    "^\\~icons/(.*)$",
     "",
     "^\\$lib/components/ui/(.*)$",
     "",

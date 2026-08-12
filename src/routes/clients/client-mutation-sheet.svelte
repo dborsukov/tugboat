@@ -39,7 +39,7 @@
   let phoneCountry = $state<CountryCode>("UA");
 
   export const clientSchema = z.object({
-    name: z.string().nonempty("Ім'я не може бути пустим"),
+    name: z.string().nonempty("Обов'язкове поле"),
     phone: z.string().superRefine((val, ctx) => {
       const error = validateTelInput(val, {
         required: true,
@@ -48,7 +48,7 @@
       if (error) {
         ctx.addIssue({
           code: "custom",
-          message: "Введіть коректний номер телефону",
+          message: "Обов'язкове поле",
         });
       }
     }),
@@ -107,6 +107,16 @@
   });
 </script>
 
+{#snippet requiredHint()}
+  <span
+    class="text-destructive inline-flex align-middle"
+    title="Обов'язкове поле"
+    aria-label="Обов'язкове поле"
+  >
+    *
+  </span>
+{/snippet}
+
 <MutationSheetShell
   bind:open
   {formID}
@@ -123,7 +133,7 @@
   <Form.Field {form} name="name">
     <Form.Control>
       {#snippet children({ props })}
-        <Label>Ім'я</Label>
+        <Label>Ім'я {@render requiredHint()}</Label>
         <Input {...props} bind:value={$formData.name} />
       {/snippet}
     </Form.Control>
@@ -133,7 +143,7 @@
   <Form.Field {form} name="phone">
     <Form.Control>
       {#snippet children({ props })}
-        <Label>Мобільний номер</Label>
+        <Label>Мобільний номер{@render requiredHint()}</Label>
         <PhoneInput
           {...props}
           bind:value={$formData.phone}

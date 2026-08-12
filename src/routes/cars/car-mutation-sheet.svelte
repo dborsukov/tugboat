@@ -7,14 +7,17 @@
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
+  import * as Select from "$lib/components/ui/select";
 
   import ComboSelect from "$lib/components/combo-select.svelte";
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
+  import type { DriveType, FuelType } from "$lib/bindings";
   import { cn } from "$lib/utils";
 
   import ClientBadge from "../clients/client-badge.svelte";
   import { clientsQueryOptions } from "../clients/queries";
+  import { driveTypeLabels, fuelTypeLabels } from "./enum-labels";
   import {
     carBrandsQueryOptions,
     carsListQueryOptions,
@@ -75,44 +78,55 @@
     return value.toUpperCase().replace(/[\s-]/g, "");
   }
 
+  const fuelTypeOptions = Object.entries(fuelTypeLabels).map(
+    ([value, label]) => ({ value: value as FuelType, label }),
+  );
+
+  const driveTypeOptions = Object.entries(driveTypeLabels).map(
+    ([value, label]) => ({ value: value as DriveType, label }),
+  );
+
   const carSchema = z.object({
     clientId: z
-      .number({ error: "Вкажіть власника" })
-      .min(0, { error: "Вкажіть власника" })
+      .number({ error: "Обов'язкове поле" })
+      .min(0, { error: "Обов'язкове поле" })
       .default(-1),
 
     brandId: z
-      .number({ error: "Вкажіть марку" })
-      .min(0, { error: "Вкажіть марку" })
+      .number({ error: "Обов'язкове поле" })
+      .min(0, { error: "Обов'язкове поле" })
       .default(-1),
 
-    model: z.string().min(1, { error: "Вкажіть модель" }),
+    model: z.string().min(1, { error: "Обов'язкове поле" }),
 
     year: z
-      .number({ error: "Вкажіть рік" })
+      .number({ error: "Обов'язкове поле" })
       .min(1885, { error: "Неправильний рік" })
       .max(new Date().getFullYear() + 1, {
         error: "Рік не може бути в далекому майбутньому",
-      })
-      .default(() => new Date().getFullYear()),
+      }),
 
     licensePlate: z
       .string()
-      .trim()
-      .transform(normalizePlate)
+      .nullable()
+      .default(null)
+      .transform((val) => (val ? normalizePlate(val) : null))
+      .transform((val) => (val === "" ? null : val))
       .pipe(
         z
           .string()
-          .min(1, { error: "Занадто короткий номерний знак" })
           .regex(/^[A-ZА-Я0-9]*$/, {
             error: "Номерний знак містить неприпустимі символи",
-          }),
+          })
+          .nullable(), // Allow null to pass through the pipe
       ),
 
     vin: z
       .string()
-      .trim()
-      .transform(normalizeVin)
+      .nullable()
+      .default(null)
+      .transform((val) => (val ? normalizeVin(val) : null))
+      .transform((val) => (val === "" ? null : val))
       .pipe(
         z
           .string()
@@ -120,14 +134,40 @@
             error: "VIN-код містить неприпустимі символи",
             abort: true,
           })
-          .length(17, { error: "Довжина VIN-коду має становити 17 символів" }),
+          .length(17, { error: "Довжина VIN-коду має становити 17 символів" })
+          .nullable(),
       ),
+
+    engineCode: z
+      .string()
+      .trim()
+      .nullable()
+      .default(null)
+      .transform((val) => (val === "" ? null : val)),
+
+    engineDisplacement: z
+      .number()
+      .positive({ error: "Об'єм двигуна має бути більшим за нуль" })
+      .nullable()
+      .default(null),
+
+    fuelType: z
+      .enum(["Gasoline", "Diesel", "LpgCng", "Hybrid", "Electric"])
+      .nullable()
+      .default(null),
+
+    driveType: z
+      .enum(["FrontWheel", "RearWheel", "AllWheel", "FourWheel"])
+      .nullable()
+      .default(null),
   });
 
   //TODO: add the option to navigate directly to already existsing car if it was found
   const extendedSchema = carSchema
     .refine(
       (data) => {
+        if (!data.licensePlate) return true;
+
         const duplicateCar = carsList.find(
           (dto) => dto.car.licensePlate === data.licensePlate,
         );
@@ -142,6 +182,8 @@
     )
     .refine(
       (data) => {
+        if (!data.vin) return true;
+
         const duplicateCar = carsList.find((dto) => dto?.car?.vin === data.vin);
         if (!duplicateCar) return true;
         if (isEdit && duplicateCar.car?.id === carDto?.car?.id) return true;
@@ -169,6 +211,10 @@
         year: nativeForm.data.year,
         licensePlate: nativeForm.data.licensePlate,
         vin: nativeForm.data.vin,
+        engineCode: nativeForm.data.engineCode,
+        engineDisplacement: nativeForm.data.engineDisplacement,
+        fuelType: nativeForm.data.fuelType,
+        driveType: nativeForm.data.driveType,
       };
 
       const result =
@@ -187,7 +233,8 @@
   const { form: formData, enhance, submitting } = form;
 
   const licensePlateLooksNonStandard = $derived(
-    $formData.licensePlate.length > 0 &&
+    $formData.licensePlate != null &&
+      $formData.licensePlate.length > 0 &&
       !STANDARD_PLATE_RE.test($formData.licensePlate),
   );
 
@@ -198,14 +245,28 @@
         $formData.brandId = carDto.car.brandId;
         $formData.model = carDto.car.model;
         $formData.year = carDto.car.year;
-        $formData.licensePlate = carDto.car.licensePlate ?? "";
-        $formData.vin = carDto.car.vin ?? "";
+        $formData.engineCode = carDto.car.engineCode;
+        $formData.engineDisplacement = carDto.car.engineDisplacement;
+        $formData.fuelType = carDto.car.fuelType;
+        $formData.driveType = carDto.car.driveType;
+        $formData.licensePlate = carDto.car.licensePlate;
+        $formData.vin = carDto.car.vin;
       } else {
         form.reset();
       }
     }
   });
 </script>
+
+{#snippet requiredHint()}
+  <span
+    class="text-destructive inline-flex align-middle"
+    title="Обов'язкове поле"
+    aria-label="Обов'язкове поле"
+  >
+    *
+  </span>
+{/snippet}
 
 <MutationSheetShell
   bind:open
@@ -225,7 +286,7 @@
   <Form.Field {form} name="clientId">
     <Form.Control>
       {#snippet children({ props: formProps })}
-        <Label>Власник</Label>
+        <Label>Власник {@render requiredHint()}</Label>
         <ComboSelect
           items={combinedQueries.clients.data ?? []}
           bind:value={$formData.clientId}
@@ -257,7 +318,7 @@
   <Form.Field {form} name="brandId">
     <Form.Control>
       {#snippet children({ props: formProps })}
-        <Label>Марка</Label>
+        <Label>Марка {@render requiredHint()}</Label>
         <ComboSelect
           items={combinedQueries.carBrands.data ?? []}
           bind:value={$formData.brandId}
@@ -277,7 +338,7 @@
   <Form.Field {form} name="model">
     <Form.Control>
       {#snippet children({ props })}
-        <Label>Модель</Label>
+        <Label>Модель {@render requiredHint()}</Label>
         <Input {...props} bind:value={$formData.model} />
       {/snippet}
     </Form.Control>
@@ -287,8 +348,100 @@
   <Form.Field {form} name="year">
     <Form.Control>
       {#snippet children({ props })}
-        <Label>Рік випуску</Label>
+        <Label>Рік випуску {@render requiredHint()}</Label>
         <Input type="number" {...props} bind:value={$formData.year} />
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+
+  <Form.Field {form} name="engineCode">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Код двигуна</Label>
+        <Input
+          {...props}
+          value={$formData.engineCode ?? ""}
+          oninput={(e) => {
+            $formData.engineCode = e.currentTarget.value;
+          }}
+          placeholder="напр. CAXA"
+        />
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+
+  <Form.Field {form} name="engineDisplacement">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Об'єм двигуна</Label>
+        <div class="flex gap-2 items-baseline" {...props}>
+          <Input
+            bind:value={$formData.engineDisplacement}
+            type="number"
+            step="0.1"
+            min="0"
+            {...props}
+          />
+          <p>л.</p>
+        </div>
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+
+  <Form.Field {form} name="fuelType">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Тип палива</Label>
+        <Select.Root
+          type="single"
+          bind:value={
+            () => $formData.fuelType ?? "",
+            (v) => ($formData.fuelType = v === "" ? null : (v as FuelType))
+          }
+        >
+          <Select.Trigger class="select-none" {...props}>
+            {$formData.fuelType
+              ? fuelTypeLabels[$formData.fuelType]
+              : "Не вказано"}
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="" label="Не вказано" />
+            {#each fuelTypeOptions as option (option.value)}
+              <Select.Item value={option.value} label={option.label} />
+            {/each}
+          </Select.Content>
+        </Select.Root>
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+
+  <Form.Field {form} name="driveType">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Тип приводу</Label>
+        <Select.Root
+          type="single"
+          bind:value={
+            () => $formData.driveType ?? "",
+            (v) => ($formData.driveType = v === "" ? null : (v as DriveType))
+          }
+        >
+          <Select.Trigger class="select-none" {...props}>
+            {$formData.driveType
+              ? driveTypeLabels[$formData.driveType]
+              : "Не вказано"}
+          </Select.Trigger>
+          <Select.Content>
+            <Select.Item value="" label="Не вказано" />
+            {#each driveTypeOptions as option (option.value)}
+              <Select.Item value={option.value} label={option.label} />
+            {/each}
+          </Select.Content>
+        </Select.Root>
       {/snippet}
     </Form.Control>
     <Form.FieldErrors />
@@ -300,7 +453,7 @@
         <Label>Номерний знак</Label>
         <Input
           {...props}
-          value={$formData.licensePlate}
+          value={$formData.licensePlate ?? ""}
           oninput={(e) => {
             $formData.licensePlate = normalizePlate(e.currentTarget.value);
           }}
@@ -323,7 +476,7 @@
         <Label>VIN-код</Label>
         <Input
           {...props}
-          value={$formData.vin}
+          value={$formData.vin ?? ""}
           oninput={(e) => {
             $formData.vin = normalizeVin(e.currentTarget.value);
           }}

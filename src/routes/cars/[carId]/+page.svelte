@@ -6,9 +6,13 @@
   import WorkOrderIcon from "@lucide/svelte/icons/briefcase-business";
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
   import FingerprintIcon from "@lucide/svelte/icons/fingerprint-pattern";
-  import HashIcon from "@lucide/svelte/icons/hash";
+  import FuelIcon from "@lucide/svelte/icons/fuel";
+  import RectangleEllipsisIcon from "@lucide/svelte/icons/rectangle-ellipsis";
+  import RulerIcon from "@lucide/svelte/icons/ruler";
   import GotoIcon from "@lucide/svelte/icons/square-arrow-out-up-right";
   import UserIcon from "@lucide/svelte/icons/user";
+  import DriveTypeIcon from "~icons/tabler/car-4wd";
+  import EngineIcon from "~icons/tabler/engine";
 
   import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
@@ -30,6 +34,7 @@
   import { columns } from "../../work_orders/columns";
   import { workOrderDetailsListByCarIdQueryOptions } from "../../work_orders/queries";
   import WorkOrderMutationSheet from "../../work_orders/work-order-mutation-sheet.svelte";
+  import { driveTypeLabels, fuelTypeLabels } from "../enum-labels";
   import { carDetailsQueryOptions } from "../queries";
   import DropdownMenu from "./dropdown-menu.svelte";
 
@@ -166,7 +171,63 @@
 
         <Details.Item>
           <Details.Title>
-            <Details.Icon icon={HashIcon} /> Номерний знак
+            <Details.Icon icon={EngineIcon} class="size-4.5" /> Код двигуна
+          </Details.Title>
+          <Details.Content>
+            {#if carDetails.carDto.car.engineCode != undefined}
+              <p class="font-mono">
+                {carDetails.carDto.car.engineCode}
+              </p>
+            {:else}
+              Не вказано
+            {/if}
+          </Details.Content>
+        </Details.Item>
+
+        <Details.Item>
+          <Details.Title>
+            <Details.Icon icon={RulerIcon} /> Об'єм двигуна
+          </Details.Title>
+          <Details.Content>
+            {#if carDetails.carDto.car.engineDisplacement != undefined}
+              <p class="font-mono">
+                {carDetails.carDto.car.engineDisplacement} л.
+              </p>
+            {:else}
+              Не вказано
+            {/if}
+          </Details.Content>
+        </Details.Item>
+
+        <Details.Item>
+          <Details.Title>
+            <Details.Icon icon={FuelIcon} /> Тип палива
+          </Details.Title>
+          <Details.Content>
+            {#if carDetails.carDto.car.fuelType != undefined}
+              {fuelTypeLabels[carDetails.carDto.car.fuelType]}
+            {:else}
+              Не вказано
+            {/if}
+          </Details.Content>
+        </Details.Item>
+
+        <Details.Item>
+          <Details.Title>
+            <Details.Icon icon={DriveTypeIcon} class="size-5" /> Тип приводу
+          </Details.Title>
+          <Details.Content>
+            {#if carDetails.carDto.car.driveType != undefined}
+              {driveTypeLabels[carDetails.carDto.car.driveType]}
+            {:else}
+              Не вказано
+            {/if}
+          </Details.Content>
+        </Details.Item>
+
+        <Details.Item>
+          <Details.Title>
+            <Details.Icon icon={RectangleEllipsisIcon} /> Номерний знак
           </Details.Title>
           <Details.Content>
             {#if carDetails.carDto.car.licensePlate != undefined}

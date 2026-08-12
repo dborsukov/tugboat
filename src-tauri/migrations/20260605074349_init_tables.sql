@@ -27,6 +27,10 @@ CREATE TABLE cars (
     year INTEGER NOT NULL,
     license_plate TEXT UNIQUE,
     vin TEXT UNIQUE,
+    engine_code TEXT,
+    engine_displacement REAL,
+    fuel_type TEXT,
+    drive_type TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
     FOREIGN KEY (brand_id) REFERENCES car_brands (id) ON DELETE RESTRICT

@@ -62,6 +62,10 @@ export type Car = {
 	brandId: number,
 	model: string,
 	year: number,
+	engineCode: string | null,
+	engineDisplacement: number | null,
+	fuelType: FuelType | null,
+	driveType: DriveType | null,
 	licensePlate: string | null,
 	vin: string | null,
 	createdAt: string,
@@ -100,6 +104,10 @@ export type CreateCarPayload = {
 	brandId: number,
 	model: string,
 	year: number,
+	engineCode: string | null,
+	engineDisplacement: number | null,
+	fuelType: FuelType | null,
+	driveType: DriveType | null,
 	licensePlate: string | null,
 	vin: string | null,
 };
@@ -154,6 +162,10 @@ export type CreateWorkOrderPayload = {
 };
 
 export type DiscountType = "None" | "Fixed" | "Percentage";
+
+export type DriveType = "FrontWheel" | "RearWheel" | "AllWheel" | "FourWheel";
+
+export type FuelType = "Gasoline" | "Diesel" | "LpgCng" | "Hybrid" | "Electric";
 
 export type LaborItem = {
 	id: number,
@@ -219,6 +231,10 @@ export type UpdateCarPayload = {
 	brandId: number,
 	model: string,
 	year: number,
+	engineCode: string | null,
+	engineDisplacement: number | null,
+	fuelType: FuelType | null,
+	driveType: DriveType | null,
 	licensePlate: string | null,
 	vin: string | null,
 };
