@@ -27,8 +27,13 @@
 
   let {
     carId = null,
+    initClientId = null,
     open = $bindable(false),
-  }: { carId?: number | null; open: boolean } = $props();
+  }: {
+    carId?: number | null;
+    initClientId?: number | null;
+    open: boolean;
+  } = $props();
 
   const formID = "car-mutation-form";
   const isEdit = $derived(carId != null);
@@ -240,6 +245,10 @@
 
   $effect(() => {
     if (open) {
+      if (initClientId) {
+        $formData.clientId = initClientId;
+        return;
+      }
       if (carDto) {
         $formData.clientId = carDto.car.clientId;
         $formData.brandId = carDto.car.brandId;
@@ -290,6 +299,7 @@
         <ComboSelect
           items={combinedQueries.clients.data ?? []}
           bind:value={$formData.clientId}
+          disabled={initClientId != null}
           getKey={(c) => c.id}
           getLabel={(c) => c.name}
           getSearchValue={(c) => c.name}

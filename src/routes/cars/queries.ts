@@ -16,6 +16,8 @@ import {
 import { keys } from "$lib/query-keys";
 import { unwrap } from "$lib/tools";
 
+import { invalidateClients } from "../clients/queries";
+
 function showMutationErrorToast(error: Error) {
   toast.error("Виникла помилка", {
     description: error.message,
@@ -75,6 +77,7 @@ export function createCreateCarMutation(queryClient: QueryClient) {
         unwrap(commands.createCar(payload)),
       onSuccess: () => {
         invalidateCars(queryClient);
+        invalidateClients(queryClient);
       },
       onError: showMutationErrorToast,
     }),
@@ -91,6 +94,7 @@ export function createUpdateCarMutation(queryClient: QueryClient) {
       }) => unwrap(commands.updateCar(variables.id, variables.payload)),
       onSuccess: () => {
         invalidateCars(queryClient);
+        invalidateClients(queryClient);
       },
       onError: showMutationErrorToast,
     }),
@@ -104,6 +108,7 @@ export function createDeleteCarMutation(queryClient: QueryClient) {
       mutationFn: (id: number) => unwrap(commands.deleteCar(id)),
       onSuccess: async () => {
         invalidateCars(queryClient);
+        invalidateClients(queryClient);
       },
       onError: showMutationErrorToast,
     }),

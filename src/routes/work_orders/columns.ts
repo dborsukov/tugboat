@@ -11,7 +11,7 @@ import { prettifyIsoDateString } from "$lib/tools";
 
 import CarBadge from "../cars/car-badge.svelte";
 import ClientBadge from "../clients/client-badge.svelte";
-import StatusSelector from "./work-order-status-selector.svelte";
+import WorkOrderTableStatusCell from "./work-order-table-status-cell.svelte";
 
 export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
   {
@@ -77,6 +77,7 @@ export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
       return renderComponent(CarBadge, {
         car: row.original.carDto.car,
         carBrand: row.original.carDto.brand,
+        class: "h-6",
       });
     },
   },
@@ -97,9 +98,8 @@ export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
       });
     },
     cell: ({ row }) => {
-      return renderComponent(StatusSelector, {
+      return renderComponent(WorkOrderTableStatusCell, {
         status: row.original.workOrder.status,
-        interactive: false,
       });
     },
   },

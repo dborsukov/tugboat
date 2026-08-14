@@ -1,26 +1,45 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
-  import PageHeader from "./page-header.svelte";
+  import { cn } from "$lib/utils";
 
-  interface Props {
+  let {
+    header,
+    children,
+    footer,
+    contentWidthClass,
+    headerWidthClass,
+    class: className,
+  }: {
     header?: Snippet;
     children?: Snippet;
     footer?: Snippet;
-  }
-
-  let { header, children, footer }: Props = $props();
+    headerWidthClass?: string;
+    contentWidthClass?: string;
+    class?: string;
+  } = $props();
 </script>
 
-<div class="flex flex-col h-full min-h-0">
-  <PageHeader>
-    {#if header}
-      {@render header()}
-    {/if}
-  </PageHeader>
+<div class={cn("flex flex-col h-full min-h-0", className)}>
+  {#if header}
+    <div
+      class="flex h-16 w-full px-4 items-center border-b sticky top-0 bg-background/20 backdrop-blur-md"
+    >
+      <div
+        class={cn(
+          "flex h-full w-full items-center gap-2 mx-auto max-w-7xl",
+          headerWidthClass,
+        )}
+      >
+        <div class="h-full min-w-0 flex-1">
+          {@render header()}
+        </div>
+      </div>
+    </div>
+  {/if}
 
   <div class="flex-1 w-full overflow-auto scrollbar-gutter-both">
-    <div class="max-w-7xl mx-auto">
+    <div class={cn("max-w-7xl mx-auto", contentWidthClass)}>
       {#if children}
         {@render children()}
       {/if}

@@ -7,8 +7,8 @@ import CurrencyDisplay from "$lib/components/currency-display.svelte";
 
 import type { PartItemDto } from "$lib/bindings";
 
-import PartStatusSelector from "./part-status-selector.svelte";
 import DataTableActions from "./part-table-actions-cell.svelte";
+import PartTableStatusCell from "./part-table-status-cell.svelte";
 import TableDiscountCell from "./table-discount-cell.svelte";
 
 export interface PartsTableMeta {
@@ -21,9 +21,8 @@ export const columns: ColumnDef<PartItemDto>[] = [
     accessorKey: "status",
     header: "Статус",
     cell: ({ row }) => {
-      return renderComponent(PartStatusSelector, {
+      return renderComponent(PartTableStatusCell, {
         status: row.original.status,
-        interactive: false,
       });
     },
   },
@@ -115,7 +114,7 @@ export const columns: ColumnDef<PartItemDto>[] = [
         createRawSnippet(() => {
           return {
             render: () =>
-              `<div class="text-center">${row.original.markup} %</div>`,
+              `<div class="text-center">${row.original.markup != "0" ? row.original.markup + "%" : "—"}</div>`,
           };
         }),
       );

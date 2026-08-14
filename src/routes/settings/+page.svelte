@@ -120,42 +120,41 @@
       {/if}
     </div>
   {/snippet}
-  <div class="p-4 flex flex-col gap-6">
-    {#if settingsQuery.isError}
-      <FetchErrorDisplay
-        message={settingsQuery.error?.message}
-        onRetry={settingsQuery.refetch}
-        class="mt-20"
-      />
-    {:else if settingsQuery.isLoading}
-      <Skeleton class="h-30 w-full rounded-lg" />
-      <Skeleton class="h-30 w-full rounded-lg" />
-      <Skeleton class="h-30 w-full rounded-lg" />
-    {:else}
-      <Card.Root>
-        <Card.Header>
-          <Card.Title>Оформлення</Card.Title>
-        </Card.Header>
-        <Card.Content>
-          <SettingsRow label="Тема" description="Як має виглядати застосунок.">
-            <Select.Root
-              type="single"
-              value={draft?.theme}
-              onValueChange={setTheme}
-            >
-              <Select.Trigger class="w-30">{themeLabel}</Select.Trigger>
-              <Select.Content>
-                {#each THEME_OPTIONS as option (option.value)}
-                  <Select.Item value={option.value} label={option.label}>
-                    {option.label}
-                  </Select.Item>
-                {/each}
-              </Select.Content>
-            </Select.Root>
-          </SettingsRow>
+  {#if settingsQuery.isError}
+    <FetchErrorDisplay
+      message={settingsQuery.error?.message}
+      onRetry={settingsQuery.refetch}
+      class="mt-20"
+    />
+  {:else if settingsQuery.isLoading}
+    <Skeleton class="h-30 w-full rounded-lg" />
+    <Skeleton class="h-30 w-full rounded-lg" />
+    <Skeleton class="h-30 w-full rounded-lg" />
+  {:else}
+    <Card.Root class="mt-4">
+      <Card.Header>
+        <Card.Title>Оформлення</Card.Title>
+      </Card.Header>
+      <Card.Content>
+        <SettingsRow label="Тема" description="Як має виглядати застосунок.">
+          <Select.Root
+            type="single"
+            value={draft?.theme}
+            onValueChange={setTheme}
+          >
+            <Select.Trigger class="w-30">{themeLabel}</Select.Trigger>
+            <Select.Content>
+              {#each THEME_OPTIONS as option (option.value)}
+                <Select.Item value={option.value} label={option.label}>
+                  {option.label}
+                </Select.Item>
+              {/each}
+            </Select.Content>
+          </Select.Root>
+        </SettingsRow>
 
-          <!-- example free-text field -->
-          <!-- <SettingsRow
+        <!-- example free-text field -->
+        <!-- <SettingsRow
           >
             <Input
               bind:value={testinput}
@@ -164,8 +163,7 @@
               onkeydown={(e) => e.key === "Enter" && persistDebounced.flush()}
             />
           </SettingsRow> -->
-        </Card.Content>
-      </Card.Root>
-    {/if}
-  </div>
+      </Card.Content>
+    </Card.Root>
+  {/if}
 </PageLayout>

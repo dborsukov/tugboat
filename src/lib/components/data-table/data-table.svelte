@@ -16,6 +16,7 @@
     table,
     emptyMessage = "Даних не знайдено...",
     headerClasses = {},
+    cellClasses = {},
     rounded = true,
     onRowClick,
     class: className,
@@ -23,6 +24,7 @@
     table: Table<TData>;
     emptyMessage?: string;
     headerClasses?: Record<string, string>;
+    cellClasses?: Record<string, string>;
     rounded?: boolean;
     onRowClick?: (row: TData) => void;
     class?: string;
@@ -82,7 +84,7 @@
             onkeydown={(e) => handleRowKeyDown(e, row.original)}
           >
             {#each row.getVisibleCells() as cell (cell.id)}
-              <TableUI.Cell>
+              <TableUI.Cell class={cn("h-px", cellClasses[cell.column.id])}>
                 <FlexRender
                   content={cell.column.columnDef.cell}
                   context={cell.getContext()}

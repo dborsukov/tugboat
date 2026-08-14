@@ -3,7 +3,7 @@
 
   import { goto } from "$app/navigation";
 
-  import EllipsisIcon from "@lucide/svelte/icons/ellipsis";
+  import EllipsisIcon from "@lucide/svelte/icons/ellipsis-vertical";
   import EditIcon from "@lucide/svelte/icons/square-pen";
   import TrashIcon from "@lucide/svelte/icons/trash";
 
@@ -35,7 +35,7 @@
 
 <DropdownMenu.Root>
   <DropdownMenu.Trigger
-    class={buttonVariants({ variant: "outline", size: "icon" })}
+    class={buttonVariants({ variant: "ghost", size: "icon" })}
   >
     <EllipsisIcon />
   </DropdownMenu.Trigger>

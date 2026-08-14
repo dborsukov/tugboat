@@ -14,6 +14,7 @@
   let {
     items,
     value = $bindable(),
+    disabled,
     getKey,
     getLabel,
     getSearchValue,
@@ -28,6 +29,7 @@
   }: {
     items: T[];
     value: unknown;
+    disabled?: boolean;
     getKey: (item: T) => unknown;
     getLabel: (item: T) => string;
     getSearchValue?: (item: T) => string;
@@ -63,6 +65,7 @@
         class={cn("w-full justify-between", triggerClass)}
         role="combobox"
         aria-expanded={comboOpen}
+        {disabled}
       >
         {#if trigger}
           {@render trigger(selected)}

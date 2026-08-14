@@ -1,5 +1,7 @@
-<script>
-  let { slug } = $props();
+<script lang="ts">
+  import { cn } from "$lib/utils";
+
+  let { slug, class: className }: { slug: string; class?: string } = $props();
 
   let imageSrc = $state("");
   let notFound = $state(false);
@@ -24,7 +26,7 @@
   });
 </script>
 
-<div class="aspect-square overflow-hidden h-full">
+<div class={cn("aspect-square overflow-hidden h-full", className)}>
   {#if !isLoading}
     {#if notFound}
       <div

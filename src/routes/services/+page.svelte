@@ -75,24 +75,23 @@
       </Button>
     </div>
   {/snippet}
-  <div class="p-4">
-    {#if servicesQuery.isError}
-      <FetchErrorDisplay
-        message={servicesQuery.error?.message}
-        onRetry={servicesQuery.refetch}
-        class="mt-20"
-      />
-    {:else if servicesQuery.isLoading}
-      <Skeleton class="h-50 w-full rounded-lg" />
-    {:else}
-      <DataTable
-        {table}
-        emptyMessage="Сервісів не знайдено..."
-        headerClasses={{ name: "w-full" }}
-        class="rounded-sm shadow-xs"
-      />
-    {/if}
-  </div>
+  {#if servicesQuery.isError}
+    <FetchErrorDisplay
+      message={servicesQuery.error?.message}
+      onRetry={servicesQuery.refetch}
+      class="mt-10"
+    />
+  {:else if servicesQuery.isLoading}
+    <Skeleton class="mt-4 h-50 w-full rounded-lg" />
+  {:else}
+    <DataTable
+      {table}
+      emptyMessage="Сервісів не знайдено..."
+      headerClasses={{ name: "w-full" }}
+      cellClasses={{ actions: "p-0" }}
+      class="mt-4 rounded-sm shadow-xs bg-card"
+    />
+  {/if}
 </PageLayout>
 
 <ServiceMutationSheet

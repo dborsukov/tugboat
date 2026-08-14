@@ -1,30 +1,29 @@
 <script lang="ts">
   import { createQueries, useQueryClient } from "@tanstack/svelte-query";
-  import { NumericText } from "svelte-number-format";
+  import { MaskPatterns, PatternText } from "svelte-number-format";
+
+  import { goto } from "$app/navigation";
 
   import DiscountIcon from "@lucide/svelte/icons/badge-percent";
-  import CalendarCheckIcon from "@lucide/svelte/icons/calendar-check";
-  import CalendarClockIcon from "@lucide/svelte/icons/calendar-clock";
-  import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
+  import PartsIcon from "@lucide/svelte/icons/boxes";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
-  import GaugeIcon from "@lucide/svelte/icons/gauge";
-  import RateIcon from "@lucide/svelte/icons/hand-coins";
-  import PackageIcon from "@lucide/svelte/icons/package";
-  import ReceiptTextIcon from "@lucide/svelte/icons/receipt-text";
+  import ChevronRight from "@lucide/svelte/icons/chevron-right";
+  import ReceiptTextIcon from "@lucide/svelte/icons/equal";
+  import Info from "@lucide/svelte/icons/info";
+  import PhoneIcon from "@lucide/svelte/icons/phone";
   import WrenchIcon from "@lucide/svelte/icons/wrench";
 
-  import * as ButtonGroup from "$lib/components/ui/button-group/index.js";
   import Button from "$lib/components/ui/button/button.svelte";
   import * as Card from "$lib/components/ui/card/index";
   import * as Command from "$lib/components/ui/command/index.js";
   import * as Popover from "$lib/components/ui/popover/index.js";
   import { Skeleton } from "$lib/components/ui/skeleton";
 
+  import CarLogoLoader from "$lib/components/car-logo-loader.svelte";
   import CurrencyDisplay from "$lib/components/currency-display.svelte";
   import DataTable from "$lib/components/data-table/data-table.svelte";
   import { buildTable } from "$lib/components/data-table/table-builder.svelte";
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
-  import * as Details from "$lib/components/details/index";
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
@@ -32,8 +31,7 @@
   import { TableActionState } from "$lib/states/table-actions.svelte";
   import { prettifyIsoDateString } from "$lib/tools";
 
-  import CarCard from "../../cars/car-card.svelte";
-  import ClientCard from "../../clients/client-card.svelte";
+  import ClientAvatar from "../../clients/client-avatar.svelte";
   import { servicesQueryOptions } from "../../services/queries";
   import {
     createCreateLaborItemMutation,
@@ -85,6 +83,20 @@
 
   let services = $derived(combinedQueries.services.data);
   let workOrderDetails = $derived(combinedQueries.workOrderDetails.data);
+
+  let [datetime_label, datetime_iso_string] = $derived.by(() => {
+    if (!combinedQueries.isReady || !workOrderDetails) return ["", ""];
+
+    if (workOrderDetails.workOrder.paidAt) {
+      return ["Сплачено", workOrderDetails.workOrder.paidAt];
+    } else if (workOrderDetails.workOrder.completedAt) {
+      return ["Завершено", workOrderDetails.workOrder.completedAt];
+    } else if (workOrderDetails.workOrder.startedAt) {
+      return ["Почато", workOrderDetails.workOrder.startedAt];
+    } else {
+      return ["Створено", workOrderDetails.workOrder.createdAt];
+    }
+  });
 
   let partsTableActions = new TableActionState<number>();
   let laborTableActions = new TableActionState<number>();
@@ -140,302 +152,436 @@
       });
     }
   }
+
+  function carSecondaryLine(wod: typeof workOrderDetails) {
+    return [
+      wod?.carDto?.car?.year,
+      wod?.carDto?.car?.vin,
+      wod?.carDto?.car?.licensePlate,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
 </script>
 
-<PageLayout>
-  {#snippet header()}
-    {#if combinedQueries.isLoading}
-      <div class="flex gap-4 py-2 w-full h-full">
-        <Skeleton class="w-1/7 h-full" />
-        <Skeleton class="w-1/7 h-full" />
-        <Skeleton class="w-1/7 h-full" />
-        <Skeleton class="w-1/7 h-full" />
-        <Skeleton class="ml-auto h-full aspect-square" />
+<PageLayout headerWidthClass="max-w-fit" contentWidthClass="max-w-fit">
+  {#if combinedQueries.isError}
+    <FetchErrorDisplay
+      message={combinedQueries.firstError?.message}
+      onRetry={combinedQueries.refetchAll}
+      class="mt-10"
+    />
+  {:else if combinedQueries.isLoading}
+    <div class="mt-4 border border-border rounded bg-card">
+      <!-- Info bar: id / date / odometer / rate -->
+      <div class="h-15 flex flex-row items-center border-b border-border">
+        {#each { length: 4 } as _, i (i)}
+          <div class="p-4 flex flex-col justify-start items-start gap-1.5">
+            <Skeleton class="h-3 w-20" />
+            <Skeleton class="h-5 w-24" />
+          </div>
+          {#if i < 3}
+            <div class="block h-8/12 w-px bg-border"></div>
+          {/if}
+        {/each}
+
+        <div class="flex items-center gap-2 ml-auto mr-2">
+          <Skeleton class="h-9 w-32 rounded-md" />
+          <Skeleton class="h-9 w-9 rounded-md shrink-0" />
+        </div>
       </div>
-    {:else if !combinedQueries.isError && workOrderDetails}
-      <div class="h-full flex items-center gap-4">
-        <div class="flex flex-col justify-center leading-tight shrink-0">
-          <span class="text-xs text-muted-foreground">Наряд-замовлення</span>
-          <h2 class="text-lg font-mono font-medium">
-            {workOrderDetails.workOrder?.id}
-          </h2>
+
+      <!-- Car / client cards -->
+      <div class="flex flex-row divide-x divide-border border-b border-border">
+        {#each { length: 2 } as _, i (i)}
+          <div class="flex-1 flex items-center gap-4 p-4">
+            <Skeleton class="size-14 rounded-full shrink-0" />
+            <div class="flex flex-col items-start gap-2 flex-1 min-w-0">
+              <Skeleton class="h-5 w-2/5 min-w-32" />
+              <Skeleton class="h-4 w-1/3 min-w-24" />
+            </div>
+            <Skeleton class="size-5 shrink-0 ml-auto" />
+          </div>
+        {/each}
+      </div>
+
+      <!-- Totals bar: parts / labor / (discount) / grand total -->
+      <div class="h-15 flex flex-row items-center border-b border-border">
+        <div class="p-4 flex flex-col justify-start items-start gap-1.5">
+          <Skeleton class="h-3 w-20" />
+          <Skeleton class="h-5 w-16" />
         </div>
 
-        <div class="hidden md:block h-9/12 w-px bg-border shrink-0"></div>
+        <div class="block h-8/12 w-px bg-border"></div>
+
+        <div class="p-4 flex flex-col justify-start items-start gap-1.5">
+          <Skeleton class="h-3 w-14" />
+          <Skeleton class="h-5 w-16" />
+        </div>
 
         <div
-          class="h-full flex items-center gap-4 flex-1 min-w-0"
-          hidden={!combinedQueries.isReady}
+          class="ml-auto h-full flex flex-col px-2 py-1 mr-4 justify-center items-end gap-1.5"
         >
-          <div class="hidden md:flex items-center gap-2">
-            <WrenchIcon class="size-5 text-muted-foreground" />
-            <div class="flex flex-col leading-tight">
-              <span class="text-xs text-muted-foreground">Роботи</span>
-              <CurrencyDisplay
-                amount={workOrderDetails.totals?.laborTotal ?? "0"}
-                suffix="грн."
-              />
-            </div>
+          <Skeleton class="h-3 w-12" />
+          <Skeleton class="h-5 w-20" />
+        </div>
+      </div>
+
+      <!-- Services (labor) section -->
+      <div class="p-4">
+        <div class="flex flex-row items-center justify-between">
+          <div class="flex flex-row items-center gap-2">
+            <Skeleton class="h-7 w-20" />
+            <Skeleton class="h-7 w-5" />
           </div>
-
-          <div class="hidden md:flex items-center gap-2">
-            <PackageIcon class="size-5 text-muted-foreground" />
-            <div class="flex flex-col leading-tight">
-              <span class="text-xs text-muted-foreground">Запчастини</span>
-              <CurrencyDisplay
-                amount={workOrderDetails.totals?.partsTotal ?? "0"}
-                suffix="грн."
-              />
-            </div>
+          <div class="flex gap-4">
+            <Skeleton class="h-5 w-24" />
+            <Skeleton class="h-5 w-32" />
           </div>
+        </div>
+        <div class="mt-4 flex flex-col gap-2">
+          <Skeleton class="h-9 w-full" />
+          {#each { length: 3 } as _, i (i)}
+            <Skeleton class="h-12 w-full" />
+          {/each}
+        </div>
+      </div>
 
-          {#if workOrderDetails.workOrder?.discountType != "None"}
-            <div class="h-9/12 w-px bg-border shrink-0"></div>
+      <!-- Parts section -->
+      <div class="p-4 pt-0">
+        <div class="flex flex-row items-center justify-between">
+          <div class="flex flex-row items-center gap-2">
+            <Skeleton class="h-7 w-24" />
+            <Skeleton class="h-7 w-5" />
+          </div>
+          <Skeleton class="h-5 w-20" />
+        </div>
+        <div class="mt-4 flex flex-col gap-2">
+          <Skeleton class="h-9 w-full" />
+          {#each { length: 2 } as _, i (i)}
+            <Skeleton class="h-12 w-full" />
+          {/each}
+        </div>
+      </div>
+    </div>
+  {:else if !workOrderDetails?.workOrder}
+    <NotFound
+      message={`Замовлення не знайдено (ID: ${params.workorderId})`}
+      class="mt-10"
+    />
+  {:else}
+    <div class="mt-4 border border-border rounded bg-card">
+      <div class="h-15 flex flex-row items-center border-b border-border">
+        <div class="p-4 flex flex-col justify-start items-start">
+          <span class="text-sm text-muted-foreground">Наряд-замовлення</span>
+          <p class="text-base font-mono font-medium">
+            {workOrderDetails.workOrder?.id}
+          </p>
+        </div>
 
-            <div
-              class="hidden md:flex items-center gap-2 rounded-md px-2 py-1 bg-linear-to-r from-amber-400/25 dark:from-amber-700/35 to-transparent"
-            >
-              <DiscountIcon class="size-5 text-amber-700 dark:text-amber-200" />
-              <div class="flex flex-col leading-tight">
-                <span class="text-xs text-amber-700 dark:text-amber-200"
-                  >Знижка</span
-                >
-                {#if workOrderDetails.workOrder?.discountType === "Fixed"}
-                  <CurrencyDisplay
-                    amount={workOrderDetails.workOrder?.discountAmount}
-                    suffix="грн."
-                  />
-                {:else}
-                  {workOrderDetails.workOrder?.discountPercent}%
-                {/if}
+        <div class="block h-8/12 w-px bg-border"></div>
+
+        <div class="p-4 flex flex-col justify-start items-start">
+          <div class="flex items-center gap-1 text-muted-foreground">
+            <span class="text-sm">{datetime_label}</span>
+            <Popover.Root>
+              <Popover.Trigger class="hover:cursor-pointer">
+                <Info class="size-3.5" />
+              </Popover.Trigger>
+              <Popover.Content class="p-4 w-fit">
+                <div class="flex flex-col gap-2">
+                  <div class="flex gap-2 justify-between">
+                    <p>Створено:</p>
+                    <p>
+                      {workOrderDetails.workOrder.createdAt
+                        ? prettifyIsoDateString(
+                            workOrderDetails.workOrder.createdAt,
+                            "datetime",
+                          )
+                        : "—"}
+                    </p>
+                  </div>
+                  <div class="flex gap-2 justify-between">
+                    <p>Почато:</p>
+                    <p>
+                      {workOrderDetails.workOrder.startedAt
+                        ? prettifyIsoDateString(
+                            workOrderDetails.workOrder.startedAt,
+                            "datetime",
+                          )
+                        : "—"}
+                    </p>
+                  </div>
+                  <div class="flex gap-2 justify-between">
+                    <p>Завершено:</p>
+                    <p>
+                      {workOrderDetails.workOrder.completedAt
+                        ? prettifyIsoDateString(
+                            workOrderDetails.workOrder.completedAt,
+                            "datetime",
+                          )
+                        : "—"}
+                    </p>
+                  </div>
+                  <div class="flex gap-2 justify-between">
+                    <p>Сплачено:</p>
+                    <p>
+                      {workOrderDetails.workOrder.paidAt
+                        ? prettifyIsoDateString(
+                            workOrderDetails.workOrder.paidAt,
+                            "datetime",
+                          )
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+              </Popover.Content>
+            </Popover.Root>
+          </div>
+          <p class="text-base">
+            {prettifyIsoDateString(datetime_iso_string, "datetime")}
+          </p>
+        </div>
+
+        <div class="block h-8/12 w-px bg-border"></div>
+
+        <div class="p-4 flex flex-col justify-start items-start">
+          <span class="text-sm text-muted-foreground">Пробіг</span>
+          <div class="flex gap-2 text-base">
+            <p>{workOrderDetails?.workOrder?.odometerIn}</p>
+            <p class="text-muted-foreground">км.</p>
+          </div>
+        </div>
+
+        <div class="block h-8/12 w-px bg-border"></div>
+
+        <div class="p-4 flex flex-col justify-start items-start">
+          <span class="text-sm text-muted-foreground">Тариф</span>
+          <CurrencyDisplay
+            amount={workOrderDetails?.workOrder.rate}
+            suffix="грн./год."
+            suffix_muted
+          />
+        </div>
+
+        <div class="flex items-center ml-auto mr-2">
+          <StatusSelector workOrder={workOrderDetails?.workOrder} />
+          <DropdownMenu workOrderId={workOrderDetails.workOrder?.id ?? ""} />
+        </div>
+      </div>
+
+      <div class="flex flex-row divide-x divide-border border-b border-border">
+        <div class="flex-1">
+          <Button
+            variant="ghost"
+            class="w-full h-auto gap-4 justify-start items-center rounded-none p-4 text-base font-normal"
+            onclick={async () => {
+              await goto(`/cars/${workOrderDetails?.carDto?.car?.id}`);
+            }}
+          >
+            <CarLogoLoader
+              slug={workOrderDetails?.carDto?.brand?.iconSlug}
+              class="size-14"
+            />
+            <div class="flex flex-col items-start gap-1">
+              <p class="truncate text-lg font-medium">
+                {workOrderDetails?.carDto?.brand?.name}
+                {workOrderDetails?.carDto?.car?.model}
+              </p>
+              <p class="truncate text-muted-foreground">
+                {carSecondaryLine(workOrderDetails)}
+              </p>
+            </div>
+            <ChevronRight class="ml-auto size-5 text-muted-foreground" />
+          </Button>
+        </div>
+        <div class="flex-1">
+          <Button
+            variant="ghost"
+            class="w-full h-auto gap-4 justify-start items-center rounded-none p-4 text-base font-normal"
+            onclick={async () => {
+              await goto(`/clients/${workOrderDetails?.client?.id}`);
+            }}
+          >
+            <ClientAvatar
+              name={workOrderDetails?.client?.name}
+              class="size-14"
+            />
+            <div class="flex flex-col items-start gap-1">
+              <p class="text-xl font-medium">
+                {workOrderDetails?.client?.name}
+              </p>
+              <div class="flex flex-row items-center">
+                <PhoneIcon class="size-4 mr-2 text-muted-foreground" />
+                <PatternText
+                  value={workOrderDetails?.client?.phone}
+                  format={MaskPatterns.PHONE_INTERNATIONAL}
+                  class="text-end select-none!"
+                />
               </div>
             </div>
-          {/if}
+            <ChevronRight class="ml-auto size-5 text-muted-foreground" />
+          </Button>
+        </div>
+      </div>
 
-          <div class="h-9/12 w-px bg-border shrink-0"></div>
+      <div class="h-15 flex flex-row items-center border-b border-border">
+        <div class="p-4 flex flex-col justify-start items-start">
+          <div class="flex flex-row items-center gap-1 text-muted-foreground">
+            <PartsIcon class="size-4" />
+            <span class="text-sm">Запчастини</span>
+          </div>
+          <CurrencyDisplay
+            amount={workOrderDetails.totals?.partsTotal ?? "0"}
+            suffix="грн."
+          />
+        </div>
+
+        <div class="block h-8/12 w-px bg-border"></div>
+
+        <div class="p-4 flex flex-col justify-start items-start">
+          <div class="flex flex-row items-center gap-1 text-muted-foreground">
+            <WrenchIcon class="size-4" />
+            <span class="text-sm">Робота</span>
+          </div>
+          <CurrencyDisplay
+            amount={workOrderDetails.totals?.laborTotal ?? "0"}
+            suffix="грн."
+          />
+        </div>
+
+        {#if workOrderDetails.workOrder?.discountType != "None"}
+          <div class="block h-8/12 w-px bg-border"></div>
 
           <div
-            class="flex items-center gap-2 rounded-md px-2 py-1 bg-linear-to-r from-emerald-400/25 dark:from-emerald-700/35 to-transparent"
+            class="h-9/12 flex flex-col ml-2 px-2 py-1 justify-center items-start rounded-md bg-linear-to-r from-amber-400/25 dark:from-amber-700/35 to-transparent"
           >
-            <ReceiptTextIcon
-              class="size-5 text-emerald-700 dark:text-emerald-200"
-            />
-            <div class="flex flex-col leading-tight">
-              <span class="text-xs text-emerald-700 dark:text-emerald-200"
-                >Разом</span
+            <div class="flex flex-row items-center gap-1 text-muted-foreground">
+              <DiscountIcon class="size-4 text-amber-700 dark:text-amber-200" />
+              <span class="text-xs text-amber-700 dark:text-amber-200"
+                >Знижка</span
               >
+            </div>
+            {#if workOrderDetails.workOrder?.discountType === "Fixed"}
               <CurrencyDisplay
-                amount={workOrderDetails.totals?.grandTotal ?? "0"}
-                class="font-semibold"
+                amount={workOrderDetails.workOrder?.discountAmount}
                 suffix="грн."
               />
-            </div>
+            {:else}
+              {workOrderDetails.workOrder?.discountPercent}%
+            {/if}
           </div>
-        </div>
+        {/if}
 
-        <div class="flex gap-2 items-center" hidden={!combinedQueries.isReady}>
-          <StatusSelector workOrder={workOrderDetails.workOrder} />
-          <DropdownMenu id={workOrderDetails.workOrder?.id ?? ""} />
-        </div>
-      </div>
-    {/if}
-  {/snippet}
-
-  <div class="h-full w-full p-4">
-    {#if combinedQueries.isError}
-      <FetchErrorDisplay
-        message={combinedQueries.firstError?.message}
-        onRetry={combinedQueries.refetchAll}
-        class="mt-20"
-      />
-    {:else if combinedQueries.isLoading}
-      <div class="flex w-full h-30 items-stretch gap-4">
-        <Skeleton class="flex-1" />
-        <Skeleton class="flex-1" />
-      </div>
-      <Skeleton class="mt-4 w-full h-35" />
-      <Skeleton class="mt-4 w-full h-50" />
-      <Skeleton class="mt-4 w-full h-50" />
-    {:else if !workOrderDetails?.workOrder}
-      <NotFound
-        message={`Замовлення не знайдено (ID: ${params.workorderId})`}
-        class="mt-20"
-      />
-    {:else}
-      <div class="flex flex-col sm:flex-row w-full items-stretch gap-4">
-        <a href="/cars/{workOrderDetails?.carDto?.car?.id}" class="flex flex-1">
-          <CarCard
-            car={workOrderDetails?.carDto.car}
-            client={workOrderDetails?.client}
-            brand={workOrderDetails?.carDto?.brand}
-            short
-            class="w-full h-full flex flex-col justify-center"
-          />
-        </a>
-        <a href="/clients/{workOrderDetails?.client?.id}" class="flex flex-1">
-          <ClientCard
-            client={workOrderDetails?.client}
-            short
-            class="w-full h-full flex flex-col justify-center"
-          />
-        </a>
-      </div>
-
-      <Details.Card class="mt-4">
-        <Details.Item>
-          <Details.Title>
-            <Details.Icon icon={GaugeIcon} /> Одометр
-          </Details.Title>
-          <Details.Content>
-            <div class="flex gap-2">
-              <NumericText
-                value={workOrderDetails?.workOrder.odometerIn}
-                class="text-end select-none!"
-              />
-              <p class="text-muted-foreground">км.</p>
-            </div>
-          </Details.Content>
-        </Details.Item>
-
-        <Details.Item>
-          <Details.Title>
-            <Details.Icon icon={RateIcon} /> Тариф
-          </Details.Title>
-          <Details.Content>
-            <CurrencyDisplay
-              amount={workOrderDetails?.workOrder.rate}
-              suffix="грн./год."
-              suffix_muted
+        <div
+          class="ml-auto h-full flex flex-col px-2 py-1 justify-center items-end rounded-md bg-linear-to-l from-emerald-400/25 dark:from-emerald-700/35 to-transparent"
+        >
+          <div class="flex flex-row items-center gap-1 text-muted-foreground">
+            <ReceiptTextIcon
+              class="size-4 text-emerald-700 dark:text-emerald-200"
             />
-          </Details.Content>
-        </Details.Item>
+            <span class="text-xs text-emerald-700 dark:text-emerald-200"
+              >Разом</span
+            >
+          </div>
+          <CurrencyDisplay
+            amount={workOrderDetails.totals?.grandTotal ?? "0"}
+            class="font-medium"
+            suffix="грн."
+          />
+        </div>
+      </div>
 
-        <Details.Item>
-          <Details.Title>
-            <Details.Icon icon={CalendarPlusIcon} /> Створено
-          </Details.Title>
-          <Details.Content>
-            {prettifyIsoDateString(
-              workOrderDetails?.workOrder.createdAt,
-              "datetime",
-            )}
-          </Details.Content>
-        </Details.Item>
-
-        {#if workOrderDetails?.workOrder.startedAt}
-          <Details.Item>
-            <Details.Title>
-              <Details.Icon icon={CalendarClockIcon} /> Почато
-            </Details.Title>
-            <Details.Content>
-              {prettifyIsoDateString(
-                workOrderDetails?.workOrder.startedAt,
-                "datetime",
-              )}
-            </Details.Content>
-          </Details.Item>
-        {/if}
-
-        {#if workOrderDetails?.workOrder.completedAt}
-          <Details.Item>
-            <Details.Title>
-              <Details.Icon icon={CalendarCheckIcon} /> Завершено
-            </Details.Title>
-            <Details.Content>
-              {prettifyIsoDateString(
-                workOrderDetails?.workOrder.completedAt,
-                "datetime",
-              )}
-            </Details.Content>
-          </Details.Item>
-        {/if}
-      </Details.Card>
-
-      <Card.Root class="mt-4">
-        <Card.Header>
-          <Card.Title class="flex gap-2 text-xl">
+      <div class="p-4">
+        <div class="flex flex-row items-center justify-between">
+          <div class="flex flex-row gap-2 text-xl font-medium">
             <p>Сервіси</p>
             <p class="text-muted-foreground">
               {workOrderDetails?.laborItems.length}
             </p>
-          </Card.Title>
-          <Card.Action>
-            <ButtonGroup.Root>
-              <Button variant="outline" onclick={laborTableActions.openCreate}
-                >Створити</Button
-              >
-              <Popover.Root bind:open={isPopoverOpen}>
-                <Popover.Trigger>
-                  {#snippet child({ props })}
-                    <Button {...props}>
-                      Додати з бази
-                      <ChevronDownIcon />
-                    </Button>
-                  {/snippet}
-                </Popover.Trigger>
-                <Popover.Content class="w-80 p-0">
-                  <Command.Root>
-                    <Command.Input placeholder="Пошук сервісів..." />
-                    <Command.List>
-                      <Command.Empty>Сервісів не знайдено...</Command.Empty>
-                      <Command.Group value="services">
-                        {#each services ?? [] as service (service.id)}
-                          <Command.Item
-                            value={service.name}
-                            onSelect={async () => {
-                              createLaborItemMutation.mutateAsync({
-                                workOrderId: params.workorderId,
-                                serviceId: service.id,
-                                code: service.code,
-                                name: service.name,
-                                laborHours: service.laborHours,
-                                discountType: "None",
-                                discountAmount: "0",
-                                discountPercent: "0",
-                              });
-                              isPopoverOpen = false;
-                            }}
-                          >
-                            {service.name}
-                          </Command.Item>
-                        {/each}
-                      </Command.Group>
-                    </Command.List>
-                  </Command.Root>
-                </Popover.Content>
-              </Popover.Root>
-            </ButtonGroup.Root>
-          </Card.Action>
-        </Card.Header>
-        <Card.Content>
-          <DataTable
-            table={laborTable}
-            emptyMessage="Сервісів не знайдено..."
-            headerClasses={{ name: "w-full" }}
-          />
-        </Card.Content>
-      </Card.Root>
+          </div>
+          <div>
+            <Button
+              variant="link"
+              onclick={laborTableActions.openCreate}
+              class="text-base">Створити +</Button
+            >
+            <Popover.Root bind:open={isPopoverOpen}>
+              <Popover.Trigger>
+                {#snippet child({ props })}
+                  <Button variant="link" {...props} class="text-base">
+                    Додати з бази
+                    <ChevronDownIcon class="size-4" />
+                  </Button>
+                {/snippet}
+              </Popover.Trigger>
+              <Popover.Content class="w-80 p-0">
+                <Command.Root>
+                  <Command.Input placeholder="Пошук сервісів..." />
+                  <Command.List>
+                    <Command.Empty>Сервісів не знайдено...</Command.Empty>
+                    <Command.Group value="services">
+                      {#each services ?? [] as service (service.id)}
+                        <Command.Item
+                          value={service.name}
+                          class="hover:cursor-pointer"
+                          onSelect={async () => {
+                            createLaborItemMutation.mutateAsync({
+                              workOrderId: params.workorderId,
+                              serviceId: service.id,
+                              code: service.code,
+                              name: service.name,
+                              laborHours: service.laborHours,
+                              discountType: "None",
+                              discountAmount: "0",
+                              discountPercent: "0",
+                            });
+                            isPopoverOpen = false;
+                          }}
+                        >
+                          {service.name}
+                        </Command.Item>
+                      {/each}
+                    </Command.Group>
+                  </Command.List>
+                </Command.Root>
+              </Popover.Content>
+            </Popover.Root>
+          </div>
+        </div>
+        <DataTable
+          table={laborTable}
+          emptyMessage="Сервісів не знайдено..."
+          class="mt-4"
+          headerClasses={{ name: "w-full" }}
+          cellClasses={{ actions: "p-0" }}
+        />
+      </div>
 
-      <Card.Root class="mt-4">
-        <Card.Header>
-          <Card.Title class="flex gap-2 text-xl">
+      <div class="p-4 pt-0">
+        <div class="flex flex-row items-center justify-between">
+          <div class="flex flex-row gap-2 text-xl font-medium">
             <p>Запчастини</p>
             <p class="text-muted-foreground">
               {workOrderDetails?.partItems.length}
             </p>
-          </Card.Title>
+          </div>
           <Card.Action>
-            <Button onclick={partsTableActions.openCreate}>Створити</Button>
+            <Button
+              variant="link"
+              onclick={partsTableActions.openCreate}
+              class="text-base">Додати +</Button
+            >
           </Card.Action>
-        </Card.Header>
-        <Card.Content>
-          <DataTable
-            table={partsTable}
-            emptyMessage="Запчастин не знайдено..."
-            headerClasses={{ name: "w-full" }}
-          />
-        </Card.Content>
-      </Card.Root>
+        </div>
+        <DataTable
+          table={partsTable}
+          emptyMessage="Запчастин не знайдено..."
+          class="mt-4"
+          headerClasses={{ name: "w-full" }}
+          cellClasses={{ status: "p-0", actions: "p-0" }}
+        />
+      </div>
 
       <WorkOrderLaborItemMutationSheet
         bind:open={laborTableActions.isMutationOpen}
@@ -457,6 +603,6 @@
         onDelete={confirmPartDelete}
         description="Цю дію неможливо відмінити."
       />
-    {/if}
-  </div></PageLayout
->
+    </div>
+  {/if}
+</PageLayout>

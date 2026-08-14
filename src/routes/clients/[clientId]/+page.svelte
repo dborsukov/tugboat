@@ -5,28 +5,31 @@
   import { goto } from "$app/navigation";
 
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
+  import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
+  import DotIcon from "@lucide/svelte/icons/dot";
   import PhoneIcon from "@lucide/svelte/icons/phone";
 
-  import * as Card from "$lib/components/ui/card/index.js";
+  import { Button } from "$lib/components/ui/button";
   import { Skeleton } from "$lib/components/ui/skeleton";
 
+  import LogoLoader from "$lib/components/car-logo-loader.svelte";
   import DataTable from "$lib/components/data-table/data-table.svelte";
   import { buildTable } from "$lib/components/data-table/table-builder.svelte";
-  import * as Details from "$lib/components/details/index";
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import { prettifyIsoDateString } from "$lib/tools";
 
-  import CarCard from "../../cars/car-card.svelte";
+  import CarMutationSheet from "../../cars/car-mutation-sheet.svelte";
   import { columns } from "../../work_orders/columns";
   import { workOrderDetailsListByClientIdQueryOptions } from "../../work_orders/queries";
-  import ClientBadge from "../client-badge.svelte";
+  import ClientAvatar from "../client-avatar.svelte";
   import { clientDetailsQueryOptions } from "../queries";
   import DropdownMenu from "./dropdown-menu.svelte";
 
   let { params } = $props();
+  let isCarMutationSheetOpen = $state(false);
   let clientId = $derived(Number(params.clientId));
 
   const combinedQueries = createQueries(() => ({
@@ -71,13 +74,6 @@
 </script>
 
 <PageLayout>
-  {#snippet header()}
-    {#if clientDetails}
-      <div class="h-full flex items-center justify-end">
-        <DropdownMenu clientId={clientDetails?.client?.id} />
-      </div>
-    {/if}
-  {/snippet}
   {#if combinedQueries.isError}
     <FetchErrorDisplay
       message={combinedQueries.firstError?.message}
@@ -85,94 +81,150 @@
       class="mt-20"
     />
   {:else if combinedQueries.isLoading}
-    <Skeleton class="w-full h-25" />
-    <Skeleton class="mt-4 w-full h-40" />
-    <Skeleton class="mt-4 w-full h-40" />
+    <div class="mt-4 border border-border rounded bg-card">
+      <!-- Header Skeleton -->
+      <div class="p-4 border-b border-border">
+        <div class="flex flex-row items-center gap-4">
+          <Skeleton class="size-16 rounded-full shrink-0" />
+          <div class="flex flex-col gap-2 w-full">
+            <Skeleton class="h-7 w-48" />
+            <div class="flex flex-row items-center gap-2">
+              <Skeleton class="h-4 w-32" />
+              <Skeleton class="size-1 rounded-full shrink-0" />
+              <Skeleton class="h-4 w-32" />
+            </div>
+          </div>
+          <div class="h-full ml-auto flex flex-col items-start">
+            <Skeleton class="size-8 rounded-md" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Cars Section Skeleton -->
+      <div class="p-4 border-b border-border">
+        <div class="flex flex-row items-center gap-2 pb-2">
+          <Skeleton class="h-7 w-28" />
+          <Skeleton class="h-7 w-8" />
+          <Skeleton class="ml-auto h-9 w-24" />
+        </div>
+        <div class="flex flex-col items-start mt-2">
+          {#each Array(2) as _}
+            <div class="h-12 w-full px-4 flex flex-row items-center gap-4">
+              <Skeleton class="h-8 w-12 rounded-sm" />
+              <Skeleton class="h-5 w-40" />
+              <Skeleton class="h-5 w-12 ml-auto" />
+              <Skeleton class="size-5 rounded-sm shrink-0" />
+            </div>
+          {/each}
+        </div>
+      </div>
+
+      <!-- Work Orders Section Skeleton -->
+      <div class="p-4">
+        <div class="flex flex-row items-center gap-2 mb-4">
+          <Skeleton class="h-7 w-32" />
+          <Skeleton class="h-7 w-8" />
+        </div>
+
+        <!-- Table Skeleton -->
+        <div class="mt-4 flex flex-col gap-2">
+          <Skeleton class="h-10 w-full rounded-md" />
+          <Skeleton class="h-12 w-full rounded-md" />
+          <Skeleton class="h-12 w-full rounded-md" />
+        </div>
+      </div>
+    </div>
   {:else if !clientDetails}
     <NotFound
       message={`Клієнта не знайдено (ID: ${params.clientId})`}
-      class="mt-20"
+      class="mt-10"
     />
   {:else}
-    <div class="p-4">
-      <Card.Root>
-        <Card.Content class="flex items-center justify-between">
-          <ClientBadge
-            name={clientDetails?.client?.name}
-            class="text-xl font-semibold"
-            iconSize="size-10"
-          />
-          <p class="text-muted-foreground">ID: {clientDetails?.client?.id}</p>
-        </Card.Content>
-      </Card.Root>
-      <Details.Card class="mt-4">
-        <Details.Item>
-          <Details.Title>
-            <Details.Icon icon={PhoneIcon} /> Номер
-          </Details.Title>
-          <Details.Content>
-            <PatternText
-              value={clientDetails?.client?.phone}
-              format={MaskPatterns.PHONE_INTERNATIONAL}
-              class="text-end select-none!"
-            />
-          </Details.Content>
-        </Details.Item>
-
-        <Details.Item>
-          <Details.Title>
-            <Details.Icon icon={CalendarPlusIcon} /> Створено
-          </Details.Title>
-          <Details.Content>
-            {prettifyIsoDateString(clientDetails?.client?.createdAt, "long")}
-          </Details.Content>
-        </Details.Item>
-      </Details.Card>
-
-      <Card.Root class="mt-4 gap-2">
-        <Card.Header>
-          <Card.Title class="flex gap-2 text-xl">
-            <p>Автомобілі</p>
-            <p class="text-muted-foreground">{clientDetails?.cars?.length}</p>
-          </Card.Title>
-        </Card.Header>
-        {#if clientDetails?.cars?.length != 0}
-          <Card.Content>
-            <div
-              class="grid gap-4 grid-cols-[repeat(auto-fit,minmax(100px,390px))] mt-4 w-full"
-            >
-              {#each clientDetails?.cars as cli (cli.car.id)}
-                <a href="/cars/{cli.car.id}" class="w-full">
-                  <CarCard
-                    car={cli.car}
-                    client={clientDetails.client}
-                    brand={cli.brand}
-                    short
-                  />
-                </a>
-              {/each}
+    <div class="mt-4 border border-border rounded bg-card">
+      <div class="p-4 border-b border-border">
+        <div class="flex flex-row items-center gap-4">
+          <ClientAvatar name={clientDetails?.client?.name} class="size-16" />
+          <div class="flex flex-col gap-2">
+            <p class="text-xl font-semibold">{clientDetails?.client?.name}</p>
+            <div class="flex flex-row items-center">
+              <PhoneIcon class="size-4 mr-2 text-muted-foreground" />
+              <PatternText
+                value={clientDetails?.client?.phone}
+                format={MaskPatterns.PHONE_INTERNATIONAL}
+                class="text-end select-none!"
+              />
+              <DotIcon class="mx-1 size-4 text-muted-foreground" />
+              <CalendarPlusIcon class="size-4 mr-2 text-muted-foreground" />
+              {prettifyIsoDateString(clientDetails?.client?.createdAt, "long")}
             </div>
-          </Card.Content>
-        {/if}
-      </Card.Root>
+          </div>
+          <div class="h-full ml-auto flex flex-col items-start">
+            <DropdownMenu clientId={clientDetails?.client?.id} />
+          </div>
+        </div>
+      </div>
 
-      <Card.Root class="mt-4">
-        <Card.Header>
-          <Card.Title class="flex gap-2 text-xl">
-            <p>Замовлення</p>
-            <p class="text-muted-foreground">{workOrderListItems.length}</p>
-          </Card.Title>
-        </Card.Header>
-        {#if workOrderListItems.length != 0}
-          <Card.Content>
-            <DataTable
-              {table}
-              emptyMessage="Замовлень не знайдено..."
-              onRowClick={(row) => goto(`/work_orders/${row.workOrder.id}`)}
-            />
-          </Card.Content>
+      <div class="p-4 border-b border-border">
+        <div class="flex flex-row gap-2 items-center text-xl font-medium pb-2">
+          <p>Автомобілі</p>
+          <p class="text-muted-foreground">
+            {clientDetails?.cars?.length}
+          </p>
+          <Button
+            variant="link"
+            class="ml-auto text-base"
+            onclick={() => (isCarMutationSheetOpen = !isCarMutationSheetOpen)}
+            >Додати +</Button
+          >
+          <CarMutationSheet
+            initClientId={clientDetails?.client?.id}
+            bind:open={isCarMutationSheetOpen}
+          />
+        </div>
+        {#if clientDetails?.cars?.length != 0}
+          <div class="flex flex-col items-start">
+            {#each clientDetails?.cars as cli (cli.car.id)}
+              <div class="h-12 w-full">
+                <Button
+                  variant="ghost"
+                  class="h-12 w-full justify-start gap-4"
+                  onclick={async () => await goto(`/cars/${cli.car?.id}`)}
+                >
+                  <LogoLoader slug={cli.brand.iconSlug} class="h-3/4" />
+                  <p class="text-base font-normal">
+                    {cli.brand?.id != 0 ? cli.brand?.name + " " : ""}{cli.car
+                      ?.model}
+                  </p>
+                  <p class="text-muted-foreground ml-auto">{cli.car?.year}</p>
+                  <ChevronRightIcon class="text-muted-foreground" />
+                </Button>
+              </div>
+            {/each}
+          </div>
+        {:else}
+          <p class="text-muted-foreground">Автомобілей ще не додано</p>
         {/if}
-      </Card.Root>
+      </div>
+
+      <div class="p-4">
+        <div class="flex flex-row gap-2 text-xl font-medium">
+          <p>Замовлення</p>
+          <p class="text-muted-foreground">
+            {workOrderListItems.length}
+          </p>
+        </div>
+        {#if workOrderListItems.length != 0}
+          <DataTable
+            {table}
+            class="mt-4"
+            emptyMessage="Пусто..."
+            onRowClick={(row) => goto(`/work_orders/${row.workOrder.id}`)}
+            cellClasses={{ status: "p-0" }}
+          />
+        {:else}
+          <p class="text-muted-foreground">Замовлень ще не було</p>
+        {/if}
+      </div>
     </div>
   {/if}
 </PageLayout>

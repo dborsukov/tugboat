@@ -3,7 +3,7 @@
 
   import { goto } from "$app/navigation";
 
-  import EllipsisIcon from "@lucide/svelte/icons/ellipsis";
+  import EllipsisIcon from "@lucide/svelte/icons/ellipsis-vertical";
   import EditIcon from "@lucide/svelte/icons/square-pen";
   import TrashIcon from "@lucide/svelte/icons/trash";
 
@@ -15,7 +15,7 @@
   import { createDeleteWorkOrderMutation } from "../queries";
   import WorkOrderMutationSheet from "../work-order-mutation-sheet.svelte";
 
-  let { id }: { id: string } = $props();
+  let { workOrderId }: { workOrderId: string } = $props();
   let isSheetOpen = $state(false);
   let isDeleteDialogOpen = $state(false);
 
@@ -24,7 +24,7 @@
   const deleteWorkOrderMutation = createDeleteWorkOrderMutation(queryClient);
 
   async function handleDelete() {
-    deleteWorkOrderMutation.mutate(id, {
+    deleteWorkOrderMutation.mutate(workOrderId, {
       onSuccess: async () => {
         isDeleteDialogOpen = false;
         await goto("/work_orders");
@@ -35,7 +35,7 @@
 
 <DropdownMenu.Root>
   <DropdownMenu.Trigger
-    class={buttonVariants({ variant: "outline", size: "icon" })}
+    class={buttonVariants({ variant: "ghost", size: "icon-lg" })}
   >
     <EllipsisIcon />
   </DropdownMenu.Trigger>
@@ -57,7 +57,7 @@
   </DropdownMenu.Content>
 </DropdownMenu.Root>
 
-<WorkOrderMutationSheet bind:open={isSheetOpen} mode="edit" workOrderId={id} />
+<WorkOrderMutationSheet bind:open={isSheetOpen} mode="edit" {workOrderId} />
 <DeleteDialog
   bind:open={isDeleteDialogOpen}
   onDelete={handleDelete}

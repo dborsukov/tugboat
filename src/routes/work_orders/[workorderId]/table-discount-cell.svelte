@@ -19,7 +19,7 @@
 
 <div class={cn("flex gap-2", className)}>
   {#if type === "None"}
-    <p class="text-muted-foreground">Не вказано</p>
+    <p class="text-muted-foreground">—</p>
   {:else if type === "Fixed"}
     <NumericText
       value={amount}

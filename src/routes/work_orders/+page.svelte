@@ -15,7 +15,7 @@
 
   import { columns } from "./columns";
   import { createWorkOrderDetailsDtoListQuery } from "./queries";
-  import { statusFilterOptions } from "./work-order-status";
+  import { workOrderStatusFilterOptions } from "./work-order-status";
 
   let inputValue: string = $state("");
   let searchInputEl = $state<HTMLInputElement | null>(null);
@@ -62,7 +62,7 @@
         <DataTableFacetedFilter
           column={statusCol}
           title="Статус"
-          options={statusFilterOptions}
+          options={workOrderStatusFilterOptions}
           disabled={interactionDisabled}
         />
       {/if}
@@ -80,22 +80,48 @@
       {/if}
     </div>
   {/snippet}
-  <div class="p-4">
-    {#if workOrderDetailsDtoListQuery.isError}
-      <FetchErrorDisplay
-        message={workOrderDetailsDtoListQuery.error?.message}
-        onRetry={workOrderDetailsDtoListQuery.refetch}
-        class="mt-20"
-      />
-    {:else if workOrderDetailsDtoListQuery.isLoading}
-      <Skeleton class="h-50 w-full rounded-lg" />
-    {:else}
-      <DataTable
-        {table}
-        emptyMessage="Замовлень не знайдено..."
-        onRowClick={(row) => goto(`/work_orders/${row.workOrder.id}`)}
-        class="rounded-sm shadow-xs"
-      />
-    {/if}
-  </div>
+
+  {#if workOrderDetailsDtoListQuery.isError}
+    <FetchErrorDisplay
+      message={workOrderDetailsDtoListQuery.error?.message}
+      onRetry={workOrderDetailsDtoListQuery.refetch}
+      class="mt-10"
+    />
+  {:else if workOrderDetailsDtoListQuery.isLoading}
+    <div class="mt-4 border border-border rounded-sm shadow-xs bg-card">
+      <!-- Table Header Skeleton -->
+      <div
+        class="flex items-center gap-4 border-b border-border p-4 bg-muted/50 rounded-t-sm"
+      >
+        <Skeleton class="h-4 w-20" />
+        <Skeleton class="h-4 w-37.5" />
+        <Skeleton class="h-4 w-37.5" />
+        <Skeleton class="h-4 w-25" />
+        <Skeleton class="h-4 w-25 ml-auto" />
+      </div>
+
+      <!-- Table Body Skeleton -->
+      <div class="flex flex-col">
+        {#each Array(6) as _}
+          <div
+            class="flex items-center gap-4 border-b border-border p-4 last:border-0"
+          >
+            <Skeleton class="h-5 w-20" />
+            <Skeleton class="h-5 w-45" />
+            <Skeleton class="h-5 w-40" />
+            <Skeleton class="h-5 w-25" />
+            <Skeleton class="h-5 w-25 ml-auto" />
+          </div>
+        {/each}
+      </div>
+    </div>
+  {:else}
+    <DataTable
+      {table}
+      emptyMessage="Замовлень не знайдено..."
+      onRowClick={(row) => goto(`/work_orders/${row.workOrder.id}`)}
+      class="mt-4 rounded-sm shadow-xs bg-card"
+      cellClasses={{ status: "p-0" }}
+    />
+  {/if}
 </PageLayout>

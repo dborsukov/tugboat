@@ -38,7 +38,7 @@
     onEscapeKeydown={(e) => e.preventDefault()}
     onInteractOutside={(e) => e.preventDefault()}
   >
-    <Sheet.Header class="border border-muted">
+    <Sheet.Header class="border-b border-border">
       <Sheet.Title>{title}</Sheet.Title>
       <Sheet.Description>{description}</Sheet.Description>
     </Sheet.Header>
@@ -51,7 +51,7 @@
       {@render children()}
     </form>
 
-    <Sheet.Footer class="border-t border-muted">
+    <Sheet.Footer class="border-t border-border">
       {#if footer}
         {@render footer()}
       {:else}

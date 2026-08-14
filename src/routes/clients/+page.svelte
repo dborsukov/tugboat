@@ -1,7 +1,11 @@
 <script lang="ts">
   import { compareItems, rankItem } from "@tanstack/match-sorter-utils";
+  import { MaskPatterns, PatternText } from "svelte-number-format";
+
+  import { goto } from "$app/navigation";
 
   import SortIcon from "@lucide/svelte/icons/arrow-up-down";
+  import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
   import PlusIcon from "@lucide/svelte/icons/plus";
 
   import { Button } from "$lib/components/ui/button";
@@ -13,7 +17,7 @@
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
-  import ClientCard from "./client-card.svelte";
+  import ClientAvatar from "./client-avatar.svelte";
   import ClientMutationSheet from "./client-mutation-sheet.svelte";
   import { createClientsQuery } from "./queries";
 
@@ -103,7 +107,7 @@
   $effect(() => searchInputEl?.focus());
 </script>
 
-<PageLayout>
+<PageLayout contentWidthClass="max-w-5xl" headerWidthClass="max-w-5xl">
   {#snippet header()}
     <div class="h-full flex items-center gap-2">
       <Input
@@ -131,7 +135,11 @@
           <Select.Item value="name-desc">{sortLabels["name-desc"]}</Select.Item>
         </Select.Content>
       </Select.Root>
-      <Button variant="outline" onclick={() => (isSheetOpen = !isSheetOpen)}>
+      <Button
+        variant="outline"
+        onclick={() => (isSheetOpen = !isSheetOpen)}
+        disabled={!clientsQuery.isSuccess}
+      >
         Додати <PlusIcon />
       </Button>
       <ClientMutationSheet bind:open={isSheetOpen} />
@@ -142,34 +150,61 @@
     <FetchErrorDisplay
       message={clientsQuery.error?.message}
       onRetry={clientsQuery.refetch}
-      class="mt-20"
+      class="mt-10"
     />
   {:else if clientsQuery.isLoading}
     <div
-      class="grid gap-4 p-4 grid-cols-[repeat(auto-fit,minmax(200px,405px))] justify-center"
+      class="mt-4 flex flex-col border border-border rounded divide-y divide-border"
     >
-      <Skeleton class="w-full h-35" />
-      <Skeleton class="w-full h-35" />
-      <Skeleton class="w-full h-35" />
-      <Skeleton class="w-full h-35" />
-      <Skeleton class="w-full h-35" />
-      <Skeleton class="w-full h-35" />
+      <Skeleton class="w-full h-14" />
+      <Skeleton class="w-full h-14" />
+      <Skeleton class="w-full h-14" />
+      <Skeleton class="w-full h-14" />
+      <Skeleton class="w-full h-14" />
     </div>
   {:else if paginatedClients.length === 0}
-    <p class="text-center text-muted-foreground mt-20">Клієнтів не знайдено</p>
+    {#if searchQuery}
+      <div
+        class="mt-4 p-4 flex border border-border rounded bg-card items-center justify-center"
+      >
+        <p>Пошук не повернув результатів</p>
+      </div>
+    {:else}
+      <div
+        class="mt-4 p-4 flex flex-col border border-border rounded bg-card items-center justify-center"
+      >
+        <p>Клієнтів не знайдено</p>
+        <p class="text-muted-foreground">
+          Натисніть "Додати +" щоб додати нового клієнта
+        </p>
+      </div>
+    {/if}
   {:else}
     <div
-      class="grid gap-4 p-4 grid-cols-[repeat(auto-fit,minmax(200px,405px))] justify-center"
+      class="mt-4 flex flex-col border border-border rounded divide-y divide-border bg-card"
     >
       {#each paginatedClients as client (client.id)}
-        <a href="/clients/{client.id}" class="w-full">
-          <ClientCard {client} />
-        </a>
+        <Button
+          variant="ghost"
+          class="w-full h-auto justify-start rounded-none px-5 py-3 first:pt-4 last:pb-4"
+          onclick={async () => await goto(`/clients/${client.id}`)}
+        >
+          <div class="flex w-full items-center gap-3.5">
+            <ClientAvatar name={client?.name} class="size-9 shrink-0" />
+            <p class="flex-1 min-w-0 truncate text-left text-base font-medium">
+              {client?.name}
+            </p>
+            <PatternText
+              value={client?.phone}
+              format={MaskPatterns.PHONE_INTERNATIONAL}
+              class="shrink-0 text-sm text-muted-foreground select-none!"
+            />
+            <ChevronRightIcon class="size-4 shrink-0 text-muted-foreground" />
+          </div>
+        </Button>
       {/each}
     </div>
-  {/if}
 
-  {#snippet footer()}
     <div class="p-4 flex items-center justify-center">
       <Pagination.Root
         count={filteredClients.length}
@@ -177,9 +212,11 @@
         bind:page={currentPage}
       >
         {#snippet children({ pages, currentPage })}
-          <Pagination.Content>
+          <Pagination.Content class="gap-5">
             <Pagination.Item>
-              <Pagination.PrevButton />
+              <Pagination.PrevButton
+                class="border-none shadow-none text-muted-foreground hover:text-foreground"
+              />
             </Pagination.Item>
 
             {#each pages as page (page.key)}
@@ -189,7 +226,13 @@
                 </Pagination.Item>
               {:else}
                 <Pagination.Item>
-                  <Pagination.Link {page} isActive={currentPage === page.value}>
+                  <Pagination.Link
+                    {page}
+                    isActive={currentPage === page.value}
+                    class="border-none shadow-none {currentPage === page.value
+                      ? 'font-semibold text-foreground'
+                      : 'text-muted-foreground'}"
+                  >
                     {page.value}
                   </Pagination.Link>
                 </Pagination.Item>
@@ -197,11 +240,13 @@
             {/each}
 
             <Pagination.Item>
-              <Pagination.NextButton />
+              <Pagination.NextButton
+                class="border-none shadow-none text-muted-foreground hover:text-foreground"
+              />
             </Pagination.Item>
           </Pagination.Content>
         {/snippet}
       </Pagination.Root>
     </div>
-  {/snippet}
+  {/if}
 </PageLayout>
