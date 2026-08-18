@@ -16,9 +16,11 @@
   let {
     workOrder,
     status = "Received",
+    class: className,
   }: {
     workOrder?: WorkOrder;
     status?: WorkOrderStatus;
+    class?: string;
   } = $props();
 
   const localStatus = $derived(
@@ -49,6 +51,7 @@
           styles.base,
           styles.highlighted,
           "text-base px-2 border-none",
+          className,
         )}
         {...props}
       >
@@ -57,7 +60,7 @@
         {#if updateWorkOrderMutation.isPending}
           <Spinner />
         {:else}
-          <ChevronDownIcon />
+          <ChevronDownIcon class="size-5" />
         {/if}
       </Button>
     {/snippet}

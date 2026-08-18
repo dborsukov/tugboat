@@ -22,8 +22,13 @@ pub struct WorkOrderDetailsDto {
 #[serde(rename_all = "camelCase")]
 pub struct WorkOrderTotals {
     pub labor_total: Decimal,
+    pub labor_cost: Decimal,
     pub parts_total: Decimal,
+    pub parts_cost: Decimal,
     pub subtotal: Decimal,
+    pub labor_discount: Decimal,
+    pub parts_discount: Decimal,
+    pub order_discount: Decimal,
     pub grand_total: Decimal,
 }
 
@@ -38,7 +43,9 @@ pub struct LaborItemDto {
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LaborItemTotals {
+    pub cost: Decimal,
     pub subtotal: Decimal,
+    pub discount: Decimal,
     pub total: Decimal,
 }
 
@@ -53,7 +60,9 @@ pub struct PartItemDto {
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PartItemTotals {
+    pub cost: Decimal,
     pub retail_price: Decimal,
     pub discounted_price: Decimal,
+    pub discount: Decimal,
     pub total: Decimal,
 }

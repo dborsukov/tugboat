@@ -184,7 +184,9 @@ export type LaborItemDto = {
 } & LaborItem;
 
 export type LaborItemTotals = {
+	cost: string,
 	subtotal: string,
+	discount: string,
 	total: string,
 };
 
@@ -208,8 +210,10 @@ export type PartItemDto = {
 } & PartItem;
 
 export type PartItemTotals = {
+	cost: string,
 	retailPrice: string,
 	discountedPrice: string,
+	discount: string,
 	total: string,
 };
 
@@ -321,8 +325,13 @@ export type WorkOrderStatus = "Received" | "InDiagnostics" | "AwaitingApproval" 
 
 export type WorkOrderTotals = {
 	laborTotal: string,
+	laborCost: string,
 	partsTotal: string,
+	partsCost: string,
 	subtotal: string,
+	laborDiscount: string,
+	partsDiscount: string,
+	orderDiscount: string,
 	grandTotal: string,
 };
 

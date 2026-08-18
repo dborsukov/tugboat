@@ -13,14 +13,26 @@ pub fn calculate_labor_item_totals(labor_item: &LaborItem, rate: Decimal) -> Lab
             * (Decimal::ONE - labor_item.discount_percent / Decimal::ONE_HUNDRED))
             .round_dp(2),
     };
+    let total = total.max(Decimal::ZERO);
+
+    // Derived from subtotal - total (rather than discount_amount/discount_percent
+    // directly) so it always reflects what was actually deducted, including cases
+    // where the raw discount would have pushed the total below zero.
+    let discount = (subtotal - total).max(Decimal::ZERO);
 
     LaborItemTotals {
+        // TODO: figure out how to implement labor costs
+        // No logic for labor cost, copy subtotal for now
+        cost: subtotal,
         subtotal,
-        total: total.max(Decimal::ZERO),
+        discount,
+        total,
     }
 }
 
 pub fn calculate_part_item_totals(part_item: &PartItem) -> PartItemTotals {
+    let cost = (part_item.base_cost * part_item.quantity).round_dp(2);
+
     let retail_price = (part_item.base_cost
         * (Decimal::ONE + part_item.markup / Decimal::ONE_HUNDRED))
         .round_dp(2);
@@ -33,19 +45,32 @@ pub fn calculate_part_item_totals(part_item: &PartItem) -> PartItemTotals {
             .round_dp(2),
     };
 
-    let total = (discounted_price * part_item.quantity).round_dp(2);
+    let retail_total = (retail_price * part_item.quantity).round_dp(2);
+    let total = (discounted_price * part_item.quantity)
+        .round_dp(2)
+        .max(Decimal::ZERO);
+
+    // Quantity-adjusted, so it lines up with `total` (also quantity-adjusted)
+    // rather than the per-unit retail_price/discounted_price fields.
+    let discount = (retail_total - total).max(Decimal::ZERO);
 
     PartItemTotals {
+        cost,
         retail_price,
         discounted_price,
-        total: total.max(Decimal::ZERO),
+        discount,
+        total,
     }
 }
 
 pub fn calculate_work_order_totals(
     work_order: &WorkOrder,
     labor_total: Decimal,
+    labor_cost: Decimal,
     parts_total: Decimal,
+    parts_cost: Decimal,
+    labor_discount: Decimal,
+    parts_discount: Decimal,
 ) -> WorkOrderTotals {
     let subtotal = labor_total + parts_total;
 
@@ -56,11 +81,21 @@ pub fn calculate_work_order_totals(
             * (Decimal::ONE - work_order.discount_percent / Decimal::ONE_HUNDRED))
             .round_dp(2),
     };
+    let grand_total = grand_total.max(Decimal::ZERO);
+
+    // The work order's own discount, on top of whatever was already taken off
+    // individual labor/part items.
+    let order_discount = (subtotal - grand_total).max(Decimal::ZERO);
 
     WorkOrderTotals {
         labor_total,
+        labor_cost,
         parts_total,
+        parts_cost,
         subtotal,
-        grand_total: grand_total.max(Decimal::ZERO),
+        labor_discount,
+        parts_discount,
+        order_discount,
+        grand_total,
     }
 }

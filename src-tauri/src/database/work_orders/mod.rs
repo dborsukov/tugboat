@@ -104,8 +104,20 @@ async fn build_work_order_details_dto_with_context(
 
     let labor_sum: Decimal = labor_item_dtos.iter().map(|dto| dto.totals.total).sum();
     let parts_sum: Decimal = part_item_dtos.iter().map(|dto| dto.totals.total).sum();
+    let labor_cost_sum: Decimal = labor_item_dtos.iter().map(|dto| dto.totals.cost).sum();
+    let parts_cost_sum: Decimal = part_item_dtos.iter().map(|dto| dto.totals.cost).sum();
+    let labor_discount_sum: Decimal = labor_item_dtos.iter().map(|dto| dto.totals.discount).sum();
+    let parts_discount_sum: Decimal = part_item_dtos.iter().map(|dto| dto.totals.discount).sum();
 
-    let totals = pricing::calculate_work_order_totals(&work_order, labor_sum, parts_sum);
+    let totals = pricing::calculate_work_order_totals(
+        &work_order,
+        labor_sum,
+        labor_cost_sum,
+        parts_sum,
+        parts_cost_sum,
+        labor_discount_sum,
+        parts_discount_sum,
+    );
 
     Ok(WorkOrderDetailsDto {
         work_order,

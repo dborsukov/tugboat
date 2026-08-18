@@ -7,6 +7,7 @@ import CurrencyDisplay from "$lib/components/currency-display.svelte";
 
 import type { LaborItemDto } from "$lib/bindings";
 
+import TableDecimalDisplayCell from "../../services/table-decimal-display-cell.svelte";
 import DataTableActions from "./labor-table-actions-cell.svelte";
 import TableDiscountCell from "./table-discount-cell.svelte";
 
@@ -53,13 +54,9 @@ export const columns: ColumnDef<LaborItemDto>[] = [
       );
     },
     cell: ({ row }) => {
-      const nameCellSnippet = createRawSnippet(() => {
-        return {
-          render: () =>
-            `<div class="text-center font-mono">${row.original.laborHours}</div>`,
-        };
+      return renderComponent(TableDecimalDisplayCell, {
+        value: row.original.laborHours,
       });
-      return renderSnippet(nameCellSnippet);
     },
   },
   {

@@ -30,6 +30,6 @@
     />
     <p>грн.</p>
   {:else}
-    <p>{percent} %</p>
+    <p>{percent}%</p>
   {/if}
 </div>

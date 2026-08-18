@@ -4,14 +4,9 @@
 
   import { goto } from "$app/navigation";
 
-  import DiscountIcon from "@lucide/svelte/icons/badge-percent";
-  import PartsIcon from "@lucide/svelte/icons/boxes";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
-  import ReceiptTextIcon from "@lucide/svelte/icons/equal";
   import Info from "@lucide/svelte/icons/info";
-  import PhoneIcon from "@lucide/svelte/icons/phone";
-  import WrenchIcon from "@lucide/svelte/icons/wrench";
 
   import Button from "$lib/components/ui/button/button.svelte";
   import * as Card from "$lib/components/ui/card/index";
@@ -40,6 +35,7 @@
     workOrderDetailsQueryOptions,
   } from "../queries";
   import StatusSelector from "../work-order-status-selector.svelte";
+  import WorkOrderTotalsPopover from "../work-order-totals-popover.svelte";
   import DropdownMenu from "./dropdown-menu.svelte";
   import {
     columns as laborColumns,
@@ -154,11 +150,7 @@
   }
 
   function carSecondaryLine(wod: typeof workOrderDetails) {
-    return [
-      wod?.carDto?.car?.year,
-      wod?.carDto?.car?.vin,
-      wod?.carDto?.car?.licensePlate,
-    ]
+    return [wod?.carDto?.car?.licensePlate, wod?.carDto?.car?.year]
       .filter(Boolean)
       .join(" · ");
   }
@@ -364,7 +356,8 @@
           />
         </div>
 
-        <div class="flex items-center ml-auto mr-2">
+        <div class="flex items-center ml-auto mr-2 text-base">
+          <WorkOrderTotalsPopover {workOrderDetails} class="mr-2" />
           <StatusSelector workOrder={workOrderDetails?.workOrder} />
           <DropdownMenu workOrderId={workOrderDetails.workOrder?.id ?? ""} />
         </div>
@@ -374,124 +367,52 @@
         <div class="flex-1">
           <Button
             variant="ghost"
-            class="w-full h-auto gap-4 justify-start items-center rounded-none p-4 text-base font-normal"
+            class="w-full h-auto gap-2 items-center rounded-none p-2 text-base font-normal"
             onclick={async () => {
               await goto(`/cars/${workOrderDetails?.carDto?.car?.id}`);
             }}
           >
             <CarLogoLoader
               slug={workOrderDetails?.carDto?.brand?.iconSlug}
-              class="size-14"
+              class="size-6"
             />
-            <div class="flex flex-col items-start gap-1">
-              <p class="truncate text-lg font-medium">
-                {workOrderDetails?.carDto?.brand?.name}
-                {workOrderDetails?.carDto?.car?.model}
-              </p>
-              <p class="truncate text-muted-foreground">
-                {carSecondaryLine(workOrderDetails)}
-              </p>
-            </div>
-            <ChevronRight class="ml-auto size-5 text-muted-foreground" />
+            <p class="text-base font-medium">
+              {workOrderDetails?.carDto?.brand?.name}
+              {workOrderDetails?.carDto?.car?.model}
+            </p>
+            <p class="ml-auto text-muted-foreground">
+              {carSecondaryLine(workOrderDetails)}
+            </p>
+            <ChevronRight class="size-4 text-muted-foreground" />
           </Button>
         </div>
         <div class="flex-1">
           <Button
             variant="ghost"
-            class="w-full h-auto gap-4 justify-start items-center rounded-none p-4 text-base font-normal"
+            class="w-full h-auto gap-2 items-center rounded-none p-2 text-base font-normal"
             onclick={async () => {
               await goto(`/clients/${workOrderDetails?.client?.id}`);
             }}
           >
             <ClientAvatar
               name={workOrderDetails?.client?.name}
-              class="size-14"
+              class="size-6"
             />
-            <div class="flex flex-col items-start gap-1">
-              <p class="text-xl font-medium">
-                {workOrderDetails?.client?.name}
-              </p>
-              <div class="flex flex-row items-center">
-                <PhoneIcon class="size-4 mr-2 text-muted-foreground" />
-                <PatternText
-                  value={workOrderDetails?.client?.phone}
-                  format={MaskPatterns.PHONE_INTERNATIONAL}
-                  class="text-end select-none!"
-                />
-              </div>
-            </div>
-            <ChevronRight class="ml-auto size-5 text-muted-foreground" />
+            <p class="text-base font-medium">
+              {workOrderDetails?.client?.name}
+            </p>
+            <PatternText
+              value={workOrderDetails?.client?.phone}
+              format={MaskPatterns.PHONE_INTERNATIONAL}
+              class="ml-auto select-none! text-muted-foreground"
+            />
+            <ChevronRight class="size-4 text-muted-foreground" />
           </Button>
         </div>
       </div>
+    </div>
 
-      <div class="h-15 flex flex-row items-center border-b border-border">
-        <div class="p-4 flex flex-col justify-start items-start">
-          <div class="flex flex-row items-center gap-1 text-muted-foreground">
-            <PartsIcon class="size-4" />
-            <span class="text-sm">Запчастини</span>
-          </div>
-          <CurrencyDisplay
-            amount={workOrderDetails.totals?.partsTotal ?? "0"}
-            suffix="грн."
-          />
-        </div>
-
-        <div class="block h-8/12 w-px bg-border"></div>
-
-        <div class="p-4 flex flex-col justify-start items-start">
-          <div class="flex flex-row items-center gap-1 text-muted-foreground">
-            <WrenchIcon class="size-4" />
-            <span class="text-sm">Робота</span>
-          </div>
-          <CurrencyDisplay
-            amount={workOrderDetails.totals?.laborTotal ?? "0"}
-            suffix="грн."
-          />
-        </div>
-
-        {#if workOrderDetails.workOrder?.discountType != "None"}
-          <div class="block h-8/12 w-px bg-border"></div>
-
-          <div
-            class="h-9/12 flex flex-col ml-2 px-2 py-1 justify-center items-start rounded-md bg-linear-to-r from-amber-400/25 dark:from-amber-700/35 to-transparent"
-          >
-            <div class="flex flex-row items-center gap-1 text-muted-foreground">
-              <DiscountIcon class="size-4 text-amber-700 dark:text-amber-200" />
-              <span class="text-xs text-amber-700 dark:text-amber-200"
-                >Знижка</span
-              >
-            </div>
-            {#if workOrderDetails.workOrder?.discountType === "Fixed"}
-              <CurrencyDisplay
-                amount={workOrderDetails.workOrder?.discountAmount}
-                suffix="грн."
-              />
-            {:else}
-              {workOrderDetails.workOrder?.discountPercent}%
-            {/if}
-          </div>
-        {/if}
-
-        <div
-          class="ml-auto h-full flex flex-col px-2 py-1 justify-center items-end rounded-md bg-linear-to-l from-emerald-400/25 dark:from-emerald-700/35 to-transparent"
-        >
-          <div class="flex flex-row items-center gap-1 text-muted-foreground">
-            <ReceiptTextIcon
-              class="size-4 text-emerald-700 dark:text-emerald-200"
-            />
-            <span class="text-xs text-emerald-700 dark:text-emerald-200"
-              >Разом</span
-            >
-          </div>
-          <CurrencyDisplay
-            amount={workOrderDetails.totals?.grandTotal ?? "0"}
-            class="font-medium"
-            suffix="грн."
-          />
-        </div>
-      </div>
-
+    <div class="mt-4 border border-border rounded bg-card">
       <div class="p-4">
         <div class="flex flex-row items-center justify-between">
           <div class="flex flex-row gap-2 text-xl font-medium">
@@ -579,7 +500,11 @@
           emptyMessage="Запчастин не знайдено..."
           class="mt-4"
           headerClasses={{ name: "w-full" }}
-          cellClasses={{ status: "p-0", actions: "p-0" }}
+          cellClasses={{
+            status: "p-0",
+            actions: "p-0",
+            discountedPrice: "p-0",
+          }}
         />
       </div>
 

@@ -31,7 +31,7 @@ export type StatusColor =
   | "violet"
   | "blue"
   | "teal"
-  | "emerald"
+  | "green"
   | "rose";
 
 export const statusColorThemes: Record<
@@ -92,13 +92,13 @@ export const statusColorThemes: Record<
       "data-highlighted:bg-teal-200 data-highlighted:text-teal-900 dark:data-highlighted:bg-teal-500/25 dark:data-highlighted:text-teal-100",
     border: "border-teal-300 dark:border-teal-500/30",
   },
-  emerald: {
-    bgColor: "bg-emerald-700",
-    textColor: "text-emerald-300",
-    base: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+  green: {
+    bgColor: "bg-green-700",
+    textColor: "text-green-300",
+    base: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
     highlighted:
-      "data-highlighted:bg-emerald-200 data-highlighted:text-emerald-900 dark:data-highlighted:bg-emerald-500/25 dark:data-highlighted:text-emerald-100",
-    border: "border-emerald-300 dark:border-emerald-500/30",
+      "data-highlighted:bg-green-200 data-highlighted:text-green-900 dark:data-highlighted:bg-green-500/25 dark:data-highlighted:text-green-100",
+    border: "border-green-300 dark:border-green-500/30",
   },
   rose: {
     bgColor: "bg-rose-700",
@@ -147,10 +147,10 @@ export const statusConfig: Record<
   ReadyForPickup: {
     text: "Готово до видачі",
     icon: ReadyForPickupIcon,
-    color: "emerald",
+    color: "green",
     rounding: "",
   },
-  Paid: { text: "Сплачено", icon: PaidIcon, color: "emerald", rounding: "" },
+  Paid: { text: "Сплачено", icon: PaidIcon, color: "green", rounding: "" },
   Canceled: {
     text: "Скасовано",
     icon: CanceledIcon,

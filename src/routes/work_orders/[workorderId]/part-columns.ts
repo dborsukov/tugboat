@@ -8,6 +8,7 @@ import CurrencyDisplay from "$lib/components/currency-display.svelte";
 import type { PartItemDto } from "$lib/bindings";
 
 import DataTableActions from "./part-table-actions-cell.svelte";
+import PartTableDiscountedCell from "./part-table-discounted-cell.svelte";
 import PartTableStatusCell from "./part-table-status-cell.svelte";
 import TableDiscountCell from "./table-discount-cell.svelte";
 
@@ -80,7 +81,7 @@ export const columns: ColumnDef<PartItemDto>[] = [
     },
   },
   {
-    accessorKey: "baseCostCents",
+    accessorKey: "baseCost",
     header: () => {
       return renderSnippet(
         createRawSnippet(() => {
@@ -160,7 +161,7 @@ export const columns: ColumnDef<PartItemDto>[] = [
     },
   },
   {
-    id: "price_cents",
+    id: "discountedPrice",
     header: () => {
       return renderSnippet(
         createRawSnippet(() => {
@@ -171,10 +172,9 @@ export const columns: ColumnDef<PartItemDto>[] = [
       );
     },
     cell: ({ row }) => {
-      return renderComponent(CurrencyDisplay, {
-        amount: row.original.totals.discountedPrice,
-        suffix: "грн.",
-        class: "justify-end",
+      return renderComponent(PartTableDiscountedCell, {
+        cost: row.original.baseCost,
+        price: row.original.totals.discountedPrice,
       });
     },
   },

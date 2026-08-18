@@ -8,6 +8,7 @@ import DataTableSortButton from "$lib/components/data-table-sort-button.svelte";
 import type { Service } from "$lib/bindings";
 
 import DataTableActions from "./table-actions-cell.svelte";
+import TableDecimalDisplayCell from "./table-decimal-display-cell.svelte";
 
 export interface ServiceTableMeta {
   onEdit: (id: number) => void;
@@ -75,13 +76,9 @@ export const columns: ColumnDef<Service>[] = [
       });
     },
     cell: ({ row }) => {
-      const nameCellSnippet = createRawSnippet(() => {
-        return {
-          render: () =>
-            `<div class="text-center font-mono">${row.original.laborHours}</div>`,
-        };
+      return renderComponent(TableDecimalDisplayCell, {
+        value: row.original.laborHours,
       });
-      return renderSnippet(nameCellSnippet);
     },
   },
   {
