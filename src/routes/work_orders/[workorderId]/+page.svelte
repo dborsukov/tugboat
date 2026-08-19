@@ -189,91 +189,138 @@
     <div class="mt-4 border border-border rounded bg-card">
       <!-- Info bar: id / date / odometer / rate -->
       <div class="h-15 flex flex-row items-center border-b border-border">
-        {#each { length: 4 } as _, i (i)}
-          <div class="p-4 flex flex-col justify-start items-start gap-1.5">
-            <Skeleton class="h-3 w-20" />
-            <Skeleton class="h-5 w-24" />
-          </div>
-          {#if i < 3}
-            <div class="block h-8/12 w-px bg-border"></div>
-          {/if}
-        {/each}
-
-        <div class="flex items-center gap-2 ml-auto mr-2">
-          <Skeleton class="h-9 w-32 rounded-md" />
-          <Skeleton class="h-9 w-9 rounded-md shrink-0" />
-        </div>
-      </div>
-
-      <!-- Car / client cards -->
-      <div class="flex flex-row divide-x divide-border border-b border-border">
-        {#each { length: 2 } as _, i (i)}
-          <div class="flex-1 flex items-center gap-4 p-4">
-            <Skeleton class="size-14 rounded-full shrink-0" />
-            <div class="flex flex-col items-start gap-2 flex-1 min-w-0">
-              <Skeleton class="h-5 w-2/5 min-w-32" />
-              <Skeleton class="h-4 w-1/3 min-w-24" />
-            </div>
-            <Skeleton class="size-5 shrink-0 ml-auto" />
-          </div>
-        {/each}
-      </div>
-
-      <!-- Totals bar: parts / labor / (discount) / grand total -->
-      <div class="h-15 flex flex-row items-center border-b border-border">
-        <div class="p-4 flex flex-col justify-start items-start gap-1.5">
-          <Skeleton class="h-3 w-20" />
+        <!-- Order ID -->
+        <div
+          class="p-4 flex flex-col justify-start items-start gap-1.5 min-w-30"
+        >
+          <Skeleton class="h-3.5 w-24" />
           <Skeleton class="h-5 w-16" />
         </div>
 
         <div class="block h-8/12 w-px bg-border"></div>
 
-        <div class="p-4 flex flex-col justify-start items-start gap-1.5">
-          <Skeleton class="h-3 w-14" />
-          <Skeleton class="h-5 w-16" />
+        <!-- Date -->
+        <div
+          class="p-4 flex flex-col justify-start items-start gap-1.5 min-w-40"
+        >
+          <div class="flex items-center gap-1">
+            <Skeleton class="h-3.5 w-16" />
+            <Skeleton class="size-3.5 rounded-full" />
+          </div>
+          <Skeleton class="h-5 w-32" />
         </div>
 
+        <div class="block h-8/12 w-px bg-border"></div>
+
+        <!-- Odometer -->
         <div
-          class="ml-auto h-full flex flex-col px-2 py-1 mr-4 justify-center items-end gap-1.5"
+          class="p-4 flex flex-col justify-start items-start gap-1.5 min-w-30"
         >
-          <Skeleton class="h-3 w-12" />
+          <Skeleton class="h-3.5 w-12" />
+          <Skeleton class="h-5 w-24" />
+        </div>
+
+        <div class="block h-8/12 w-px bg-border"></div>
+
+        <!-- Rate -->
+        <div
+          class="p-4 flex flex-col justify-start items-start gap-1.5 min-w-30"
+        >
+          <Skeleton class="h-3.5 w-14" />
           <Skeleton class="h-5 w-20" />
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center gap-2 ml-auto mr-2">
+          <Skeleton class="h-9 w-24 rounded-md" />
+          <!-- Totals popover -->
+          <Skeleton class="h-9 w-32 rounded-md" />
+          <!-- Status selector -->
+          <Skeleton class="h-9 w-9 rounded-md shrink-0" />
+          <!-- Dropdown menu -->
+        </div>
+      </div>
+
+      <!-- Car / client navigation cards -->
+      <div class="flex flex-row divide-x divide-border border-b border-border">
+        <div class="flex-1 flex items-center gap-2 p-3 h-13">
+          <Skeleton class="size-6 rounded-full shrink-0" />
+          <Skeleton class="h-5 w-48" />
+          <Skeleton class="h-4 w-24 ml-auto" />
+          <Skeleton class="size-4 shrink-0 rounded-sm" />
+        </div>
+        <div class="flex-1 flex items-center gap-2 p-3 h-13">
+          <Skeleton class="size-6 rounded-full shrink-0" />
+          <Skeleton class="h-5 w-40" />
+          <Skeleton class="h-4 w-32 ml-auto" />
+          <Skeleton class="size-4 shrink-0 rounded-sm" />
         </div>
       </div>
 
       <!-- Services (labor) section -->
       <div class="p-4">
-        <div class="flex flex-row items-center justify-between">
+        <div class="flex flex-row items-center justify-between mb-4">
           <div class="flex flex-row items-center gap-2">
             <Skeleton class="h-7 w-20" />
-            <Skeleton class="h-7 w-5" />
+            <!-- Title -->
+            <Skeleton class="h-6 w-5" />
+            <!-- Counter -->
           </div>
           <div class="flex gap-4">
             <Skeleton class="h-5 w-24" />
+            <!-- Create link -->
             <Skeleton class="h-5 w-32" />
+            <!-- Add from DB link -->
           </div>
         </div>
-        <div class="mt-4 flex flex-col gap-2">
-          <Skeleton class="h-9 w-full" />
+        <!-- Simulated DataTable -->
+        <div class="border border-border rounded-md">
+          <div class="h-10 border-b border-border flex items-center px-4 gap-4">
+            <Skeleton class="h-4 w-1/2" />
+            <Skeleton class="h-4 w-16" />
+            <Skeleton class="h-4 w-16" />
+          </div>
           {#each { length: 3 } as _, i (i)}
-            <Skeleton class="h-12 w-full" />
+            <div
+              class="h-12 border-b border-border last:border-0 flex items-center px-4 gap-4"
+            >
+              <Skeleton class="h-4 w-2/3" />
+              <Skeleton class="h-4 w-16" />
+              <Skeleton class="h-4 w-16" />
+              <Skeleton class="size-8 rounded-md ml-auto" />
+            </div>
           {/each}
         </div>
       </div>
 
       <!-- Parts section -->
-      <div class="p-4 pt-0">
-        <div class="flex flex-row items-center justify-between">
+      <div class="p-4 pt-0 mt-2">
+        <div class="flex flex-row items-center justify-between mb-4">
           <div class="flex flex-row items-center gap-2">
-            <Skeleton class="h-7 w-24" />
-            <Skeleton class="h-7 w-5" />
+            <Skeleton class="h-7 w-28" />
+            <!-- Title -->
+            <Skeleton class="h-6 w-5" />
+            <!-- Counter -->
           </div>
           <Skeleton class="h-5 w-20" />
+          <!-- Add link -->
         </div>
-        <div class="mt-4 flex flex-col gap-2">
-          <Skeleton class="h-9 w-full" />
+        <!-- Simulated DataTable -->
+        <div class="border border-border rounded-md">
+          <div class="h-10 border-b border-border flex items-center px-4 gap-4">
+            <Skeleton class="h-4 w-1/2" />
+            <Skeleton class="h-4 w-20" />
+            <Skeleton class="h-4 w-20" />
+          </div>
           {#each { length: 2 } as _, i (i)}
-            <Skeleton class="h-12 w-full" />
+            <div
+              class="h-12 border-b border-border last:border-0 flex items-center px-4 gap-4"
+            >
+              <Skeleton class="h-4 w-2/3" />
+              <Skeleton class="h-4 w-20" />
+              <Skeleton class="h-4 w-20" />
+              <Skeleton class="size-8 rounded-md ml-auto" />
+            </div>
           {/each}
         </div>
       </div>
