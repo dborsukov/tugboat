@@ -103,8 +103,7 @@ export const columns: ColumnDef<LaborItemDto>[] = [
     cell: ({ row }) => {
       return renderComponent(TableDiscountCell, {
         type: row.original.discountType,
-        amount: row.original.discountAmount,
-        percent: row.original.discountPercent,
+        value: row.original.discountValue,
         class: "justify-center",
       });
     },

@@ -145,8 +145,7 @@
         fixedPrice: service.fixedPrice,
         laborHours: service.laborHours,
         discountType: "None",
-        discountAmount: "0",
-        discountPercent: "0",
+        discountValue: "0",
       },
       {
         onSuccess: () => {

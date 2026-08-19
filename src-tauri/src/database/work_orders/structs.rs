@@ -74,8 +74,7 @@ pub struct WorkOrder {
     pub labor_cost_type: LaborCostType,
     pub labor_cost_value: Decimal,
     pub discount_type: DiscountType,
-    pub discount_amount: Decimal,
-    pub discount_percent: Decimal,
+    pub discount_value: Decimal,
     pub created_at: DateTime<Utc>,
     pub started_at: Option<DateTime<Utc>>,
     pub completed_at: Option<DateTime<Utc>>,
@@ -96,8 +95,7 @@ impl<'r> FromRow<'r, SqliteRow> for WorkOrder {
             labor_cost_type: row.try_get("labor_cost_type")?,
             labor_cost_value: decimal_column(row, "labor_cost_value")?,
             discount_type: row.try_get("discount_type")?,
-            discount_amount: decimal_column(row, "discount_amount")?,
-            discount_percent: decimal_column(row, "discount_percent")?,
+            discount_value: decimal_column(row, "discount_value")?,
             created_at: row.try_get("created_at")?,
             started_at: row.try_get("started_at")?,
             completed_at: row.try_get("completed_at")?,
@@ -121,8 +119,7 @@ pub struct CreateWorkOrderPayload {
     pub labor_cost_type: LaborCostType,
     pub labor_cost_value: Decimal,
     pub discount_type: DiscountType,
-    pub discount_amount: Decimal,
-    pub discount_percent: Decimal,
+    pub discount_value: Decimal,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -139,8 +136,7 @@ pub struct UpdateWorkOrderPayload {
     pub labor_cost_type: LaborCostType,
     pub labor_cost_value: Decimal,
     pub discount_type: DiscountType,
-    pub discount_amount: Decimal,
-    pub discount_percent: Decimal,
+    pub discount_value: Decimal,
     pub started_at: Option<DateTime<Utc>>,
     pub completed_at: Option<DateTime<Utc>>,
     pub paid_at: Option<DateTime<Utc>>,
@@ -161,8 +157,7 @@ pub struct LaborItem {
     pub fixed_price: Decimal,
     pub labor_hours: Decimal,
     pub discount_type: DiscountType,
-    pub discount_amount: Decimal,
-    pub discount_percent: Decimal,
+    pub discount_value: Decimal,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for LaborItem {
@@ -177,8 +172,7 @@ impl<'r> FromRow<'r, SqliteRow> for LaborItem {
             fixed_price: decimal_column(row, "fixed_price")?,
             labor_hours: decimal_column(row, "labor_hours")?,
             discount_type: row.try_get("discount_type")?,
-            discount_amount: decimal_column(row, "discount_amount")?,
-            discount_percent: decimal_column(row, "discount_percent")?,
+            discount_value: decimal_column(row, "discount_value")?,
         })
     }
 }
@@ -195,8 +189,7 @@ pub struct CreateLaborItemPayload {
     pub fixed_price: Decimal,
     pub labor_hours: Decimal,
     pub discount_type: DiscountType,
-    pub discount_amount: Decimal,
-    pub discount_percent: Decimal,
+    pub discount_value: Decimal,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -210,8 +203,7 @@ pub struct UpdateLaborItemPayload {
     pub fixed_price: Decimal,
     pub labor_hours: Decimal,
     pub discount_type: DiscountType,
-    pub discount_amount: Decimal,
-    pub discount_percent: Decimal,
+    pub discount_value: Decimal,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -228,8 +220,7 @@ pub struct PartItem {
     pub base_cost: Decimal,
     pub markup: Decimal,
     pub discount_type: DiscountType,
-    pub discount_amount: Decimal,
-    pub discount_percent: Decimal,
+    pub discount_value: Decimal,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for PartItem {
@@ -245,8 +236,7 @@ impl<'r> FromRow<'r, SqliteRow> for PartItem {
             base_cost: decimal_column(row, "base_cost")?,
             markup: decimal_column(row, "markup")?,
             discount_type: row.try_get("discount_type")?,
-            discount_amount: decimal_column(row, "discount_amount")?,
-            discount_percent: decimal_column(row, "discount_percent")?,
+            discount_value: decimal_column(row, "discount_value")?,
         })
     }
 }
@@ -263,8 +253,7 @@ pub struct CreatePartItemPayload {
     pub base_cost: Decimal,
     pub markup: Decimal,
     pub discount_type: DiscountType,
-    pub discount_amount: Decimal,
-    pub discount_percent: Decimal,
+    pub discount_value: Decimal,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -278,6 +267,5 @@ pub struct UpdatePartItemPayload {
     pub base_cost: Decimal,
     pub markup: Decimal,
     pub discount_type: DiscountType,
-    pub discount_amount: Decimal,
-    pub discount_percent: Decimal,
+    pub discount_value: Decimal,
 }

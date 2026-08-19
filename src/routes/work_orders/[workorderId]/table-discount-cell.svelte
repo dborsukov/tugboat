@@ -6,13 +6,11 @@
 
   let {
     type,
-    amount,
-    percent,
+    value,
     class: className,
   }: {
     type: DiscountType;
-    amount: string;
-    percent: string;
+    value: string;
     class?: string;
   } = $props();
 </script>
@@ -22,7 +20,7 @@
     <p class="text-muted-foreground">—</p>
   {:else if type === "Fixed"}
     <NumericText
-      value={amount}
+      {value}
       formatStyle="currency"
       currency="UAH"
       locale="uk-UA"
@@ -30,6 +28,6 @@
     />
     <p>грн.</p>
   {:else}
-    <p>{percent}%</p>
+    <p>{value}%</p>
   {/if}
 </div>

@@ -19,9 +19,9 @@ pub fn calculate_labor_item_totals(
 
     let total = match labor_item.discount_type {
         DiscountType::None => subtotal,
-        DiscountType::Fixed => subtotal - labor_item.discount_amount,
+        DiscountType::Fixed => subtotal - labor_item.discount_value,
         DiscountType::Percentage => (subtotal
-            * (Decimal::ONE - labor_item.discount_percent / Decimal::ONE_HUNDRED))
+            * (Decimal::ONE - labor_item.discount_value / Decimal::ONE_HUNDRED))
             .round_dp(2),
     };
     let total = total.max(Decimal::ZERO);
@@ -60,9 +60,9 @@ pub fn calculate_part_item_totals(part_item: &PartItem) -> PartItemTotals {
 
     let discounted_price = match part_item.discount_type {
         DiscountType::None => retail_price,
-        DiscountType::Fixed => retail_price - part_item.discount_amount,
+        DiscountType::Fixed => retail_price - part_item.discount_value,
         DiscountType::Percentage => (retail_price
-            * (Decimal::ONE - part_item.discount_percent / Decimal::ONE_HUNDRED))
+            * (Decimal::ONE - part_item.discount_value / Decimal::ONE_HUNDRED))
             .round_dp(2),
     };
 
@@ -97,9 +97,9 @@ pub fn calculate_work_order_totals(
 
     let grand_total = match work_order.discount_type {
         DiscountType::None => subtotal,
-        DiscountType::Fixed => subtotal - work_order.discount_amount,
+        DiscountType::Fixed => subtotal - work_order.discount_value,
         DiscountType::Percentage => (subtotal
-            * (Decimal::ONE - work_order.discount_percent / Decimal::ONE_HUNDRED))
+            * (Decimal::ONE - work_order.discount_value / Decimal::ONE_HUNDRED))
             .round_dp(2),
     };
     let grand_total = grand_total.max(Decimal::ZERO);

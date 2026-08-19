@@ -81,9 +81,9 @@
 
     let total = subtotal;
     if (item.discountType === "Fixed") {
-      total = total.minus(new Big(item.discountAmount));
+      total = total.minus(new Big(item.discountValue));
     } else if (item.discountType === "Percentage") {
-      total = total.times(Big(1).minus(new Big(item.discountPercent).div(100)));
+      total = total.times(Big(1).minus(new Big(item.discountValue).div(100)));
     }
     if (total.lt(0)) total = new Big(0);
 
@@ -192,7 +192,7 @@
         nativeForm.data.laborCostType,
         nativeForm.data.laborCost,
         nativeForm.data.discountType,
-        nativeForm.data.discount,
+        nativeForm.data.discountValue,
         workOrderDetails,
       );
 
@@ -215,7 +215,10 @@
       data.laborCost,
     );
 
-    const discountPayload = discountToPayload(data.discountType, data.discount);
+    const discountPayload = discountToPayload(
+      data.discountType,
+      data.discountValue,
+    );
 
     if (!isEdit && !carId && !workOrderDetails) {
       toast.error("Виникла помилка", {
@@ -283,7 +286,7 @@
       $formData.laborCostType,
       $formData.laborCost,
       $formData.discountType,
-      $formData.discount,
+      $formData.discountValue,
       workOrderDetails,
     );
     if (pricing && pricing.grandTotal.lt(pricing.combinedCost)) return pricing;
@@ -301,7 +304,9 @@
         $formData.laborCostType = workOrderDetails.workOrder.laborCostType;
         $formData.laborCost = laborCostFromEntity(workOrderDetails.workOrder);
         $formData.discountType = workOrderDetails.workOrder.discountType;
-        $formData.discount = discountFromEntity(workOrderDetails.workOrder);
+        $formData.discountValue = discountFromEntity(
+          workOrderDetails.workOrder,
+        );
       } else {
         form.reset();
       }
@@ -366,13 +371,13 @@
     <Form.FieldErrors />
   </Form.Field>
 
-  <Form.Field {form} name="discount">
+  <Form.Field {form} name="discountValue">
     <Form.Control>
       {#snippet children({ props })}
         <Label>Знижка</Label>
         <DiscountField
           bind:type={$formData.discountType}
-          bind:value={$formData.discount}
+          bind:value={$formData.discountValue}
           inputProps={props}
         />
       {/snippet}
@@ -412,7 +417,7 @@
             pendingSubmitData.laborCostType,
             pendingSubmitData.laborCost,
             pendingSubmitData.discountType,
-            pendingSubmitData.discount,
+            pendingSubmitData.discountValue,
             workOrderDetails,
           )}
           {#if pricing}

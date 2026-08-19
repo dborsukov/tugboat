@@ -56,8 +56,7 @@ CREATE TABLE work_orders (
     labor_cost_type TEXT NOT NULL,
     labor_cost_value TEXT NOT NULL DEFAULT "0",
     discount_type TEXT NOT NULL,
-    discount_amount TEXT NOT NULL DEFAULT "0",
-    discount_percent TEXT NOT NULL DEFAULT "0",
+    discount_value TEXT NOT NULL DEFAULT "0",
     created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
     started_at TEXT,
     completed_at TEXT,
@@ -76,8 +75,7 @@ CREATE TABLE labor_items (
     fixed_price TEXT NOT NULL DEFAULT '0',
     labor_hours TEXT NOT NULL DEFAULT "1.0",
     discount_type TEXT NOT NULL,
-    discount_amount TEXT NOT NULL DEFAULT "0",
-    discount_percent TEXT NOT NULL DEFAULT "0",
+    discount_value TEXT NOT NULL DEFAULT "0",
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE,
     FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE SET NULL
 );
@@ -93,8 +91,7 @@ CREATE TABLE part_items (
     base_cost TEXT NOT NULL DEFAULT "0",
     markup TEXT NOT NULL DEFAULT "0",
     discount_type TEXT NOT NULL,
-    discount_amount TEXT NOT NULL DEFAULT "0",
-    discount_percent TEXT NOT NULL DEFAULT "0",
+    discount_value TEXT NOT NULL DEFAULT "0",
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE
 );
 

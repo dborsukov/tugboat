@@ -158,7 +158,7 @@
             <span class="flex gap-1 text-xs text-muted-foreground">
               <p>Знижка</p>
               {#if workOrderDetails.workOrder.discountType === "Percentage"}
-                <span>({workOrderDetails.workOrder.discountPercent}%)</span>
+                <span>({workOrderDetails.workOrder.discountValue}%)</span>
               {:else}
                 <span>(фіксована)</span>
               {/if}

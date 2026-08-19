@@ -9,23 +9,23 @@ export const discountFields = {
   discountType: z
     .enum<DiscountType[]>(["None", "Fixed", "Percentage"])
     .default("None"),
-  discount: zBigString({
+  discountValue: zBigString({
     requiredError: "Вкажіть знижку",
   }).default("0"),
 };
 
 export interface DiscountFormShape {
   discountType?: DiscountType;
-  discount?: string;
+  discountValue?: string;
 }
 
 export const refineDiscount = (data: DiscountFormShape, ctx: RefinementCtx) => {
   if (data.discountType === "None") return;
-  if (data.discount === "") return; // handled by zBigString
+  if (data.discountValue === "") return; // handled by zBigString
 
   let discountBig: Big;
   try {
-    discountBig = new Big(data.discount!);
+    discountBig = new Big(data.discountValue!);
   } catch {
     return; // handled by zBigString
   }
@@ -69,39 +69,28 @@ export const refineDiscount = (data: DiscountFormShape, ctx: RefinementCtx) => {
 
 export function discountToPayload(
   discountType: DiscountType,
-  discount: string,
+  discountValue: string,
 ) {
   if (discountType === "None") {
     return {
       discountType,
-      discountAmount: "0",
-      discountPercent: "0",
-    };
-  } else if (discountType === "Fixed") {
-    return {
-      discountType,
-      discountAmount: discount,
-      discountPercent: "0",
+      discountValue: "0",
     };
   } else {
     return {
       discountType,
-      discountAmount: "0",
-      discountPercent: discount,
+      discountValue: discountValue,
     };
   }
 }
 
 export function discountFromEntity(entity: {
   discountType: DiscountType;
-  discountAmount: string;
-  discountPercent: string;
+  discountValue: string;
 }) {
   if (entity.discountType === "None") {
     return "0";
-  } else if (entity.discountType === "Fixed") {
-    return entity.discountAmount;
   } else {
-    return entity.discountPercent;
+    return entity.discountValue;
   }
 }

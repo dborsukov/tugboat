@@ -156,7 +156,7 @@
         nativeForm.data.laborPriceType,
         nativeForm.data.laborPrice,
         nativeForm.data.discountType,
-        nativeForm.data.discount,
+        nativeForm.data.discountValue,
         workOrderDetails,
       );
 
@@ -181,7 +181,10 @@
       data.laborPrice,
     );
 
-    const discountPayload = discountToPayload(data.discountType, data.discount);
+    const discountPayload = discountToPayload(
+      data.discountType,
+      data.discountValue,
+    );
 
     if (isEdit && laborItem) {
       await updatLaborItemMutation
@@ -232,7 +235,7 @@
       $formData.laborPriceType as LaborPriceType,
       $formData.laborPrice,
       $formData.discountType as DiscountType,
-      $formData.discount,
+      $formData.discountValue,
       workOrderDetails,
     );
     if (
@@ -260,7 +263,7 @@
         $formData.laborPriceType = laborItem.priceType;
         $formData.laborPrice = laborPriceFromEntity(laborItem);
         $formData.discountType = laborItem.discountType;
-        $formData.discount = discountFromEntity(laborItem);
+        $formData.discountValue = discountFromEntity(laborItem);
       } else {
         form.reset();
       }
@@ -315,13 +318,13 @@
     <Form.FieldErrors />
   </Form.Field>
 
-  <Form.Field {form} name="discount">
+  <Form.Field {form} name="discountValue">
     <Form.Control>
       {#snippet children({ props })}
         <Label>Знижка</Label>
         <DiscountField
           bind:type={$formData.discountType}
-          bind:value={$formData.discount}
+          bind:value={$formData.discountValue}
           inputProps={props}
         />
       {/snippet}
@@ -351,7 +354,7 @@
             pendingSubmitData.laborPriceType as LaborPriceType,
             pendingSubmitData.laborPrice,
             pendingSubmitData.discountType as DiscountType,
-            pendingSubmitData.discount,
+            pendingSubmitData.discountValue,
             workOrderDetails,
           )}
           {#if pricing && pricing.costBasisKnown}

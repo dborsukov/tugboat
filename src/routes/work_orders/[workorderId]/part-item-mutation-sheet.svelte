@@ -127,7 +127,7 @@
         nativeForm.data.cost,
         nativeForm.data.markup,
         nativeForm.data.discountType,
-        nativeForm.data.discount,
+        nativeForm.data.discountValue,
       );
 
       if (pricing && pricing.finalPrice.lt(pricing.cost)) {
@@ -142,7 +142,10 @@
   });
 
   async function submitPartItem(data: z.infer<typeof partItemSchema>) {
-    const discountPayload = discountToPayload(data.discountType, data.discount);
+    const discountPayload = discountToPayload(
+      data.discountType,
+      data.discountValue,
+    );
 
     const payload = {
       status: data.status as PartStatus,
@@ -198,7 +201,7 @@
       $formData.cost,
       $formData.markup,
       $formData.discountType as DiscountType,
-      $formData.discount,
+      $formData.discountValue,
     );
     if (pricing && pricing.finalPrice.lt(pricing.cost)) return pricing;
     return null;
@@ -218,7 +221,7 @@
         $formData.cost = partItem.baseCost;
         $formData.markup = partItem.markup;
         $formData.discountType = partItem.discountType;
-        $formData.discount = discountFromEntity(partItem);
+        $formData.discountValue = discountFromEntity(partItem);
       } else {
         form.reset();
         $formData.unitType = "штука";
@@ -356,13 +359,13 @@
     <Form.FieldErrors />
   </Form.Field>
 
-  <Form.Field {form} name="discount">
+  <Form.Field {form} name="discountValue">
     <Form.Control>
       {#snippet children({ props })}
         <Label>Знижка</Label>
         <DiscountField
           bind:type={$formData.discountType}
-          bind:value={$formData.discount}
+          bind:value={$formData.discountValue}
           inputProps={props}
         />
       {/snippet}
@@ -387,7 +390,7 @@
             pendingSubmitData.cost,
             pendingSubmitData.markup,
             pendingSubmitData.discountType as DiscountType,
-            pendingSubmitData.discount,
+            pendingSubmitData.discountValue,
           )}
           {#if pricing}
             Кінцева ціна зі знижкою становить {pricing.finalPrice.toFixed(2)} грн.,

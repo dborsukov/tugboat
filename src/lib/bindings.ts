@@ -126,8 +126,7 @@ export type CreateLaborItemPayload = {
 	fixedPrice: string,
 	laborHours: string,
 	discountType: DiscountType,
-	discountAmount: string,
-	discountPercent: string,
+	discountValue: string,
 };
 
 export type CreatePartItemPayload = {
@@ -140,8 +139,7 @@ export type CreatePartItemPayload = {
 	baseCost: string,
 	markup: string,
 	discountType: DiscountType,
-	discountAmount: string,
-	discountPercent: string,
+	discountValue: string,
 };
 
 export type CreateServicePayload = {
@@ -163,8 +161,7 @@ export type CreateWorkOrderPayload = {
 	laborCostType: LaborCostType,
 	laborCostValue: string,
 	discountType: DiscountType,
-	discountAmount: string,
-	discountPercent: string,
+	discountValue: string,
 };
 
 export type DiscountType = "None" | "Fixed" | "Percentage";
@@ -185,8 +182,7 @@ export type LaborItem = {
 	fixedPrice: string,
 	laborHours: string,
 	discountType: DiscountType,
-	discountAmount: string,
-	discountPercent: string,
+	discountValue: string,
 };
 
 export type LaborItemDto = {
@@ -213,8 +209,7 @@ export type PartItem = {
 	baseCost: string,
 	markup: string,
 	discountType: DiscountType,
-	discountAmount: string,
-	discountPercent: string,
+	discountValue: string,
 };
 
 export type PartItemDto = {
@@ -270,8 +265,7 @@ export type UpdateLaborItemPayload = {
 	fixedPrice: string,
 	laborHours: string,
 	discountType: DiscountType,
-	discountAmount: string,
-	discountPercent: string,
+	discountValue: string,
 };
 
 export type UpdatePartItemPayload = {
@@ -283,8 +277,7 @@ export type UpdatePartItemPayload = {
 	baseCost: string,
 	markup: string,
 	discountType: DiscountType,
-	discountAmount: string,
-	discountPercent: string,
+	discountValue: string,
 };
 
 export type UpdateServicePayload = {
@@ -306,8 +299,7 @@ export type UpdateWorkOrderPayload = {
 	laborCostType: LaborCostType,
 	laborCostValue: string,
 	discountType: DiscountType,
-	discountAmount: string,
-	discountPercent: string,
+	discountValue: string,
 	startedAt: string | null,
 	completedAt: string | null,
 	paidAt: string | null,
@@ -325,8 +317,7 @@ export type WorkOrder = {
 	laborCostType: LaborCostType,
 	laborCostValue: string,
 	discountType: DiscountType,
-	discountAmount: string,
-	discountPercent: string,
+	discountValue: string,
 	createdAt: string,
 	startedAt: string | null,
 	completedAt: string | null,

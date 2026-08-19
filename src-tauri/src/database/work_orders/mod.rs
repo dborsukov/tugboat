@@ -32,7 +32,7 @@ pub async fn fetch_work_order_by_id(
     state: &State<'_, crate::AppState>,
     id: &String,
 ) -> AppResult<WorkOrder> {
-    let work_order: WorkOrder = sqlx::query_as("SELECT id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_amount, discount_percent, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders WHERE id = $1")
+    let work_order: WorkOrder = sqlx::query_as("SELECT id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders WHERE id = $1")
         .bind(id)
         .fetch_one(&state.db_pool)
         .await?;
@@ -44,7 +44,7 @@ pub async fn fetch_work_order_by_id(
 pub async fn fetch_work_orders_list(
     state: State<'_, crate::AppState>,
 ) -> AppResult<Vec<WorkOrder>> {
-    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_amount, discount_percent, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders")
+    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders")
         .fetch_all(&state.db_pool)
         .await?;
     Ok(work_orders)
@@ -67,14 +67,14 @@ async fn build_work_order_details_dto_with_context(
     client: Client,
 ) -> AppResult<WorkOrderDetailsDto> {
     let labor_items: Vec<LaborItem> = sqlx::query_as(
-        "SELECT id, service_id, work_order_id, code, name, price_type, fixed_price, labor_hours, discount_type, discount_amount, discount_percent FROM labor_items WHERE work_order_id = $1",
+        "SELECT id, service_id, work_order_id, code, name, price_type, fixed_price, labor_hours, discount_type, discount_value FROM labor_items WHERE work_order_id = $1",
     )
     .bind(&work_order.id)
     .fetch_all(&state.db_pool)
     .await?;
 
     let part_items: Vec<PartItem> = sqlx::query_as(
-        "SELECT id, work_order_id, status, code, name, quantity, unit_type, base_cost, markup, discount_type, discount_amount, discount_percent FROM part_items WHERE work_order_id = $1",
+        "SELECT id, work_order_id, status, code, name, quantity, unit_type, base_cost, markup, discount_type, discount_value FROM part_items WHERE work_order_id = $1",
     )
     .bind(&work_order.id)
     .fetch_all(&state.db_pool)
@@ -169,7 +169,7 @@ pub async fn fetch_work_order_details_dto_by_car_id(
     let car_dto = fetch_car_by_id(state.clone(), car_id).await?;
     let client = fetch_client_by_id(state.clone(), car_dto.car.client_id as i32).await?;
 
-    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_amount, discount_percent, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders WHERE car_id = $1")
+    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders WHERE car_id = $1")
         .bind(car_id)
         .fetch_all(&state.db_pool)
         .await?;
@@ -198,7 +198,7 @@ pub async fn fetch_work_order_details_dto_by_client_id(
     let client = fetch_client_by_id(state.clone(), client_id).await?;
 
     let work_orders: Vec<WorkOrder> = sqlx::query_as(
-        "SELECT wo.id, wo.car_id, wo.odometer_in, wo.customer_complaint, wo.mechanic_notes, wo.status, wo.rate, wo.labor_cost_type, wo.labor_cost_value, wo.discount_type, wo.discount_amount, wo.discount_percent, wo.created_at, wo.started_at, wo.completed_at, wo.paid_at, wo.payment_method \
+        "SELECT wo.id, wo.car_id, wo.odometer_in, wo.customer_complaint, wo.mechanic_notes, wo.status, wo.rate, wo.labor_cost_type, wo.labor_cost_value, wo.discount_type, wo.discount_value, wo.created_at, wo.started_at, wo.completed_at, wo.paid_at, wo.payment_method \
          FROM work_orders wo \
          JOIN cars c ON c.id = wo.car_id \
          WHERE c.client_id = $1",
@@ -241,7 +241,7 @@ pub async fn create_work_order(
     payload: CreateWorkOrderPayload,
 ) -> AppResult<WorkOrder> {
     let work_order: WorkOrder =
-        sqlx::query_as("INSERT INTO work_orders (id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_amount, discount_percent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *")
+        sqlx::query_as("INSERT INTO work_orders (id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *")
             .bind(payload.id)
             .bind(payload.car_id)
             .bind(payload.odometer_in)
@@ -252,8 +252,7 @@ pub async fn create_work_order(
             .bind(payload.labor_cost_type)
             .bind(payload.labor_cost_value.to_string())
             .bind(payload.discount_type)
-            .bind(payload.discount_amount.to_string())
-            .bind(payload.discount_percent.to_string())
+            .bind(payload.discount_value.to_string())
             .fetch_one(&state.db_pool)
             .await?;
     Ok(work_order)
@@ -266,7 +265,7 @@ pub async fn update_work_order(
     payload: UpdateWorkOrderPayload,
 ) -> AppResult<WorkOrder> {
     let work_order: WorkOrder = sqlx::query_as(
-        "UPDATE work_orders SET car_id = $2, odometer_in = $3, customer_complaint = $4, mechanic_notes = $5, status = $6, rate = $7, labor_cost_type = $8, labor_cost_value = $9, discount_type = $10, discount_amount = $11, discount_percent = $12, started_at = $13, completed_at = $14, paid_at = $15, payment_method = $16 WHERE id = $1 RETURNING *",
+        "UPDATE work_orders SET car_id = $2, odometer_in = $3, customer_complaint = $4, mechanic_notes = $5, status = $6, rate = $7, labor_cost_type = $8, labor_cost_value = $9, discount_type = $10, discount_value = $11, started_at = $12, completed_at = $13, paid_at = $14, payment_method = $15 WHERE id = $1 RETURNING *",
     )
     .bind(payload.id)
     .bind(payload.car_id)
@@ -278,8 +277,7 @@ pub async fn update_work_order(
     .bind(payload.labor_cost_type)
     .bind(payload.labor_cost_value.to_string())
     .bind(payload.discount_type)
-    .bind(payload.discount_amount.to_string())
-    .bind(payload.discount_percent.to_string())
+    .bind(payload.discount_value.to_string())
     .bind(payload.started_at)
     .bind(payload.completed_at)
     .bind(payload.paid_at)
@@ -310,7 +308,7 @@ pub async fn fetch_labor_items_list(
     state: State<'_, crate::AppState>,
 ) -> AppResult<Vec<LaborItem>> {
     let labor_items: Vec<LaborItem> = sqlx::query_as(
-        "SELECT id, service_id, work_order_id, code, name, price_type, fixed_price, labor_hours, discount_type, discount_amount, discount_percent FROM labor_items",
+        "SELECT id, service_id, work_order_id, code, name, price_type, fixed_price, labor_hours, discount_type, discount_value FROM labor_items",
     )
     .fetch_all(&state.db_pool)
     .await?;
@@ -324,7 +322,7 @@ pub async fn fetch_labor_item_by_id(
     id: i32,
 ) -> AppResult<LaborItem> {
     let labor_item: LaborItem = sqlx::query_as(
-        "SELECT id, service_id, work_order_id, code, name, price_type, fixed_price, labor_hours, discount_type, discount_amount, discount_percent FROM labor_items WHERE id = $1",
+        "SELECT id, service_id, work_order_id, code, name, price_type, fixed_price, labor_hours, discount_type, discount_value FROM labor_items WHERE id = $1",
     )
     .bind(id)
     .fetch_one(&state.db_pool)
@@ -339,7 +337,7 @@ pub async fn create_labor_item(
     payload: CreateLaborItemPayload,
 ) -> AppResult<LaborItem> {
     let labor_item: LaborItem =
-        sqlx::query_as("INSERT INTO labor_items (service_id, work_order_id, code, name, price_type, fixed_price, labor_hours, discount_type, discount_amount, discount_percent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *")
+        sqlx::query_as("INSERT INTO labor_items (service_id, work_order_id, code, name, price_type, fixed_price, labor_hours, discount_type, discount_value) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *")
             .bind(payload.service_id)
             .bind(payload.work_order_id)
             .bind(payload.code)
@@ -348,8 +346,7 @@ pub async fn create_labor_item(
             .bind(payload.fixed_price.to_string())
             .bind(payload.labor_hours.to_string())
             .bind(payload.discount_type)
-            .bind(payload.discount_amount.to_string())
-            .bind(payload.discount_percent.to_string())
+            .bind(payload.discount_value.to_string())
             .fetch_one(&state.db_pool)
             .await?;
     Ok(labor_item)
@@ -363,7 +360,7 @@ pub async fn update_labor_item(
     payload: UpdateLaborItemPayload,
 ) -> AppResult<LaborItem> {
     let labor_item: LaborItem = sqlx::query_as(
-        "UPDATE labor_items SET service_id = $2, code = $3, name = $4, price_type = $5, fixed_price = $6, labor_hours = $7, discount_type = $8, discount_amount = $9, discount_percent = $10 WHERE id = $1 RETURNING *",
+        "UPDATE labor_items SET service_id = $2, code = $3, name = $4, price_type = $5, fixed_price = $6, labor_hours = $7, discount_type = $8, discount_value = $9 WHERE id = $1 RETURNING *",
     )
         .bind(id)
         .bind(payload.service_id)
@@ -373,8 +370,7 @@ pub async fn update_labor_item(
         .bind(payload.fixed_price.to_string())
         .bind(payload.labor_hours.to_string())
         .bind(payload.discount_type)
-        .bind(payload.discount_amount.to_string())
-        .bind(payload.discount_percent.to_string())
+        .bind(payload.discount_value.to_string())
         .fetch_one(&state.db_pool)
         .await?;
     Ok(labor_item)
@@ -399,7 +395,7 @@ pub async fn delete_labor_item(state: State<'_, crate::AppState>, id: i32) -> Ap
 #[specta::specta]
 pub async fn fetch_part_items_list(state: State<'_, crate::AppState>) -> AppResult<Vec<PartItem>> {
     let part_items: Vec<PartItem> =
-        sqlx::query_as("SELECT id, work_order_id, status, code, name, quantity, unit_type, base_cost, markup, discount_type, discount_amount, discount_percent FROM part_items")
+        sqlx::query_as("SELECT id, work_order_id, status, code, name, quantity, unit_type, base_cost, markup, discount_type, discount_value FROM part_items")
             .fetch_all(&state.db_pool)
             .await?;
     Ok(part_items)
@@ -412,7 +408,7 @@ pub async fn fetch_part_item_by_id(
     id: i32,
 ) -> AppResult<PartItem> {
     let part_item: PartItem =
-        sqlx::query_as("SELECT id, work_order_id, status, code, name, quantity, unit_type, base_cost, markup, discount_type, discount_amount, discount_percent FROM part_items WHERE id = $1")
+        sqlx::query_as("SELECT id, work_order_id, status, code, name, quantity, unit_type, base_cost, markup, discount_type, discount_value FROM part_items WHERE id = $1")
             .bind(id)
             .fetch_one(&state.db_pool)
             .await?;
@@ -426,7 +422,7 @@ pub async fn create_part_item(
     payload: CreatePartItemPayload,
 ) -> AppResult<PartItem> {
     let part_item: PartItem =
-        sqlx::query_as("INSERT INTO part_items (work_order_id, status, code, name, quantity, unit_type, base_cost, markup, discount_type, discount_amount, discount_percent) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *")
+        sqlx::query_as("INSERT INTO part_items (work_order_id, status, code, name, quantity, unit_type, base_cost, markup, discount_type, discount_value) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *")
             .bind(payload.work_order_id)
             .bind(payload.status)
             .bind(payload.code)
@@ -436,8 +432,7 @@ pub async fn create_part_item(
             .bind(payload.base_cost.to_string())
             .bind(payload.markup.to_string())
             .bind(payload.discount_type)
-            .bind(payload.discount_amount.to_string())
-            .bind(payload.discount_percent.to_string())
+            .bind(payload.discount_value.to_string())
             .fetch_one(&state.db_pool)
             .await?;
     Ok(part_item)
@@ -451,7 +446,7 @@ pub async fn update_part_item(
     payload: UpdatePartItemPayload,
 ) -> AppResult<PartItem> {
     let part_item: PartItem = sqlx::query_as(
-        "UPDATE part_items SET status = $2, code = $3, name = $4, quantity = $5, unit_type = $6, base_cost = $7, markup = $8, discount_type = $9, discount_amount = $10, discount_percent = $11 WHERE id = $1 RETURNING *",
+        "UPDATE part_items SET status = $2, code = $3, name = $4, quantity = $5, unit_type = $6, base_cost = $7, markup = $8, discount_type = $9, discount_value = $10 WHERE id = $1 RETURNING *",
     )
         .bind(id)
         .bind(payload.status)
@@ -462,8 +457,7 @@ pub async fn update_part_item(
         .bind(payload.base_cost.to_string())
         .bind(payload.markup.to_string())
         .bind(payload.discount_type)
-        .bind(payload.discount_amount.to_string())
-        .bind(payload.discount_percent.to_string())
+        .bind(payload.discount_value.to_string())
         .fetch_one(&state.db_pool)
         .await?;
     Ok(part_item)
