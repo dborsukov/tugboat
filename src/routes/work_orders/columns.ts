@@ -3,7 +3,6 @@ import { createRawSnippet } from "svelte";
 
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
-import CurrencyDisplay from "$lib/components/currency-display.svelte";
 import DataTableSortButton from "$lib/components/data-table-sort-button.svelte";
 
 import type { WorkOrderDetailsDto } from "$lib/bindings";
@@ -11,7 +10,9 @@ import { prettifyIsoDateString } from "$lib/tools";
 
 import CarBadge from "../cars/car-badge.svelte";
 import ClientBadge from "../clients/client-badge.svelte";
+import { statusWeights } from "./work-order-status";
 import WorkOrderTableStatusCell from "./work-order-table-status-cell.svelte";
+import WorkOrderTableTotalCell from "./work-order-table-total-cell.svelte";
 
 export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
   {
@@ -53,11 +54,12 @@ export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
     cell: ({ row }) => {
       return renderComponent(ClientBadge, {
         name: row.original.client.name,
+        iconSize: "size-6",
       });
     },
   },
   {
-    id: "car_id",
+    id: "carId",
     accessorFn: (row) =>
       `${row.carDto.brand.name} ${row.carDto.car.model} ${row.carDto.car.year}`,
     header: ({ column }) => {
@@ -84,6 +86,13 @@ export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
   {
     accessorKey: "status",
     filterFn: "arrIncludesSome",
+    sortingFn: (rowA, rowB) => {
+      const statusA = rowA.original.workOrder?.status;
+      const statusB = rowB.original.workOrder?.status;
+      const weightA = statusWeights[statusA] ?? 999;
+      const weightB = statusWeights[statusB] ?? 999;
+      return weightB - weightA;
+    },
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
@@ -105,13 +114,16 @@ export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
   },
   {
     id: "total",
-    accessorFn: (row) => row.totals.grandTotal,
+    accessorFn: (row) => {
+      const rawTotal = row.totals?.grandTotal ?? "0";
+      return parseFloat(rawTotal);
+    },
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
         sortStatus: column.getIsSorted(),
         disabled: !column.getCanSort(),
-        class: "pl-1",
+        class: "px-2",
         children: createRawSnippet(() => {
           return {
             render: () => "<span>Сума</span>",
@@ -120,15 +132,14 @@ export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
       });
     },
     cell: ({ row }) => {
-      return renderComponent(CurrencyDisplay, {
-        amount: row.original.totals.grandTotal,
-        suffix: "грн.",
-        class: "px-2 justify-start",
+      return renderComponent(WorkOrderTableTotalCell, {
+        workOrderDetails: row.original,
+        class: "justify-end px-2",
       });
     },
   },
   {
-    id: "created_at",
+    id: "createdAt",
     accessorFn: (row) =>
       prettifyIsoDateString(row.workOrder.createdAt, "datetime"),
     sortingFn: "datetime",

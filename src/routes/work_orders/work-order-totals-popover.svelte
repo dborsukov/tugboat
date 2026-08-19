@@ -36,7 +36,6 @@
   let laborCost = $derived(new Big(workOrderDetails?.totals?.laborCost ?? "0"));
   let totalCost = $derived(partsCost.plus(laborCost));
   let belowCost = $derived(grandTotal.lt(totalCost));
-  $inspect(belowCost);
 </script>
 
 <Popover.Root>

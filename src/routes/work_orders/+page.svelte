@@ -121,7 +121,12 @@
       emptyMessage="Замовлень не знайдено..."
       onRowClick={(row) => goto(`/work_orders/${row.workOrder.id}`)}
       class="mt-4 rounded-sm shadow-xs bg-card"
-      cellClasses={{ status: "p-0" }}
+      headerClasses={{ total: "px-0 text-right", createdAt: "px-0 text-right" }}
+      cellClasses={{
+        status: "p-0",
+        total: "p-0",
+        createdAt: "px-2 text-right",
+      }}
     />
   {/if}
 </PageLayout>

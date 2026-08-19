@@ -24,6 +24,17 @@ export const statuses: WorkOrderStatus[] = [
   "Canceled",
 ];
 
+export const statusWeights: Record<string, number> = {
+  Received: 1,
+  InDiagnostics: 2,
+  AwaitingApproval: 3,
+  AwaitingParts: 4,
+  Working: 5,
+  ReadyForPickup: 6,
+  Paid: 7,
+  Canceled: 8,
+};
+
 export type StatusColor =
   | "slate"
   | "sky"
