@@ -23,6 +23,7 @@
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
+  import type { Service } from "$lib/bindings";
   import { TableActionState } from "$lib/states/table-actions.svelte";
   import { prettifyIsoDateString } from "$lib/tools";
 
@@ -132,6 +133,28 @@
     disableFiltering: true,
     disablePagination: true,
   });
+
+  async function createCreateLaborItemFromService(service: Service) {
+    createLaborItemMutation.mutateAsync(
+      {
+        workOrderId: params.workorderId,
+        serviceId: service.id,
+        code: service.code,
+        name: service.name,
+        priceType: service.priceType,
+        fixedPrice: service.fixedPrice,
+        laborHours: service.laborHours,
+        discountType: "None",
+        discountAmount: "0",
+        discountPercent: "0",
+      },
+      {
+        onSuccess: () => {
+          isPopoverOpen = false;
+        },
+      },
+    );
+  }
 
   function confirmPartDelete() {
     if (partsTableActions.deleteId !== null) {
@@ -416,7 +439,7 @@
       <div class="p-4">
         <div class="flex flex-row items-center justify-between">
           <div class="flex flex-row gap-2 text-xl font-medium">
-            <p>Сервіси</p>
+            <p>Робота</p>
             <p class="text-muted-foreground">
               {workOrderDetails?.laborItems.length}
             </p>
@@ -446,19 +469,8 @@
                         <Command.Item
                           value={service.name}
                           class="hover:cursor-pointer"
-                          onSelect={async () => {
-                            createLaborItemMutation.mutateAsync({
-                              workOrderId: params.workorderId,
-                              serviceId: service.id,
-                              code: service.code,
-                              name: service.name,
-                              laborHours: service.laborHours,
-                              discountType: "None",
-                              discountAmount: "0",
-                              discountPercent: "0",
-                            });
-                            isPopoverOpen = false;
-                          }}
+                          onSelect={async () =>
+                            await createCreateLaborItemFromService(service)}
                         >
                           {service.name}
                         </Command.Item>
@@ -475,7 +487,7 @@
           emptyMessage="Сервісів не знайдено..."
           class="mt-4"
           headerClasses={{ name: "w-full" }}
-          cellClasses={{ actions: "p-0" }}
+          cellClasses={{ actions: "p-0", sum: "p-0" }}
         />
       </div>
 

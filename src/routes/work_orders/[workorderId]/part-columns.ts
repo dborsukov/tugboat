@@ -8,9 +8,9 @@ import CurrencyDisplay from "$lib/components/currency-display.svelte";
 import type { PartItemDto } from "$lib/bindings";
 
 import DataTableActions from "./part-table-actions-cell.svelte";
-import PartTableDiscountedCell from "./part-table-discounted-cell.svelte";
 import PartTableStatusCell from "./part-table-status-cell.svelte";
 import TableDiscountCell from "./table-discount-cell.svelte";
+import TableDiscountedWarningCell from "./table-discounted-warning-cell.svelte";
 
 export interface PartsTableMeta {
   onEdit: (id: number) => void;
@@ -172,7 +172,7 @@ export const columns: ColumnDef<PartItemDto>[] = [
       );
     },
     cell: ({ row }) => {
-      return renderComponent(PartTableDiscountedCell, {
+      return renderComponent(TableDiscountedWarningCell, {
         cost: row.original.baseCost,
         price: row.original.totals.discountedPrice,
       });

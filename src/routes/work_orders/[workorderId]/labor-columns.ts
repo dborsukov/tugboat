@@ -10,6 +10,7 @@ import type { LaborItemDto } from "$lib/bindings";
 import TableDecimalDisplayCell from "../../services/table-decimal-display-cell.svelte";
 import DataTableActions from "./labor-table-actions-cell.svelte";
 import TableDiscountCell from "./table-discount-cell.svelte";
+import TableDiscountedWarningCell from "./table-discounted-warning-cell.svelte";
 
 export interface LaborTableMeta {
   onEdit: (id: number) => void;
@@ -43,7 +44,7 @@ export const columns: ColumnDef<LaborItemDto>[] = [
     header: "Назва",
   },
   {
-    accessorKey: "laborHours",
+    id: "laborHours",
     header: () => {
       return renderSnippet(
         createRawSnippet(() => {
@@ -54,9 +55,19 @@ export const columns: ColumnDef<LaborItemDto>[] = [
       );
     },
     cell: ({ row }) => {
-      return renderComponent(TableDecimalDisplayCell, {
-        value: row.original.laborHours,
-      });
+      if (row.original.priceType === "Hourly") {
+        return renderComponent(TableDecimalDisplayCell, {
+          value: row.original.laborHours,
+        });
+      } else {
+        return renderSnippet(
+          createRawSnippet(() => {
+            return {
+              render: () => `<p class="text-center">—</p>`,
+            };
+          }),
+        );
+      }
     },
   },
   {
@@ -110,10 +121,9 @@ export const columns: ColumnDef<LaborItemDto>[] = [
       );
     },
     cell: ({ row }) => {
-      return renderComponent(CurrencyDisplay, {
-        amount: row.original.totals.total,
-        suffix: "грн.",
-        class: "font-medium justify-end",
+      return renderComponent(TableDiscountedWarningCell, {
+        cost: row.original.totals.cost,
+        price: row.original.totals.total,
       });
     },
   },

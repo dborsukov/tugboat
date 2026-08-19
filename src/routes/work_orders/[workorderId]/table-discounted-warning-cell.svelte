@@ -17,7 +17,7 @@
 
 <div
   class={cn(
-    "w-full h-full flex items-center justify-center",
+    "w-full h-full flex items-center justify-end px-2",
     cost.gt(price) && "bg-rose-100 text-rose-800 font-medium",
     className,
   )}

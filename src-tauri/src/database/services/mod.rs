@@ -17,20 +17,22 @@ pub async fn fetch_services_count(state: State<'_, crate::AppState>) -> AppResul
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_services_list(state: State<'_, crate::AppState>) -> AppResult<Vec<Service>> {
-    let services: Vec<Service> = sqlx::query_as("SELECT id, code, name, labor_hours FROM services")
-        .fetch_all(&state.db_pool)
-        .await?;
+    let services: Vec<Service> =
+        sqlx::query_as("SELECT id, code, name, price_type, fixed_price, labor_hours FROM services")
+            .fetch_all(&state.db_pool)
+            .await?;
     Ok(services)
 }
 
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_service_by_id(state: State<'_, crate::AppState>, id: i32) -> AppResult<Service> {
-    let service: Service =
-        sqlx::query_as("SELECT id, code, name, labor_hours FROM services WHERE id = $1")
-            .bind(id)
-            .fetch_one(&state.db_pool)
-            .await?;
+    let service: Service = sqlx::query_as(
+        "SELECT id, code, name, price_type, fixed_price, labor_hours FROM services WHERE id = $1",
+    )
+    .bind(id)
+    .fetch_one(&state.db_pool)
+    .await?;
     Ok(service)
 }
 
@@ -41,10 +43,12 @@ pub async fn create_service(
     payload: CreateServicePayload,
 ) -> AppResult<Service> {
     let service: Service = sqlx::query_as(
-        "INSERT INTO services (code, name, labor_hours) VALUES ($1, $2, $3) RETURNING *",
+        "INSERT INTO services (code, name, price_type, fixed_price, labor_hours) VALUES ($1, $2, $3, $4, $5) RETURNING *",
     )
     .bind(payload.code)
     .bind(payload.name)
+    .bind(payload.price_type)
+    .bind(payload.fixed_price.to_string())
     .bind(payload.labor_hours.to_string())
     .fetch_one(&state.db_pool)
     .await?;
@@ -59,11 +63,13 @@ pub async fn update_service(
     payload: UpdateServicePayload,
 ) -> AppResult<Service> {
     let service: Service = sqlx::query_as(
-        "UPDATE services SET code = $2, name = $3, labor_hours = $4 WHERE id = $1 RETURNING *",
+        "UPDATE services SET code = $2, name = $3, price_type = $4, fixed_price =$5, labor_hours = $6 WHERE id = $1 RETURNING *",
     )
     .bind(id)
     .bind(payload.code)
     .bind(payload.name)
+    .bind(payload.price_type)
+    .bind(payload.fixed_price.to_string())
     .bind(payload.labor_hours.to_string())
     .fetch_one(&state.db_pool)
     .await?;

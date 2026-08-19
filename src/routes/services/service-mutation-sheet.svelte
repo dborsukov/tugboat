@@ -10,8 +10,14 @@
 
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
-  import { zBigString } from "$lib/schemas/zbig";
+  import {
+    laborPriceFields,
+    laborPriceFromEntity,
+    laborPriceToPayload,
+    refineLaborPrice,
+  } from "$lib/schemas/zlaborprice";
 
+  import LaborPriceField from "../work_orders/[workorderId]/labor-price-field.svelte";
   import {
     createCreateServiceMutation,
     createServicesQuery,
@@ -38,10 +44,7 @@
   export const serviceSchema = z.object({
     code: z.string().nullable(),
     name: z.string().min(1, { error: "Вкажіть назву" }),
-    laborHours: zBigString({
-      requiredError: "Обов'язкове поле",
-      min: { value: 0, message: "Кількість не може бути від'ємним числом" },
-    }).default("0"),
+    ...laborPriceFields,
   });
 
   const extendedSchema = serviceSchema
@@ -74,7 +77,8 @@
         message: "Сервіс з такою назвою вже існує",
         path: ["name"],
       },
-    );
+    )
+    .superRefine(refineLaborPrice);
 
   const form = superForm(defaults(zod4(extendedSchema)), {
     SPA: true,
@@ -86,10 +90,15 @@
     async onUpdate({ form: nativeForm }) {
       if (!nativeForm.valid) return;
 
+      const laborPricePayload = laborPriceToPayload(
+        nativeForm.data.laborPriceType,
+        nativeForm.data.laborPrice,
+      );
+
       const payload = {
         code: nativeForm.data.code,
         name: nativeForm.data.name,
-        laborHours: nativeForm.data.laborHours,
+        ...laborPricePayload,
       };
 
       if (isEdit && serviceId) {
@@ -113,7 +122,8 @@
           data: {
             code: service.code,
             name: service.name,
-            laborHours: service.laborHours,
+            laborPriceType: service.priceType,
+            laborPrice: laborPriceFromEntity(service),
           },
         });
       } else {
@@ -156,15 +166,14 @@
     <Form.FieldErrors />
   </Form.Field>
 
-  <Form.Field {form} name="laborHours">
+  <Form.Field {form} name="laborPrice">
     <Form.Control>
       {#snippet children({ props })}
-        <Label>Нормо-години</Label>
-        <Input
-          bind:value={$formData.laborHours}
-          type="text"
-          inputmode="decimal"
-          {...props}
+        <Label>Вартість</Label>
+        <LaborPriceField
+          bind:type={$formData.laborPriceType}
+          bind:value={$formData.laborPrice}
+          inputProps={props}
         />
       {/snippet}
     </Form.Control>

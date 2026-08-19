@@ -61,7 +61,7 @@
   {#snippet header()}
     <div class="h-full flex items-center gap-2">
       <Input
-        placeholder="Пошук за кодом, назвою або нормо-годинами..."
+        placeholder="Пошук за кодом, назвою, нормо-годинами або ціною..."
         disabled={!servicesQuery.isSuccess}
         bind:value={inputValue}
         class="w-full"

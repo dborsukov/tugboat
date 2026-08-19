@@ -1,10 +1,21 @@
 use rust_decimal::Decimal;
 
 use super::structs::{DiscountType, LaborItem, PartItem, WorkOrder};
-use crate::database::work_orders::dtos::{LaborItemTotals, PartItemTotals, WorkOrderTotals};
+use crate::database::work_orders::{
+    dtos::{LaborItemTotals, PartItemTotals, WorkOrderTotals},
+    structs::{LaborCostType, LaborPriceType},
+};
 
-pub fn calculate_labor_item_totals(labor_item: &LaborItem, rate: Decimal) -> LaborItemTotals {
-    let subtotal = (labor_item.labor_hours * rate).round_dp(2);
+pub fn calculate_labor_item_totals(
+    labor_item: &LaborItem,
+    rate: Decimal,
+    labor_cost_type: LaborCostType,
+    labor_cost: Decimal,
+) -> LaborItemTotals {
+    let subtotal = match labor_item.price_type {
+        LaborPriceType::Hourly => (labor_item.labor_hours * rate).round_dp(2),
+        LaborPriceType::Fixed => labor_item.fixed_price.round_dp(2),
+    };
 
     let total = match labor_item.discount_type {
         DiscountType::None => subtotal,
@@ -15,15 +26,25 @@ pub fn calculate_labor_item_totals(labor_item: &LaborItem, rate: Decimal) -> Lab
     };
     let total = total.max(Decimal::ZERO);
 
-    // Derived from subtotal - total (rather than discount_amount/discount_percent
-    // directly) so it always reflects what was actually deducted, including cases
-    // where the raw discount would have pushed the total below zero.
+    // Derived from subtotal - total so it always reflects what was actually deducted,
+    // including cases where the raw discount would have pushed the total below zero.
     let discount = (subtotal - total).max(Decimal::ZERO);
 
+    // When labor_cost_type is Hourly, cost is derived from labor_hours.
+    // For a Fixed-priced item, labor_hours is always zero (it's not tracked
+    // independently of billing), so cost intentionally comes out to 0 here.
+    // There is no hours-based cost basis for a flat-fee job. This is not a
+    // bug, it reflects that Hourly cost tracking has nothing to measure
+    // against for items that were never billed by the hour. Callers that
+    // surface cost to users should treat this combination (Hourly cost
+    // type + Fixed price_type) as "no cost basis available", not as true 0.
+    let cost = match labor_cost_type {
+        LaborCostType::Hourly => (labor_item.labor_hours * labor_cost).round_dp(2),
+        LaborCostType::Percentage => (subtotal * (labor_cost / Decimal::ONE_HUNDRED)).round_dp(2),
+    };
+
     LaborItemTotals {
-        // TODO: figure out how to implement labor costs
-        // No logic for labor cost, copy subtotal for now
-        cost: subtotal,
+        cost,
         subtotal,
         discount,
         total,

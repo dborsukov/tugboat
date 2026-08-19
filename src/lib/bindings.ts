@@ -122,6 +122,8 @@ export type CreateLaborItemPayload = {
 	serviceId: number | null,
 	code: string | null,
 	name: string,
+	priceType: LaborPriceType,
+	fixedPrice: string,
 	laborHours: string,
 	discountType: DiscountType,
 	discountAmount: string,
@@ -145,6 +147,8 @@ export type CreatePartItemPayload = {
 export type CreateServicePayload = {
 	code: string | null,
 	name: string,
+	priceType: LaborPriceType,
+	fixedPrice: string,
 	laborHours: string,
 };
 
@@ -156,6 +160,8 @@ export type CreateWorkOrderPayload = {
 	mechanicNotes: string | null,
 	status: WorkOrderStatus,
 	rate: string,
+	laborCostType: LaborCostType,
+	laborCostValue: string,
 	discountType: DiscountType,
 	discountAmount: string,
 	discountPercent: string,
@@ -167,12 +173,16 @@ export type DriveType = "FrontWheel" | "RearWheel" | "AllWheel" | "FourWheel";
 
 export type FuelType = "Gasoline" | "Diesel" | "LpgCng" | "Hybrid" | "Electric";
 
+export type LaborCostType = "Hourly" | "Percentage";
+
 export type LaborItem = {
 	id: number,
 	serviceId: number | null,
 	workOrderId: string,
 	code: string | null,
 	name: string,
+	priceType: LaborPriceType,
+	fixedPrice: string,
 	laborHours: string,
 	discountType: DiscountType,
 	discountAmount: string,
@@ -189,6 +199,8 @@ export type LaborItemTotals = {
 	discount: string,
 	total: string,
 };
+
+export type LaborPriceType = "Hourly" | "Fixed";
 
 export type PartItem = {
 	id: number,
@@ -225,6 +237,8 @@ export type Service = {
 	id: number,
 	code: string | null,
 	name: string,
+	priceType: LaborPriceType,
+	fixedPrice: string,
 	laborHours: string,
 };
 
@@ -252,6 +266,8 @@ export type UpdateLaborItemPayload = {
 	serviceId: number | null,
 	code: string | null,
 	name: string,
+	priceType: LaborPriceType,
+	fixedPrice: string,
 	laborHours: string,
 	discountType: DiscountType,
 	discountAmount: string,
@@ -274,6 +290,8 @@ export type UpdatePartItemPayload = {
 export type UpdateServicePayload = {
 	code: string | null,
 	name: string,
+	priceType: LaborPriceType,
+	fixedPrice: string,
 	laborHours: string,
 };
 
@@ -285,6 +303,8 @@ export type UpdateWorkOrderPayload = {
 	mechanicNotes: string | null,
 	status: WorkOrderStatus,
 	rate: string,
+	laborCostType: LaborCostType,
+	laborCostValue: string,
 	discountType: DiscountType,
 	discountAmount: string,
 	discountPercent: string,
@@ -302,6 +322,8 @@ export type WorkOrder = {
 	mechanicNotes: string | null,
 	status: WorkOrderStatus,
 	rate: string,
+	laborCostType: LaborCostType,
+	laborCostValue: string,
 	discountType: DiscountType,
 	discountAmount: string,
 	discountPercent: string,

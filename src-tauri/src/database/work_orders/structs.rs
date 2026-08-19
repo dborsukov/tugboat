@@ -33,6 +33,20 @@ pub enum PartStatus {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
 #[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+pub enum LaborPriceType {
+    Hourly,
+    Fixed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
+#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+pub enum LaborCostType {
+    Hourly,
+    Percentage,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
+#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
 pub enum DiscountType {
     None,
     Fixed,
@@ -57,6 +71,8 @@ pub struct WorkOrder {
     pub mechanic_notes: Option<String>,
     pub status: WorkOrderStatus,
     pub rate: Decimal,
+    pub labor_cost_type: LaborCostType,
+    pub labor_cost_value: Decimal,
     pub discount_type: DiscountType,
     pub discount_amount: Decimal,
     pub discount_percent: Decimal,
@@ -77,6 +93,8 @@ impl<'r> FromRow<'r, SqliteRow> for WorkOrder {
             mechanic_notes: row.try_get("mechanic_notes")?,
             status: row.try_get("status")?,
             rate: decimal_column(row, "rate")?,
+            labor_cost_type: row.try_get("labor_cost_type")?,
+            labor_cost_value: decimal_column(row, "labor_cost_value")?,
             discount_type: row.try_get("discount_type")?,
             discount_amount: decimal_column(row, "discount_amount")?,
             discount_percent: decimal_column(row, "discount_percent")?,
@@ -100,6 +118,8 @@ pub struct CreateWorkOrderPayload {
     pub mechanic_notes: Option<String>,
     pub status: WorkOrderStatus,
     pub rate: Decimal,
+    pub labor_cost_type: LaborCostType,
+    pub labor_cost_value: Decimal,
     pub discount_type: DiscountType,
     pub discount_amount: Decimal,
     pub discount_percent: Decimal,
@@ -116,6 +136,8 @@ pub struct UpdateWorkOrderPayload {
     pub mechanic_notes: Option<String>,
     pub status: WorkOrderStatus,
     pub rate: Decimal,
+    pub labor_cost_type: LaborCostType,
+    pub labor_cost_value: Decimal,
     pub discount_type: DiscountType,
     pub discount_amount: Decimal,
     pub discount_percent: Decimal,
@@ -135,6 +157,8 @@ pub struct LaborItem {
     pub work_order_id: String,
     pub code: Option<String>,
     pub name: String,
+    pub price_type: LaborPriceType,
+    pub fixed_price: Decimal,
     pub labor_hours: Decimal,
     pub discount_type: DiscountType,
     pub discount_amount: Decimal,
@@ -149,6 +173,8 @@ impl<'r> FromRow<'r, SqliteRow> for LaborItem {
             work_order_id: row.try_get("work_order_id")?,
             code: row.try_get("code")?,
             name: row.try_get("name")?,
+            price_type: row.try_get("price_type")?,
+            fixed_price: decimal_column(row, "fixed_price")?,
             labor_hours: decimal_column(row, "labor_hours")?,
             discount_type: row.try_get("discount_type")?,
             discount_amount: decimal_column(row, "discount_amount")?,
@@ -165,6 +191,8 @@ pub struct CreateLaborItemPayload {
     pub service_id: Option<i64>,
     pub code: Option<String>,
     pub name: String,
+    pub price_type: LaborPriceType,
+    pub fixed_price: Decimal,
     pub labor_hours: Decimal,
     pub discount_type: DiscountType,
     pub discount_amount: Decimal,
@@ -178,6 +206,8 @@ pub struct UpdateLaborItemPayload {
     pub service_id: Option<i64>,
     pub code: Option<String>,
     pub name: String,
+    pub price_type: LaborPriceType,
+    pub fixed_price: Decimal,
     pub labor_hours: Decimal,
     pub discount_type: DiscountType,
     pub discount_amount: Decimal,

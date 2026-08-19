@@ -40,6 +40,8 @@ CREATE TABLE services (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     code TEXT,
     name TEXT NOT NULL,
+    price_type TEXT NOT NULL,
+    fixed_price TEXT NOT NULL DEFAULT '0',
     labor_hours TEXT NOT NULL DEFAULT "1.0"
 );
 
@@ -51,6 +53,8 @@ CREATE TABLE work_orders (
     mechanic_notes TEXT,
     status TEXT NOT NULL,
     rate TEXT NOT NULL DEFAULT "0",
+    labor_cost_type TEXT NOT NULL,
+    labor_cost_value TEXT NOT NULL DEFAULT "0",
     discount_type TEXT NOT NULL,
     discount_amount TEXT NOT NULL DEFAULT "0",
     discount_percent TEXT NOT NULL DEFAULT "0",
@@ -68,6 +72,8 @@ CREATE TABLE labor_items (
     work_order_id TEXT NOT NULL,
     code TEXT,
     name TEXT NOT NULL,
+    price_type TEXT NOT NULL,
+    fixed_price TEXT NOT NULL DEFAULT '0',
     labor_hours TEXT NOT NULL DEFAULT "1.0",
     discount_type TEXT NOT NULL,
     discount_amount TEXT NOT NULL DEFAULT "0",

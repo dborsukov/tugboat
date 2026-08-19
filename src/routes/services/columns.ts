@@ -3,6 +3,7 @@ import { createRawSnippet } from "svelte";
 
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
+import CurrencyDisplay from "$lib/components/currency-display.svelte";
 import DataTableSortButton from "$lib/components/data-table-sort-button.svelte";
 
 import type { Service } from "$lib/bindings";
@@ -61,7 +62,8 @@ export const columns: ColumnDef<Service>[] = [
     },
   },
   {
-    accessorKey: "labor_hours",
+    id: "laborHours",
+    accessorFn: (row) => row.laborHours,
     sortingFn: "alphanumeric",
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
@@ -76,9 +78,52 @@ export const columns: ColumnDef<Service>[] = [
       });
     },
     cell: ({ row }) => {
-      return renderComponent(TableDecimalDisplayCell, {
-        value: row.original.laborHours,
+      if (row.original.priceType === "Hourly") {
+        return renderComponent(TableDecimalDisplayCell, {
+          value: row.original.laborHours,
+        });
+      } else {
+        return renderSnippet(
+          createRawSnippet(() => {
+            return {
+              render: () => `<p class="text-center">—</p>`,
+            };
+          }),
+        );
+      }
+    },
+  },
+  {
+    id: "fixedPrice",
+    accessorFn: (row) => row.fixedPrice,
+    header: ({ column }) => {
+      return renderComponent(DataTableSortButton, {
+        onclick: column.getToggleSortingHandler(),
+        sortStatus: column.getIsSorted(),
+        class: "pl-1.5",
+        children: createRawSnippet(() => {
+          return {
+            render: () => "<span>Ціна</span>",
+          };
+        }),
       });
+    },
+    cell: ({ row }) => {
+      if (row.original.priceType === "Hourly") {
+        return renderSnippet(
+          createRawSnippet(() => {
+            return {
+              render: () => `<p class="text-center">—</p>`,
+            };
+          }),
+        );
+      } else {
+        return renderComponent(CurrencyDisplay, {
+          amount: row.original.fixedPrice,
+          suffix: "грн.",
+          class: "justify-end",
+        });
+      }
     },
   },
   {
