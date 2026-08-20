@@ -95,6 +95,11 @@ CREATE TABLE part_items (
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE
 );
 
+CREATE TABLE work_order_sequences (
+    year_month TEXT PRIMARY KEY, -- 'YYYYMM'
+    counter INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE INDEX idx_cars_client_id ON cars (client_id);
 
 CREATE INDEX idx_cars_brand_id ON cars (brand_id);

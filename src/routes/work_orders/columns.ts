@@ -30,7 +30,7 @@ export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
       const nameCellSnippet = createRawSnippet(() => {
         return {
           render: () =>
-            `<div class="px-2 font-mono tracking-wider">${row.original.workOrder.id}</div>`,
+            `<div class="px-2 font-mono">${row.original.workOrder.id}</div>`,
         };
       });
       return renderSnippet(nameCellSnippet);

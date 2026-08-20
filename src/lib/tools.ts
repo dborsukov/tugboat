@@ -1,5 +1,3 @@
-import Sqids from "sqids";
-
 type SpectaResult<T, E> =
   | { status: "ok"; data: T }
   | { status: "error"; error: E };
@@ -14,12 +12,7 @@ export async function unwrap<T, E>(
   return result.data;
 }
 
-let squids_counter = 0;
 let date_locale = "uk-UA";
-const sqids = new Sqids({
-  alphabet: "65VH9R8SPELUNT71GYX4AJ3DCBZW2FKM",
-  minLength: 6,
-});
 
 export function prettifyIsoDateString(
   iso_string: string,
@@ -48,10 +41,4 @@ export function prettifyIsoDateString(
       minute: "numeric",
     });
   }
-}
-
-export function sqidsEncode(value: number) {
-  // Reset counter every 1000 items to keep numbers lean
-  squids_counter = (squids_counter + 1) % 1000;
-  return sqids.encode([value, squids_counter]);
 }

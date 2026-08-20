@@ -151,7 +151,6 @@ export type CreateServicePayload = {
 };
 
 export type CreateWorkOrderPayload = {
-	id: string,
 	carId: number,
 	odometerIn: number,
 	customerComplaint: string | null,

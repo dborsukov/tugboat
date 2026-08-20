@@ -4,6 +4,7 @@ pub mod structs;
 
 use std::collections::HashMap;
 
+use chrono::Utc;
 use rust_decimal::Decimal;
 use structs::*;
 use tauri::State;
@@ -234,15 +235,38 @@ pub async fn fetch_work_order_details_dto_by_client_id(
     Ok(details_list)
 }
 
+/// Generates a new work order id in the form `YYYYMM-NNNN`, where the
+/// counter resets automatically at the start of each month.
+/// Transaction failure will roll back counter, leaving no gap.
+async fn generate_work_order_id(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>) -> AppResult<String> {
+    const PREFIX: &str = "ПП";
+    let year_month = Utc::now().format("%Y%m").to_string();
+
+    let counter: i64 = sqlx::query_scalar(
+        "INSERT INTO work_order_sequences (year_month, counter) VALUES ($1, 1) \
+         ON CONFLICT (year_month) DO UPDATE SET counter = counter + 1 \
+         RETURNING counter",
+    )
+    .bind(&year_month)
+    .fetch_one(&mut **tx)
+    .await?;
+
+    Ok(format!("{PREFIX}-{year_month}-{counter:03}"))
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn create_work_order(
     state: State<'_, crate::AppState>,
     payload: CreateWorkOrderPayload,
 ) -> AppResult<WorkOrder> {
+    let mut tx = state.db_pool.begin().await?;
+
+    let id = generate_work_order_id(&mut tx).await?;
+
     let work_order: WorkOrder =
         sqlx::query_as("INSERT INTO work_orders (id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *")
-            .bind(payload.id)
+            .bind(id)
             .bind(payload.car_id)
             .bind(payload.odometer_in)
             .bind(payload.customer_complaint)
@@ -253,8 +277,10 @@ pub async fn create_work_order(
             .bind(payload.labor_cost_value.to_string())
             .bind(payload.discount_type)
             .bind(payload.discount_value.to_string())
-            .fetch_one(&state.db_pool)
+            .fetch_one(&mut *tx)
             .await?;
+
+    tx.commit().await?;
     Ok(work_order)
 }
 

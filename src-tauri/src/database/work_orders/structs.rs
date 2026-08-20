@@ -108,7 +108,6 @@ impl<'r> FromRow<'r, SqliteRow> for WorkOrder {
 #[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateWorkOrderPayload {
-    pub id: String,
     #[specta(type = specta_typescript::Number)]
     pub car_id: i64,
     pub odometer_in: i32,

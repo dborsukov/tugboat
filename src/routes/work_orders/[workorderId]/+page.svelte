@@ -335,7 +335,7 @@
       <div class="h-15 flex flex-row items-center border-b border-border">
         <div class="p-4 flex flex-col justify-start items-start">
           <span class="text-sm text-muted-foreground">Наряд-замовлення</span>
-          <p class="text-base font-mono font-medium">
+          <p class="text-base font-medium">
             {workOrderDetails.workOrder?.id}
           </p>
         </div>

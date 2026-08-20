@@ -34,7 +34,6 @@
     laborCostFromEntity,
     laborCostToPayload,
   } from "$lib/schemas/zlaborcost";
-  import { sqidsEncode } from "$lib/tools";
   import type { CreateOrEditProps } from "$lib/types";
 
   import DiscountField from "./discount-field.svelte";
@@ -208,8 +207,6 @@
   });
 
   async function submitWorkOrder(data: z.infer<typeof workOrderSchema>) {
-    let new_id = `WO-${sqidsEncode(Date.now())}`;
-
     const laborCostPayload = laborCostToPayload(
       data.laborCostType,
       data.laborCost,
@@ -247,7 +244,6 @@
             .catch(() => null)
         : await createWorkOrderMutation
             .mutateAsync({
-              id: new_id,
               carId: carId!,
               odometerIn: data.odometerIn,
               status: "Received",
@@ -260,7 +256,7 @@
             .catch(() => null);
 
     if (!result) return;
-    if (!isEdit) await goto(`/work_orders/${new_id}`);
+    if (!isEdit) await goto(`/work_orders/${result.id}`);
     open = false;
     form.reset();
   }
