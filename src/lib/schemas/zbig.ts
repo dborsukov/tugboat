@@ -19,6 +19,7 @@ export const zBigString = (opts: BigStringOptions = {}) => {
   return z
     .string()
     .min(1, { message: requiredError, abort: true })
+    .transform((val) => val.trim().replace(",", "."))
     .superRefine((val, ctx) => {
       let b: Big;
 
