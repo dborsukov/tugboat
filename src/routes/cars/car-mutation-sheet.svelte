@@ -110,8 +110,8 @@
       .min(1885, { error: "Неправильний рік" })
       .max(new Date().getFullYear() + 1, {
         error: "Рік не може бути в далекому майбутньому",
-      }),
-
+      })
+      .default(0),
     licensePlate: z
       .string()
       .nullable()

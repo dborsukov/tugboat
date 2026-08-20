@@ -142,7 +142,7 @@
     />
   {:else}
     <div class="mt-4 border border-border rounded bg-card">
-      <div class="p-4 border-b border-border">
+      <div class="p-4">
         <div class="flex flex-row items-center gap-4">
           <ClientAvatar name={clientDetails?.client?.name} class="size-16" />
           <div class="flex flex-col gap-2">
@@ -165,8 +165,8 @@
         </div>
       </div>
 
-      <div class="w-full flex flex-wrap border-b border-border bg-muted/40">
-        {#if clientDetails?.client?.notes}
+      {#if clientDetails?.client?.notes}
+        <div class="w-full flex flex-wrap border-t border-border bg-muted/40">
           <div class="flex-1 flex flex-col items-start gap-1 px-4 py-2">
             <span
               class="flex items-center justify-center gap-2 text-base text-muted-foreground"
@@ -178,11 +178,15 @@
               {clientDetails.client.notes}
             </p>
           </div>
-        {/if}
-      </div>
+        </div>
+      {/if}
+    </div>
 
-      <div class="p-4 border-b border-border">
-        <div class="flex flex-row gap-2 items-center text-xl font-medium pb-2">
+    <div class="mt-4 border border-border rounded bg-card">
+      <div class="p-0 border-b border-border">
+        <div
+          class="px-4 pt-4 flex flex-row gap-2 items-center text-xl font-medium pb-2"
+        >
           <p>Автомобілі</p>
           <p class="text-muted-foreground">
             {clientDetails?.cars?.length}
@@ -199,12 +203,12 @@
           />
         </div>
         {#if clientDetails?.cars?.length != 0}
-          <div class="flex flex-col items-start">
+          <div class="flex flex-col items-start pb-2">
             {#each clientDetails?.cars as cli (cli.car.id)}
-              <div class="h-12 w-full">
+              <div class="h-10 w-full px-2">
                 <Button
                   variant="ghost"
-                  class="h-12 w-full justify-start gap-4"
+                  class="h-10 w-full pl-1 items-center justify-start gap-2"
                   onclick={async () => await goto(`/cars/${cli.car?.id}`)}
                 >
                   <LogoLoader slug={cli.brand.iconSlug} class="h-3/4" />

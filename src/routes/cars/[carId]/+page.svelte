@@ -148,7 +148,7 @@
       class="mt-10"
     />
   {:else}
-    <div class="mt-4 border border-border rounded bg-card">
+    <div class="mt-4 border border-border rounded rounded-b-none bg-card">
       <div class="p-4 border-b border-border">
         <div class="flex flex-row items-center gap-4">
           <div class="h-16">
@@ -186,9 +186,7 @@
         </div>
       </div>
 
-      <div
-        class="w-full flex flex-wrap gap-px bg-border border-b border-border"
-      >
+      <div class="w-full flex flex-wrap gap-px bg-border">
         <div class="flex-[1_1_max-content] p-3 bg-card whitespace-nowrap">
           <div class="flex flex-col gap-1">
             <div class="flex flex-row gap-2 items-center font-medium">
@@ -281,8 +279,8 @@
         </div>
       </div>
 
-      <div class="w-full flex flex-wrap border-b border-border bg-muted/40">
-        {#if carDetails?.carDto?.car?.notes}
+      {#if carDetails?.carDto?.car?.notes}
+        <div class="w-full flex flex-wrap border-t border-border bg-muted/40">
           <div class="flex-1 flex flex-col items-start gap-1 px-4 py-2">
             <span
               class="flex items-center justify-center gap-2 text-base text-muted-foreground"
@@ -294,9 +292,11 @@
               {carDetails.carDto.car.notes}
             </p>
           </div>
-        {/if}
-      </div>
+        </div>
+      {/if}
+    </div>
 
+    <div class="mt-4 border border-border rounded rounded-t-none bg-card">
       <div class="p-4">
         <div class="flex flex-row gap-2 text-xl font-semibold">
           <p>Замовлення</p>
