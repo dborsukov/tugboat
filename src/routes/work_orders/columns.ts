@@ -16,7 +16,8 @@ import WorkOrderTableTotalCell from "./work-order-table-total-cell.svelte";
 
 export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
   {
-    accessorKey: "id",
+    id: "id",
+    accessorFn: (row) => row.workOrder.id,
     header: () => {
       const nameCellSnippet = createRawSnippet(() => {
         return {
@@ -84,7 +85,8 @@ export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
     },
   },
   {
-    accessorKey: "status",
+    id: "status",
+    accessorFn: (row) => row.workOrder.status,
     filterFn: "arrIncludesSome",
     sortingFn: (rowA, rowB) => {
       const statusA = rowA.original.workOrder?.status;
