@@ -4,6 +4,7 @@ import { createRawSnippet } from "svelte";
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
 import CurrencyDisplay from "$lib/components/currency-display.svelte";
+import DataTableOptionalCell from "$lib/components/data-table-optional-cell.svelte";
 
 import type { LaborItemDto } from "$lib/bindings";
 
@@ -19,24 +20,20 @@ export interface LaborTableMeta {
 
 export const columns: ColumnDef<LaborItemDto>[] = [
   {
-    accessorKey: "code",
+    id: "code",
     header: () => {
       return renderSnippet(
         createRawSnippet(() => {
           return {
-            render: () => `<div class="px-2">Код</div>`,
+            render: () => `<div>Код</div>`,
           };
         }),
       );
     },
     cell: ({ row }) => {
-      return renderSnippet(
-        createRawSnippet(() => {
-          return {
-            render: () => `<div class="font-mono">${row.original.code}</div>`,
-          };
-        }),
-      );
+      return renderComponent(DataTableOptionalCell, {
+        value: row.original.code,
+      });
     },
   },
   {

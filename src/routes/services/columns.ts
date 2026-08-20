@@ -4,6 +4,7 @@ import { createRawSnippet } from "svelte";
 import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
 import CurrencyDisplay from "$lib/components/currency-display.svelte";
+import DataTableOptionalCell from "$lib/components/data-table-optional-cell.svelte";
 import DataTableSortButton from "$lib/components/data-table-sort-button.svelte";
 
 import type { Service } from "$lib/bindings";
@@ -18,7 +19,7 @@ export interface ServiceTableMeta {
 
 export const columns: ColumnDef<Service>[] = [
   {
-    accessorKey: "code",
+    id: "code",
     header: () => {
       return renderSnippet(
         createRawSnippet(() => {
@@ -29,13 +30,9 @@ export const columns: ColumnDef<Service>[] = [
       );
     },
     cell: ({ row }) => {
-      return renderSnippet(
-        createRawSnippet(() => {
-          return {
-            render: () => `<div class="font-mono">${row.original.code}</div>`,
-          };
-        }),
-      );
+      return renderComponent(DataTableOptionalCell, {
+        value: row.original.code,
+      });
     },
   },
   {
