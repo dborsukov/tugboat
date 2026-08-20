@@ -24,9 +24,10 @@ pub async fn fetch_clients_count(state: State<'_, crate::AppState>) -> AppResult
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_clients_list(state: State<'_, crate::AppState>) -> AppResult<Vec<Client>> {
-    let clients: Vec<Client> = sqlx::query_as("SELECT id, name, phone, created_at FROM clients")
-        .fetch_all(&state.db_pool)
-        .await?;
+    let clients: Vec<Client> =
+        sqlx::query_as("SELECT id, name, phone, notes, created_at FROM clients")
+            .fetch_all(&state.db_pool)
+            .await?;
     Ok(clients)
 }
 
@@ -45,7 +46,7 @@ pub async fn fetch_client_details_dto(
 #[specta::specta]
 pub async fn fetch_client_by_id(state: State<'_, crate::AppState>, id: i32) -> AppResult<Client> {
     let client: Client =
-        sqlx::query_as("SELECT id, name, phone, created_at FROM clients WHERE id = $1")
+        sqlx::query_as("SELECT id, name, phone, notes, created_at FROM clients WHERE id = $1")
             .bind(id)
             .fetch_one(&state.db_pool)
             .await?;
@@ -59,9 +60,10 @@ pub async fn create_client(
     payload: CreateClientPayload,
 ) -> AppResult<Client> {
     let client: Client =
-        sqlx::query_as("INSERT INTO clients (name, phone) VALUES ($1, $2) RETURNING *")
+        sqlx::query_as("INSERT INTO clients (name, phone, notes) VALUES ($1, $2, $3) RETURNING *")
             .bind(payload.name)
             .bind(payload.phone)
+            .bind(payload.notes)
             .fetch_one(&state.db_pool)
             .await?;
     Ok(client)
@@ -74,13 +76,15 @@ pub async fn update_client(
     id: i32,
     payload: UpdateClientPayload,
 ) -> AppResult<Client> {
-    let client: Client =
-        sqlx::query_as("UPDATE clients SET name = $2, phone = $3 WHERE id = $1 RETURNING *")
-            .bind(id)
-            .bind(payload.name)
-            .bind(payload.phone)
-            .fetch_one(&state.db_pool)
-            .await?;
+    let client: Client = sqlx::query_as(
+        "UPDATE clients SET name = $2, phone = $3, notes = $4 WHERE id = $1 RETURNING *",
+    )
+    .bind(id)
+    .bind(payload.name)
+    .bind(payload.phone)
+    .bind(payload.notes)
+    .fetch_one(&state.db_pool)
+    .await?;
     Ok(client)
 }
 

@@ -33,7 +33,7 @@ pub async fn fetch_work_order_by_id(
     state: &State<'_, crate::AppState>,
     id: &String,
 ) -> AppResult<WorkOrder> {
-    let work_order: WorkOrder = sqlx::query_as("SELECT id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders WHERE id = $1")
+    let work_order: WorkOrder = sqlx::query_as("SELECT id, car_id, odometer_in, description, notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders WHERE id = $1")
         .bind(id)
         .fetch_one(&state.db_pool)
         .await?;
@@ -45,7 +45,7 @@ pub async fn fetch_work_order_by_id(
 pub async fn fetch_work_orders_list(
     state: State<'_, crate::AppState>,
 ) -> AppResult<Vec<WorkOrder>> {
-    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders")
+    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, description, notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders")
         .fetch_all(&state.db_pool)
         .await?;
     Ok(work_orders)
@@ -170,7 +170,7 @@ pub async fn fetch_work_order_details_dto_by_car_id(
     let car_dto = fetch_car_by_id(state.clone(), car_id).await?;
     let client = fetch_client_by_id(state.clone(), car_dto.car.client_id as i32).await?;
 
-    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders WHERE car_id = $1")
+    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, description, notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders WHERE car_id = $1")
         .bind(car_id)
         .fetch_all(&state.db_pool)
         .await?;
@@ -199,7 +199,7 @@ pub async fn fetch_work_order_details_dto_by_client_id(
     let client = fetch_client_by_id(state.clone(), client_id).await?;
 
     let work_orders: Vec<WorkOrder> = sqlx::query_as(
-        "SELECT wo.id, wo.car_id, wo.odometer_in, wo.customer_complaint, wo.mechanic_notes, wo.status, wo.rate, wo.labor_cost_type, wo.labor_cost_value, wo.discount_type, wo.discount_value, wo.created_at, wo.started_at, wo.completed_at, wo.paid_at, wo.payment_method \
+        "SELECT wo.id, wo.car_id, wo.odometer_in, wo.description, wo.notes, wo.status, wo.rate, wo.labor_cost_type, wo.labor_cost_value, wo.discount_type, wo.discount_value, wo.created_at, wo.started_at, wo.completed_at, wo.paid_at, wo.payment_method \
          FROM work_orders wo \
          JOIN cars c ON c.id = wo.car_id \
          WHERE c.client_id = $1",
@@ -265,12 +265,12 @@ pub async fn create_work_order(
     let id = generate_work_order_id(&mut tx).await?;
 
     let work_order: WorkOrder =
-        sqlx::query_as("INSERT INTO work_orders (id, car_id, odometer_in, customer_complaint, mechanic_notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *")
+        sqlx::query_as("INSERT INTO work_orders (id, car_id, odometer_in, description, notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *")
             .bind(id)
             .bind(payload.car_id)
             .bind(payload.odometer_in)
-            .bind(payload.customer_complaint)
-            .bind(payload.mechanic_notes)
+            .bind(payload.description)
+            .bind(payload.notes)
             .bind(payload.status)
             .bind(payload.rate.to_string())
             .bind(payload.labor_cost_type)
@@ -291,13 +291,13 @@ pub async fn update_work_order(
     payload: UpdateWorkOrderPayload,
 ) -> AppResult<WorkOrder> {
     let work_order: WorkOrder = sqlx::query_as(
-        "UPDATE work_orders SET car_id = $2, odometer_in = $3, customer_complaint = $4, mechanic_notes = $5, status = $6, rate = $7, labor_cost_type = $8, labor_cost_value = $9, discount_type = $10, discount_value = $11, started_at = $12, completed_at = $13, paid_at = $14, payment_method = $15 WHERE id = $1 RETURNING *",
+        "UPDATE work_orders SET car_id = $2, odometer_in = $3, description = $4, notes = $5, status = $6, rate = $7, labor_cost_type = $8, labor_cost_value = $9, discount_type = $10, discount_value = $11, started_at = $12, completed_at = $13, paid_at = $14, payment_method = $15 WHERE id = $1 RETURNING *",
     )
     .bind(payload.id)
     .bind(payload.car_id)
     .bind(payload.odometer_in)
-    .bind(payload.customer_complaint)
-    .bind(payload.mechanic_notes)
+    .bind(payload.description)
+    .bind(payload.notes)
     .bind(payload.status)
     .bind(payload.rate.to_string())
     .bind(payload.labor_cost_type)

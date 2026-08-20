@@ -8,6 +8,7 @@
   import FingerprintIcon from "@lucide/svelte/icons/fingerprint-pattern";
   import FuelIcon from "@lucide/svelte/icons/fuel";
   import RectangleEllipsisIcon from "@lucide/svelte/icons/rectangle-ellipsis";
+  import StickyNoteIcon from "@lucide/svelte/icons/sticky-note";
   import UserIcon from "@lucide/svelte/icons/user-key";
   import DriveTypeIcon from "~icons/tabler/car-4wd";
   import EngineIcon from "~icons/tabler/engine";
@@ -278,6 +279,22 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <div class="w-full flex flex-wrap border-b border-border bg-muted/40">
+        {#if carDetails?.carDto?.car?.notes}
+          <div class="flex-1 flex flex-col items-start gap-1 px-4 py-2">
+            <span
+              class="flex items-center justify-center gap-2 text-base text-muted-foreground"
+            >
+              <StickyNoteIcon class="size-4" />
+              <span>Нотатки</span>
+            </span>
+            <p class="text-base italic text-foreground/90 whitespace-pre-wrap">
+              {carDetails.carDto.car.notes}
+            </p>
+          </div>
+        {/if}
       </div>
 
       <div class="p-4">

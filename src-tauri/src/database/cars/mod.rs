@@ -27,7 +27,7 @@ pub async fn fetch_cars_count(state: State<'_, crate::AppState>) -> AppResult<i3
 #[specta::specta]
 pub async fn fetch_cars_list(state: State<'_, crate::AppState>) -> AppResult<Vec<CarDto>> {
     let cars: Vec<Car> = sqlx::query_as(
-        "SELECT id, client_id, brand_id, model, year, license_plate, vin, engine_code, engine_displacement, fuel_type, drive_type, created_at FROM cars",
+        "SELECT id, client_id, brand_id, model, year, license_plate, vin, engine_code, engine_displacement, fuel_type, drive_type, notes, created_at FROM cars",
     )
     .fetch_all(&state.db_pool)
     .await?;
@@ -42,7 +42,7 @@ pub async fn fetch_cars_list_by_client_id(
     client_id: i32,
 ) -> AppResult<Vec<CarDto>> {
     let cars: Vec<Car> = sqlx::query_as(
-        "SELECT id, client_id, brand_id, model, year, license_plate, vin,  engine_code, engine_displacement, fuel_type, drive_type,created_at FROM cars WHERE client_id = $1",
+        "SELECT id, client_id, brand_id, model, year, license_plate, vin,  engine_code, engine_displacement, fuel_type, drive_type, notes, created_at FROM cars WHERE client_id = $1",
     )
     .bind(client_id)
     .fetch_all(&state.db_pool)
@@ -115,7 +115,7 @@ pub async fn fetch_car_details(
 #[specta::specta]
 pub async fn fetch_car_by_id(state: State<'_, crate::AppState>, id: i32) -> AppResult<CarDto> {
     let car: Car = sqlx::query_as(
-        "SELECT id, client_id, brand_id, model, year, license_plate, vin, engine_code, engine_displacement, fuel_type, drive_type, created_at FROM cars WHERE id = $1",
+        "SELECT id, client_id, brand_id, model, year, license_plate, vin, engine_code, engine_displacement, fuel_type, drive_type, notes, created_at FROM cars WHERE id = $1",
     )
     .bind(id)
     .fetch_one(&state.db_pool)
@@ -156,7 +156,7 @@ pub async fn create_car(
     payload: CreateCarPayload,
 ) -> AppResult<Car> {
     let car: Car =
-        sqlx::query_as("INSERT INTO cars (client_id, brand_id, model, year, license_plate, vin, engine_code, engine_displacement, fuel_type, drive_type) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *")
+        sqlx::query_as("INSERT INTO cars (client_id, brand_id, model, year, license_plate, vin, engine_code, engine_displacement, fuel_type, drive_type, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *")
             .bind(payload.client_id)
             .bind(payload.brand_id)
             .bind(payload.model)
@@ -167,6 +167,7 @@ pub async fn create_car(
             .bind(payload.engine_displacement)
             .bind(payload.fuel_type)
             .bind(payload.drive_type)
+            .bind(payload.notes)
             .fetch_one(&state.db_pool)
             .await?;
     Ok(car)
@@ -180,7 +181,7 @@ pub async fn update_car(
     payload: UpdateCarPayload,
 ) -> AppResult<Car> {
     let car: Car =
-        sqlx::query_as("UPDATE cars SET client_id = $2, brand_id = $3, model = $4, year = $5, license_plate = $6, vin = $7, engine_code = $8, engine_displacement = $9, fuel_type = $10, drive_type = $11  WHERE id = $1 RETURNING *")
+        sqlx::query_as("UPDATE cars SET client_id = $2, brand_id = $3, model = $4, year = $5, license_plate = $6, vin = $7, engine_code = $8, engine_displacement = $9, fuel_type = $10, drive_type = $11, notes = $12  WHERE id = $1 RETURNING *")
             .bind(id)
             .bind(payload.client_id)
             .bind(payload.brand_id)
@@ -192,6 +193,7 @@ pub async fn update_car(
             .bind(payload.engine_displacement)
             .bind(payload.fuel_type)
             .bind(payload.drive_type)
+            .bind(payload.notes)
             .fetch_one(&state.db_pool)
             .await?;
     Ok(car)

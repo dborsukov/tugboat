@@ -2,6 +2,7 @@ CREATE TABLE clients (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     phone TEXT UNIQUE,
+    notes TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 
@@ -31,6 +32,7 @@ CREATE TABLE cars (
     engine_displacement REAL,
     fuel_type TEXT,
     drive_type TEXT,
+    notes TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
     FOREIGN KEY (brand_id) REFERENCES car_brands (id) ON DELETE RESTRICT
@@ -49,8 +51,8 @@ CREATE TABLE work_orders (
     id TEXT PRIMARY KEY,
     car_id INTEGER NOT NULL,
     odometer_in INTEGER NOT NULL,
-    customer_complaint TEXT,
-    mechanic_notes TEXT,
+    description TEXT,
+    notes TEXT,
     status TEXT NOT NULL,
     rate TEXT NOT NULL DEFAULT "0",
     labor_cost_type TEXT NOT NULL,

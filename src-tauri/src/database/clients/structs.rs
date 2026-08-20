@@ -9,6 +9,7 @@ pub struct Client {
     pub id: i64,
     pub name: String,
     pub phone: Option<String>,
+    pub notes: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -17,6 +18,7 @@ pub struct Client {
 pub struct CreateClientPayload {
     pub name: String,
     pub phone: Option<String>,
+    pub notes: Option<String>,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -24,4 +26,5 @@ pub struct CreateClientPayload {
 pub struct UpdateClientPayload {
     pub name: String,
     pub phone: Option<String>,
+    pub notes: Option<String>,
 }

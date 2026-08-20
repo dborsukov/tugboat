@@ -40,6 +40,7 @@ pub struct Car {
     pub drive_type: Option<DriveType>,
     pub license_plate: Option<String>,
     pub vin: Option<String>,
+    pub notes: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -60,6 +61,7 @@ pub struct CreateCarPayload {
     pub drive_type: Option<DriveType>,
     pub license_plate: Option<String>,
     pub vin: Option<String>,
+    pub notes: Option<String>,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -79,6 +81,7 @@ pub struct UpdateCarPayload {
     pub drive_type: Option<DriveType>,
     pub license_plate: Option<String>,
     pub vin: Option<String>,
+    pub notes: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, specta::Type)]

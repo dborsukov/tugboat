@@ -12,6 +12,7 @@
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
+  import { Textarea } from "$lib/components/ui/textarea";
 
   import CurrencyInput from "$lib/components/currency-input.svelte";
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
@@ -168,6 +169,16 @@
         .number({ error: "Вкажіть пробіг" })
         .nonnegative("Неправильний пробіг")
         .default(0),
+      description: z
+        .string()
+        .nullable()
+        .default(null)
+        .transform((val) => (val === "" ? null : val)),
+      notes: z
+        .string()
+        .nullable()
+        .default(null)
+        .transform((val) => (val === "" ? null : val)),
       rate: zBigString({
         requiredError: "Вкажіть тариф",
         min: { value: 0, message: "Тариф не може бути від'ємним числом" },
@@ -230,8 +241,8 @@
               id: workOrderDetails!.workOrder.id,
               carId: workOrderDetails!.workOrder.carId,
               odometerIn: data.odometerIn,
-              customerComplaint: workOrderDetails!.workOrder.customerComplaint,
-              mechanicNotes: workOrderDetails!.workOrder.mechanicNotes,
+              description: data.description?.trim() || null,
+              notes: data.notes?.trim() || null,
               status: workOrderDetails!.workOrder.status,
               rate: data.rate,
               ...laborCostPayload,
@@ -247,8 +258,8 @@
               carId: carId!,
               odometerIn: data.odometerIn,
               status: "Received",
-              customerComplaint: null,
-              mechanicNotes: null,
+              description: data.description?.trim() || null,
+              notes: data.notes?.trim() || null,
               rate: data.rate,
               ...laborCostPayload,
               ...discountPayload,
@@ -296,6 +307,8 @@
 
       if (workOrderDetails) {
         $formData.odometerIn = workOrderDetails.workOrder.odometerIn;
+        $formData.description = workOrderDetails.workOrder.description;
+        $formData.notes = workOrderDetails.workOrder.notes;
         $formData.rate = workOrderDetails.workOrder.rate;
         $formData.laborCostType = workOrderDetails.workOrder.laborCostType;
         $formData.laborCost = laborCostFromEntity(workOrderDetails.workOrder);
@@ -309,6 +322,16 @@
     }
   });
 </script>
+
+{#snippet requiredHint()}
+  <span
+    class="text-destructive inline-flex align-middle"
+    title="Обов'язкове поле"
+    aria-label="Обов'язкове поле"
+  >
+    *
+  </span>
+{/snippet}
 
 <MutationSheetShell
   bind:open
@@ -328,7 +351,7 @@
   <Form.Field {form} name="odometerIn">
     <Form.Control>
       {#snippet children({ props })}
-        <Label>Одометр(пробіг)</Label>
+        <Label>Одометр(пробіг) {@render requiredHint()}</Label>
         <div class="flex gap-2 items-baseline">
           <Input
             type="number"
@@ -344,10 +367,28 @@
     <Form.FieldErrors />
   </Form.Field>
 
+  <Form.Field {form} name="description">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Опис</Label>
+        <Textarea
+          {...props}
+          value={$formData.description ?? ""}
+          oninput={(e) => {
+            $formData.description = e.currentTarget.value;
+          }}
+          placeholder="Короткий опис звернення: тип роботи, попередня діагностика, скарги клієнта тощо..."
+          rows={2}
+        />
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+
   <Form.Field {form} name="rate">
     <Form.Control>
       {#snippet children({ props })}
-        <Label>Тариф</Label>
+        <Label>Тариф {@render requiredHint()}</Label>
         <div class="flex gap-2 items-baseline" {...props}>
           <CurrencyInput
             bind:value={$formData.rate}
@@ -399,6 +440,24 @@
         робіт і запчастин {pricingWarning.combinedCost.toFixed(2)} грн.
       </p>
     {/if}
+  </Form.Field>
+
+  <Form.Field {form} name="notes">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Нотатки</Label>
+        <Textarea
+          {...props}
+          value={$formData.notes ?? ""}
+          oninput={(e) => {
+            $formData.notes = e.currentTarget.value;
+          }}
+          placeholder="Загальні нотатки щодо замовлення..."
+          rows={3}
+        />
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
   </Form.Field>
 </MutationSheetShell>
 

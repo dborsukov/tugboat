@@ -7,6 +7,8 @@
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import Info from "@lucide/svelte/icons/info";
+  import QuoteIcon from "@lucide/svelte/icons/message-square-quote";
+  import StickyNoteIcon from "@lucide/svelte/icons/sticky-note";
 
   import Button from "$lib/components/ui/button/button.svelte";
   import * as Card from "$lib/components/ui/card/index";
@@ -257,6 +259,18 @@
         </div>
       </div>
 
+      <!-- Description / Notes -->
+      <div class="flex flex-row divide-x divide-border">
+        <div class="flex-1 p-4 bg-muted/40 flex flex-col gap-1.5">
+          <Skeleton class="h-3.5 w-12" />
+          <Skeleton class="h-4 w-full max-w-md" />
+        </div>
+        <div class="flex-1 p-4 bg-muted/40 flex flex-col gap-1.5">
+          <Skeleton class="h-3.5 w-16" />
+          <Skeleton class="h-4 w-full max-w-md" />
+        </div>
+      </div>
+
       <!-- Services (labor) section -->
       <div class="p-4">
         <div class="flex flex-row items-center justify-between mb-4">
@@ -436,7 +450,7 @@
         <div class="flex-1">
           <Button
             variant="ghost"
-            class="w-full h-auto gap-2 items-center rounded-none p-2 text-base font-normal"
+            class="w-full h-auto gap-2 items-center rounded-none p-2 pl-4 text-base font-normal"
             onclick={async () => {
               await goto(`/cars/${workOrderDetails?.carDto?.car?.id}`);
             }}
@@ -479,6 +493,47 @@
           </Button>
         </div>
       </div>
+
+      {#if workOrderDetails?.workOrder?.description || workOrderDetails?.workOrder?.notes}
+        <div
+          class="flex flex-col divide-y divide-border rounded-b overflow-hidden"
+        >
+          {#if workOrderDetails?.workOrder?.description}
+            <div
+              class="flex-1 flex flex-col items-start gap-1 px-4 py-2 bg-muted/40"
+            >
+              <span
+                class="flex items-center justify-center gap-2 text-base text-muted-foreground"
+              >
+                <QuoteIcon class="size-4" />
+                <span>Опис</span>
+              </span>
+              <p
+                class="text-base italic text-foreground/90 whitespace-pre-wrap"
+              >
+                {workOrderDetails.workOrder.description}
+              </p>
+            </div>
+          {/if}
+          {#if workOrderDetails?.workOrder?.notes}
+            <div
+              class="flex-1 flex flex-col items-start gap-1 px-4 py-2 bg-muted/40"
+            >
+              <span
+                class="flex items-center justify-center gap-2 text-base text-muted-foreground"
+              >
+                <StickyNoteIcon class="size-4" />
+                <span>Нотатки</span>
+              </span>
+              <p
+                class="text-base italic text-foreground/90 whitespace-pre-wrap"
+              >
+                {workOrderDetails.workOrder.notes}
+              </p>
+            </div>
+          {/if}
+        </div>
+      {/if}
     </div>
 
     <div class="mt-4 border border-border rounded bg-card">

@@ -9,6 +9,7 @@
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
+  import { Textarea } from "$lib/components/ui/textarea";
 
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
   import PhoneInput from "$lib/components/phone-input.svelte";
@@ -52,6 +53,11 @@
         });
       }
     }),
+    notes: z
+      .string()
+      .nullable()
+      .default(null)
+      .transform((val) => (val === "" ? null : val)),
   });
 
   const extendedSchema = clientSchema.refine(
@@ -79,6 +85,7 @@
       const payload = {
         name: nativeForm.data.name,
         phone: nativeForm.data.phone,
+        notes: nativeForm.data.notes?.trim() ?? null,
       };
 
       if (isEdit && clientId) {
@@ -100,6 +107,7 @@
       if (client) {
         $formData.name = client.name;
         $formData.phone = client.phone ?? "";
+        $formData.notes = client.notes;
       } else {
         form.reset();
       }
@@ -149,6 +157,24 @@
           bind:value={$formData.phone}
           bind:country={phoneCountry}
           options={{ lockCountry: true, spaces: true }}
+        />
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+
+  <Form.Field {form} name="notes">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Нотатки</Label>
+        <Textarea
+          {...props}
+          value={$formData.notes ?? ""}
+          oninput={(e) => {
+            $formData.notes = e.currentTarget.value;
+          }}
+          placeholder="Додаткова інформація про клієнта..."
+          rows={3}
         />
       {/snippet}
     </Form.Control>

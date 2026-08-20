@@ -8,6 +8,7 @@
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
   import * as Select from "$lib/components/ui/select";
+  import { Textarea } from "$lib/components/ui/textarea";
 
   import ComboSelect from "$lib/components/combo-select.svelte";
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
@@ -165,6 +166,12 @@
       .enum(["FrontWheel", "RearWheel", "AllWheel", "FourWheel"])
       .nullable()
       .default(null),
+
+    notes: z
+      .string()
+      .nullable()
+      .default(null)
+      .transform((val) => (val === "" ? null : val)),
   });
 
   //TODO: add the option to navigate directly to already existsing car if it was found
@@ -220,6 +227,7 @@
         engineDisplacement: nativeForm.data.engineDisplacement,
         fuelType: nativeForm.data.fuelType,
         driveType: nativeForm.data.driveType,
+        notes: nativeForm.data.notes?.trim() || null,
       };
 
       const result =
@@ -260,6 +268,7 @@
         $formData.driveType = carDto.car.driveType;
         $formData.licensePlate = carDto.car.licensePlate;
         $formData.vin = carDto.car.vin;
+        $formData.notes = carDto.car.notes;
       } else {
         form.reset();
       }
@@ -491,6 +500,24 @@
             $formData.vin = normalizeVin(e.currentTarget.value);
           }}
           class="uppercase"
+        />
+      {/snippet}
+    </Form.Control>
+    <Form.FieldErrors />
+  </Form.Field>
+
+  <Form.Field {form} name="notes">
+    <Form.Control>
+      {#snippet children({ props })}
+        <Label>Нотатки</Label>
+        <Textarea
+          {...props}
+          value={$formData.notes ?? ""}
+          oninput={(e) => {
+            $formData.notes = e.currentTarget.value;
+          }}
+          placeholder="Додаткова інформація про автомобіль..."
+          rows={3}
         />
       {/snippet}
     </Form.Control>

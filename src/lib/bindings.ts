@@ -68,6 +68,7 @@ export type Car = {
 	driveType: DriveType | null,
 	licensePlate: string | null,
 	vin: string | null,
+	notes: string | null,
 	createdAt: string,
 };
 
@@ -91,6 +92,7 @@ export type Client = {
 	id: number,
 	name: string,
 	phone: string | null,
+	notes: string | null,
 	createdAt: string,
 };
 
@@ -110,11 +112,13 @@ export type CreateCarPayload = {
 	driveType: DriveType | null,
 	licensePlate: string | null,
 	vin: string | null,
+	notes: string | null,
 };
 
 export type CreateClientPayload = {
 	name: string,
 	phone: string | null,
+	notes: string | null,
 };
 
 export type CreateLaborItemPayload = {
@@ -153,8 +157,8 @@ export type CreateServicePayload = {
 export type CreateWorkOrderPayload = {
 	carId: number,
 	odometerIn: number,
-	customerComplaint: string | null,
-	mechanicNotes: string | null,
+	description: string | null,
+	notes: string | null,
 	status: WorkOrderStatus,
 	rate: string,
 	laborCostType: LaborCostType,
@@ -249,11 +253,13 @@ export type UpdateCarPayload = {
 	driveType: DriveType | null,
 	licensePlate: string | null,
 	vin: string | null,
+	notes: string | null,
 };
 
 export type UpdateClientPayload = {
 	name: string,
 	phone: string | null,
+	notes: string | null,
 };
 
 export type UpdateLaborItemPayload = {
@@ -291,8 +297,8 @@ export type UpdateWorkOrderPayload = {
 	id: string,
 	carId: number,
 	odometerIn: number,
-	customerComplaint: string | null,
-	mechanicNotes: string | null,
+	description: string | null,
+	notes: string | null,
 	status: WorkOrderStatus,
 	rate: string,
 	laborCostType: LaborCostType,
@@ -309,8 +315,8 @@ export type WorkOrder = {
 	id: string,
 	carId: number,
 	odometerIn: number,
-	customerComplaint: string | null,
-	mechanicNotes: string | null,
+	description: string | null,
+	notes: string | null,
 	status: WorkOrderStatus,
 	rate: string,
 	laborCostType: LaborCostType,
