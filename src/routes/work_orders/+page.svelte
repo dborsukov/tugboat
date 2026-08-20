@@ -40,7 +40,7 @@
     get searchTerm() {
       return inputValue;
     },
-    initialSorting: [{ id: "created_at", desc: true }],
+    initialSorting: [{ id: "createdAt", desc: true }],
   });
 
   const isFiltered = $derived(table.getState().columnFilters.length > 0);

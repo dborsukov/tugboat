@@ -72,7 +72,7 @@
     },
     disableFiltering: true,
     disablePagination: true,
-    initialSorting: [{ id: "created_at", desc: true }],
+    initialSorting: [{ id: "createdAt", desc: true }],
     hiddenColumns: ["client", "car_id"],
   });
 </script>
