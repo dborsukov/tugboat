@@ -245,13 +245,13 @@
 
       <!-- Car / client navigation cards -->
       <div class="flex flex-row divide-x divide-border border-b border-border">
-        <div class="flex-1 flex items-center gap-2 p-3 h-13">
+        <div class="flex-1 flex items-center gap-2 p-2 pl-4 h-11">
           <Skeleton class="size-6 rounded-full shrink-0" />
           <Skeleton class="h-5 w-48" />
           <Skeleton class="h-4 w-24 ml-auto" />
           <Skeleton class="size-4 shrink-0 rounded-sm" />
         </div>
-        <div class="flex-1 flex items-center gap-2 p-3 h-13">
+        <div class="flex-1 flex items-center gap-2 p-2 h-11">
           <Skeleton class="size-6 rounded-full shrink-0" />
           <Skeleton class="h-5 w-40" />
           <Skeleton class="h-4 w-32 ml-auto" />
@@ -259,21 +259,31 @@
         </div>
       </div>
 
-      <!-- Description / Notes -->
-      <div class="flex flex-row divide-x divide-border">
-        <div class="flex-1 p-4 bg-muted/40 flex flex-col gap-1.5">
-          <Skeleton class="h-3.5 w-12" />
+      <!-- Description / Notes (stacked, matching the real conditional layout) -->
+      <div
+        class="flex flex-col divide-y divide-border rounded-b overflow-hidden"
+      >
+        <div class="flex flex-col items-start gap-1.5 px-4 py-2 bg-muted/40">
+          <div class="flex items-center gap-2">
+            <Skeleton class="size-4 rounded-sm" />
+            <Skeleton class="h-4 w-12" />
+          </div>
           <Skeleton class="h-4 w-full max-w-md" />
         </div>
-        <div class="flex-1 p-4 bg-muted/40 flex flex-col gap-1.5">
-          <Skeleton class="h-3.5 w-16" />
+        <div class="flex flex-col items-start gap-1.5 px-4 py-2 bg-muted/40">
+          <div class="flex items-center gap-2">
+            <Skeleton class="size-4 rounded-sm" />
+            <Skeleton class="h-4 w-16" />
+          </div>
           <Skeleton class="h-4 w-full max-w-md" />
         </div>
       </div>
+    </div>
 
+    <div class="mt-4 border border-border rounded bg-card">
       <!-- Services (labor) section -->
       <div class="p-4">
-        <div class="flex flex-row items-center justify-between mb-4">
+        <div class="flex flex-row items-center justify-between">
           <div class="flex flex-row items-center gap-2">
             <Skeleton class="h-7 w-20" />
             <!-- Title -->
@@ -288,7 +298,7 @@
           </div>
         </div>
         <!-- Simulated DataTable -->
-        <div class="border border-border rounded-md">
+        <div class="mt-4 border border-border rounded-md">
           <div class="h-10 border-b border-border flex items-center px-4 gap-4">
             <Skeleton class="h-4 w-1/2" />
             <Skeleton class="h-4 w-16" />
@@ -308,8 +318,8 @@
       </div>
 
       <!-- Parts section -->
-      <div class="p-4 pt-0 mt-2">
-        <div class="flex flex-row items-center justify-between mb-4">
+      <div class="p-4 pt-0">
+        <div class="flex flex-row items-center justify-between">
           <div class="flex flex-row items-center gap-2">
             <Skeleton class="h-7 w-28" />
             <!-- Title -->
@@ -320,7 +330,7 @@
           <!-- Add link -->
         </div>
         <!-- Simulated DataTable -->
-        <div class="border border-border rounded-md">
+        <div class="mt-4 border border-border rounded-md">
           <div class="h-10 border-b border-border flex items-center px-4 gap-4">
             <Skeleton class="h-4 w-1/2" />
             <Skeleton class="h-4 w-20" />

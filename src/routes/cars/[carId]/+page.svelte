@@ -86,14 +86,14 @@
       class="mt-20"
     />
   {:else if combinedQueries.isLoading}
-    <div class="mt-4 border border-border rounded bg-card">
+    <div class="mt-4 border border-border rounded rounded-b-none bg-card">
       <!-- Header Skeleton -->
       <div class="p-4 border-b border-border">
         <div class="flex flex-row items-center gap-4">
           <div class="h-16 w-16 shrink-0">
             <Skeleton class="h-full w-full rounded-md" />
           </div>
-          <div class="flex flex-col gap-2 w-full">
+          <div class="flex flex-col gap-1.5">
             <Skeleton class="h-6 w-48" />
             <div class="flex flex-row items-center gap-2">
               <Skeleton class="h-4 w-24" />
@@ -108,14 +108,12 @@
       </div>
 
       <!-- Car Details Grid Skeleton -->
-      <div
-        class="w-full flex flex-wrap gap-px bg-border border-b border-border"
-      >
+      <div class="w-full flex flex-wrap gap-px bg-border">
         {#each Array(6) as _}
           <div class="flex-[1_1_max-content] p-3 bg-card whitespace-nowrap">
-            <div class="flex flex-col gap-2">
+            <div class="flex flex-col gap-1">
               <div class="flex flex-row gap-2 items-center">
-                <Skeleton class="size-5 rounded-sm" />
+                <Skeleton class="size-4 rounded-sm" />
                 <Skeleton class="h-5 w-24" />
               </div>
               <div>
@@ -126,19 +124,45 @@
         {/each}
       </div>
 
+      <!-- Notes Skeleton -->
+      <div class="w-full flex flex-wrap border-t border-border bg-muted/40">
+        <div class="flex-1 flex flex-col items-start gap-1.5 px-4 py-2">
+          <div class="flex items-center gap-2">
+            <Skeleton class="size-4 rounded-sm" />
+            <Skeleton class="h-4 w-16" />
+          </div>
+          <Skeleton class="h-4 w-full max-w-md" />
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 border border-border rounded rounded-t-none bg-card">
       <!-- Work Orders Section Skeleton -->
       <div class="p-4">
-        <div class="flex flex-row items-center gap-2 mb-4">
+        <div class="flex flex-row items-center gap-2">
           <Skeleton class="h-7 w-28" />
           <Skeleton class="h-7 w-8" />
           <Skeleton class="ml-auto h-9 w-24" />
         </div>
 
         <!-- Table Skeleton -->
-        <div class="mt-4 flex flex-col gap-2">
-          <Skeleton class="h-10 w-full rounded-md" />
-          <Skeleton class="h-12 w-full rounded-md" />
-          <Skeleton class="h-12 w-full rounded-md" />
+        <div class="mt-4 border border-border rounded-md">
+          <div class="h-10 border-b border-border flex items-center px-4 gap-4">
+            <Skeleton class="h-4 w-1/2" />
+            <Skeleton class="h-4 w-14" />
+            <Skeleton class="h-4 w-14 ml-auto" />
+            <Skeleton class="h-4 w-20" />
+          </div>
+          {#each { length: 3 } as _, i (i)}
+            <div
+              class="h-12 border-b border-border last:border-0 flex items-center px-4 gap-4"
+            >
+              <Skeleton class="h-4 w-2/3" />
+              <Skeleton class="h-5 w-14 rounded-full" />
+              <Skeleton class="h-4 w-14 ml-auto" />
+              <Skeleton class="h-4 w-20" />
+            </div>
+          {/each}
         </div>
       </div>
     </div>

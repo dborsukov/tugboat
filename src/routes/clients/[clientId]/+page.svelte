@@ -84,10 +84,10 @@
   {:else if combinedQueries.isLoading}
     <div class="mt-4 border border-border rounded bg-card">
       <!-- Header Skeleton -->
-      <div class="p-4 border-b border-border">
+      <div class="p-4">
         <div class="flex flex-row items-center gap-4">
           <Skeleton class="size-16 rounded-full shrink-0" />
-          <div class="flex flex-col gap-2 w-full">
+          <div class="flex flex-col gap-2">
             <Skeleton class="h-7 w-48" />
             <div class="flex flex-row items-center gap-2">
               <Skeleton class="h-4 w-32" />
@@ -101,20 +101,33 @@
         </div>
       </div>
 
+      <!-- Notes Skeleton -->
+      <div class="w-full flex flex-wrap border-t border-border bg-muted/40">
+        <div class="flex-1 flex flex-col items-start gap-1.5 px-4 py-2">
+          <div class="flex items-center gap-2">
+            <Skeleton class="size-4 rounded-sm" />
+            <Skeleton class="h-4 w-16" />
+          </div>
+          <Skeleton class="h-4 w-full max-w-md" />
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-4 border border-border rounded bg-card">
       <!-- Cars Section Skeleton -->
-      <div class="p-4 border-b border-border">
-        <div class="flex flex-row items-center gap-2 pb-2">
+      <div class="p-0 border-b border-border">
+        <div class="px-4 pt-4 pb-2 flex flex-row items-center gap-2">
           <Skeleton class="h-7 w-28" />
           <Skeleton class="h-7 w-8" />
-          <Skeleton class="ml-auto h-9 w-24" />
+          <Skeleton class="ml-auto h-5 w-20" />
         </div>
-        <div class="flex flex-col items-start mt-2">
+        <div class="flex flex-col items-start pb-2">
           {#each Array(2) as _}
-            <div class="h-12 w-full px-4 flex flex-row items-center gap-4">
-              <Skeleton class="h-8 w-12 rounded-sm" />
-              <Skeleton class="h-5 w-40" />
-              <Skeleton class="h-5 w-12 ml-auto" />
-              <Skeleton class="size-5 rounded-sm shrink-0" />
+            <div class="h-10 w-full px-3 flex flex-row items-center gap-2">
+              <Skeleton class="size-6 rounded-full shrink-0" />
+              <Skeleton class="h-4 w-40" />
+              <Skeleton class="h-4 w-10 ml-auto" />
+              <Skeleton class="size-4 rounded-sm shrink-0" />
             </div>
           {/each}
         </div>
@@ -122,16 +135,29 @@
 
       <!-- Work Orders Section Skeleton -->
       <div class="p-4">
-        <div class="flex flex-row items-center gap-2 mb-4">
+        <div class="flex flex-row items-center gap-2">
           <Skeleton class="h-7 w-32" />
           <Skeleton class="h-7 w-8" />
         </div>
 
         <!-- Table Skeleton -->
-        <div class="mt-4 flex flex-col gap-2">
-          <Skeleton class="h-10 w-full rounded-md" />
-          <Skeleton class="h-12 w-full rounded-md" />
-          <Skeleton class="h-12 w-full rounded-md" />
+        <div class="mt-4 border border-border rounded-md">
+          <div class="h-10 border-b border-border flex items-center px-4 gap-4">
+            <Skeleton class="h-4 w-1/2" />
+            <Skeleton class="h-4 w-14" />
+            <Skeleton class="h-4 w-14 ml-auto" />
+            <Skeleton class="h-4 w-20" />
+          </div>
+          {#each { length: 3 } as _, i (i)}
+            <div
+              class="h-12 border-b border-border last:border-0 flex items-center px-4 gap-4"
+            >
+              <Skeleton class="h-4 w-2/3" />
+              <Skeleton class="h-5 w-14 rounded-full" />
+              <Skeleton class="h-4 w-14 ml-auto" />
+              <Skeleton class="h-4 w-20" />
+            </div>
+          {/each}
         </div>
       </div>
     </div>
