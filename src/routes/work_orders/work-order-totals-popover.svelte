@@ -42,23 +42,18 @@
   <Popover.Trigger
     class={cn(
       buttonVariants({ size: "lg", variant: "outline" }),
-      "text-base px-2 border-none bg-green-100",
-      belowCost && "bg-rose-100",
+      "text-base px-2 border-none bg-green-100 text-green-700",
+      belowCost && "bg-rose-100 text-rose-800",
       className,
     )}
   >
-    <ReceiptIcon
-      class={cn("size-5 text-green-700", belowCost && "text-rose-800")}
-    />
+    <ReceiptIcon class={cn("size-5", belowCost && "text-rose-800")} />
     <CurrencyDisplay
       amount={workOrderDetails?.totals?.grandTotal ?? "0"}
       suffix="грн."
-      class={cn(
-        "text-base font-medium text-green-700",
-        belowCost && "text-rose-800",
-      )}
+      class={cn("text-base font-medium")}
     />
-    <ChevronDownIcon class="size-5" />
+    <ChevronDownIcon class={cn("size-5 opacity-75")} />
   </Popover.Trigger>
   <Popover.Content align="end" class="w-72 p-4">
     <div class="flex flex-col gap-3">

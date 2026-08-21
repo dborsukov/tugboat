@@ -451,7 +451,10 @@
 
         <div class="flex items-center ml-auto mr-2 text-base">
           <WorkOrderTotalsPopover {workOrderDetails} class="mr-2" />
-          <StatusSelector workOrder={workOrderDetails?.workOrder} />
+          <StatusSelector
+            workOrder={workOrderDetails?.workOrder}
+            partItems={workOrderDetails?.partItems ?? []}
+          />
           <DropdownMenu workOrderId={workOrderDetails.workOrder?.id ?? ""} />
         </div>
       </div>

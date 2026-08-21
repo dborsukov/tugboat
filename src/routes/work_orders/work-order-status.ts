@@ -11,7 +11,12 @@ import CanceledIcon from "@lucide/svelte/icons/x";
 
 import type { FacetedFilterOptions } from "$lib/components/data-table-faceted-filter/faceted-filter-options";
 
-import type { WorkOrderStatus } from "$lib/bindings";
+import type {
+  PartItem,
+  PartStatus,
+  WorkOrder,
+  WorkOrderStatus,
+} from "$lib/bindings";
 
 export const statuses: WorkOrderStatus[] = [
   "Received",
@@ -199,3 +204,54 @@ export const workOrderStatusFilterOptions: FacetedFilterOptions[] =
     value: s,
     icon: workOrderStatusStylesRecord[s].icon,
   }));
+
+export type PartBulkTransition = {
+  from: PartStatus[];
+  to: PartStatus;
+};
+
+export type WorkOrderStatusEffect = {
+  parts?: PartBulkTransition;
+  workOrderFields?: (workOrder: WorkOrder) => Partial<WorkOrder>;
+  requiresPaymentInfo?: boolean;
+};
+
+export const statusEffects: Partial<
+  Record<WorkOrderStatus, WorkOrderStatusEffect>
+> = {
+  AwaitingParts: {
+    parts: { from: ["Quoted"], to: "Ordered" },
+  },
+  Working: {
+    parts: { from: ["Quoted", "InStock"], to: "Installing" },
+    workOrderFields: (workOrder) => ({
+      startedAt: workOrder.startedAt ?? new Date().toISOString(),
+    }),
+  },
+  ReadyForPickup: {
+    parts: { from: ["Quoted", "InStock", "Installing"], to: "Installed" },
+    workOrderFields: (workOrder) => ({
+      completedAt: workOrder.completedAt ?? new Date().toISOString(),
+    }),
+  },
+  Paid: {
+    parts: {
+      from: ["Quoted", "InStock", "Installing", "Warranty"],
+      to: "Installed",
+    },
+    workOrderFields: (workOrder) => ({
+      completedAt: workOrder.completedAt ?? new Date().toISOString(),
+      paidAt: workOrder.paidAt ?? new Date().toISOString(),
+    }),
+    requiresPaymentInfo: true,
+  },
+};
+
+export function getAffectedParts(
+  partItems: PartItem[],
+  effect: WorkOrderStatusEffect | undefined,
+): PartItem[] {
+  if (!effect?.parts) return [];
+  const { from, to } = effect.parts;
+  return partItems.filter((p) => p.status !== to && from.includes(p.status));
+}
