@@ -15,7 +15,10 @@
   import { createDeleteWorkOrderMutation } from "../queries";
   import WorkOrderMutationSheet from "../work-order-mutation-sheet.svelte";
 
-  let { workOrderId }: { workOrderId: string } = $props();
+  let {
+    workOrderId,
+    isLocked = false,
+  }: { workOrderId: string; isLocked?: boolean } = $props();
   let isSheetOpen = $state(false);
   let isDeleteDialogOpen = $state(false);
 
@@ -57,7 +60,12 @@
   </DropdownMenu.Content>
 </DropdownMenu.Root>
 
-<WorkOrderMutationSheet bind:open={isSheetOpen} mode="edit" {workOrderId} />
+<WorkOrderMutationSheet
+  bind:open={isSheetOpen}
+  {isLocked}
+  mode="edit"
+  {workOrderId}
+/>
 <DeleteDialog
   bind:open={isDeleteDialogOpen}
   onDelete={handleDelete}

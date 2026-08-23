@@ -7,11 +7,12 @@
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import Info from "@lucide/svelte/icons/info";
+  import LockIcon from "@lucide/svelte/icons/lock";
+  import LockOpenIcon from "@lucide/svelte/icons/lock-open";
   import QuoteIcon from "@lucide/svelte/icons/message-square-quote";
   import StickyNoteIcon from "@lucide/svelte/icons/sticky-note";
 
   import Button from "$lib/components/ui/button/button.svelte";
-  import * as Card from "$lib/components/ui/card/index";
   import * as Command from "$lib/components/ui/command/index.js";
   import * as Popover from "$lib/components/ui/popover/index.js";
   import { Skeleton } from "$lib/components/ui/skeleton";
@@ -25,7 +26,7 @@
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
-  import type { Service } from "$lib/bindings";
+  import type { Service, WorkOrderStatus } from "$lib/bindings";
   import { TableActionState } from "$lib/states/table-actions.svelte";
   import { prettifyIsoDateString } from "$lib/tools";
 
@@ -83,6 +84,25 @@
   let services = $derived(combinedQueries.services.data);
   let workOrderDetails = $derived(combinedQueries.workOrderDetails.data);
 
+  const isPaid = $derived(workOrderDetails?.workOrder?.status === "Paid");
+
+  // Locks the whole order (status + details) once it's Paid.
+  let isLocked = $state(true);
+  let previousStatus: WorkOrderStatus | undefined;
+
+  $effect(() => {
+    const currentStatus = workOrderDetails?.workOrder?.status;
+    if (currentStatus === undefined) return;
+
+    if (previousStatus === undefined) {
+      isLocked = currentStatus === "Paid";
+    } else if (currentStatus === "Paid" && previousStatus !== "Paid") {
+      isLocked = true;
+    }
+
+    previousStatus = currentStatus;
+  });
+
   let [datetime_label, datetime_iso_string] = $derived.by(() => {
     if (!combinedQueries.isReady || !workOrderDetails) return ["", ""];
 
@@ -105,7 +125,9 @@
       return combinedQueries.workOrderDetails.data?.partItems ?? [];
     },
     get columns() {
-      return partsColumns;
+      return isLocked
+        ? partsColumns.filter((c) => c.id !== "actions")
+        : partsColumns;
     },
     get meta() {
       return {
@@ -123,7 +145,9 @@
       return combinedQueries.workOrderDetails.data?.laborItems ?? [];
     },
     get columns() {
-      return laborColumns;
+      return isLocked
+        ? laborColumns.filter((c) => c.id !== "actions")
+        : laborColumns;
     },
     get meta() {
       return {
@@ -180,7 +204,7 @@
   }
 </script>
 
-<PageLayout headerWidthClass="max-w-fit" contentWidthClass="max-w-fit">
+<PageLayout contentWidthClass="min-w-7xl max-w-fit">
   {#if combinedQueries.isError}
     <FetchErrorDisplay
       message={combinedQueries.firstError?.message}
@@ -356,6 +380,39 @@
     />
   {:else}
     <div class="mt-4 border border-border rounded bg-card">
+      {#if isPaid}
+        <div
+          class="flex items-center justify-between gap-2 rounded-t px-4 py-2 border-b border-border bg-muted/40 text-sm"
+        >
+          <span class="flex items-center gap-2 text-muted-foreground">
+            {#if isLocked}
+              <LockIcon class="size-4" />
+              Замовлення оплачено і заблоковано від змін
+            {:else}
+              <LockOpenIcon class="size-4" />
+              Замовлення тимчасово розблоковано для редагування
+            {/if}
+          </span>
+          <Button
+            variant="link"
+            class="p-0"
+            onclick={() => (isLocked = !isLocked)}
+            aria-label={isLocked
+              ? "Розблокувати замовлення"
+              : "Заблокувати замовлення"}
+            title={isLocked
+              ? "Розблокувати замовлення"
+              : "Заблокувати замовлення"}
+          >
+            {#if isLocked}
+              Розблокувати
+            {:else}
+              Заблокувати
+            {/if}
+          </Button>
+        </div>
+      {/if}
+
       <div class="h-15 flex flex-row items-center border-b border-border">
         <div class="p-4 flex flex-col justify-start items-start">
           <span class="text-sm text-muted-foreground">Наряд-замовлення</span>
@@ -454,8 +511,12 @@
           <StatusSelector
             workOrder={workOrderDetails?.workOrder}
             partItems={workOrderDetails?.partItems ?? []}
+            {isLocked}
           />
-          <DropdownMenu workOrderId={workOrderDetails.workOrder?.id ?? ""} />
+          <DropdownMenu
+            workOrderId={workOrderDetails.workOrder?.id ?? ""}
+            {isLocked}
+          />
         </div>
       </div>
 
@@ -559,41 +620,43 @@
             </p>
           </div>
           <div>
-            <Button
-              variant="link"
-              onclick={laborTableActions.openCreate}
-              class="text-base">Створити +</Button
-            >
-            <Popover.Root bind:open={isPopoverOpen}>
-              <Popover.Trigger>
-                {#snippet child({ props })}
-                  <Button variant="link" {...props} class="text-base">
-                    Додати з бази
-                    <ChevronDownIcon class="size-4" />
-                  </Button>
-                {/snippet}
-              </Popover.Trigger>
-              <Popover.Content class="w-80 p-0">
-                <Command.Root>
-                  <Command.Input placeholder="Пошук сервісів..." />
-                  <Command.List>
-                    <Command.Empty>Сервісів не знайдено...</Command.Empty>
-                    <Command.Group value="services">
-                      {#each services ?? [] as service (service.id)}
-                        <Command.Item
-                          value={service.name}
-                          class="hover:cursor-pointer"
-                          onSelect={async () =>
-                            await createCreateLaborItemFromService(service)}
-                        >
-                          {service.name}
-                        </Command.Item>
-                      {/each}
-                    </Command.Group>
-                  </Command.List>
-                </Command.Root>
-              </Popover.Content>
-            </Popover.Root>
+            {#if !isLocked}
+              <Button
+                variant="link"
+                onclick={laborTableActions.openCreate}
+                class="text-base">Створити +</Button
+              >
+              <Popover.Root bind:open={isPopoverOpen}>
+                <Popover.Trigger>
+                  {#snippet child({ props })}
+                    <Button variant="link" {...props} class="text-base">
+                      Додати з бази
+                      <ChevronDownIcon class="size-4" />
+                    </Button>
+                  {/snippet}
+                </Popover.Trigger>
+                <Popover.Content class="w-80 p-0">
+                  <Command.Root>
+                    <Command.Input placeholder="Пошук сервісів..." />
+                    <Command.List>
+                      <Command.Empty>Сервісів не знайдено...</Command.Empty>
+                      <Command.Group value="services">
+                        {#each services ?? [] as service (service.id)}
+                          <Command.Item
+                            value={service.name}
+                            class="hover:cursor-pointer"
+                            onSelect={async () =>
+                              await createCreateLaborItemFromService(service)}
+                          >
+                            {service.name}
+                          </Command.Item>
+                        {/each}
+                      </Command.Group>
+                    </Command.List>
+                  </Command.Root>
+                </Popover.Content>
+              </Popover.Root>
+            {/if}
           </div>
         </div>
         <DataTable
@@ -613,13 +676,13 @@
               {workOrderDetails?.partItems.length}
             </p>
           </div>
-          <Card.Action>
+          {#if !isLocked}
             <Button
               variant="link"
               onclick={partsTableActions.openCreate}
               class="text-base">Додати +</Button
             >
-          </Card.Action>
+          {/if}
         </div>
         <DataTable
           table={partsTable}

@@ -223,20 +223,23 @@ export const statusEffects: Partial<
     parts: { from: ["Quoted"], to: "Ordered" },
   },
   Working: {
-    parts: { from: ["Quoted", "InStock"], to: "Installing" },
+    parts: { from: ["Quoted", "Ordered", "InStock"], to: "Installing" },
     workOrderFields: (workOrder) => ({
       startedAt: workOrder.startedAt ?? new Date().toISOString(),
     }),
   },
   ReadyForPickup: {
-    parts: { from: ["Quoted", "InStock", "Installing"], to: "Installed" },
+    parts: {
+      from: ["Quoted", "Ordered", "InStock", "Installing"],
+      to: "Installed",
+    },
     workOrderFields: (workOrder) => ({
       completedAt: workOrder.completedAt ?? new Date().toISOString(),
     }),
   },
   Paid: {
     parts: {
-      from: ["Quoted", "InStock", "Installing", "Warranty"],
+      from: ["Quoted", "Ordered", "InStock", "Installing", "Warranty"],
       to: "Installed",
     },
     workOrderFields: (workOrder) => ({

@@ -8,6 +8,8 @@
 
   import { goto } from "$app/navigation";
 
+  import LockIcon from "@lucide/svelte/icons/lock";
+
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
@@ -47,9 +49,10 @@
 
   type Props = CreateOrEditProps<{ carId: number }, { workOrderId: string }> & {
     open: boolean;
+    isLocked?: boolean;
   };
 
-  let { open = $bindable(false), ...rest }: Props = $props();
+  let { open = $bindable(false), isLocked = false, ...rest }: Props = $props();
 
   const formID = "work-order-mutation-form";
   const isEdit = $derived(rest.mode === "edit");
@@ -195,6 +198,7 @@
     resetForm: false,
     id: formID,
     async onUpdate({ form: nativeForm }) {
+      if (isLocked) return;
       if (!nativeForm.valid) return;
 
       const pricing = computeWorkOrderPricing(
@@ -348,117 +352,130 @@
     open = false;
   }}
 >
-  <Form.Field {form} name="odometerIn">
-    <Form.Control>
-      {#snippet children({ props })}
-        <Label>Одометр(пробіг) {@render requiredHint()}</Label>
-        <div class="flex gap-2 items-baseline">
-          <Input
-            type="number"
-            min="0"
+  {#if isLocked}
+    <div
+      class="flex items-center gap-2 rounded border border-border px-3 py-2 text-sm text-muted-foreground"
+    >
+      <LockIcon class="size-4 shrink-0" />
+      <span>Замовлення заблоковано від змін</span>
+    </div>
+  {/if}
+
+  <fieldset disabled={isLocked} class="contents">
+    <Form.Field {form} name="odometerIn">
+      <Form.Control>
+        {#snippet children({ props })}
+          <Label>Одометр(пробіг) {@render requiredHint()}</Label>
+          <div class="flex gap-2 items-baseline">
+            <Input
+              type="number"
+              min="0"
+              {...props}
+              bind:value={$formData.odometerIn}
+              class="flex-1"
+            />
+            <p>км.</p>
+          </div>
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
+
+    <Form.Field {form} name="description">
+      <Form.Control>
+        {#snippet children({ props })}
+          <Label>Опис</Label>
+          <Textarea
             {...props}
-            bind:value={$formData.odometerIn}
-            class="flex-1"
-          />
-          <p>км.</p>
-        </div>
-      {/snippet}
-    </Form.Control>
-    <Form.FieldErrors />
-  </Form.Field>
-
-  <Form.Field {form} name="description">
-    <Form.Control>
-      {#snippet children({ props })}
-        <Label>Опис</Label>
-        <Textarea
-          {...props}
-          value={$formData.description ?? ""}
-          oninput={(e) => {
-            $formData.description = e.currentTarget.value;
-          }}
-          placeholder="Короткий опис звернення: тип роботи, попередня діагностика, скарги клієнта тощо..."
-          rows={2}
-        />
-      {/snippet}
-    </Form.Control>
-    <Form.FieldErrors />
-  </Form.Field>
-
-  <Form.Field {form} name="rate">
-    <Form.Control>
-      {#snippet children({ props })}
-        <Label>Тариф {@render requiredHint()}</Label>
-        <div class="flex gap-2 items-baseline" {...props}>
-          <CurrencyInput
-            bind:value={$formData.rate}
-            onkeydown={(e: KeyboardEvent) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                const input = e.currentTarget as HTMLInputElement;
-                input.blur();
-                input.closest("form")?.requestSubmit();
-              }
+            value={$formData.description ?? ""}
+            oninput={(e) => {
+              $formData.description = e.currentTarget.value;
             }}
+            placeholder="Короткий опис звернення: тип роботи, попередня діагностика, скарги клієнта тощо..."
+            rows={2}
           />
-          <p>грн./год.</p>
-        </div>
-      {/snippet}
-    </Form.Control>
-    <Form.FieldErrors />
-  </Form.Field>
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
 
-  <Form.Field {form} name="discountValue">
-    <Form.Control>
-      {#snippet children({ props })}
-        <Label>Знижка</Label>
-        <DiscountField
-          bind:type={$formData.discountType}
-          bind:value={$formData.discountValue}
-          inputProps={props}
-        />
-      {/snippet}
-    </Form.Control>
-    <Form.FieldErrors />
-  </Form.Field>
+    <Form.Field {form} name="rate">
+      <Form.Control>
+        {#snippet children({ props })}
+          <Label>Тариф {@render requiredHint()}</Label>
+          <div class="flex gap-2 items-baseline" {...props}>
+            <CurrencyInput
+              bind:value={$formData.rate}
+              onkeydown={(e: KeyboardEvent) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  const input = e.currentTarget as HTMLInputElement;
+                  input.blur();
+                  input.closest("form")?.requestSubmit();
+                }
+              }}
+            />
+            <p>грн./год.</p>
+          </div>
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
 
-  <Form.Field {form} name="laborCost">
-    <Form.Control>
-      {#snippet children({ props })}
-        <Label>Собівартість робіт</Label>
-        <LaborCostField
-          bind:type={$formData.laborCostType}
-          bind:value={$formData.laborCost}
-          inputProps={props}
-        />
-      {/snippet}
-    </Form.Control>
-    <Form.FieldErrors />
-    {#if pricingWarning}
-      <p class="text-sm text-amber-600 dark:text-amber-500 mt-1.5">
-        Увага: кінцева сума {pricingWarning.grandTotal.toFixed(2)} грн. нижча за собівартість
-        робіт і запчастин {pricingWarning.combinedCost.toFixed(2)} грн.
-      </p>
-    {/if}
-  </Form.Field>
+    <Form.Field {form} name="discountValue">
+      <Form.Control>
+        {#snippet children({ props })}
+          <Label>Знижка</Label>
+          <DiscountField
+            bind:type={$formData.discountType}
+            bind:value={$formData.discountValue}
+            inputProps={props}
+          />
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
 
-  <Form.Field {form} name="notes">
-    <Form.Control>
-      {#snippet children({ props })}
-        <Label>Нотатки</Label>
-        <Textarea
-          {...props}
-          value={$formData.notes ?? ""}
-          oninput={(e) => {
-            $formData.notes = e.currentTarget.value;
-          }}
-          placeholder="Загальні нотатки щодо замовлення..."
-          rows={3}
-        />
-      {/snippet}
-    </Form.Control>
-    <Form.FieldErrors />
-  </Form.Field>
+    <Form.Field {form} name="laborCost">
+      <Form.Control>
+        {#snippet children({ props })}
+          <Label>Собівартість робіт</Label>
+          <LaborCostField
+            bind:type={$formData.laborCostType}
+            bind:value={$formData.laborCost}
+            inputProps={props}
+          />
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+      {#if pricingWarning}
+        <p class="text-sm text-amber-600 dark:text-amber-500 mt-1.5">
+          Увага: кінцева сума {pricingWarning.grandTotal.toFixed(2)} грн. нижча за
+          собівартість робіт і запчастин {pricingWarning.combinedCost.toFixed(
+            2,
+          )} грн.
+        </p>
+      {/if}
+    </Form.Field>
+
+    <Form.Field {form} name="notes">
+      <Form.Control>
+        {#snippet children({ props })}
+          <Label>Нотатки</Label>
+          <Textarea
+            {...props}
+            value={$formData.notes ?? ""}
+            oninput={(e) => {
+              $formData.notes = e.currentTarget.value;
+            }}
+            placeholder="Загальні нотатки щодо замовлення..."
+            rows={3}
+          />
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
+  </fieldset>
 </MutationSheetShell>
 
 <AlertDialog.Root bind:open={priceConfirmOpen}>
