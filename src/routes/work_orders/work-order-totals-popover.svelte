@@ -42,12 +42,15 @@
   <Popover.Trigger
     class={cn(
       buttonVariants({ size: "lg", variant: "outline" }),
-      "text-base px-2 border-none bg-green-100 text-green-700",
-      belowCost && "bg-rose-100 text-rose-800",
+      "text-base px-2 border-none bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
+      belowCost &&
+        "bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300",
       className,
     )}
   >
-    <ReceiptIcon class={cn("size-5", belowCost && "text-rose-800")} />
+    <ReceiptIcon
+      class={cn("size-5", belowCost && "text-rose-800 dark:text-rose-300")}
+    />
     <CurrencyDisplay
       amount={workOrderDetails?.totals?.grandTotal ?? "0"}
       suffix="грн."
@@ -173,27 +176,27 @@
       <div class="h-px bg-border"></div>
       <div
         class={cn(
-          "flex items-baseline justify-between rounded-md bg-green-100 px-3 py-2",
-          belowCost && "bg-rose-100",
+          "flex items-baseline justify-between rounded-md bg-green-100 dark:bg-green-500/15 px-3 py-2",
+          belowCost && "bg-rose-100 dark:bg-rose-500/15",
         )}
       >
         <span
           class={cn(
-            "text-sm font-medium text-green-700",
-            belowCost && "text-rose-800",
+            "text-sm font-medium text-green-700 dark:text-green-300",
+            belowCost && "text-rose-800 dark:text-rose-300",
           )}>Всього</span
         >
         <CurrencyDisplay
           amount={grandTotal.toString()}
           suffix="грн."
           class={cn(
-            "text-lg font-medium text-green-700",
-            belowCost && "text-rose-800",
+            "text-lg font-medium text-green-700 dark:text-green-300",
+            belowCost && "text-rose-800 dark:text-rose-300",
           )}
         />
       </div>
       {#if belowCost}
-        <span class={cn("text-sm text-rose-700")}>
+        <span class={cn("text-sm text-rose-700 dark:text-rose-300")}>
           Кінцева сума зі знижкою становить {grandTotal.toString()} грн., що нижче
           за собівартість робіт і запчастин {totalCost.toString()} грн.
         </span>

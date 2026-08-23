@@ -28,8 +28,10 @@
   class={cn(
     "w-full h-full flex items-center justify-center",
     grandTotal.eq(0) && "text-muted-foreground",
-    paid && "bg-green-100 text-green-700 font-medium",
-    belowCost && "bg-rose-100 text-rose-700 font-medium",
+    paid &&
+      "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300 font-medium",
+    belowCost &&
+      "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300 font-medium",
     className,
   )}
 >

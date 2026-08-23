@@ -211,7 +211,7 @@
     <div class="mt-4 border border-border rounded bg-card">
       <div class="p-0 border-b border-border">
         <div
-          class="px-4 pt-4 flex flex-row gap-2 items-center text-xl font-medium pb-2"
+          class="px-4 pt-4 flex flex-row gap-2 items-center text-xl font-medium"
         >
           <p>Автомобілі</p>
           <p class="text-muted-foreground">
@@ -229,7 +229,7 @@
           />
         </div>
         {#if clientDetails?.cars?.length != 0}
-          <div class="flex flex-col items-start pb-2">
+          <div class="flex flex-col items-start pt-2 pb-2">
             {#each clientDetails?.cars as cli (cli.car.id)}
               <div class="h-10 w-full px-2">
                 <Button
@@ -249,7 +249,9 @@
             {/each}
           </div>
         {:else}
-          <p class="text-muted-foreground">Автомобілей ще не додано</p>
+          <div class="p-4 pt-0">
+            <p class="text-muted-foreground">Автомобілей ще не додано</p>
+          </div>
         {/if}
       </div>
 

@@ -18,7 +18,8 @@
 <div
   class={cn(
     "w-full h-full flex items-center justify-end px-2",
-    cost.gt(price) && "bg-rose-100 text-rose-800 font-medium",
+    cost.gt(price) &&
+      "bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300 font-medium",
     className,
   )}
 >
