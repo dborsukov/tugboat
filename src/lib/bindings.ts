@@ -26,7 +26,10 @@ export const commands = {
 	updateService: (id: number, payload: UpdateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("update_service", { id, payload })),
 	deleteService: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_service", { id })),
 	fetchSettings: () => typedError<AppSettings, AppError>(__TAURI_INVOKE("fetch_settings")),
-	updateSettings: (settings: AppSettings) => typedError<AppSettings, AppError>(__TAURI_INVOKE("update_settings", { settings })),
+	updateTheme: (theme: ThemeMode) => typedError<ThemeMode, AppError>(__TAURI_INVOKE("update_theme", { theme })),
+	updateUiScale: (uiScale: number | null) => typedError<number | null, AppError>(__TAURI_INVOKE("update_ui_scale", { uiScale })),
+	updateDefaultMarkup: (defaultMarkup: string) => typedError<string, AppError>(__TAURI_INVOKE("update_default_markup", { defaultMarkup })),
+	updateRateVariants: (rateVariants: RateVariants[]) => typedError<RateVariants[], AppError>(__TAURI_INVOKE("update_rate_variants", { rateVariants })),
 	fetchWorkOrderDetailsDto: (id: string) => typedError<WorkOrderDetailsDto, AppError>(__TAURI_INVOKE("fetch_work_order_details_dto", { id })),
 	fetchWorkOrderDetailsDtoByCarId: (carId: number) => typedError<WorkOrderDetailsDto[], AppError>(__TAURI_INVOKE("fetch_work_order_details_dto_by_car_id", { carId })),
 	fetchWorkOrderDetailsDtoByClientId: (clientId: number) => typedError<WorkOrderDetailsDto[], AppError>(__TAURI_INVOKE("fetch_work_order_details_dto_by_client_id", { clientId })),
@@ -54,6 +57,9 @@ export type AppError = { type: "NotFound"; message: string } | { type: "Constrai
 
 export type AppSettings = {
 	theme: ThemeMode,
+	uiScale: number,
+	defaultMarkup: string,
+	rateVariants: RateVariants[],
 };
 
 export type Car = {
@@ -230,6 +236,11 @@ export type PartItemTotals = {
 export type PartStatus = "Quoted" | "Ordered" | "InStock" | "Installing" | "Installed" | "AwaitingReturn" | "Returned" | "Warranty";
 
 export type PaymentMethod = "Cash" | "Card";
+
+export type RateVariants = {
+	name: string,
+	value: string,
+};
 
 export type Service = {
 	id: number,

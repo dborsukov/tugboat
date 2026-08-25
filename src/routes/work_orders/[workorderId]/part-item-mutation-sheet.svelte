@@ -23,6 +23,7 @@
     refineDiscount,
   } from "$lib/schemas/zdiscount";
 
+  import { createSettingsQuery } from "../../settings/queries";
   import DiscountField from "../discount-field.svelte";
   import {
     createCreatePartItemMutation,
@@ -81,6 +82,10 @@
   const createPartItemMutation = createCreatePartItemMutation(queryClient);
   const updatePartItemMutation = createUpdatePartItemMutation(queryClient);
 
+  // Default markup for new parts comes from the app settings (shared cache).
+  const settingsQuery = createSettingsQuery();
+  const defaultMarkup = $derived(settingsQuery.data?.defaultMarkup ?? "0");
+
   let partItemsQuery = createPartItemByIdQuery(() => partItemId);
   let partItem = $derived(partItemsQuery.data);
 
@@ -100,14 +105,8 @@
       }).default("0"),
       markup: zBigString({
         requiredError: "Вкажіть націнку у відсотках",
-        min: {
-          value: 0,
-          message: "Знижка у відсотках має бути від 0% до 100%",
-        },
-        max: {
-          value: 100,
-          message: "Знижка у відсотках має бути від 0% до 100%",
-        },
+        min: { value: 0, message: "Націнка не може бути від'ємним числом" },
+        max: { value: 300, message: "Націнка має бути від 0% до 300%" },
       }).default("0"),
       ...discountFields,
     })
@@ -225,6 +224,7 @@
       } else {
         form.reset();
         $formData.unitType = "штука";
+        $formData.markup = defaultMarkup;
       }
     }
   });

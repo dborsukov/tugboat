@@ -11,6 +11,7 @@
   import LockIcon from "@lucide/svelte/icons/lock";
 
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
+  import { Button } from "$lib/components/ui/button";
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
@@ -39,6 +40,7 @@
   } from "$lib/schemas/zlaborcost";
   import type { CreateOrEditProps } from "$lib/types";
 
+  import { createSettingsQuery } from "../settings/queries";
   import DiscountField from "./discount-field.svelte";
   import LaborCostField from "./labor-cost-field.svelte";
   import {
@@ -63,6 +65,9 @@
 
   const updateWorkOrderMutation = createUpdateWorkOrderMutation(queryClient);
   const createWorkOrderMutation = createCreateWorkOrderMutation(queryClient);
+
+  const settingsQuery = createSettingsQuery();
+  const rateVariants = $derived(settingsQuery.data?.rateVariants ?? []);
 
   let workOrderDetailsQuery = createWorkOrderDetailsQuery(() => workOrderId);
   let workOrderDetails = $derived(workOrderDetailsQuery.data);
@@ -417,6 +422,24 @@
             />
             <p>грн./год.</p>
           </div>
+          {#if rateVariants.length > 0}
+            <div class="flex flex-wrap gap-1.5 pt-1.5">
+              {#each rateVariants as variant (variant.name)}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  class="px-2.5 text-xs"
+                  onclick={() => ($formData.rate = variant.value)}
+                >
+                  {variant.name}
+                  <span class="font-normal text-muted-foreground">
+                    {variant.value}
+                  </span>
+                </Button>
+              {/each}
+            </div>
+          {/if}
         {/snippet}
       </Form.Control>
       <Form.FieldErrors />

@@ -262,3 +262,18 @@
     @apply select-text;
   }
 }
+
+/* Settings search: temporary highlight on the target section */
+@keyframes settings-target-flash {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+  40% {
+    box-shadow: 0 0 0 3px var(--ring);
+  }
+}
+
+.settings-target-flash {
+  animation: settings-target-flash 1s ease-in-out 2;
+}

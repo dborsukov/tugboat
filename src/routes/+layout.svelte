@@ -14,6 +14,7 @@
 
   import AppSidebar from "$lib/components/app-sidebar.svelte";
   import TitleBar from "$lib/components/title-bar.svelte";
+  import UiScaleApplier from "$lib/components/ui-scale-applier.svelte";
 
   import { navHistory } from "$lib/states/nav-history.svelte";
 
@@ -29,6 +30,7 @@
   {/if}
 
   <ModeWatcher />
+  <UiScaleApplier />
   <Toaster position="bottom-center" richColors />
 
   <Tooltip.Provider>
