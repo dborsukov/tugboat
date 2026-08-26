@@ -12,10 +12,6 @@
 
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
 
-  import PopeyeIcon from "$lib/components/icons/popeye.svelte";
-
-  import { commands } from "$lib/bindings";
-
   import { carsCountQueryOptions } from "../../routes/cars/queries";
   import { clientsCountQueryOptions } from "../../routes/clients/queries";
   import { servicesCountQueryOptions } from "../../routes/services/queries";
@@ -29,12 +25,6 @@
       carsCountQueryOptions(),
       workOrdersCountQueryOptions(),
       servicesCountQueryOptions(),
-      {
-        queryKey: ["version"],
-        queryFn: () => commands.getAppVersion(),
-        staleTime: Infinity,
-        gcTime: Infinity,
-      },
     ],
     combine: (results) => {
       return {
@@ -42,7 +32,6 @@
         carsCount: results[1],
         workOrdersCount: results[2],
         servicesCount: results[3],
-        appVersion: results[4],
 
         isReady: results.every((r) => r.isSuccess),
         isLoading: results.some((r) => r.isPending),
@@ -107,31 +96,8 @@
 </script>
 
 <Sidebar.Root collapsible="icon" variant="sidebar">
-  <Sidebar.Header
-    class="h-16 overflow-hidden border-b transition-all duration-300 ease-in-out group-data-[collapsible=icon]:h-0 group-data-[collapsible=icon]:border-none group-data-[collapsible=icon]:p-0"
-  >
-    <div class="flex h-full w-full items-center pl-2">
-      <div
-        class="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lg text-sidebar-primary-foreground transition-all duration-300 ease-in-out group-data-[collapsible=icon]:opacity-0"
-      >
-        <PopeyeIcon class="size-9! shrink-0" />
-      </div>
-
-      <div
-        class="flex flex-1 flex-col justify-center overflow-hidden whitespace-nowrap px-2 text-sm font-semibold leading-tight transition-all duration-300 ease-in-out group-data-[collapsible=icon]:opacity-0"
-      >
-        <span class="truncate">Папай CRM</span>
-        <span class="truncate text-xs text-muted-foreground"
-          >Версія {combinedQueries.isReady
-            ? combinedQueries.appVersion.data
-            : "?"}</span
-        >
-      </div>
-    </div>
-  </Sidebar.Header>
-
-  <Sidebar.Content class="gap-0">
-    <Sidebar.Group class="py-1 group-data-[collapsible=]:mt-2">
+  <Sidebar.Content class="gap-1">
+    <Sidebar.Group>
       <Sidebar.GroupContent>
         <Sidebar.Menu>
           {#each top_level_menu as item (item.title)}
@@ -153,7 +119,7 @@
       </Sidebar.GroupContent>
     </Sidebar.Group>
 
-    <Sidebar.Group class="py-1">
+    <Sidebar.Group>
       <Sidebar.GroupLabel
         class="group-data-[collapsible=icon]:pointer-events-none"
         >База</Sidebar.GroupLabel
@@ -179,7 +145,7 @@
       </Sidebar.GroupContent>
     </Sidebar.Group>
 
-    <Sidebar.Group class="py-1">
+    <Sidebar.Group>
       <Sidebar.GroupLabel
         class="group-data-[collapsible=icon]:pointer-events-none"
         >Управління</Sidebar.GroupLabel

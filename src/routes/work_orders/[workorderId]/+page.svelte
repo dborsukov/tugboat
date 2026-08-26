@@ -27,6 +27,7 @@
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import type { Service, WorkOrderStatus } from "$lib/bindings";
+  import { privacyState } from "$lib/states/privacy.svelte";
   import { TableActionState } from "$lib/states/table-actions.svelte";
   import { prettifyIsoDateString } from "$lib/tools";
 
@@ -125,9 +126,16 @@
       return combinedQueries.workOrderDetails.data?.partItems ?? [];
     },
     get columns() {
-      return isLocked
+      const columns = isLocked
         ? partsColumns.filter((c) => c.id !== "actions")
         : partsColumns;
+      if (privacyState.hidePricing) {
+        return columns.filter((c) => {
+          const id = "accessorKey" in c ? (c.accessorKey ?? c.id) : c.id;
+          return id !== "baseCost" && id !== "markup";
+        });
+      }
+      return columns;
     },
     get meta() {
       return {
@@ -568,7 +576,7 @@
         </div>
       </div>
 
-      {#if workOrderDetails?.workOrder?.description || workOrderDetails?.workOrder?.notes}
+      {#if workOrderDetails?.workOrder?.description || (!privacyState.hideNotes && workOrderDetails?.workOrder?.notes)}
         <div
           class="flex flex-col divide-y divide-border rounded-b overflow-hidden"
         >
@@ -589,7 +597,7 @@
               </p>
             </div>
           {/if}
-          {#if workOrderDetails?.workOrder?.notes}
+          {#if !privacyState.hideNotes && workOrderDetails?.workOrder?.notes}
             <div
               class="flex-1 flex flex-col items-start gap-1 px-4 py-2 bg-muted/40"
             >

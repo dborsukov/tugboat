@@ -6,6 +6,7 @@
   import { ModeWatcher } from "mode-watcher";
 
   import { dev } from "$app/environment";
+  import { page } from "$app/state";
 
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
   import SidebarInset from "$lib/components/ui/sidebar/sidebar-inset.svelte";
@@ -21,6 +22,10 @@
   let { children } = $props();
   const queryClient = new QueryClient();
 
+  // Windows like the About dialog are standalone webviews: skip the app shell
+  // (titlebar + sidebar) and render just the route content.
+  const isStandaloneWindow = $derived(page.url.pathname.startsWith("/about"));
+
   navHistory.init();
 </script>
 
@@ -33,19 +38,25 @@
   <UiScaleApplier />
   <Toaster position="bottom-center" richColors />
 
-  <Tooltip.Provider>
-    <Sidebar.Provider>
-      <div class="flex h-screen w-screen flex-col overflow-hidden">
-        <TitleBar />
-        <div class="flex flex-1 overflow-hidden transform-gpu">
-          <AppSidebar />
-          <SidebarInset class="h-full flex flex-col overflow-hidden">
-            <main class="flex-1 flex flex-col min-h-0">
-              {@render children?.()}
-            </main>
-          </SidebarInset>
+  {#if isStandaloneWindow}
+    <main class="h-screen w-screen overflow-hidden">
+      {@render children?.()}
+    </main>
+  {:else}
+    <Tooltip.Provider>
+      <Sidebar.Provider>
+        <div class="flex h-screen w-screen flex-col overflow-hidden">
+          <TitleBar />
+          <div class="flex flex-1 overflow-hidden transform-gpu">
+            <AppSidebar />
+            <SidebarInset class="h-full flex flex-col overflow-hidden">
+              <main class="flex-1 flex flex-col min-h-0">
+                {@render children?.()}
+              </main>
+            </SidebarInset>
+          </div>
         </div>
-      </div>
-    </Sidebar.Provider>
-  </Tooltip.Provider>
+      </Sidebar.Provider>
+    </Tooltip.Provider>
+  {/if}
 </QueryClientProvider>
