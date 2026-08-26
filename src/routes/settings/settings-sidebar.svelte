@@ -2,6 +2,7 @@
   import { page } from "$app/state";
 
   import BriefcaseBusinessIcon from "@lucide/svelte/icons/briefcase-business";
+  import CarIcon from "@lucide/svelte/icons/car";
   import PaletteIcon from "@lucide/svelte/icons/palette";
   import SearchIcon from "@lucide/svelte/icons/search";
 
@@ -21,6 +22,11 @@
       title: "Замовлення",
       url: "/settings/workorders",
       icon: BriefcaseBusinessIcon,
+    },
+    {
+      title: "Автомобілі",
+      url: "/settings/cars",
+      icon: CarIcon,
     },
   ]);
 </script>

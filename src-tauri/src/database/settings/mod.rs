@@ -17,6 +17,9 @@ const UI_SCALE_MAX: f64 = 2.0;
 const MARKUP_MIN: i32 = 0;
 const MARKUP_MAX: i32 = 300;
 const RATE_VARIANT_NAME_MAX_LEN: usize = 60;
+const LOOKUP_TEMPLATE_LABEL_MAX_LEN: usize = 60;
+const LOOKUP_TEMPLATE_URL_MAX_LEN: usize = 500;
+const LOOKUP_PLACEHOLDER: &str = "%s";
 
 #[tauri::command]
 #[specta::specta]
@@ -121,4 +124,125 @@ fn validate_rate_variants(variants: &[RateVariants]) -> Result<(), AppError> {
         }
     }
     Ok(())
+}
+
+#[derive(Debug, Clone, Copy)]
+struct LookupTemplateEntry<'a> {
+    label: &'a str,
+    url_template: &'a str,
+}
+
+fn validate_lookup_templates(
+    entries: &[LookupTemplateEntry<'_>],
+    kind: &str,
+) -> Result<(), AppError> {
+    let mut seen = HashSet::new();
+    for entry in entries {
+        let label = entry.label.trim();
+        if label.is_empty() {
+            return Err(AppError::ConstraintViolation(format!(
+                "{kind} label is required"
+            )));
+        }
+        if label.chars().count() > LOOKUP_TEMPLATE_LABEL_MAX_LEN {
+            return Err(AppError::ConstraintViolation(format!(
+                "{kind} label is too long"
+            )));
+        }
+        if !seen.insert(label.to_lowercase()) {
+            return Err(AppError::ConstraintViolation(format!(
+                "duplicate {kind} label: {label}"
+            )));
+        }
+
+        let url = entry.url_template.trim();
+        if url.is_empty() {
+            return Err(AppError::ConstraintViolation(format!(
+                "{kind} url is required"
+            )));
+        }
+        if url.chars().count() > LOOKUP_TEMPLATE_URL_MAX_LEN {
+            return Err(AppError::ConstraintViolation(format!(
+                "{kind} url is too long"
+            )));
+        }
+        if !url.contains(LOOKUP_PLACEHOLDER) {
+            return Err(AppError::ConstraintViolation(format!(
+                "{kind} url must contain the {LOOKUP_PLACEHOLDER} placeholder"
+            )));
+        }
+        let lower = url.to_lowercase();
+        if !(lower.starts_with("http://") || lower.starts_with("https://")) {
+            return Err(AppError::ConstraintViolation(format!(
+                "{kind} url must start with http:// or https://"
+            )));
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_vin_lookup_templates(
+    vin_lookup_templates: Vec<VinLookupTemplates>,
+    state: State<'_, crate::AppState>,
+) -> AppResult<Vec<VinLookupTemplates>> {
+    let entries: Vec<LookupTemplateEntry> = vin_lookup_templates
+        .iter()
+        .map(|t| LookupTemplateEntry {
+            label: &t.label,
+            url_template: &t.url_template,
+        })
+        .collect();
+    validate_lookup_templates(&entries, "vin lookup template")?;
+
+    // Persist trimmed values so labels and urls are stored in canonical form.
+    let templates: Vec<VinLookupTemplates> = vin_lookup_templates
+        .into_iter()
+        .map(|t| VinLookupTemplates {
+            label: t.label.trim().to_string(),
+            url_template: t.url_template.trim().to_string(),
+        })
+        .collect();
+
+    let saved: Json<Vec<VinLookupTemplates>> = sqlx::query_scalar(
+        "UPDATE app_settings SET vin_lookup_templates = $1 WHERE id = 1 RETURNING vin_lookup_templates",
+    )
+    .bind(Json(&templates))
+    .fetch_one(&state.db_pool)
+    .await?;
+    Ok(saved.0)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_license_plate_lookup_templates(
+    license_plate_lookup_templates: Vec<LicensePlateLookupTemplates>,
+    state: State<'_, crate::AppState>,
+) -> AppResult<Vec<LicensePlateLookupTemplates>> {
+    let entries: Vec<LookupTemplateEntry> = license_plate_lookup_templates
+        .iter()
+        .map(|t| LookupTemplateEntry {
+            label: &t.label,
+            url_template: &t.url_template,
+        })
+        .collect();
+    validate_lookup_templates(&entries, "license plate lookup template")?;
+
+    // Persist trimmed values so labels and urls are stored in canonical form.
+    let templates: Vec<LicensePlateLookupTemplates> = license_plate_lookup_templates
+        .into_iter()
+        .map(|t| LicensePlateLookupTemplates {
+            label: t.label.trim().to_string(),
+            url_template: t.url_template.trim().to_string(),
+        })
+        .collect();
+
+    let saved: Json<Vec<LicensePlateLookupTemplates>> = sqlx::query_scalar(
+        "UPDATE app_settings SET license_plate_lookup_templates = $1 WHERE id = 1 RETURNING license_plate_lookup_templates",
+    )
+    .bind(Json(&templates))
+    .fetch_one(&state.db_pool)
+    .await?;
+    Ok(saved.0)
 }

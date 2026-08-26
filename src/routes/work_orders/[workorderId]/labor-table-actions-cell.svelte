@@ -29,12 +29,12 @@
     <DropdownMenu.Group>
       <DropdownMenu.Label>Дії</DropdownMenu.Label>
       <DropdownMenu.Item onclick={() => onEdit(id)}>
+        <EditIcon />
         Редагувати
-        <EditIcon class="ml-auto" />
       </DropdownMenu.Item>
-      <DropdownMenu.Item onclick={() => onDelete(id)}>
+      <DropdownMenu.Item variant="destructive" onclick={() => onDelete(id)}>
+        <TrashIcon />
         Видалити
-        <TrashIcon class="ml-auto" />
       </DropdownMenu.Item>
     </DropdownMenu.Group>
   </DropdownMenu.Content>

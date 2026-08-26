@@ -52,7 +52,7 @@
 </script>
 
 <PageLayout contentWidthClass={SETTINGS_CONTENT_WIDTH_CLASS}>
-  <div class="mt-12 border border-border rounded bg-card">
+  <div class="mt-4 border border-border rounded bg-card">
     <Item.Root id="settings-markup">
       <Item.Content>
         <Item.Title>Типова націнка</Item.Title>

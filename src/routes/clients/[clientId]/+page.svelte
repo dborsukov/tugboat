@@ -186,7 +186,10 @@
             </div>
           </div>
           <div class="h-full ml-auto flex flex-col items-start">
-            <DropdownMenu clientId={clientDetails?.client?.id} />
+            <DropdownMenu
+              clientId={clientDetails?.client?.id}
+              phone={clientDetails?.client?.phone ?? null}
+            />
           </div>
         </div>
       </div>

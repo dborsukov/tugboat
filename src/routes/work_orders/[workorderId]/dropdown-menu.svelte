@@ -45,16 +45,15 @@
   <DropdownMenu.Content class="w-40 whitespace-nowrap" align="end">
     <DropdownMenu.Group>
       <DropdownMenu.Item onSelect={() => (isSheetOpen = true)}>
+        <EditIcon />
         Редагувати
-        <EditIcon class="ml-auto" />
       </DropdownMenu.Item>
       <DropdownMenu.Item
-        // FIXME: figure out how to make icon red on focus(hover)
-        // class="text-destructive focus:text-destructive"
+        variant="destructive"
         onSelect={() => (isDeleteDialogOpen = true)}
       >
+        <TrashIcon />
         Видалити
-        <TrashIcon class="ml-auto" />
       </DropdownMenu.Item>
     </DropdownMenu.Group>
   </DropdownMenu.Content>

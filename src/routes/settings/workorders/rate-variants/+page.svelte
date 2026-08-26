@@ -54,7 +54,7 @@
 </script>
 
 <PageLayout contentWidthClass={SETTINGS_CONTENT_WIDTH_CLASS}>
-  <div class="mt-12 flex items-center justify-between gap-3">
+  <div class="mt-4 flex items-center justify-between gap-3">
     <div class="flex items-center gap-3">
       <Button
         variant="ghost"

@@ -48,6 +48,8 @@ pub fn run() {
         database::settings::update_ui_scale,
         database::settings::update_default_markup,
         database::settings::update_rate_variants,
+        database::settings::update_vin_lookup_templates,
+        database::settings::update_license_plate_lookup_templates,
         database::work_orders::fetch_work_order_details_dto,
         database::work_orders::fetch_work_order_details_dto_by_car_id,
         database::work_orders::fetch_work_order_details_dto_by_client_id,

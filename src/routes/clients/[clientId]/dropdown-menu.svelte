@@ -1,8 +1,10 @@
 <script lang="ts">
   import { useQueryClient } from "@tanstack/svelte-query";
+  import { toast } from "svelte-sonner";
 
   import { goto } from "$app/navigation";
 
+  import CopyIcon from "@lucide/svelte/icons/copy";
   import EllipsisIcon from "@lucide/svelte/icons/ellipsis-vertical";
   import EditIcon from "@lucide/svelte/icons/square-pen";
   import TrashIcon from "@lucide/svelte/icons/trash";
@@ -12,10 +14,18 @@
 
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
 
+  import { copyText } from "$lib/hooks/use-clipboard.svelte";
+
   import ClientMutationSheet from "../client-mutation-sheet.svelte";
   import { createDeleteClientMutation } from "../queries";
 
-  let { clientId }: { clientId: number } = $props();
+  let {
+    clientId,
+    phone,
+  }: {
+    clientId: number;
+    phone: string | null;
+  } = $props();
 
   let isSheetOpen = $state(false);
   let isDeleteDialogOpen = $state(false);
@@ -31,6 +41,18 @@
       },
     });
   }
+
+  async function copyValue(value: string, label: string) {
+    const status = await copyText(value);
+    if (status === "success") {
+      toast.success(`${label} скопійовано`, { position: "bottom-left" });
+    } else {
+      toast.error("Не вдалося скопіювати", {
+        description: label,
+        position: "bottom-right",
+      });
+    }
+  }
 </script>
 
 <DropdownMenu.Root>
@@ -39,21 +61,32 @@
   >
     <EllipsisIcon />
   </DropdownMenu.Trigger>
-  <DropdownMenu.Content class="w-40 whitespace-nowrap" align="end">
-    <DropdownMenu.Group>
-      <DropdownMenu.Item onSelect={() => (isSheetOpen = true)}>
-        Редагувати
-        <EditIcon class="ml-auto" />
-      </DropdownMenu.Item>
-      <DropdownMenu.Item
-        // FIXME: figure out how to make icon red on focus(hover)
-        // class="text-destructive focus:text-destructive"
-        onSelect={() => (isDeleteDialogOpen = true)}
-      >
-        Видалити
-        <TrashIcon class="ml-auto" />
-      </DropdownMenu.Item>
-    </DropdownMenu.Group>
+  <DropdownMenu.Content class="w-48" align="end">
+    <DropdownMenu.Item onSelect={() => (isSheetOpen = true)}>
+      <EditIcon />
+      Редагувати
+    </DropdownMenu.Item>
+
+    <DropdownMenu.Separator />
+
+    <DropdownMenu.Label>Телефон</DropdownMenu.Label>
+    <DropdownMenu.Item
+      disabled={!phone}
+      onSelect={() => phone && copyValue(phone, "Телефон")}
+    >
+      <CopyIcon />
+      Копіювати
+    </DropdownMenu.Item>
+
+    <DropdownMenu.Separator />
+
+    <DropdownMenu.Item
+      variant="destructive"
+      onSelect={() => (isDeleteDialogOpen = true)}
+    >
+      <TrashIcon />
+      Видалити
+    </DropdownMenu.Item>
   </DropdownMenu.Content>
 </DropdownMenu.Root>
 

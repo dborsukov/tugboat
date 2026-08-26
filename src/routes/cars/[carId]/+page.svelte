@@ -3,13 +3,13 @@
 
   import { goto } from "$app/navigation";
 
+  import BarcodeIcon from "@lucide/svelte/icons/barcode";
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
   import DotIcon from "@lucide/svelte/icons/dot";
-  import FingerprintIcon from "@lucide/svelte/icons/fingerprint-pattern";
   import FuelIcon from "@lucide/svelte/icons/fuel";
   import RectangleEllipsisIcon from "@lucide/svelte/icons/rectangle-ellipsis";
   import StickyNoteIcon from "@lucide/svelte/icons/sticky-note";
-  import UserIcon from "@lucide/svelte/icons/user-key";
+  import UserIcon from "@lucide/svelte/icons/user";
   import DriveTypeIcon from "~icons/tabler/car-4wd";
   import EngineIcon from "~icons/tabler/engine";
   import RulerIcon from "~icons/tabler/ruler-measure";
@@ -205,7 +205,11 @@
             </div>
           </div>
           <div class="h-full ml-auto flex flex-col items-start">
-            <DropdownMenu carId={carDetails?.carDto?.car?.id} />
+            <DropdownMenu
+              carId={carDetails?.carDto?.car?.id}
+              vin={carDetails?.carDto?.car?.vin ?? null}
+              licensePlate={carDetails?.carDto?.car?.licensePlate ?? null}
+            />
           </div>
         </div>
       </div>
@@ -290,7 +294,7 @@
         <div class="flex-[1_1_max-content] p-3 bg-card whitespace-nowrap">
           <div class="flex flex-col gap-1">
             <div class="flex flex-row gap-2 items-center font-medium">
-              <FingerprintIcon class="text-muted-foreground size-4" /> VIN-код
+              <BarcodeIcon class="text-muted-foreground size-4" /> VIN-код
             </div>
             <div>
               {#if carDetails?.carDto?.car?.vin}

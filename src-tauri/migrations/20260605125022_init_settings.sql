@@ -3,7 +3,9 @@ CREATE TABLE app_settings (
     theme TEXT NOT NULL DEFAULT 'system',
     ui_scale REAL NOT NULL DEFAULT 1.0,
     default_markup TEXT NOT NULL DEFAULT '0',
-    rate_variants TEXT NOT NULL DEFAULT '[]'
+    rate_variants TEXT NOT NULL DEFAULT '[]',
+    vin_lookup_templates TEXT NOT NULL DEFAULT '[]',
+    license_plate_lookup_templates TEXT NOT NULL DEFAULT '[]'
 );
 
 -- Seed the initial default settings row
@@ -13,7 +15,9 @@ OR IGNORE INTO app_settings (
     theme,
     ui_scale,
     default_markup,
-    rate_variants
+    rate_variants,
+    vin_lookup_templates,
+    license_plate_lookup_templates
 )
 VALUES
-    (1, 'system', 1.0, '0', '[]');
+    (1, 'system', 1.0, '0', '[]', '[]', '[]');

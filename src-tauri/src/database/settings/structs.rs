@@ -12,6 +12,8 @@ pub struct AppSettings {
     pub ui_scale: f64,
     pub default_markup: Decimal,
     pub rate_variants: Vec<RateVariants>,
+    pub vin_lookup_templates: Vec<VinLookupTemplates>,
+    pub license_plate_lookup_templates: Vec<LicensePlateLookupTemplates>,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for AppSettings {
@@ -22,6 +24,14 @@ impl<'r> FromRow<'r, SqliteRow> for AppSettings {
             default_markup: decimal_column(row, "default_markup")?,
             rate_variants: row
                 .try_get::<Json<Vec<RateVariants>>, _>("rate_variants")?
+                .0,
+            vin_lookup_templates: row
+                .try_get::<Json<Vec<VinLookupTemplates>>, _>("vin_lookup_templates")?
+                .0,
+            license_plate_lookup_templates: row
+                .try_get::<Json<Vec<LicensePlateLookupTemplates>>, _>(
+                    "license_plate_lookup_templates",
+                )?
                 .0,
         })
     }
@@ -41,4 +51,18 @@ pub enum ThemeMode {
 pub struct RateVariants {
     pub name: String,
     pub value: Decimal,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct VinLookupTemplates {
+    pub label: String,
+    pub url_template: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct LicensePlateLookupTemplates {
+    pub label: String,
+    pub url_template: String,
 }

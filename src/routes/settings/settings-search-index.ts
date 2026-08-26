@@ -53,4 +53,34 @@ export const settingsSearchIndex: SettingsSearchItem[] = [
     keywords: "тариф тарифи ставка розцінки rate список",
     hint: "Замовлення",
   },
+  {
+    id: "settings-vin-templates-entry",
+    route: "/settings/cars",
+    label: "Шаблони пошуку VIN-кодів",
+    keywords: "vin код автомобіль авто пошук перевірка шаблон url template",
+    hint: "Автомобілі",
+  },
+  {
+    id: "settings-vin-templates",
+    route: "/settings/cars/vin-lookup-templates",
+    label: "Список шаблонів VIN-кодів",
+    keywords: "vin код автомобіль авто пошук перевірка шаблон url template",
+    hint: "Автомобілі",
+  },
+  {
+    id: "settings-plate-templates-entry",
+    route: "/settings/cars",
+    label: "Шаблони пошуку номерних знаків",
+    keywords:
+      "номерний знак номер авто автомобіль пошук перевірка шаблон plate license url template",
+    hint: "Автомобілі",
+  },
+  {
+    id: "settings-plate-templates",
+    route: "/settings/cars/license-plate-lookup-templates",
+    label: "Список шаблонів номерних знаків",
+    keywords:
+      "номерний знак номер авто автомобіль пошук перевірка шаблон plate license url template",
+    hint: "Автомобілі",
+  },
 ];

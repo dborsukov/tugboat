@@ -8,8 +8,10 @@ import { toast } from "svelte-sonner";
 import {
   commands,
   type AppSettings,
+  type LicensePlateLookupTemplates,
   type RateVariants,
   type ThemeMode,
+  type VinLookupTemplates,
 } from "$lib/bindings";
 import { keys } from "$lib/query-keys";
 import { unwrap } from "$lib/tools";
@@ -111,5 +113,29 @@ export function createUpdateRateVariantsMutation(queryClient: QueryClient) {
     "rateVariants",
     (rateVariants: RateVariants[]) =>
       unwrap(commands.updateRateVariants(rateVariants)),
+  );
+}
+
+export function createUpdateVinLookupTemplatesMutation(
+  queryClient: QueryClient,
+) {
+  return createSettingsFieldMutation(
+    queryClient,
+    "vinLookupTemplates",
+    (vinLookupTemplates: VinLookupTemplates[]) =>
+      unwrap(commands.updateVinLookupTemplates(vinLookupTemplates)),
+  );
+}
+
+export function createUpdateLicensePlateLookupTemplatesMutation(
+  queryClient: QueryClient,
+) {
+  return createSettingsFieldMutation(
+    queryClient,
+    "licensePlateLookupTemplates",
+    (licensePlateLookupTemplates: LicensePlateLookupTemplates[]) =>
+      unwrap(
+        commands.updateLicensePlateLookupTemplates(licensePlateLookupTemplates),
+      ),
   );
 }

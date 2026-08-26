@@ -30,6 +30,8 @@ export const commands = {
 	updateUiScale: (uiScale: number | null) => typedError<number | null, AppError>(__TAURI_INVOKE("update_ui_scale", { uiScale })),
 	updateDefaultMarkup: (defaultMarkup: string) => typedError<string, AppError>(__TAURI_INVOKE("update_default_markup", { defaultMarkup })),
 	updateRateVariants: (rateVariants: RateVariants[]) => typedError<RateVariants[], AppError>(__TAURI_INVOKE("update_rate_variants", { rateVariants })),
+	updateVinLookupTemplates: (vinLookupTemplates: VinLookupTemplates[]) => typedError<VinLookupTemplates[], AppError>(__TAURI_INVOKE("update_vin_lookup_templates", { vinLookupTemplates })),
+	updateLicensePlateLookupTemplates: (licensePlateLookupTemplates: LicensePlateLookupTemplates[]) => typedError<LicensePlateLookupTemplates[], AppError>(__TAURI_INVOKE("update_license_plate_lookup_templates", { licensePlateLookupTemplates })),
 	fetchWorkOrderDetailsDto: (id: string) => typedError<WorkOrderDetailsDto, AppError>(__TAURI_INVOKE("fetch_work_order_details_dto", { id })),
 	fetchWorkOrderDetailsDtoByCarId: (carId: number) => typedError<WorkOrderDetailsDto[], AppError>(__TAURI_INVOKE("fetch_work_order_details_dto_by_car_id", { carId })),
 	fetchWorkOrderDetailsDtoByClientId: (clientId: number) => typedError<WorkOrderDetailsDto[], AppError>(__TAURI_INVOKE("fetch_work_order_details_dto_by_client_id", { clientId })),
@@ -60,6 +62,8 @@ export type AppSettings = {
 	uiScale: number,
 	defaultMarkup: string,
 	rateVariants: RateVariants[],
+	vinLookupTemplates: VinLookupTemplates[],
+	licensePlateLookupTemplates: LicensePlateLookupTemplates[],
 };
 
 export type Car = {
@@ -207,6 +211,11 @@ export type LaborItemTotals = {
 
 export type LaborPriceType = "Hourly" | "Fixed";
 
+export type LicensePlateLookupTemplates = {
+	label: string,
+	urlTemplate: string,
+};
+
 export type PartItem = {
 	id: number,
 	workOrderId: string,
@@ -320,6 +329,11 @@ export type UpdateWorkOrderPayload = {
 	completedAt: string | null,
 	paidAt: string | null,
 	paymentMethod: PaymentMethod | null,
+};
+
+export type VinLookupTemplates = {
+	label: string,
+	urlTemplate: string,
 };
 
 export type WorkOrder = {
