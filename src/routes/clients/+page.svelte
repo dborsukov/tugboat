@@ -17,6 +17,8 @@
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
+  import { UseAutoPageSize } from "$lib/hooks/use-auto-page-size.svelte";
+
   import ClientAvatar from "./client-avatar.svelte";
   import ClientMutationSheet from "./client-mutation-sheet.svelte";
   import { createClientsQuery } from "./queries";
@@ -31,13 +33,13 @@
   };
 
   let currentPage = $state(1);
-  let perPage = $state(15);
   let searchQuery = $state("");
   let isSheetOpen = $state(false);
   let sortBy = $state<SortOption>("date-desc");
   let searchInputEl = $state<HTMLInputElement | null>(null);
 
   const clientsQuery = createClientsQuery();
+  const autoPageSize = new UseAutoPageSize({ minPageSize: 5 });
 
   let filteredClients = $derived.by(() => {
     let clients = clientsQuery.isSuccess ? clientsQuery.data : [];
@@ -89,7 +91,10 @@
   });
 
   let paginatedClients = $derived(
-    sortedClients.slice((currentPage - 1) * perPage, currentPage * perPage),
+    sortedClients.slice(
+      (currentPage - 1) * autoPageSize.pageSize,
+      currentPage * autoPageSize.pageSize,
+    ),
   );
 
   function handleSearchInput() {
@@ -105,6 +110,25 @@
   );
 
   $effect(() => searchInputEl?.focus());
+
+  // Re-measure the fitted page size whenever the underlying rows change (data
+  // load, search). Key off the FULL filtered count, not the paginated slice,
+  // so a change from e.g. 137 to 40 rows (both above pageSize) re-measures.
+  $effect(() => {
+    filteredClients.length;
+    if (clientsQuery.isSuccess && paginatedClients.length > 0) {
+      autoPageSize.scheduleMeasure();
+    }
+  });
+
+  // Keep the current page valid after the fitted size changes (window resize).
+  $effect(() => {
+    const pageCount = Math.max(
+      1,
+      Math.ceil(filteredClients.length / autoPageSize.pageSize),
+    );
+    if (currentPage > pageCount) currentPage = pageCount;
+  });
 </script>
 
 <PageLayout contentWidthClass="max-w-5xl" headerWidthClass="max-w-5xl">
@@ -152,101 +176,107 @@
       onRetry={clientsQuery.refetch}
       class="mt-10"
     />
-  {:else if clientsQuery.isLoading}
-    <div
-      class="mt-4 flex flex-col border border-border rounded divide-y divide-border"
-    >
-      <Skeleton class="w-full h-14" />
-      <Skeleton class="w-full h-14" />
-      <Skeleton class="w-full h-14" />
-      <Skeleton class="w-full h-14" />
-      <Skeleton class="w-full h-14" />
-    </div>
-  {:else if paginatedClients.length === 0}
-    {#if searchQuery}
-      <div
-        class="mt-4 p-4 flex border border-border rounded bg-card items-center justify-center"
-      >
-        <p>Пошук не повернув результатів</p>
-      </div>
-    {:else}
-      <div
-        class="mt-4 p-4 flex flex-col border border-border rounded bg-card items-center justify-center"
-      >
-        <p>Клієнтів не знайдено</p>
-        <p class="text-muted-foreground">
-          Натисніть "Додати +" щоб додати нового клієнта
-        </p>
-      </div>
-    {/if}
   {:else}
-    <div
-      class="mt-4 flex flex-col border border-border rounded divide-y divide-border bg-card"
-    >
-      {#each paginatedClients as client (client.id)}
-        <Button
-          variant="ghost"
-          class="w-full h-auto justify-start rounded-none px-5 py-3 first:pt-4 last:pb-4"
-          onclick={async () => await goto(`/clients/${client.id}`)}
-        >
-          <div class="flex w-full items-center gap-3.5">
-            <ClientAvatar name={client?.name} class="size-9 shrink-0" />
-            <p class="flex-1 min-w-0 truncate text-left text-base font-medium">
-              {client?.name}
-            </p>
-            <PatternText
-              value={client?.phone}
-              format={MaskPatterns.PHONE_INTERNATIONAL}
-              class="shrink-0 text-sm text-muted-foreground select-none!"
-            />
-            <ChevronRightIcon class="size-4 shrink-0 text-muted-foreground" />
-          </div>
-        </Button>
-      {/each}
-    </div>
-
-    <div class="p-4 flex items-center justify-center">
-      <Pagination.Root
-        count={filteredClients.length}
-        {perPage}
-        bind:page={currentPage}
+    <div class="pt-4 flex flex-col">
+      <div
+        bind:this={autoPageSize.container}
+        class="border border-border rounded bg-card flex flex-col divide-y divide-border"
       >
-        {#snippet children({ pages, currentPage })}
-          <Pagination.Content class="gap-5">
-            <Pagination.Item>
-              <Pagination.PrevButton
-                class="border-none shadow-none text-muted-foreground hover:text-foreground"
-              />
-            </Pagination.Item>
+        {#if clientsQuery.isLoading}
+          <Skeleton class="w-full h-14 shrink-0" />
+          <Skeleton class="w-full h-14 shrink-0" />
+          <Skeleton class="w-full h-14 shrink-0" />
+          <Skeleton class="w-full h-14 shrink-0" />
+          <Skeleton class="w-full h-14 shrink-0" />
+        {:else if paginatedClients.length === 0}
+          {#if searchQuery}
+            <div class="p-4 flex items-center justify-center">
+              <p>Пошук не повернув результатів</p>
+            </div>
+          {:else}
+            <div class="p-4 flex flex-col items-center justify-center">
+              <p>Клієнтів не знайдено</p>
+              <p class="text-muted-foreground">
+                Натисніть "Додати +" щоб додати нового клієнта
+              </p>
+            </div>
+          {/if}
+        {:else}
+          {#each paginatedClients as client (client.id)}
+            <Button
+              variant="ghost"
+              class="w-full h-auto justify-start rounded-none px-5 py-3 shrink-0"
+              onclick={async () => await goto(`/clients/${client.id}`)}
+            >
+              <div class="flex w-full items-center gap-3.5">
+                <ClientAvatar name={client?.name} class="size-9 shrink-0" />
+                <p
+                  class="flex-1 min-w-0 truncate text-left text-base font-medium"
+                >
+                  {client?.name}
+                </p>
+                <PatternText
+                  value={client?.phone}
+                  format={MaskPatterns.PHONE_INTERNATIONAL}
+                  class="shrink-0 text-sm text-muted-foreground select-none!"
+                />
+                <ChevronRightIcon
+                  class="size-4 shrink-0 text-muted-foreground"
+                />
+              </div>
+            </Button>
+          {/each}
+        {/if}
+      </div>
 
-            {#each pages as page (page.key)}
-              {#if page.type === "ellipsis"}
+      {#if paginatedClients.length > 0}
+        <div
+          class="p-4 flex items-center justify-center sticky bottom-0 bg-card"
+        >
+          <Pagination.Root
+            count={filteredClients.length}
+            perPage={autoPageSize.pageSize}
+            bind:page={currentPage}
+          >
+            {#snippet children({ pages, currentPage })}
+              <Pagination.Content class="gap-5">
                 <Pagination.Item>
-                  <Pagination.Ellipsis />
+                  <Pagination.PrevButton
+                    class="border-none shadow-none text-muted-foreground hover:text-foreground"
+                  />
                 </Pagination.Item>
-              {:else}
-                <Pagination.Item>
-                  <Pagination.Link
-                    {page}
-                    isActive={currentPage === page.value}
-                    class="border-none shadow-none {currentPage === page.value
-                      ? 'font-semibold text-foreground'
-                      : 'text-muted-foreground'}"
-                  >
-                    {page.value}
-                  </Pagination.Link>
-                </Pagination.Item>
-              {/if}
-            {/each}
 
-            <Pagination.Item>
-              <Pagination.NextButton
-                class="border-none shadow-none text-muted-foreground hover:text-foreground"
-              />
-            </Pagination.Item>
-          </Pagination.Content>
-        {/snippet}
-      </Pagination.Root>
+                {#each pages as page (page.key)}
+                  {#if page.type === "ellipsis"}
+                    <Pagination.Item>
+                      <Pagination.Ellipsis />
+                    </Pagination.Item>
+                  {:else}
+                    <Pagination.Item>
+                      <Pagination.Link
+                        {page}
+                        isActive={currentPage === page.value}
+                        class="border-none shadow-none {currentPage ===
+                        page.value
+                          ? 'font-semibold text-foreground'
+                          : 'text-muted-foreground'}"
+                      >
+                        {page.value}
+                      </Pagination.Link>
+                    </Pagination.Item>
+                  {/if}
+                {/each}
+
+                <Pagination.Item>
+                  <Pagination.NextButton
+                    class="border-none shadow-none text-muted-foreground hover:text-foreground"
+                  />
+                </Pagination.Item>
+              </Pagination.Content>
+            {/snippet}
+          </Pagination.Root>
+        </div>
+      {/if}
     </div>
   {/if}
 </PageLayout>
