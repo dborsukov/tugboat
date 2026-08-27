@@ -43,6 +43,7 @@ pub fn run() {
         database::services::create_service,
         database::services::update_service,
         database::services::delete_service,
+        database::services::delete_services,
         database::settings::fetch_settings,
         database::settings::update_theme,
         database::settings::update_ui_scale,
@@ -64,11 +65,14 @@ pub fn run() {
         database::work_orders::create_labor_item,
         database::work_orders::update_labor_item,
         database::work_orders::delete_labor_item,
+        database::work_orders::delete_labor_items,
         database::work_orders::fetch_part_item_by_id,
         database::work_orders::fetch_part_items_list,
         database::work_orders::create_part_item,
         database::work_orders::update_part_item,
+        database::work_orders::update_part_items_status,
         database::work_orders::delete_part_item,
+        database::work_orders::delete_part_items,
         utils::get_app_version
     ]);
 

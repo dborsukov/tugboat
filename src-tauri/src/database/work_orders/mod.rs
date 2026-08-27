@@ -419,6 +419,29 @@ pub async fn delete_labor_item(state: State<'_, crate::AppState>, id: i32) -> Ap
 
 #[tauri::command]
 #[specta::specta]
+pub async fn delete_labor_items(state: State<'_, crate::AppState>, ids: Vec<i32>) -> AppResult<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let mut tx = state.db_pool.begin().await?;
+    for id in &ids {
+        let result = sqlx::query("DELETE FROM labor_items WHERE id = $1")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        if result.rows_affected() == 0 {
+            tx.rollback().await?;
+            return Err(AppError::NotFound(
+                "Сервісу з таким ID не знайдено в базі даних".to_string(),
+            ));
+        }
+    }
+    tx.commit().await?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn fetch_part_items_list(state: State<'_, crate::AppState>) -> AppResult<Vec<PartItem>> {
     let part_items: Vec<PartItem> =
         sqlx::query_as("SELECT id, work_order_id, status, code, name, quantity, unit_type, base_cost, markup, discount_type, discount_value FROM part_items")
@@ -501,5 +524,56 @@ pub async fn delete_part_item(state: State<'_, crate::AppState>, id: i32) -> App
             "Запчастини з таким ID не знайдено в базі даних".to_string(),
         ));
     }
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_part_items(state: State<'_, crate::AppState>, ids: Vec<i32>) -> AppResult<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let mut tx = state.db_pool.begin().await?;
+    for id in &ids {
+        let result = sqlx::query("DELETE FROM part_items WHERE id = $1")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        if result.rows_affected() == 0 {
+            tx.rollback().await?;
+            return Err(AppError::NotFound(
+                "Запчастини з таким ID не знайдено в базі даних".to_string(),
+            ));
+        }
+    }
+    tx.commit().await?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_part_items_status(
+    state: State<'_, crate::AppState>,
+    ids: Vec<i32>,
+    status: PartStatus,
+) -> AppResult<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let mut tx = state.db_pool.begin().await?;
+    for id in &ids {
+        let result = sqlx::query("UPDATE part_items SET status = $2 WHERE id = $1")
+            .bind(id)
+            .bind(status)
+            .execute(&mut *tx)
+            .await?;
+        if result.rows_affected() == 0 {
+            tx.rollback().await?;
+            return Err(AppError::NotFound(
+                "Запчастини з таким ID не знайдено в базі даних".to_string(),
+            ));
+        }
+    }
+    tx.commit().await?;
     Ok(())
 }

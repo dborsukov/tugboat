@@ -1,9 +1,11 @@
 export class TableActionState<TId = number | string> {
   editId = $state<TId | null>(null);
   deleteId = $state<TId | null>(null);
+  bulkDeleteIds = $state<TId[]>([]);
 
   isMutationOpen = $state(false);
   isDeleteOpen = $state(false);
+  isBulkDeleteOpen = $state(false);
 
   openCreate = () => {
     this.editId = null;
@@ -20,6 +22,11 @@ export class TableActionState<TId = number | string> {
     this.isDeleteOpen = true;
   };
 
+  openBulkDelete = (ids: TId[]) => {
+    this.bulkDeleteIds = ids;
+    this.isBulkDeleteOpen = true;
+  };
+
   resetEdit = () => {
     this.isMutationOpen = false;
     this.editId = null;
@@ -28,5 +35,10 @@ export class TableActionState<TId = number | string> {
   resetDelete = () => {
     this.isDeleteOpen = false;
     this.deleteId = null;
+  };
+
+  resetBulkDelete = () => {
+    this.isBulkDeleteOpen = false;
+    this.bulkDeleteIds = [];
   };
 }

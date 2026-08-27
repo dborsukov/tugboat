@@ -6,6 +6,7 @@ import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 import CurrencyDisplay from "$lib/components/currency-display.svelte";
 import DataTableOptionalCell from "$lib/components/data-table-optional-cell.svelte";
 import DataTableSortButton from "$lib/components/data-table-sort-button.svelte";
+import DataTableSelectCheckbox from "$lib/components/data-table/data-table-select-checkbox.svelte";
 
 import type { Service } from "$lib/bindings";
 
@@ -19,12 +20,32 @@ export interface ServiceTableMeta {
 
 export const columns: ColumnDef<Service>[] = [
   {
+    id: "select",
+    header: ({ table }) => {
+      return renderComponent(DataTableSelectCheckbox, {
+        title: "Обрати всі на сторінці",
+        checked: table.getIsAllPageRowsSelected(),
+        indeterminate:
+          table.getIsSomePageRowsSelected() &&
+          !table.getIsAllPageRowsSelected(),
+        onCheckedChange: (checked) => table.toggleAllPageRowsSelected(checked),
+      });
+    },
+    cell: ({ row }) => {
+      return renderComponent(DataTableSelectCheckbox, {
+        title: "Обрати рядок",
+        checked: row.getIsSelected(),
+        onCheckedChange: (checked) => row.toggleSelected(checked),
+      });
+    },
+  },
+  {
     id: "code",
     header: () => {
       return renderSnippet(
         createRawSnippet(() => {
           return {
-            render: () => `<div class="px-2">Код</div>`,
+            render: () => `<div>Код</div>`,
           };
         }),
       );
@@ -41,7 +62,7 @@ export const columns: ColumnDef<Service>[] = [
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
         sortStatus: column.getIsSorted(),
-        class: "pl-1.5",
+        class: "pl-0",
         children: createRawSnippet(() => {
           return {
             render: () => "<span>Назва</span>",
@@ -52,7 +73,7 @@ export const columns: ColumnDef<Service>[] = [
     cell: ({ row }) => {
       const nameCellSnippet = createRawSnippet(() => {
         return {
-          render: () => `<div class="px-2">${row.original.name}</div>`,
+          render: () => `<div>${row.original.name}</div>`,
         };
       });
       return renderSnippet(nameCellSnippet);
@@ -66,7 +87,7 @@ export const columns: ColumnDef<Service>[] = [
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
         sortStatus: column.getIsSorted(),
-        class: "pl-1.5",
+        class: "pl-0",
         children: createRawSnippet(() => {
           return {
             render: () => "<span>Нормо-години</span>",
@@ -97,7 +118,7 @@ export const columns: ColumnDef<Service>[] = [
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
         sortStatus: column.getIsSorted(),
-        class: "pl-1.5",
+        class: "pl-0",
         children: createRawSnippet(() => {
           return {
             render: () => "<span>Ціна</span>",

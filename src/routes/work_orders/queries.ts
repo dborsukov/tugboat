@@ -12,6 +12,7 @@ import type {
   CreateWorkOrderPayload,
   LaborItem,
   PartItem,
+  PartStatus,
   UpdateLaborItemPayload,
   UpdatePartItemPayload,
   UpdateWorkOrderPayload,
@@ -204,6 +205,19 @@ export function createDeleteLaborItemMutation(queryClient: QueryClient) {
   );
 }
 
+export function createDeleteLaborItemsMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (ids: number[]) => unwrap(commands.deleteLaborItems(ids)),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
 export function partItemByIdQueryOptions(id: number | null) {
   return {
     enabled: id != null,
@@ -259,6 +273,33 @@ export function createDeletePartItemMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
       mutationFn: (id: number) => unwrap(commands.deletePartItem(id)),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createDeletePartItemsMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (ids: number[]) => unwrap(commands.deletePartItems(ids)),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createUpdatePartItemsStatusMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (variables: { ids: number[]; status: PartStatus }) =>
+        unwrap(commands.updatePartItemsStatus(variables.ids, variables.status)),
       onSuccess: () => {
         invalidateWorkOrderLists(queryClient);
       },

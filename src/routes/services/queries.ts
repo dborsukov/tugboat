@@ -96,6 +96,19 @@ export function createDeleteServiceMutation(queryClient: QueryClient) {
   );
 }
 
+export function createDeleteServicesMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (ids: number[]) => unwrap(commands.deleteServices(ids)),
+      onSuccess: () => {
+        invalidateServiceLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
 export function invalidateServiceLists(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: keys.services.list() });
   queryClient.invalidateQueries({ queryKey: keys.services.count() });

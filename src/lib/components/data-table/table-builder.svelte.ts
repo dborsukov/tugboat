@@ -10,6 +10,8 @@ import {
   type ColumnFiltersState,
   type FilterFn,
   type PaginationState,
+  type Row,
+  type RowSelectionState,
   type SortingState,
   type TableMeta,
   type VisibilityState,
@@ -31,8 +33,10 @@ export type TableBuilderOptions<TData, TValue, TMeta> = {
   disableSorting?: boolean;
   disableFiltering?: boolean;
   disablePagination?: boolean;
+  disableRowSelection?: boolean;
   initialSorting?: SortingState;
   hiddenColumns?: string[];
+  getRowId?: (originalRow: TData, index: number, parent?: Row<TData>) => string;
 };
 
 const fuzzyFilter: FilterFn<any> = (row, columnId, value, addMeta) => {
@@ -47,6 +51,7 @@ export function buildTable<TData, TValue, TMeta>(
   let sorting = $state<SortingState>(options?.initialSorting || []);
   let pagination = $state<PaginationState>({ pageIndex: 0, pageSize: 10 });
   let columnFilters = $state<ColumnFiltersState>([]);
+  let rowSelection = $state<RowSelectionState>({});
   let columnVisibility = $state<VisibilityState>(
     options?.hiddenColumns?.reduce(
       (acc, colId) => ({ ...acc, [colId]: false }),
@@ -64,6 +69,7 @@ export function buildTable<TData, TValue, TMeta>(
     get meta() {
       return options.meta as TableMeta<TData> | undefined;
     },
+    getRowId: options?.getRowId,
 
     state: {
       get sorting() {
@@ -78,6 +84,9 @@ export function buildTable<TData, TValue, TMeta>(
       get globalFilter() {
         return options.searchTerm ?? "";
       },
+      get rowSelection() {
+        return rowSelection;
+      },
       get columnVisibility() {
         return columnVisibility;
       },
@@ -88,6 +97,7 @@ export function buildTable<TData, TValue, TMeta>(
     globalFilterFn: "fuzzy",
     enableSorting: !options?.disableSorting,
     enableFilters: !options?.disableFiltering,
+    enableRowSelection: !options?.disableRowSelection,
 
     getCoreRowModel: getCoreRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
@@ -112,6 +122,10 @@ export function buildTable<TData, TValue, TMeta>(
     onPaginationChange: (updater) => {
       pagination =
         typeof updater === "function" ? updater(pagination) : updater;
+    },
+    onRowSelectionChange: (updater) => {
+      rowSelection =
+        typeof updater === "function" ? updater(rowSelection) : updater;
     },
     onColumnVisibilityChange: (updater) => {
       columnVisibility =

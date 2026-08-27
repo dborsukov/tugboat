@@ -25,6 +25,7 @@ export const commands = {
 	createService: (payload: CreateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("create_service", { payload })),
 	updateService: (id: number, payload: UpdateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("update_service", { id, payload })),
 	deleteService: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_service", { id })),
+	deleteServices: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("delete_services", { ids })),
 	fetchSettings: () => typedError<AppSettings, AppError>(__TAURI_INVOKE("fetch_settings")),
 	updateTheme: (theme: ThemeMode) => typedError<ThemeMode, AppError>(__TAURI_INVOKE("update_theme", { theme })),
 	updateUiScale: (uiScale: number | null) => typedError<number | null, AppError>(__TAURI_INVOKE("update_ui_scale", { uiScale })),
@@ -46,11 +47,14 @@ export const commands = {
 	createLaborItem: (payload: CreateLaborItemPayload) => typedError<LaborItem, AppError>(__TAURI_INVOKE("create_labor_item", { payload })),
 	updateLaborItem: (id: number, payload: UpdateLaborItemPayload) => typedError<LaborItem, AppError>(__TAURI_INVOKE("update_labor_item", { id, payload })),
 	deleteLaborItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_labor_item", { id })),
+	deleteLaborItems: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("delete_labor_items", { ids })),
 	fetchPartItemById: (id: number) => typedError<PartItem, AppError>(__TAURI_INVOKE("fetch_part_item_by_id", { id })),
 	fetchPartItemsList: () => typedError<PartItem[], AppError>(__TAURI_INVOKE("fetch_part_items_list")),
 	createPartItem: (payload: CreatePartItemPayload) => typedError<PartItem, AppError>(__TAURI_INVOKE("create_part_item", { payload })),
 	updatePartItem: (id: number, payload: UpdatePartItemPayload) => typedError<PartItem, AppError>(__TAURI_INVOKE("update_part_item", { id, payload })),
+	updatePartItemsStatus: (ids: number[], status: PartStatus) => typedError<null, AppError>(__TAURI_INVOKE("update_part_items_status", { ids, status })),
 	deletePartItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_part_item", { id })),
+	deletePartItems: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("delete_part_items", { ids })),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
 };
 

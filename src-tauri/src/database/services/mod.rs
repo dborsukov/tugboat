@@ -90,3 +90,26 @@ pub async fn delete_service(state: State<'_, crate::AppState>, id: i32) -> AppRe
     }
     Ok(())
 }
+
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_services(state: State<'_, crate::AppState>, ids: Vec<i32>) -> AppResult<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let mut tx = state.db_pool.begin().await?;
+    for id in &ids {
+        let result = sqlx::query("DELETE FROM services WHERE id = $1")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        if result.rows_affected() == 0 {
+            tx.rollback().await?;
+            return Err(AppError::NotFound(
+                "Сервіса з таким ID не знайдено в базі даних".to_string(),
+            ));
+        }
+    }
+    tx.commit().await?;
+    Ok(())
+}

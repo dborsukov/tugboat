@@ -127,6 +127,7 @@
         total: "p-0",
         createdAt: "px-2 text-right",
       }}
+      autoPageSize
     />
   {/if}
 </PageLayout>

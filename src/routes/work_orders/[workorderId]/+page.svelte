@@ -19,6 +19,7 @@
 
   import CarLogoLoader from "$lib/components/car-logo-loader.svelte";
   import CurrencyDisplay from "$lib/components/currency-display.svelte";
+  import DataTableBulkActions from "$lib/components/data-table/data-table-bulk-actions.svelte";
   import DataTable from "$lib/components/data-table/data-table.svelte";
   import { buildTable } from "$lib/components/data-table/table-builder.svelte";
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
@@ -26,7 +27,7 @@
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
-  import type { Service, WorkOrderStatus } from "$lib/bindings";
+  import type { PartStatus, Service, WorkOrderStatus } from "$lib/bindings";
   import { privacyState } from "$lib/states/privacy.svelte";
   import { TableActionState } from "$lib/states/table-actions.svelte";
   import { prettifyIsoDateString } from "$lib/tools";
@@ -36,7 +37,10 @@
   import {
     createCreateLaborItemMutation,
     createDeleteLaborItemMutation,
+    createDeleteLaborItemsMutation,
     createDeletePartItemMutation,
+    createDeletePartItemsMutation,
+    createUpdatePartItemsStatusMutation,
     workOrderDetailsQueryOptions,
   } from "../queries";
   import StatusSelector from "../work-order-status-selector.svelte";
@@ -47,6 +51,7 @@
     type LaborTableMeta,
   } from "./labor-columns";
   import WorkOrderLaborItemMutationSheet from "./labor-item-mutation-sheet.svelte";
+  import PartBulkStatusSubmenu from "./part-bulk-status-submenu.svelte";
   import { columns as partsColumns, type PartsTableMeta } from "./part-columns";
   import WorkOrderPartsItemMutationSheet from "./part-item-mutation-sheet.svelte";
 
@@ -57,8 +62,12 @@
   const queryClient = useQueryClient();
 
   const deletePartItemMutation = createDeletePartItemMutation(queryClient);
+  const deletePartItemsMutation = createDeletePartItemsMutation(queryClient);
   const createLaborItemMutation = createCreateLaborItemMutation(queryClient);
   const deleteLaborItemMutation = createDeleteLaborItemMutation(queryClient);
+  const deleteLaborItemsMutation = createDeleteLaborItemsMutation(queryClient);
+  const updatePartItemsStatusMutation =
+    createUpdatePartItemsStatusMutation(queryClient);
 
   const combinedQueries = createQueries(() => ({
     queries: [
@@ -127,7 +136,7 @@
     },
     get columns() {
       const columns = isLocked
-        ? partsColumns.filter((c) => c.id !== "actions")
+        ? partsColumns.filter((c) => c.id !== "actions" && c.id !== "select")
         : partsColumns;
       if (privacyState.hidePricing) {
         return columns.filter((c) => {
@@ -143,6 +152,7 @@
         onDelete: partsTableActions.openDelete,
       } satisfies PartsTableMeta;
     },
+    getRowId: (row) => String(row.id),
     disableSorting: true,
     disableFiltering: true,
     disablePagination: true,
@@ -154,7 +164,7 @@
     },
     get columns() {
       return isLocked
-        ? laborColumns.filter((c) => c.id !== "actions")
+        ? laborColumns.filter((c) => c.id !== "actions" && c.id !== "select")
         : laborColumns;
     },
     get meta() {
@@ -163,10 +173,19 @@
         onDelete: laborTableActions.openDelete,
       } satisfies LaborTableMeta;
     },
+    getRowId: (row) => String(row.id),
     disableSorting: true,
     disableFiltering: true,
     disablePagination: true,
   });
+
+  const selectedLaborIds = $derived(
+    laborTable.getFilteredSelectedRowModel().rows.map((row) => row.original.id),
+  );
+
+  const selectedPartIds = $derived(
+    partsTable.getFilteredSelectedRowModel().rows.map((row) => row.original.id),
+  );
 
   async function createCreateLaborItemFromService(service: Service) {
     createLaborItemMutation.mutateAsync(
@@ -203,6 +222,51 @@
         onSuccess: laborTableActions.resetDelete,
       });
     }
+  }
+
+  function pluralize(count: number, forms: [string, string, string]) {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+    if (mod10 === 1 && mod100 !== 11) return forms[0];
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+      return forms[1];
+    }
+    return forms[2];
+  }
+
+  function confirmBulkLaborDelete() {
+    if (laborTableActions.bulkDeleteIds.length > 0) {
+      deleteLaborItemsMutation.mutate([...laborTableActions.bulkDeleteIds], {
+        onSuccess: () => {
+          laborTableActions.resetBulkDelete();
+          laborTable.resetRowSelection();
+        },
+      });
+    }
+  }
+
+  function confirmBulkPartDelete() {
+    if (partsTableActions.bulkDeleteIds.length > 0) {
+      deletePartItemsMutation.mutate([...partsTableActions.bulkDeleteIds], {
+        onSuccess: () => {
+          partsTableActions.resetBulkDelete();
+          partsTable.resetRowSelection();
+        },
+      });
+    }
+  }
+
+  function confirmBulkPartStatusChange(status: PartStatus) {
+    const ids = [...selectedPartIds];
+    if (ids.length === 0) return;
+    updatePartItemsStatusMutation.mutate(
+      { ids, status },
+      {
+        onSuccess: () => {
+          partsTable.resetRowSelection();
+        },
+      },
+    );
   }
 
   function carSecondaryLine(wod: typeof workOrderDetails) {
@@ -671,9 +735,16 @@
           table={laborTable}
           emptyMessage="Сервісів не знайдено..."
           class="mt-4"
-          headerClasses={{ name: "w-full" }}
-          cellClasses={{ actions: "p-0", sum: "p-0" }}
-        />
+          headerClasses={{ name: "w-full", select: "w-10 p-0" }}
+          cellClasses={{ actions: "p-0", sum: "p-0", select: "p-0" }}
+        >
+          {#snippet selectionActions()}
+            <DataTableBulkActions
+              onDelete={() =>
+                laborTableActions.openBulkDelete(selectedLaborIds)}
+            />
+          {/snippet}
+        </DataTable>
       </div>
 
       <div class="p-4 pt-0">
@@ -692,17 +763,28 @@
             >
           {/if}
         </div>
+        {#snippet partsBulkMenuItems()}
+          <PartBulkStatusSubmenu onStatusChange={confirmBulkPartStatusChange} />
+        {/snippet}
         <DataTable
           table={partsTable}
           emptyMessage="Запчастин не знайдено..."
           class="mt-4"
-          headerClasses={{ name: "w-full" }}
+          headerClasses={{ name: "w-full", select: "w-10 p-0" }}
           cellClasses={{
             status: "p-0",
             actions: "p-0",
             discountedPrice: "p-0",
+            select: "p-0",
           }}
-        />
+        >
+          {#snippet selectionActions()}
+            <DataTableBulkActions
+              onDelete={() => partsTableActions.openBulkDelete(selectedPartIds)}
+              menuItems={partsBulkMenuItems}
+            />
+          {/snippet}
+        </DataTable>
       </div>
 
       <WorkOrderLaborItemMutationSheet
@@ -715,6 +797,11 @@
         onDelete={confirmLaborDelete}
         description="Цю дію неможливо відмінити."
       />
+      <DeleteDialog
+        bind:open={laborTableActions.isBulkDeleteOpen}
+        onDelete={confirmBulkLaborDelete}
+        description={`Видалити ${laborTableActions.bulkDeleteIds.length} ${pluralize(laborTableActions.bulkDeleteIds.length, ["сервіс", "сервіси", "сервісів"])}? Цю дію неможливо відмінити.`}
+      />
       <WorkOrderPartsItemMutationSheet
         bind:open={partsTableActions.isMutationOpen}
         partItemId={partsTableActions.editId}
@@ -724,6 +811,11 @@
         bind:open={partsTableActions.isDeleteOpen}
         onDelete={confirmPartDelete}
         description="Цю дію неможливо відмінити."
+      />
+      <DeleteDialog
+        bind:open={partsTableActions.isBulkDeleteOpen}
+        onDelete={confirmBulkPartDelete}
+        description={`Видалити ${partsTableActions.bulkDeleteIds.length} ${pluralize(partsTableActions.bulkDeleteIds.length, ["запчастину", "запчастини", "запчастин"])}? Цю дію неможливо відмінити.`}
       />
     </div>
   {/if}

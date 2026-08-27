@@ -5,6 +5,7 @@ import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
 import CurrencyDisplay from "$lib/components/currency-display.svelte";
 import DataTableOptionalCell from "$lib/components/data-table-optional-cell.svelte";
+import DataTableSelectCheckbox from "$lib/components/data-table/data-table-select-checkbox.svelte";
 
 import type { LaborItemDto } from "$lib/bindings";
 
@@ -19,6 +20,26 @@ export interface LaborTableMeta {
 }
 
 export const columns: ColumnDef<LaborItemDto>[] = [
+  {
+    id: "select",
+    header: ({ table }) => {
+      return renderComponent(DataTableSelectCheckbox, {
+        title: "Обрати всі",
+        checked: table.getIsAllPageRowsSelected(),
+        indeterminate:
+          table.getIsSomePageRowsSelected() &&
+          !table.getIsAllPageRowsSelected(),
+        onCheckedChange: (checked) => table.toggleAllPageRowsSelected(checked),
+      });
+    },
+    cell: ({ row }) => {
+      return renderComponent(DataTableSelectCheckbox, {
+        title: "Обрати рядок",
+        checked: row.getIsSelected(),
+        onCheckedChange: (checked) => row.toggleSelected(checked),
+      });
+    },
+  },
   {
     id: "code",
     header: () => {
