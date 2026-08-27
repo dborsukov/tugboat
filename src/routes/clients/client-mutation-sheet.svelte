@@ -42,14 +42,12 @@
   export const clientSchema = z.object({
     name: z.string().nonempty("Обов'язкове поле"),
     phone: z.string().superRefine((val, ctx) => {
-      const error = validateTelInput(val, {
-        required: true,
-        allowedCountries: ["UA"],
-      });
+      const error = validateTelInput(val, { required: true });
       if (error) {
         ctx.addIssue({
           code: "custom",
-          message: "Обов'язкове поле",
+          message:
+            error === "REQUIRED" ? "Обов'язкове поле" : "Неправильний формат",
         });
       }
     }),
@@ -156,7 +154,6 @@
           {...props}
           bind:value={$formData.phone}
           bind:country={phoneCountry}
-          options={{ lockCountry: true, spaces: true }}
         />
       {/snippet}
     </Form.Control>

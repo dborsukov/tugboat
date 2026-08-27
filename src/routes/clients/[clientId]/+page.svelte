@@ -1,6 +1,5 @@
 <script lang="ts">
   import { createQueries } from "@tanstack/svelte-query";
-  import { MaskPatterns, PatternText } from "svelte-number-format";
 
   import { goto } from "$app/navigation";
 
@@ -19,6 +18,7 @@
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
+  import PhoneDisplay from "$lib/components/phone-display.svelte";
 
   import { prettifyIsoDateString } from "$lib/tools";
 
@@ -175,9 +175,8 @@
             <p class="text-xl font-semibold">{clientDetails?.client?.name}</p>
             <div class="flex flex-row items-center">
               <PhoneIcon class="size-4 mr-2 text-muted-foreground" />
-              <PatternText
+              <PhoneDisplay
                 value={clientDetails?.client?.phone}
-                format={MaskPatterns.PHONE_INTERNATIONAL}
                 class="text-end select-none!"
               />
               <DotIcon class="mx-1 size-4 text-muted-foreground" />

@@ -1,6 +1,5 @@
 <script lang="ts">
   import { compareItems, rankItem } from "@tanstack/match-sorter-utils";
-  import { MaskPatterns, PatternText } from "svelte-number-format";
 
   import { goto } from "$app/navigation";
 
@@ -16,6 +15,7 @@
 
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
+  import PhoneDisplay from "$lib/components/phone-display.svelte";
 
   import { UseAutoPageSize } from "$lib/hooks/use-auto-page-size.svelte";
 
@@ -215,9 +215,8 @@
                 >
                   {client?.name}
                 </p>
-                <PatternText
+                <PhoneDisplay
                   value={client?.phone}
-                  format={MaskPatterns.PHONE_INTERNATIONAL}
                   class="shrink-0 text-sm text-muted-foreground select-none!"
                 />
                 <ChevronRightIcon
