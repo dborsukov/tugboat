@@ -18,8 +18,8 @@
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
 
   import { copyText } from "$lib/hooks/use-clipboard.svelte";
+  import { settingsState } from "$lib/states/settings.svelte";
 
-  import { createSettingsQuery } from "../../settings/queries";
   import { settingsSearchIndex } from "../../settings/settings-search-index";
   import { settingsSearch } from "../../settings/settings-search.svelte";
   import CarMutationSheet from "../car-mutation-sheet.svelte";
@@ -42,10 +42,11 @@
 
   const deleteCarMutation = createDeleteCarMutation(queryClient);
 
-  const settingsQuery = createSettingsQuery();
-  const vinTemplates = $derived(settingsQuery.data?.vinLookupTemplates ?? []);
+  const vinTemplates = $derived(
+    settingsState.settings?.vinLookupTemplates ?? [],
+  );
   const plateTemplates = $derived(
-    settingsQuery.data?.licensePlateLookupTemplates ?? [],
+    settingsState.settings?.licensePlateLookupTemplates ?? [],
   );
 
   function handleDelete() {

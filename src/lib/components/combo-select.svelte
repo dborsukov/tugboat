@@ -24,6 +24,7 @@
     triggerClass,
     contentClass = "w-full p-0",
     formProps = {},
+    onValueChange,
     item,
     trigger,
   }: {
@@ -39,6 +40,7 @@
     triggerClass?: string;
     contentClass?: string;
     formProps?: Record<string, unknown>;
+    onValueChange?: (value: unknown) => void;
     item?: Snippet<[T]>;
     trigger?: Snippet<[T | undefined]>;
   } = $props();
@@ -86,7 +88,9 @@
             <Command.Item
               value={`${searchValue(i)}-${getKey(i)}`}
               onSelect={() => {
-                value = getKey(i);
+                const next = getKey(i);
+                value = next;
+                onValueChange?.(next);
                 closeAndFocus();
               }}
             >

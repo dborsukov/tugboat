@@ -14,6 +14,8 @@ pub struct AppSettings {
     pub rate_variants: Vec<RateVariants>,
     pub vin_lookup_templates: Vec<VinLookupTemplates>,
     pub license_plate_lookup_templates: Vec<LicensePlateLookupTemplates>,
+    pub timezone: String,
+    pub default_phone_country_code: String,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for AppSettings {
@@ -33,6 +35,8 @@ impl<'r> FromRow<'r, SqliteRow> for AppSettings {
                     "license_plate_lookup_templates",
                 )?
                 .0,
+            timezone: row.try_get("timezone")?,
+            default_phone_country_code: row.try_get("default_phone_country_code")?,
         })
     }
 }

@@ -1,5 +1,7 @@
 import type { CountryCode } from "svelte-tel-input/types";
 
+import { settingsState } from "$lib/states/settings.svelte";
+
 type SpectaResult<T, E> =
   | { status: "ok"; data: T }
   | { status: "error"; error: E };
@@ -20,11 +22,13 @@ export function prettifyIsoDateString(
   iso_string: string,
   type: "short" | "long" | "datetime",
 ) {
+  const timeZone = settingsState.settings?.timezone ?? undefined;
   if (type === "short") {
     return new Date(iso_string).toLocaleDateString(date_locale, {
       month: "numeric",
       day: "numeric",
       year: "numeric",
+      timeZone,
     });
   }
   if (type === "long") {
@@ -32,6 +36,7 @@ export function prettifyIsoDateString(
       month: "long",
       day: "numeric",
       year: "numeric",
+      timeZone,
     });
   }
   if (type === "datetime") {
@@ -41,6 +46,7 @@ export function prettifyIsoDateString(
       year: "numeric",
       hour: "numeric",
       minute: "numeric",
+      timeZone,
     });
   }
 }

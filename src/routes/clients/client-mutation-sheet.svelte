@@ -30,6 +30,7 @@
     ClientPayload,
     ClientType,
   } from "$lib/bindings";
+  import { settingsState } from "$lib/states/settings.svelte";
 
   import {
     createClientDetailsQuery,
@@ -60,7 +61,19 @@
   );
   let clientDetails = $derived(clientDetailsQuery.data?.details ?? null);
 
-  let phoneCountry = $state<CountryCode>("UA");
+  // Default country configured in app settings (falls back to UA). The
+  // configured default is (re)applied until the user explicitly picks one.
+  let phoneCountry = $state<CountryCode | null>(null);
+  let appliedDefaultCountry: CountryCode | null = null;
+
+  $effect(() => {
+    const configured = (settingsState.settings?.defaultPhoneCountryCode ??
+      "UA") as CountryCode;
+    if (phoneCountry === appliedDefaultCountry) {
+      phoneCountry = configured;
+      appliedDefaultCountry = configured;
+    }
+  });
 
   const TYPE_LABELS: Record<ClientType, string> = {
     individual: "Фізична особа",

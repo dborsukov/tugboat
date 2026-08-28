@@ -22,8 +22,8 @@
     discountToPayload,
     refineDiscount,
   } from "$lib/schemas/zdiscount";
+  import { settingsState } from "$lib/states/settings.svelte";
 
-  import { createSettingsQuery } from "../../settings/queries";
   import DiscountField from "../discount-field.svelte";
   import {
     createCreatePartItemMutation,
@@ -83,8 +83,7 @@
   const updatePartItemMutation = createUpdatePartItemMutation(queryClient);
 
   // Default markup for new parts comes from the app settings (shared cache).
-  const settingsQuery = createSettingsQuery();
-  const defaultMarkup = $derived(settingsQuery.data?.defaultMarkup ?? "0");
+  const defaultMarkup = $derived(settingsState.settings?.defaultMarkup ?? "0");
 
   let partItemsQuery = createPartItemByIdQuery(() => partItemId);
   let partItem = $derived(partItemsQuery.data);

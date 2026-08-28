@@ -13,6 +13,7 @@
 
   import CountryFlag from "$lib/components/country-flag.svelte";
 
+  import { settingsState } from "$lib/states/settings.svelte";
   import { getCountryNameUk } from "$lib/tools";
   import { cn } from "$lib/utils";
 
@@ -23,6 +24,16 @@
     class: className,
     ...props
   }: TelInputProps = $props();
+
+  const settingsDefaultCountry = $derived(
+    (settingsState.settings?.defaultPhoneCountryCode ?? "UA") as CountryCode,
+  );
+
+  // Apply the configured default until an explicit country is chosen/bound.
+  $effect(() => {
+    if (country != null) return;
+    country = settingsDefaultCountry;
+  });
 
   const countryList = $derived(
     [...countries]
@@ -93,7 +104,7 @@
       bind:value
       bind:country
       options={mergedOptions}
-      defaultCountry="UA"
+      defaultCountry={settingsDefaultCountry}
       placeholderFormat="national"
       class={cn(
         // default shadcn Input classes

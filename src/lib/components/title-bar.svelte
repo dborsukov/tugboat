@@ -23,10 +23,10 @@
   import { type ThemeMode } from "$lib/bindings";
   import { navHistory } from "$lib/states/nav-history.svelte";
   import { privacyState } from "$lib/states/privacy.svelte";
+  import { settingsState } from "$lib/states/settings.svelte";
   import { cn } from "$lib/utils.js";
 
   import {
-    createSettingsQuery,
     createUpdateThemeMutation,
     createUpdateUiScaleMutation,
   } from "../../routes/settings/queries";
@@ -40,12 +40,11 @@
   const appWindow = getCurrentWindow();
 
   const queryClient = useQueryClient();
-  const settingsQuery = createSettingsQuery();
   const updateThemeMutation = createUpdateThemeMutation(queryClient);
   const updateUiScaleMutation = createUpdateUiScaleMutation(queryClient);
 
-  const uiScale = $derived(settingsQuery.data?.uiScale ?? 1);
-  const theme = $derived(settingsQuery.data?.theme ?? "system");
+  const uiScale = $derived(settingsState.settings?.uiScale ?? 1);
+  const theme = $derived(settingsState.settings?.theme ?? "system");
 
   const MIN_UI_SCALE = 0.5;
   const MAX_UI_SCALE = 2.0;

@@ -18,6 +18,22 @@ export type SettingsSearchItem = {
  */
 export const settingsSearchIndex: SettingsSearchItem[] = [
   {
+    id: "settings-timezone",
+    route: "/settings/general",
+    label: "Часовий пояс",
+    keywords:
+      "час часовий пояс загальні timezone time zone годинник gmt utc зміна часу",
+    hint: "Загальні",
+  },
+  {
+    id: "settings-default-phone-country",
+    route: "/settings/general",
+    label: "Країна за замовчуванням для телефонів",
+    keywords:
+      "телефон номер телефону код країни країна загальні phone country code dial",
+    hint: "Загальні",
+  },
+  {
     id: "settings-theme",
     route: "/settings/lookandfeel",
     label: "Тема",

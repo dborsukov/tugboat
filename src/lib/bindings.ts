@@ -33,6 +33,8 @@ export const commands = {
 	updateRateVariants: (rateVariants: RateVariants[]) => typedError<RateVariants[], AppError>(__TAURI_INVOKE("update_rate_variants", { rateVariants })),
 	updateVinLookupTemplates: (vinLookupTemplates: VinLookupTemplates[]) => typedError<VinLookupTemplates[], AppError>(__TAURI_INVOKE("update_vin_lookup_templates", { vinLookupTemplates })),
 	updateLicensePlateLookupTemplates: (licensePlateLookupTemplates: LicensePlateLookupTemplates[]) => typedError<LicensePlateLookupTemplates[], AppError>(__TAURI_INVOKE("update_license_plate_lookup_templates", { licensePlateLookupTemplates })),
+	updateTimezone: (timezone: string) => typedError<string, AppError>(__TAURI_INVOKE("update_timezone", { timezone })),
+	updateDefaultPhoneCountryCode: (defaultPhoneCountryCode: string) => typedError<string, AppError>(__TAURI_INVOKE("update_default_phone_country_code", { defaultPhoneCountryCode })),
 	fetchWorkOrderDetailsDto: (id: string) => typedError<WorkOrderDetailsDto, AppError>(__TAURI_INVOKE("fetch_work_order_details_dto", { id })),
 	fetchWorkOrderDetailsDtoByCarId: (carId: number) => typedError<WorkOrderDetailsDto[], AppError>(__TAURI_INVOKE("fetch_work_order_details_dto_by_car_id", { carId })),
 	fetchWorkOrderDetailsDtoByClientId: (clientId: number) => typedError<WorkOrderDetailsDto[], AppError>(__TAURI_INVOKE("fetch_work_order_details_dto_by_client_id", { clientId })),
@@ -68,6 +70,8 @@ export type AppSettings = {
 	rateVariants: RateVariants[],
 	vinLookupTemplates: VinLookupTemplates[],
 	licensePlateLookupTemplates: LicensePlateLookupTemplates[],
+	timezone: string,
+	defaultPhoneCountryCode: string,
 };
 
 export type Car = {

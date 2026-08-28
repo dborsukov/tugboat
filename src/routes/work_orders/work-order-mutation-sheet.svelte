@@ -38,9 +38,9 @@
     laborCostFromEntity,
     laborCostToPayload,
   } from "$lib/schemas/zlaborcost";
+  import { settingsState } from "$lib/states/settings.svelte";
   import type { CreateOrEditProps } from "$lib/types";
 
-  import { createSettingsQuery } from "../settings/queries";
   import DiscountField from "./discount-field.svelte";
   import LaborCostField from "./labor-cost-field.svelte";
   import {
@@ -66,8 +66,7 @@
   const updateWorkOrderMutation = createUpdateWorkOrderMutation(queryClient);
   const createWorkOrderMutation = createCreateWorkOrderMutation(queryClient);
 
-  const settingsQuery = createSettingsQuery();
-  const rateVariants = $derived(settingsQuery.data?.rateVariants ?? []);
+  const rateVariants = $derived(settingsState.settings?.rateVariants ?? []);
 
   let workOrderDetailsQuery = createWorkOrderDetailsQuery(() => workOrderId);
   let workOrderDetails = $derived(workOrderDetailsQuery.data);

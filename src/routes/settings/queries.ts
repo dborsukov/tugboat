@@ -1,8 +1,4 @@
-import {
-  createMutation,
-  createQuery,
-  QueryClient,
-} from "@tanstack/svelte-query";
+import { createMutation, QueryClient } from "@tanstack/svelte-query";
 import { toast } from "svelte-sonner";
 
 import {
@@ -16,18 +12,7 @@ import {
 import { keys } from "$lib/query-keys";
 import { unwrap } from "$lib/tools";
 
-export function settingsQueryOptions() {
-  return {
-    queryKey: keys.settings.all,
-    queryFn: () => unwrap(commands.fetchSettings()),
-    staleTime: Infinity,
-    gcTime: Infinity,
-  };
-}
-
-export function createSettingsQuery() {
-  return createQuery<AppSettings>(() => settingsQueryOptions());
-}
+export { createSettingsQuery } from "$lib/states/settings.svelte";
 
 function patchSettingsCache<K extends keyof AppSettings>(
   queryClient: QueryClient,
@@ -137,5 +122,24 @@ export function createUpdateLicensePlateLookupTemplatesMutation(
       unwrap(
         commands.updateLicensePlateLookupTemplates(licensePlateLookupTemplates),
       ),
+  );
+}
+
+export function createUpdateTimezoneMutation(queryClient: QueryClient) {
+  return createSettingsFieldMutation(
+    queryClient,
+    "timezone",
+    (timezone: string) => unwrap(commands.updateTimezone(timezone)),
+  );
+}
+
+export function createUpdateDefaultPhoneCountryCodeMutation(
+  queryClient: QueryClient,
+) {
+  return createSettingsFieldMutation(
+    queryClient,
+    "defaultPhoneCountryCode",
+    (defaultPhoneCountryCode: string) =>
+      unwrap(commands.updateDefaultPhoneCountryCode(defaultPhoneCountryCode)),
   );
 }

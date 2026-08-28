@@ -20,6 +20,7 @@ const RATE_VARIANT_NAME_MAX_LEN: usize = 60;
 const LOOKUP_TEMPLATE_LABEL_MAX_LEN: usize = 60;
 const LOOKUP_TEMPLATE_URL_MAX_LEN: usize = 500;
 const LOOKUP_PLACEHOLDER: &str = "%s";
+const TIMEZONE_MAX_LEN: usize = 64;
 
 #[tauri::command]
 #[specta::specta]
@@ -245,4 +246,53 @@ pub async fn update_license_plate_lookup_templates(
     .fetch_one(&state.db_pool)
     .await?;
     Ok(saved.0)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_timezone(
+    timezone: String,
+    state: State<'_, crate::AppState>,
+) -> AppResult<String> {
+    let timezone = timezone.trim();
+    if timezone.is_empty() {
+        return Err(AppError::ConstraintViolation("timezone is required".into()));
+    }
+    if timezone.chars().count() > TIMEZONE_MAX_LEN {
+        return Err(AppError::ConstraintViolation("timezone is too long".into()));
+    }
+    if timezone.parse::<chrono_tz::Tz>().is_err() {
+        return Err(AppError::ConstraintViolation(format!(
+            "unknown timezone: {timezone}"
+        )));
+    }
+
+    let saved: String =
+        sqlx::query_scalar("UPDATE app_settings SET timezone = $1 WHERE id = 1 RETURNING timezone")
+            .bind(timezone)
+            .fetch_one(&state.db_pool)
+            .await?;
+    Ok(saved)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_default_phone_country_code(
+    default_phone_country_code: String,
+    state: State<'_, crate::AppState>,
+) -> AppResult<String> {
+    let code = default_phone_country_code.trim().to_ascii_uppercase();
+    if code.len() != 2 || !code.chars().all(|c| c.is_ascii_alphabetic()) {
+        return Err(AppError::ConstraintViolation(
+            "default_phone_country_code must be a two-letter ISO country code".into(),
+        ));
+    }
+
+    let saved: String = sqlx::query_scalar(
+        "UPDATE app_settings SET default_phone_country_code = $1 WHERE id = 1 RETURNING default_phone_country_code",
+    )
+    .bind(code)
+    .fetch_one(&state.db_pool)
+    .await?;
+    Ok(saved)
 }

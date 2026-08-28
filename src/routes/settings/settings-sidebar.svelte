@@ -5,6 +5,7 @@
   import CarIcon from "@lucide/svelte/icons/car";
   import PaletteIcon from "@lucide/svelte/icons/palette";
   import SearchIcon from "@lucide/svelte/icons/search";
+  import Settings2Icon from "@lucide/svelte/icons/settings-2";
 
   import * as InputGroup from "$lib/components/ui/input-group/index.js";
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
@@ -13,6 +14,11 @@
   import { settingsSearch } from "./settings-search.svelte";
 
   const settings_menu = $derived([
+    {
+      title: "Загальні",
+      url: "/settings/general",
+      icon: Settings2Icon,
+    },
     {
       title: "Зовнішній вигляд",
       url: "/settings/lookandfeel",
