@@ -80,7 +80,11 @@ pub async fn fetch_car_details_list(
 ) -> AppResult<Vec<CarDetailsDto>> {
     let car_dtos: Vec<CarDto> = fetch_cars_list(state.clone()).await?;
 
-    let clients: Vec<Client> = fetch_clients_list(state).await?;
+    let clients: Vec<Client> = fetch_clients_list(state)
+        .await?
+        .into_iter()
+        .map(Client::from)
+        .collect();
 
     let clients_by_id: HashMap<i64, Client> = clients
         .into_iter()

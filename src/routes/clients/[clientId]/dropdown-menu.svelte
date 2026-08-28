@@ -22,9 +22,11 @@
   let {
     clientId,
     phone,
+    email,
   }: {
     clientId: number;
     phone: string | null;
+    email: string | null;
   } = $props();
 
   let isSheetOpen = $state(false);
@@ -73,6 +75,17 @@
     <DropdownMenu.Item
       disabled={!phone}
       onSelect={() => phone && copyValue(phone, "Телефон")}
+    >
+      <CopyIcon />
+      Копіювати
+    </DropdownMenu.Item>
+
+    <DropdownMenu.Separator />
+
+    <DropdownMenu.Label>Email</DropdownMenu.Label>
+    <DropdownMenu.Item
+      disabled={!email}
+      onSelect={() => email && copyValue(email, "Email")}
     >
       <CopyIcon />
       Копіювати

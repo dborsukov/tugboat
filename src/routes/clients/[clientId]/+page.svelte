@@ -6,9 +6,12 @@
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
   import DotIcon from "@lucide/svelte/icons/dot";
+  import MailIcon from "@lucide/svelte/icons/mail";
   import PhoneIcon from "@lucide/svelte/icons/phone";
   import StickyNoteIcon from "@lucide/svelte/icons/sticky-note";
 
+  import * as Accordion from "$lib/components/ui/accordion";
+  import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
   import { Skeleton } from "$lib/components/ui/skeleton";
 
@@ -28,6 +31,16 @@
   import ClientAvatar from "../client-avatar.svelte";
   import { clientDetailsQueryOptions } from "../queries";
   import DropdownMenu from "./dropdown-menu.svelte";
+
+  function composeName(
+    surname?: string | null,
+    firstName?: string | null,
+    patronymic?: string | null,
+  ): string {
+    return [surname, firstName, patronymic]
+      .filter((part) => part && part.trim() !== "")
+      .join(" ");
+  }
 
   let { params } = $props();
   let isCarMutationSheetOpen = $state(false);
@@ -172,14 +185,57 @@
         <div class="flex flex-row items-center gap-4">
           <ClientAvatar name={clientDetails?.client?.name} class="size-16" />
           <div class="flex flex-col gap-2">
-            <p class="text-xl font-semibold">{clientDetails?.client?.name}</p>
+            <p class="text-xl font-semibold leading-none">
+              {clientDetails?.client?.name}
+            </p>
+
             <div class="flex flex-row items-center">
-              <PhoneIcon class="size-4 mr-2 text-muted-foreground" />
-              <PhoneDisplay
-                value={clientDetails?.client?.phone}
-                class="text-end select-none!"
-              />
-              <DotIcon class="mx-1 size-4 text-muted-foreground" />
+              {#if clientDetails?.client?.clientType === "individual"}
+                {#if clientDetails?.client?.phone}
+                  <PhoneIcon class="size-4 mr-2 text-muted-foreground" />
+                  <PhoneDisplay
+                    value={clientDetails?.client?.phone}
+                    class="text-end select-none!"
+                  />
+                {/if}
+                {#if clientDetails?.client?.email}
+                  {#if clientDetails?.client?.phone}
+                    <DotIcon class="mx-1 size-4 text-muted-foreground" />
+                  {/if}
+                  <MailIcon class="size-4 mr-2 text-muted-foreground" />
+                  {clientDetails?.client?.email}
+                {/if}
+                {#if clientDetails?.client?.phone || clientDetails?.client?.email}
+                  <DotIcon class="mx-1 size-4 text-muted-foreground" />
+                {/if}
+              {:else}
+                <Badge
+                  variant="outline"
+                  class="px-2 py-2.5 text-sm font-normal"
+                >
+                  {clientDetails?.client?.clientType === "company"
+                    ? "Організація"
+                    : "ФОП"}
+                </Badge>
+                <DotIcon class="mx-1 size-4 text-muted-foreground" />
+                {#if clientDetails?.details?.contactPhone}
+                  <PhoneIcon class="size-4 mr-2 text-muted-foreground" />
+                  <PhoneDisplay
+                    value={clientDetails?.details?.contactPhone}
+                    class="text-end select-none!"
+                  />
+                {/if}
+                {#if clientDetails?.details?.contactEmail}
+                  {#if clientDetails?.details?.contactPhone}
+                    <DotIcon class="mx-1 size-4 text-muted-foreground" />
+                  {/if}
+                  <MailIcon class="size-4 mr-2 text-muted-foreground" />
+                  {clientDetails?.details?.contactEmail}
+                {/if}
+                {#if clientDetails?.details?.contactPhone || clientDetails?.details?.contactEmail}
+                  <DotIcon class="mx-1 size-4 text-muted-foreground" />
+                {/if}
+              {/if}
               <CalendarPlusIcon class="size-4 mr-2 text-muted-foreground" />
               {prettifyIsoDateString(clientDetails?.client?.createdAt, "long")}
             </div>
@@ -187,7 +243,12 @@
           <div class="h-full ml-auto flex flex-col items-start">
             <DropdownMenu
               clientId={clientDetails?.client?.id}
-              phone={clientDetails?.client?.phone ?? null}
+              phone={(clientDetails?.client?.clientType === "individual"
+                ? clientDetails?.client?.phone
+                : clientDetails?.details?.contactPhone) ?? null}
+              email={(clientDetails?.client?.clientType === "individual"
+                ? clientDetails?.client?.email
+                : clientDetails?.details?.contactEmail) ?? null}
             />
           </div>
         </div>
@@ -209,6 +270,90 @@
         </div>
       {/if}
     </div>
+
+    {#if clientDetails?.details}
+      {#snippet detailRow(label: string, value: string | null | undefined)}
+        <div class="flex flex-col gap-0.5 min-w-0">
+          <span class="text-sm text-muted-foreground">{label}</span>
+          <span class="truncate {value ? '' : 'text-muted-foreground/50'}">
+            {value || "—"}
+          </span>
+        </div>
+      {/snippet}
+
+      <div class="mt-4 border border-border rounded bg-card">
+        <!-- Contact person: always visible, same header style as the rest
+             of the page. Sits outside the accordion below. -->
+        <div class="p-4 border-b border-border">
+          <p class="text-xl font-medium mb-3">Контактна особа</p>
+          <div
+            class="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-3 text-base"
+          >
+            {@render detailRow(
+              "ПІБ",
+              composeName(
+                clientDetails?.details?.contactSurname,
+                clientDetails?.details?.contactFirstName,
+                clientDetails?.details?.contactPatronymic,
+              ),
+            )}
+            {@render detailRow("Телефон", clientDetails?.details?.contactPhone)}
+            {@render detailRow("Email", clientDetails?.details?.contactEmail)}
+          </div>
+        </div>
+
+        <Accordion.Root type="single" class="w-full border-none">
+          <Accordion.Item value="requisites" class="border-none">
+            <Accordion.Trigger
+              class="p-4 text-xl font-medium items-center hover:no-underline"
+            >
+              {clientDetails?.client?.clientType === "company"
+                ? "Дані організації"
+                : "Дані ФОП"}
+            </Accordion.Trigger>
+            <Accordion.Content>
+              <div
+                class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-base"
+              >
+                {#if clientDetails?.client?.clientType === "company"}
+                  {@render detailRow(
+                    "Юридична назва",
+                    clientDetails?.details?.legalName,
+                  )}
+                  {@render detailRow("ЄДРПОУ", clientDetails?.details?.edrpou)}
+                  {@render detailRow(
+                    "Юридична адреса",
+                    clientDetails?.details?.legalAddress,
+                  )}
+                  {@render detailRow(
+                    "Керівник",
+                    composeName(
+                      clientDetails?.details?.directorSurname,
+                      clientDetails?.details?.directorFirstName,
+                      clientDetails?.details?.directorPatronymic,
+                    ),
+                  )}
+                  {@render detailRow("IBAN", clientDetails?.details?.iban)}
+                  {@render detailRow("Банк", clientDetails?.details?.bankName)}
+                  {@render detailRow(
+                    "Платник ПДВ",
+                    clientDetails?.details?.vatPayer ? "Так" : "Ні",
+                  )}
+                {:else}
+                  {@render detailRow("РНОКПП", clientDetails?.details?.rnokpp)}
+                  {@render detailRow(
+                    "Юридична адреса",
+                    clientDetails?.details?.legalAddress,
+                  )}
+                  {@render detailRow("IBAN", clientDetails?.details?.iban)}
+                  {@render detailRow("Банк", clientDetails?.details?.bankName)}
+                {/if}
+              </div>
+            </Accordion.Content>
+          </Accordion.Item>
+        </Accordion.Root>
+      </div>
+    {/if}
 
     <div class="mt-4 border border-border rounded bg-card">
       <div class="p-0 border-b border-border">

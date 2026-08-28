@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::database::{
     cars::dtos::CarDto,
-    clients::structs::Client,
+    clients::structs::{Client, ClientDetails},
     work_orders::structs::{LaborItem, PartItem, WorkOrder},
 };
 
@@ -13,6 +13,7 @@ pub struct WorkOrderDetailsDto {
     pub work_order: WorkOrder,
     pub car_dto: CarDto,
     pub client: Client,
+    pub client_details: Option<ClientDetails>,
     pub labor_items: Vec<LaborItemDto>,
     pub part_items: Vec<PartItemDto>,
     pub totals: WorkOrderTotals,

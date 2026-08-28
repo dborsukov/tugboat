@@ -1,9 +1,36 @@
 CREATE TABLE clients (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    surname TEXT,
+    first_name TEXT,
+    patronymic TEXT,
     phone TEXT UNIQUE,
+    email TEXT,
+    client_type TEXT NOT NULL DEFAULT 'individual' CHECK (
+        client_type IN ('individual', 'fop', 'company')
+    ),
     notes TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+
+CREATE TABLE client_details (
+    client_id INTEGER PRIMARY KEY,
+    legal_name TEXT,
+    legal_address TEXT,
+    edrpou TEXT CHECK (edrpou IS NULL OR length (edrpou) = 8),
+    rnokpp TEXT CHECK (rnokpp IS NULL OR length (rnokpp) = 10),
+    director_surname TEXT,
+    director_first_name TEXT,
+    director_patronymic TEXT,
+    contact_surname TEXT,
+    contact_first_name TEXT,
+    contact_patronymic TEXT,
+    contact_phone TEXT,
+    contact_email TEXT,
+    iban TEXT,
+    bank_name TEXT,
+    vat_payer INTEGER NOT NULL DEFAULT 0,
+    FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
 );
 
 CREATE TABLE car_brands (
@@ -105,6 +132,14 @@ CREATE TABLE work_order_sequences (
 CREATE INDEX idx_cars_client_id ON cars (client_id);
 
 CREATE INDEX idx_cars_brand_id ON cars (brand_id);
+
+CREATE UNIQUE INDEX idx_client_details_edrpou
+ON client_details (edrpou)
+WHERE edrpou IS NOT NULL;
+
+CREATE UNIQUE INDEX idx_client_details_rnokpp
+ON client_details (rnokpp)
+WHERE rnokpp IS NOT NULL;
 
 CREATE INDEX idx_work_orders_car_id ON work_orders (car_id);
 

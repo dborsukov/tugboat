@@ -631,7 +631,10 @@
               {workOrderDetails?.client?.name}
             </p>
             <PhoneDisplay
-              value={workOrderDetails?.client?.phone}
+              value={workOrderDetails?.client?.clientType !== "individual"
+                ? (workOrderDetails?.clientDetails?.contactPhone ??
+                  workOrderDetails?.client?.phone)
+                : workOrderDetails?.client?.phone}
               class="ml-auto select-none! text-muted-foreground"
             />
             <ChevronRight class="size-4 text-muted-foreground" />

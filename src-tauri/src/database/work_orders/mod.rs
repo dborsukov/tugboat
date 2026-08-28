@@ -12,7 +12,10 @@ use tauri::State;
 use crate::{
     database::{
         cars::{dtos::CarDto, fetch_car_by_id},
-        clients::{fetch_client_by_id, structs::Client},
+        clients::{
+            fetch_client_by_id, fetch_client_details,
+            structs::{Client, ClientDetails},
+        },
         work_orders::dtos::{LaborItemDto, PartItemDto, WorkOrderDetailsDto},
     },
     error::{AppError, AppResult},
@@ -57,8 +60,16 @@ async fn build_work_order_details_dto(
 ) -> AppResult<WorkOrderDetailsDto> {
     let car_dto = fetch_car_by_id(state.clone(), work_order.car_id as i32).await?;
     let client = fetch_client_by_id(state.clone(), car_dto.car.client_id as i32).await?;
+    let client_details = fetch_client_details(state.clone(), car_dto.car.client_id as i32).await?;
 
-    build_work_order_details_dto_with_context(state.clone(), work_order, car_dto, client).await
+    build_work_order_details_dto_with_context(
+        state.clone(),
+        work_order,
+        car_dto,
+        client,
+        client_details,
+    )
+    .await
 }
 
 async fn build_work_order_details_dto_with_context(
@@ -66,6 +77,7 @@ async fn build_work_order_details_dto_with_context(
     work_order: WorkOrder,
     car_dto: CarDto,
     client: Client,
+    client_details: Option<ClientDetails>,
 ) -> AppResult<WorkOrderDetailsDto> {
     let labor_items: Vec<LaborItem> = sqlx::query_as(
         "SELECT id, service_id, work_order_id, code, name, price_type, fixed_price, labor_hours, discount_type, discount_value FROM labor_items WHERE work_order_id = $1",
@@ -129,6 +141,7 @@ async fn build_work_order_details_dto_with_context(
         work_order,
         car_dto,
         client,
+        client_details,
         labor_items: labor_item_dtos,
         part_items: part_item_dtos,
         totals,
@@ -169,6 +182,7 @@ pub async fn fetch_work_order_details_dto_by_car_id(
 ) -> AppResult<Vec<WorkOrderDetailsDto>> {
     let car_dto = fetch_car_by_id(state.clone(), car_id).await?;
     let client = fetch_client_by_id(state.clone(), car_dto.car.client_id as i32).await?;
+    let client_details = fetch_client_details(state.clone(), car_dto.car.client_id as i32).await?;
 
     let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, description, notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders WHERE car_id = $1")
         .bind(car_id)
@@ -182,6 +196,7 @@ pub async fn fetch_work_order_details_dto_by_car_id(
             work_order,
             car_dto.clone(),
             client.clone(),
+            client_details.clone(),
         )
         .await?;
         details_list.push(details);
@@ -197,6 +212,7 @@ pub async fn fetch_work_order_details_dto_by_client_id(
     client_id: i32,
 ) -> AppResult<Vec<WorkOrderDetailsDto>> {
     let client = fetch_client_by_id(state.clone(), client_id).await?;
+    let client_details = fetch_client_details(state.clone(), client_id).await?;
 
     let work_orders: Vec<WorkOrder> = sqlx::query_as(
         "SELECT wo.id, wo.car_id, wo.odometer_in, wo.description, wo.notes, wo.status, wo.rate, wo.labor_cost_type, wo.labor_cost_value, wo.discount_type, wo.discount_value, wo.created_at, wo.started_at, wo.completed_at, wo.paid_at, wo.payment_method \
@@ -227,6 +243,7 @@ pub async fn fetch_work_order_details_dto_by_client_id(
             work_order,
             car_dto,
             client.clone(),
+            client_details.clone(),
         )
         .await?;
         details_list.push(details);

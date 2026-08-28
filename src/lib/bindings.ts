@@ -14,10 +14,10 @@ export const commands = {
 	deleteCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_car", { id })),
 	fetchCarBrands: () => typedError<CarBrand[], AppError>(__TAURI_INVOKE("fetch_car_brands")),
 	fetchClientsCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_clients_count")),
-	fetchClientsList: () => typedError<Client[], AppError>(__TAURI_INVOKE("fetch_clients_list")),
+	fetchClientsList: () => typedError<ClientListItem[], AppError>(__TAURI_INVOKE("fetch_clients_list")),
 	fetchClientDetailsDto: (id: number) => typedError<ClientDetailsDto, AppError>(__TAURI_INVOKE("fetch_client_details_dto", { id })),
-	createClient: (payload: CreateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("create_client", { payload })),
-	updateClient: (id: number, payload: UpdateClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("update_client", { id, payload })),
+	createClient: (payload: ClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("create_client", { payload })),
+	updateClient: (id: number, payload: ClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("update_client", { id, payload })),
 	deleteClient: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_client", { id })),
 	fetchServicesCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_services_count")),
 	fetchServiceById: (id: number) => typedError<Service, AppError>(__TAURI_INVOKE("fetch_service_by_id", { id })),
@@ -104,16 +104,65 @@ export type CarDto = {
 
 export type Client = {
 	id: number,
+	/**  Composed display name: fullname for people, short/trade name for companies. */
 	name: string,
+	surname: string | null,
+	firstName: string | null,
+	patronymic: string | null,
 	phone: string | null,
+	email: string | null,
+	clientType: ClientType,
 	notes: string | null,
 	createdAt: string,
 };
 
+export type ClientDetails = {
+	clientId: number,
+	legalName: string | null,
+	legalAddress: string | null,
+	edrpou: string | null,
+	rnokpp: string | null,
+	directorSurname: string | null,
+	directorFirstName: string | null,
+	directorPatronymic: string | null,
+	contactSurname: string | null,
+	contactFirstName: string | null,
+	contactPatronymic: string | null,
+	contactPhone: string | null,
+	contactEmail: string | null,
+	iban: string | null,
+	bankName: string | null,
+	vatPayer: boolean,
+};
+
 export type ClientDetailsDto = {
 	client: Client,
+	details: ClientDetails | null,
 	cars: CarDto[],
 };
+
+export type ClientListItem = {
+	id: number,
+	name: string,
+	surname: string | null,
+	firstName: string | null,
+	patronymic: string | null,
+	phone: string | null,
+	email: string | null,
+	clientType: ClientType,
+	notes: string | null,
+	createdAt: string,
+	contactPhone: string | null,
+	contactEmail: string | null,
+	rnokpp: string | null,
+	edrpou: string | null,
+	iban: string | null,
+};
+
+/**  Discriminated payload */
+export type ClientPayload = { clientType: "individual"; surname: string | null; firstName: string; patronymic: string | null; phone: string | null; email: string | null; notes: string | null } | { clientType: "fop"; surname: string | null; firstName: string; patronymic: string | null; notes: string | null; rnokpp: string; legalAddress: string | null; contactSurname: string | null; contactFirstName: string | null; contactPatronymic: string | null; contactPhone: string | null; contactEmail: string | null; iban: string | null; bankName: string | null } | { clientType: "company"; name: string; notes: string | null; legalName: string; legalAddress: string; edrpou: string; directorSurname: string | null; directorFirstName: string | null; directorPatronymic: string | null; contactSurname: string | null; contactFirstName: string | null; contactPatronymic: string | null; contactPhone: string | null; contactEmail: string | null; iban: string | null; bankName: string | null; vatPayer: boolean };
+
+export type ClientType = "individual" | "fop" | "company";
 
 export type CreateCarPayload = {
 	clientId: number,
@@ -126,12 +175,6 @@ export type CreateCarPayload = {
 	driveType: DriveType | null,
 	licensePlate: string | null,
 	vin: string | null,
-	notes: string | null,
-};
-
-export type CreateClientPayload = {
-	name: string,
-	phone: string | null,
 	notes: string | null,
 };
 
@@ -280,12 +323,6 @@ export type UpdateCarPayload = {
 	notes: string | null,
 };
 
-export type UpdateClientPayload = {
-	name: string,
-	phone: string | null,
-	notes: string | null,
-};
-
 export type UpdateLaborItemPayload = {
 	serviceId: number | null,
 	code: string | null,
@@ -363,6 +400,7 @@ export type WorkOrderDetailsDto = {
 	workOrder: WorkOrder,
 	carDto: CarDto,
 	client: Client,
+	clientDetails: ClientDetails | null,
 	laborItems: LaborItemDto[],
 	partItems: PartItemDto[],
 	totals: WorkOrderTotals,

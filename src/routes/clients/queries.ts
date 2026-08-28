@@ -7,10 +7,9 @@ import { toast } from "svelte-sonner";
 
 import {
   commands,
-  type Client,
   type ClientDetailsDto,
-  type CreateClientPayload,
-  type UpdateClientPayload,
+  type ClientListItem,
+  type ClientPayload,
 } from "$lib/bindings";
 import { keys } from "$lib/query-keys";
 import { unwrap } from "$lib/tools";
@@ -41,7 +40,7 @@ export function clientsQueryOptions() {
 }
 
 export function createClientsQuery() {
-  return createQuery<Client[]>(() => clientsQueryOptions());
+  return createQuery<ClientListItem[]>(() => clientsQueryOptions());
 }
 
 export function clientDetailsQueryOptions(id: number | null) {
@@ -61,7 +60,7 @@ export function createClientDetailsQuery(getId: () => number | null) {
 export function createCreateClientMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
-      mutationFn: (payload: CreateClientPayload) =>
+      mutationFn: (payload: ClientPayload) =>
         unwrap(commands.createClient(payload)),
       onSuccess: () => {
         invalidateClients(queryClient);
@@ -75,7 +74,7 @@ export function createCreateClientMutation(queryClient: QueryClient) {
 export function createUpdateClientMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
-      mutationFn: (variables: { id: number; payload: UpdateClientPayload }) =>
+      mutationFn: (variables: { id: number; payload: ClientPayload }) =>
         unwrap(commands.updateClient(variables.id, variables.payload)),
       onSuccess: () => {
         invalidateClients(queryClient);

@@ -7,6 +7,7 @@
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
   import PlusIcon from "@lucide/svelte/icons/plus";
 
+  import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import * as Pagination from "$lib/components/ui/pagination/index.js";
@@ -48,13 +49,22 @@
 
     return clients
       .map((client) => {
-        const nameRank = rankItem(client.name, query);
-        const phoneRank = rankItem(client.phone ?? "", query);
-        const bestRank = nameRank.rank > phoneRank.rank ? nameRank : phoneRank;
+        const fields = [
+          { rank: rankItem(client.name, query), passed: false },
+          { rank: rankItem(client.phone ?? "", query), passed: false },
+          { rank: rankItem(client.email ?? "", query), passed: false },
+          {
+            rank: rankItem(client.contactPhone ?? "", query),
+            passed: false,
+          },
+        ];
+        const best = fields.reduce((a, b) =>
+          a.rank.rank > b.rank.rank ? a : b,
+        );
         return {
           client,
-          bestRank,
-          passed: nameRank.passed || phoneRank.passed,
+          bestRank: best.rank,
+          passed: fields.some((f) => f.rank.passed),
         };
       })
       .filter(({ passed }) => passed)
@@ -210,13 +220,23 @@
             >
               <div class="flex w-full items-center gap-3.5">
                 <ClientAvatar name={client?.name} class="size-9 shrink-0" />
-                <p
-                  class="flex-1 min-w-0 truncate text-left text-base font-medium"
-                >
-                  {client?.name}
-                </p>
+                <div class="flex flex-1 min-w-0 items-center gap-2">
+                  {#if client?.clientType !== "individual"}
+                    <Badge
+                      variant="outline"
+                      class="px-2 py-2.5 text-sm font-normal shrink-0"
+                    >
+                      {client?.clientType === "company" ? "Організація" : "ФОП"}
+                    </Badge>
+                  {/if}
+                  <p class="truncate text-left text-base font-medium">
+                    {client?.name}
+                  </p>
+                </div>
                 <PhoneDisplay
-                  value={client?.phone}
+                  value={client?.clientType !== "individual"
+                    ? (client?.contactPhone ?? client?.phone)
+                    : client?.phone}
                   class="shrink-0 text-sm text-muted-foreground select-none!"
                 />
                 <ChevronRightIcon
