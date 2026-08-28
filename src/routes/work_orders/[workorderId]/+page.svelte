@@ -276,7 +276,7 @@
   }
 </script>
 
-<PageLayout contentWidthClass="min-w-7xl max-w-fit">
+<PageLayout contentWidthClass="max-w-fit">
   {#if combinedQueries.isError}
     <FetchErrorDisplay
       message={combinedQueries.firstError?.message}

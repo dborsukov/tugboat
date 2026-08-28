@@ -27,7 +27,6 @@
   </DropdownMenu.Trigger>
   <DropdownMenu.Content class="w-40 whitespace-nowrap" align="end">
     <DropdownMenu.Group>
-      <DropdownMenu.Label>Дії</DropdownMenu.Label>
       <DropdownMenu.Item onclick={() => onEdit(id)}>
         <EditIcon />
         Редагувати
