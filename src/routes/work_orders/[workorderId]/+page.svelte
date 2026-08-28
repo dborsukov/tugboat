@@ -276,7 +276,7 @@
   }
 </script>
 
-<PageLayout contentWidthClass="min-w-7xl max-w-fit">
+<PageLayout contentWidthClass="max-w-fit">
   {#if combinedQueries.isError}
     <FetchErrorDisplay
       message={combinedQueries.firstError?.message}
@@ -592,7 +592,7 @@
         </div>
       </div>
 
-      <div class="flex flex-row divide-x divide-border border-b border-border">
+      <div class="flex flex-row divide-x divide-border">
         <div class="flex-1">
           <Button
             variant="ghost"
@@ -644,7 +644,7 @@
 
       {#if workOrderDetails?.workOrder?.description || (!privacyState.hideNotes && workOrderDetails?.workOrder?.notes)}
         <div
-          class="flex flex-col divide-y divide-border rounded-b overflow-hidden"
+          class="flex flex-col divide-y divide-border rounded-b overflow-hidden border-t border-border"
         >
           {#if workOrderDetails?.workOrder?.description}
             <div

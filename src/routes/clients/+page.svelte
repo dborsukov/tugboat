@@ -249,9 +249,7 @@
       </div>
 
       {#if paginatedClients.length > 0}
-        <div
-          class="p-4 flex items-center justify-center sticky bottom-0 bg-card"
-        >
+        <div class="p-4 flex items-center justify-center sticky bottom-0">
           <Pagination.Root
             count={filteredClients.length}
             perPage={autoPageSize.pageSize}

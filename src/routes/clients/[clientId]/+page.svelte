@@ -129,20 +129,25 @@
     <div class="mt-4 border border-border rounded bg-card">
       <!-- Cars Section Skeleton -->
       <div class="p-0 border-b border-border">
-        <div class="px-4 pt-4 pb-2 flex flex-row items-center gap-2">
+        <div class="px-4 pt-4 pb-3 flex flex-row items-center gap-2">
           <Skeleton class="h-7 w-28" />
           <Skeleton class="h-7 w-8" />
           <Skeleton class="ml-auto h-5 w-20" />
         </div>
-        <div class="flex flex-col items-start pb-2">
-          {#each Array(2) as _}
-            <div class="h-10 w-full px-3 flex flex-row items-center gap-2">
-              <Skeleton class="size-6 rounded-full shrink-0" />
-              <Skeleton class="h-4 w-40" />
-              <Skeleton class="h-4 w-10 ml-auto" />
-              <Skeleton class="size-4 rounded-sm shrink-0" />
-            </div>
-          {/each}
+        <div class="px-4 pb-4">
+          <div
+            class="border border-border rounded bg-card flex flex-col divide-y divide-border"
+          >
+            {#each Array(2) as _}
+              <div class="h-10 w-full px-3 flex flex-row items-center gap-2.5">
+                <Skeleton class="size-6 rounded-full shrink-0" />
+                <Skeleton class="h-4 w-32" />
+                <Skeleton class="h-4 w-14 ml-auto" />
+                <Skeleton class="h-4 w-8" />
+                <Skeleton class="size-4 rounded-sm shrink-0" />
+              </div>
+            {/each}
+          </div>
         </div>
       </div>
 
@@ -358,7 +363,7 @@
     <div class="mt-4 border border-border rounded bg-card">
       <div class="p-0 border-b border-border">
         <div
-          class="px-4 pt-4 flex flex-row gap-2 items-center text-xl font-medium"
+          class="px-4 pt-4 pb-3 flex flex-row gap-2 items-center text-xl font-medium"
         >
           <p>Автомобілі</p>
           <p class="text-muted-foreground">
@@ -375,31 +380,49 @@
             bind:open={isCarMutationSheetOpen}
           />
         </div>
-        {#if clientDetails?.cars?.length != 0}
-          <div class="flex flex-col items-start pt-2 pb-2">
-            {#each clientDetails?.cars as cli (cli.car.id)}
-              <div class="h-10 w-full px-2">
+        <div class="px-4 pb-4">
+          <div
+            class="border border-border rounded bg-card flex flex-col divide-y divide-border"
+          >
+            {#if clientDetails?.cars?.length != 0}
+              {#each clientDetails?.cars as cli (cli.car.id)}
                 <Button
                   variant="ghost"
-                  class="h-10 w-full pl-1 items-center justify-start gap-2"
+                  class="w-full h-10 justify-start rounded-none px-3 shrink-0"
                   onclick={async () => await goto(`/cars/${cli.car?.id}`)}
                 >
-                  <LogoLoader slug={cli.brand.iconSlug} class="h-3/4" />
-                  <p class="text-base font-normal">
-                    {cli.brand?.id != 0 ? cli.brand?.name + " " : ""}{cli.car
-                      ?.model}
-                  </p>
-                  <p class="text-muted-foreground ml-auto">{cli.car?.year}</p>
-                  <ChevronRightIcon class="text-muted-foreground" />
+                  <div class="flex w-full items-center gap-1">
+                    <LogoLoader slug={cli.brand.iconSlug} class="size-5 mr-2" />
+                    <p
+                      class="truncate text-base font-medium text-left flex-1 min-w-0"
+                    >
+                      {cli.brand?.id != 0 ? cli.brand?.name + " " : ""}{cli.car
+                        ?.model}
+                    </p>
+                    {#if cli.car?.licensePlate}
+                      <span
+                        class="shrink-0 text-muted-foreground font-mono text-sm"
+                      >
+                        {cli.car.licensePlate}
+                      </span>
+                      <DotIcon class="size-4 text-muted-foreground" />
+                    {/if}
+                    <span class="shrink-0 text-muted-foreground text-sm">
+                      {cli.car?.year}
+                    </span>
+                    <ChevronRightIcon
+                      class="size-4 shrink-0 text-muted-foreground"
+                    />
+                  </div>
                 </Button>
+              {/each}
+            {:else}
+              <div class="p-4 flex items-center justify-center">
+                <p class="text-muted-foreground">Автомобілей ще не додано</p>
               </div>
-            {/each}
+            {/if}
           </div>
-        {:else}
-          <div class="p-4 pt-0">
-            <p class="text-muted-foreground">Автомобілей ще не додано</p>
-          </div>
-        {/if}
+        </div>
       </div>
 
       <div class="p-4">

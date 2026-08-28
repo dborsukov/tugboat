@@ -115,8 +115,8 @@
   function carSecondaryLine(cli: (typeof carDetailsList)[number]) {
     return [
       cli.carDto?.car?.year,
-      cli.carDto?.car?.vin,
       cli.carDto?.car?.licensePlate,
+      cli.carDto?.car?.vin,
     ]
       .filter(Boolean)
       .join(" · ");
@@ -234,7 +234,7 @@
                     {cli.carDto?.brand?.name}
                     {cli.carDto?.car?.model}
                   </p>
-                  <p class="truncate text-muted-foreground font-mono">
+                  <p class="truncate text-muted-foreground">
                     {carSecondaryLine(cli)}
                   </p>
                 </div>
@@ -251,9 +251,7 @@
       </div>
 
       {#if paginatedCarListItems.length > 0}
-        <div
-          class="p-4 flex items-center justify-center sticky bottom-0 bg-card"
-        >
+        <div class="p-4 flex items-center justify-center sticky bottom-0">
           <Pagination.Root
             count={filteredCarListItems.length}
             perPage={autoPageSize.pageSize}
