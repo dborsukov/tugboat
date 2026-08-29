@@ -118,7 +118,7 @@
     resetForm: false,
     // svelte-ignore state_referenced_locally
     id: formID,
-    async onUpdate({ form: nativeForm }) {
+    async onUpdate({ form: nativeForm, cancel }) {
       if (!nativeForm.valid) return;
 
       const pricing = computeFinalPrice(
@@ -135,11 +135,14 @@
         return;
       }
 
-      await submitPartItem(nativeForm.data);
+      await submitPartItem(nativeForm.data, cancel);
     },
   });
 
-  async function submitPartItem(data: z.infer<typeof partItemSchema>) {
+  async function submitPartItem(
+    data: z.infer<typeof partItemSchema>,
+    cancel?: () => void,
+  ) {
     const discountPayload = discountToPayload(
       data.discountType,
       data.discountValue,
@@ -175,6 +178,10 @@
         })
         .catch(() => {});
     }
+    // Prevent superforms from re-applying the submitted data to the form
+    // after the handler, which would overwrite the reset below and leave
+    // stale values in the fields for the next time the sheet opens.
+    cancel?.();
     open = false;
     form.reset();
   }

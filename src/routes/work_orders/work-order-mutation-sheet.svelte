@@ -201,7 +201,7 @@
     validationMethod: "oninput",
     resetForm: false,
     id: formID,
-    async onUpdate({ form: nativeForm }) {
+    async onUpdate({ form: nativeForm, cancel }) {
       if (isLocked) return;
       if (!nativeForm.valid) return;
 
@@ -221,11 +221,14 @@
         return;
       }
 
-      await submitWorkOrder(nativeForm.data);
+      await submitWorkOrder(nativeForm.data, cancel);
     },
   });
 
-  async function submitWorkOrder(data: z.infer<typeof workOrderSchema>) {
+  async function submitWorkOrder(
+    data: z.infer<typeof workOrderSchema>,
+    cancel?: () => void,
+  ) {
     const laborCostPayload = laborCostToPayload(
       data.laborCostType,
       data.laborCost,
@@ -276,6 +279,10 @@
 
     if (!result) return;
     if (!isEdit) await goto(`/work_orders/${result.id}`);
+    // Prevent superforms from re-applying the submitted data to the form
+    // after the handler, which would overwrite the reset below and leave
+    // stale values in the fields for the next time the sheet opens.
+    cancel?.();
     open = false;
     form.reset();
   }
