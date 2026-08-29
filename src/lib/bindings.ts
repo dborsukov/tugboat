@@ -295,7 +295,7 @@ export type PartItemTotals = {
 
 export type PartStatus = "Quoted" | "Ordered" | "InStock" | "Installing" | "Installed" | "AwaitingReturn" | "Returned" | "Warranty";
 
-export type PaymentMethod = "Cash" | "Card";
+export type PaymentMethod = "Cash" | "Card" | "BankTransfer" | "CardTransfer";
 
 export type RateVariants = {
 	name: string,

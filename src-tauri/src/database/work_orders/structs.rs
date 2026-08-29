@@ -54,10 +54,12 @@ pub enum DiscountType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
-#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum PaymentMethod {
     Cash,
     Card,
+    BankTransfer,
+    CardTransfer,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
