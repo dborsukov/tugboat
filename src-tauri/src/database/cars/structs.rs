@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
-#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum FuelType {
     Gasoline,
     Diesel,
@@ -13,7 +13,7 @@ pub enum FuelType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
-#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum DriveType {
     FrontWheel,
     RearWheel,

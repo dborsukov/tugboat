@@ -6,7 +6,7 @@ use sqlx::{sqlite::SqliteRow, FromRow, Row};
 use crate::database::utils::decimal_column;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
-#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum WorkOrderStatus {
     Received,
     InDiagnostics,
@@ -19,7 +19,7 @@ pub enum WorkOrderStatus {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
-#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum PartStatus {
     Quoted,
     Ordered,
@@ -32,21 +32,21 @@ pub enum PartStatus {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
-#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum LaborPriceType {
     Hourly,
     Fixed,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
-#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum LaborCostType {
     Hourly,
     Percentage,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
-#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum DiscountType {
     None,
     Fixed,

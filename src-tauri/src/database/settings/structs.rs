@@ -43,7 +43,7 @@ impl<'r> FromRow<'r, SqliteRow> for AppSettings {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
 #[serde(rename_all = "lowercase")]
-#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum ThemeMode {
     Light,
     Dark,
