@@ -164,13 +164,14 @@
   }
 
   async function openAboutWindow() {
-    // Reuse the window if it is already open instead of stacking duplicates.
     const existing = await WebviewWindow.getByLabel("about");
     if (existing) {
       existing.setFocus().catch(() => {});
       return;
     }
-    new WebviewWindow("about", {
+    // About page created hidden and reveals itself once its first frame is
+    // painted, so the window never flashes white while the webview boots.
+    const win = new WebviewWindow("about", {
       url: "/about",
       title: "Про застосунок",
       width: 340,
@@ -178,7 +179,13 @@
       center: true,
       resizable: false,
       decorations: false,
+      visible: false,
     });
+    // If the About page ever fails to boot, don't leave the
+    // window stuck hidden forever.
+    setTimeout(() => {
+      win.show().catch(() => {});
+    }, 4000);
   }
 </script>
 

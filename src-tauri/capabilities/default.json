@@ -1,10 +1,11 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main window and the About dialog",
-  "windows": ["main", "about"],
+  "description": "Capability for the main window, splash screen, and the About dialog",
+  "windows": ["main", "splashscreen", "about"],
   "permissions": [
     "core:default",
+    "core:window:allow-show",
     "core:window:allow-minimize",
     "core:window:allow-toggle-maximize",
     "core:window:allow-maximize",
