@@ -3,7 +3,13 @@
 
   import { QueryClient, QueryClientProvider } from "@tanstack/svelte-query";
   import { SvelteQueryDevtools } from "@tanstack/svelte-query-devtools";
+  import {
+    getCurrentWebviewWindow,
+    WebviewWindow,
+  } from "@tauri-apps/api/webviewWindow";
+  import { getCurrentWindow } from "@tauri-apps/api/window";
   import { ModeWatcher } from "mode-watcher";
+  import { onMount } from "svelte";
 
   import { dev } from "$app/environment";
   import { page } from "$app/state";
@@ -28,6 +34,33 @@
   const isStandaloneWindow = $derived(page.url.pathname.startsWith("/about"));
 
   navHistory.init();
+
+  const splashShownAt = Date.now();
+  const MIN_SPLASH_MS = 600;
+
+  onMount(() => {
+    if (getCurrentWebviewWindow().label !== "main") return;
+    // Wait two frames, the first paint of the mounted app is guaranteed to be
+    // on screen before we swap windows.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const remaining = Math.max(
+          0,
+          MIN_SPLASH_MS - (Date.now() - splashShownAt),
+        );
+        setTimeout(async () => {
+          try {
+            const appWindow = getCurrentWindow();
+            await appWindow.show();
+            await appWindow.setFocus();
+            await (await WebviewWindow.getByLabel("splashscreen"))?.close();
+          } catch {
+            // Skip. App still works if the hand-off fails.
+          }
+        }, remaining);
+      }),
+    );
+  });
 </script>
 
 <QueryClientProvider client={queryClient}>

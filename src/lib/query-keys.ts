@@ -39,4 +39,5 @@ export const keys = {
   settings: {
     all: ["settings"] as const,
   },
+  version: ["version"] as const,
 };

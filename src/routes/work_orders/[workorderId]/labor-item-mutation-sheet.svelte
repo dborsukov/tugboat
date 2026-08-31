@@ -149,7 +149,7 @@
     resetForm: false,
     // svelte-ignore state_referenced_locally
     id: formID,
-    async onUpdate({ form: nativeForm }) {
+    async onUpdate({ form: nativeForm, cancel }) {
       if (!nativeForm.valid) return;
 
       const pricing = computeLaborPricing(
@@ -171,11 +171,14 @@
         return;
       }
 
-      await submitLaborItem(nativeForm.data);
+      await submitLaborItem(nativeForm.data, cancel);
     },
   });
 
-  async function submitLaborItem(data: z.infer<typeof laborItemSchema>) {
+  async function submitLaborItem(
+    data: z.infer<typeof laborItemSchema>,
+    cancel?: () => void,
+  ) {
     const laborPricePayload = laborPriceToPayload(
       data.laborPriceType,
       data.laborPrice,
@@ -211,6 +214,10 @@
         })
         .catch(() => {});
     }
+    // Prevent superforms from re-applying the submitted data to the form
+    // after the handler, which would overwrite the reset below and leave
+    // stale values in the fields for the next time the sheet opens.
+    cancel?.();
     open = false;
     form.reset();
   }

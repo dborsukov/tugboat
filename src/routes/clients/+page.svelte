@@ -1,11 +1,17 @@
 <script lang="ts">
   import { compareItems, rankItem } from "@tanstack/match-sorter-utils";
+  import type { Component } from "svelte";
+  import { SvelteSet } from "svelte/reactivity";
 
   import { goto } from "$app/navigation";
 
   import SortIcon from "@lucide/svelte/icons/arrow-up-down";
+  import BriefcaseIcon from "@lucide/svelte/icons/briefcase";
+  import BuildingIcon from "@lucide/svelte/icons/building-2";
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
+  import FunnelXIcon from "@lucide/svelte/icons/funnel-x";
   import PlusIcon from "@lucide/svelte/icons/plus";
+  import UserIcon from "@lucide/svelte/icons/user";
 
   import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
@@ -14,10 +20,13 @@
   import * as Select from "$lib/components/ui/select/index.js";
   import { Skeleton } from "$lib/components/ui/skeleton";
 
+  import type { FacetedFilterOptions } from "$lib/components/data-table-faceted-filter/faceted-filter-options";
+  import FacetedFilter from "$lib/components/faceted-filter/faceted-filter.svelte";
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
   import PhoneDisplay from "$lib/components/phone-display.svelte";
 
+  import type { ClientType } from "$lib/bindings";
   import { UseAutoPageSize } from "$lib/hooks/use-auto-page-size.svelte";
 
   import ClientAvatar from "./client-avatar.svelte";
@@ -33,18 +42,53 @@
     "name-desc": "За ім'ям (Я-А)",
   };
 
+  const clientTypeLabels: Record<ClientType, string> = {
+    individual: "Фізична особа",
+    fop: "ФОП",
+    company: "Організація",
+  };
+
+  const clientTypeIcons: Record<ClientType, Component> = {
+    individual: UserIcon,
+    fop: BriefcaseIcon,
+    company: BuildingIcon,
+  };
+
+  const clientTypeFilterOptions: FacetedFilterOptions[] = (
+    ["individual", "fop", "company"] as ClientType[]
+  ).map((value) => ({
+    label: clientTypeLabels[value],
+    value,
+    icon: clientTypeIcons[value],
+  }));
+
   let currentPage = $state(1);
   let searchQuery = $state("");
   let isSheetOpen = $state(false);
   let sortBy = $state<SortOption>("date-desc");
   let searchInputEl = $state<HTMLInputElement | null>(null);
+  let selectedClientTypes = new SvelteSet<string>();
 
   const clientsQuery = createClientsQuery();
   const autoPageSize = new UseAutoPageSize({ minPageSize: 5 });
 
+  const clientTypeFacets = $derived.by(() => {
+    const counts = new Map<string, number>();
+    for (const client of clientsQuery.data ?? []) {
+      counts.set(client.clientType, (counts.get(client.clientType) ?? 0) + 1);
+    }
+    return counts;
+  });
+
   let filteredClients = $derived.by(() => {
     let clients = clientsQuery.isSuccess ? clientsQuery.data : [];
     const query = searchQuery.trim();
+
+    if (selectedClientTypes.size > 0) {
+      clients = clients.filter((client) =>
+        selectedClientTypes.has(client.clientType),
+      );
+    }
     if (!query) return clients;
 
     return clients
@@ -116,8 +160,13 @@
   }
 
   let controlsDisabled = $derived(
-    !clientsQuery.isSuccess || (paginatedClients.length === 0 && !searchQuery),
+    !clientsQuery.isSuccess || (clientsQuery.data?.length ?? 0) === 0,
   );
+
+  function handleClearTypeFilter() {
+    selectedClientTypes.clear();
+    currentPage = 1;
+  }
 
   $effect(() => searchInputEl?.focus());
 
@@ -169,6 +218,24 @@
           <Select.Item value="name-desc">{sortLabels["name-desc"]}</Select.Item>
         </Select.Content>
       </Select.Root>
+      <FacetedFilter
+        title="Тип клієнта"
+        options={clientTypeFilterOptions}
+        selected={selectedClientTypes}
+        facets={clientTypeFacets}
+        disabled={controlsDisabled}
+      />
+      {#if selectedClientTypes.size > 0}
+        <Button
+          variant="ghost"
+          onclick={handleClearTypeFilter}
+          class="px-2 py-4"
+          disabled={controlsDisabled}
+        >
+          <FunnelXIcon />
+          Прибрати фільтри
+        </Button>
+      {/if}
       <Button
         variant="outline"
         onclick={() => (isSheetOpen = !isSheetOpen)}
@@ -202,6 +269,10 @@
           {#if searchQuery}
             <div class="p-4 flex items-center justify-center">
               <p>Пошук не повернув результатів</p>
+            </div>
+          {:else if selectedClientTypes.size > 0}
+            <div class="p-4 flex items-center justify-center">
+              <p>За вибраним типом клієнтів не знайдено</p>
             </div>
           {:else}
             <div class="p-4 flex flex-col items-center justify-center">
@@ -249,9 +320,7 @@
       </div>
 
       {#if paginatedClients.length > 0}
-        <div
-          class="p-4 flex items-center justify-center sticky bottom-0 bg-card"
-        >
+        <div class="p-4 flex items-center justify-center sticky bottom-0">
           <Pagination.Root
             count={filteredClients.length}
             perPage={autoPageSize.pageSize}

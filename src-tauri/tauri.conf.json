@@ -8,12 +8,31 @@
         "width": 1280,
         "height": 720,
         "decorations": false,
-        "shadow": true
+        "shadow": true,
+        "backgroundColor": "#fbfaf7",
+        "visible": false
+      },
+      {
+        "label": "splashscreen",
+        "title": "Папай CRM",
+        "url": "splashscreen.html",
+        "width": 420,
+        "height": 300,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "decorations": false,
+        "shadow": true,
+        "skipTaskbar": true,
+        "center": true,
+        "visible": false,
+        "backgroundColor": "#fbfaf700"
       }
     ],
     "security": {
       "csp": null
-    }
+    },
+    "withGlobalTauri": true
   },
   "build": {
     "beforeDevCommand": "pnpm dev",

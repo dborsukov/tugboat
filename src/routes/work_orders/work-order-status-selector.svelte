@@ -125,6 +125,8 @@
   const paymentMethodLabels: Record<PaymentMethod, string> = {
     Cash: "Готівка",
     Card: "Картка",
+    BankTransfer: "Безготівковий (рахунок)",
+    CardTransfer: "Переказ на картку",
   };
 
   async function handleSave() {
@@ -312,8 +314,9 @@
                       : "Оберіть спосіб оплати"}
                   </Select.Trigger>
                   <Select.Content>
-                    <Select.Item value="Cash">Готівка</Select.Item>
-                    <Select.Item value="Card">Картка</Select.Item>
+                    {#each Object.entries(paymentMethodLabels) as [value, label] (value)}
+                      <Select.Item {value}>{label}</Select.Item>
+                    {/each}
                   </Select.Content>
                 </Select.Root>
                 {#if paymentMethodMissing}

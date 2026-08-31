@@ -433,7 +433,7 @@
     validationMethod: "oninput",
     resetForm: false,
     id: formID,
-    async onUpdate({ form: nativeForm }) {
+    async onUpdate({ form: nativeForm, cancel }) {
       if (!nativeForm.valid) return;
 
       const payload = buildPayload(nativeForm.data);
@@ -445,6 +445,10 @@
       } else {
         await createClientMutation.mutateAsync(payload).catch(() => {});
       }
+      // Prevent superforms from re-applying the submitted data to the form
+      // after this handler, which would overwrite the reset below and leave
+      // stale values in the fields for the next time the sheet opens.
+      cancel();
       open = false;
       form.reset();
     },

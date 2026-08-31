@@ -93,6 +93,27 @@ pub fn run() {
         .setup(move |app| {
             specta_builder.mount_events(app);
 
+            // Safety net for the splash screen: the main window starts hidden
+            // and the frontend reveals it once the app is painted. If the
+            // frontend never signals readiness, force the
+            // reveal so the app can't stay stuck behind the splash.
+            {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_secs(15));
+                    let handle_for_closure = handle.clone();
+                    let _ = handle.run_on_main_thread(move || {
+                        if let Some(splash) = handle_for_closure.get_webview_window("splashscreen")
+                        {
+                            let _ = splash.close();
+                        }
+                        if let Some(main) = handle_for_closure.get_webview_window("main") {
+                            let _ = main.show();
+                        }
+                    });
+                });
+            }
+
             let app_dir = app.path().app_data_dir().unwrap();
             fs::create_dir_all(&app_dir).unwrap();
 
