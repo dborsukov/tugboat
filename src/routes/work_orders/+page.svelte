@@ -1,6 +1,7 @@
 <script lang="ts">
   import { goto } from "$app/navigation";
 
+  import ArchiveIcon from "@lucide/svelte/icons/archive";
   import FunnelXIcon from "@lucide/svelte/icons/funnel-x";
 
   import { Button } from "$lib/components/ui/button";
@@ -18,21 +19,32 @@
   import { workOrderStatusFilterOptions } from "./work-order-status";
 
   let inputValue: string = $state("");
+  let showArchived = $state(false);
   let searchInputEl = $state<HTMLInputElement | null>(null);
 
   let workOrderDetailsDtoListQuery = createWorkOrderDetailsDtoListQuery();
-  let workOrderDetailsDtoList = $derived(
-    workOrderDetailsDtoListQuery.data ?? [],
+
+  let visibleWorkOrderDetailsDtoList = $derived.by(() => {
+    const list = workOrderDetailsDtoListQuery.data ?? [];
+    return showArchived
+      ? list.filter((wo) => wo.workOrder.archivedAt != null)
+      : list.filter((wo) => wo.workOrder.archivedAt == null);
+  });
+
+  const archivedWorkOrdersCount = $derived(
+    (workOrderDetailsDtoListQuery.data ?? []).filter(
+      (wo) => wo.workOrder.archivedAt != null,
+    ).length,
   );
 
   let interactionDisabled = $derived(
     !workOrderDetailsDtoListQuery.isSuccess ||
-      workOrderDetailsDtoList.length === 0,
+      (workOrderDetailsDtoListQuery.data?.length ?? 0) === 0,
   );
 
   let table = buildTable({
     get data() {
-      return workOrderDetailsDtoList;
+      return visibleWorkOrderDetailsDtoList;
     },
     get columns() {
       return columns;
@@ -45,6 +57,12 @@
 
   const isFiltered = $derived(table.getState().columnFilters.length > 0);
   const statusCol = $derived(table.getColumn("status"));
+
+  function handleToggleArchived() {
+    showArchived = !showArchived;
+    table.resetColumnFilters();
+    table.resetRowSelection();
+  }
 
   $effect(() => searchInputEl?.focus());
 </script>
@@ -78,6 +96,18 @@
           Прибрати фільтри
         </Button>
       {/if}
+      <Button
+        variant={showArchived ? "default" : "outline"}
+        onclick={handleToggleArchived}
+        disabled={!workOrderDetailsDtoListQuery.isSuccess}
+        class="shrink-0"
+      >
+        <ArchiveIcon />
+        Архів
+        {#if archivedWorkOrdersCount > 0}
+          <span class="text-muted-foreground">{archivedWorkOrdersCount}</span>
+        {/if}
+      </Button>
     </div>
   {/snippet}
 
@@ -118,8 +148,12 @@
   {:else}
     <DataTable
       {table}
-      emptyMessage="Замовлень не знайдено..."
+      emptyMessage={showArchived
+        ? "Архівних замовлень не знайдено..."
+        : "Замовлень не знайдено..."}
       onRowClick={(row) => goto(`/work_orders/${row.workOrder.id}`)}
+      rowClassName={(row) =>
+        row.workOrder.archivedAt ? "opacity-60" : undefined}
       class="mt-4 rounded-sm shadow-xs bg-card"
       headerClasses={{ total: "px-0 text-right", createdAt: "px-0 text-right" }}
       cellClasses={{

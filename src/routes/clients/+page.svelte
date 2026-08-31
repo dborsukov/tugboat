@@ -5,6 +5,7 @@
 
   import { goto } from "$app/navigation";
 
+  import ArchiveIcon from "@lucide/svelte/icons/archive";
   import SortIcon from "@lucide/svelte/icons/arrow-up-down";
   import BriefcaseIcon from "@lucide/svelte/icons/briefcase";
   import BuildingIcon from "@lucide/svelte/icons/building-2";
@@ -20,6 +21,7 @@
   import * as Select from "$lib/components/ui/select/index.js";
   import { Skeleton } from "$lib/components/ui/skeleton";
 
+  import ArchivedBadge from "$lib/components/archived-badge.svelte";
   import type { FacetedFilterOptions } from "$lib/components/data-table-faceted-filter/faceted-filter-options";
   import FacetedFilter from "$lib/components/faceted-filter/faceted-filter.svelte";
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
@@ -66,22 +68,35 @@
   let searchQuery = $state("");
   let isSheetOpen = $state(false);
   let sortBy = $state<SortOption>("date-desc");
+  let showArchived = $state(false);
   let searchInputEl = $state<HTMLInputElement | null>(null);
   let selectedClientTypes = new SvelteSet<string>();
 
   const clientsQuery = createClientsQuery();
   const autoPageSize = new UseAutoPageSize({ minPageSize: 5 });
 
+  let visibleClients = $derived.by(() => {
+    const clients = clientsQuery.isSuccess ? clientsQuery.data : [];
+    return showArchived
+      ? clients.filter((client) => client.archivedAt != null)
+      : clients.filter((client) => client.archivedAt == null);
+  });
+
+  const archivedClientsCount = $derived(
+    (clientsQuery.data ?? []).filter((client) => client.archivedAt != null)
+      .length,
+  );
+
   const clientTypeFacets = $derived.by(() => {
     const counts = new Map<string, number>();
-    for (const client of clientsQuery.data ?? []) {
+    for (const client of visibleClients) {
       counts.set(client.clientType, (counts.get(client.clientType) ?? 0) + 1);
     }
     return counts;
   });
 
   let filteredClients = $derived.by(() => {
-    let clients = clientsQuery.isSuccess ? clientsQuery.data : [];
+    let clients = visibleClients;
     const query = searchQuery.trim();
 
     if (selectedClientTypes.size > 0) {
@@ -237,9 +252,24 @@
         </Button>
       {/if}
       <Button
+        variant={showArchived ? "default" : "outline"}
+        onclick={() => {
+          showArchived = !showArchived;
+          currentPage = 1;
+        }}
+        disabled={controlsDisabled}
+        class="shrink-0"
+      >
+        <ArchiveIcon />
+        Архів
+        {#if archivedClientsCount > 0}
+          <span class="text-muted-foreground">{archivedClientsCount}</span>
+        {/if}
+      </Button>
+      <Button
         variant="outline"
         onclick={() => (isSheetOpen = !isSheetOpen)}
-        disabled={!clientsQuery.isSuccess}
+        disabled={!clientsQuery.isSuccess || showArchived}
       >
         Додати <PlusIcon />
       </Button>
@@ -274,6 +304,10 @@
             <div class="p-4 flex items-center justify-center">
               <p>За вибраним типом клієнтів не знайдено</p>
             </div>
+          {:else if showArchived}
+            <div class="p-4 flex flex-col items-center justify-center">
+              <p>Архівних клієнтів не знайдено</p>
+            </div>
           {:else}
             <div class="p-4 flex flex-col items-center justify-center">
               <p>Клієнтів не знайдено</p>
@@ -286,7 +320,9 @@
           {#each paginatedClients as client (client.id)}
             <Button
               variant="ghost"
-              class="w-full h-auto justify-start rounded-none px-5 py-3 shrink-0"
+              class="w-full h-auto justify-start rounded-none px-5 py-3 shrink-0 {client.archivedAt
+                ? 'opacity-60'
+                : ''}"
               onclick={async () => await goto(`/clients/${client.id}`)}
             >
               <div class="flex w-full items-center gap-3.5">
@@ -303,6 +339,9 @@
                   <p class="truncate text-left text-base font-medium">
                     {client?.name}
                   </p>
+                  {#if client.archivedAt}
+                    <ArchivedBadge date={client.archivedAt} />
+                  {/if}
                 </div>
                 <PhoneDisplay
                   value={client?.clientType !== "individual"

@@ -12,6 +12,18 @@ export const commands = {
 	createCar: (payload: CreateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("create_car", { payload })),
 	updateCar: (id: number, payload: UpdateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("update_car", { id, payload })),
 	deleteCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_car", { id })),
+	/**
+	 *  Marks the car and its work orders as archived. Already-archived rows keep
+	 *  their original timestamp.
+	 */
+	archiveCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("archive_car", { id })),
+	/**  Restores the car and its work orders. */
+	restoreCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("restore_car", { id })),
+	/**
+	 *  Counts everything a permanent car deletion would cascade into, so the UI
+	 *  can warn the user before the irreversible delete.
+	 */
+	fetchCarDeleteImpact: (id: number) => typedError<CarDeleteImpact, AppError>(__TAURI_INVOKE("fetch_car_delete_impact", { id })),
 	fetchCarBrands: () => typedError<CarBrand[], AppError>(__TAURI_INVOKE("fetch_car_brands")),
 	fetchClientsCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_clients_count")),
 	fetchClientsList: () => typedError<ClientListItem[], AppError>(__TAURI_INVOKE("fetch_clients_list")),
@@ -19,6 +31,18 @@ export const commands = {
 	createClient: (payload: ClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("create_client", { payload })),
 	updateClient: (id: number, payload: ClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("update_client", { id, payload })),
 	deleteClient: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_client", { id })),
+	/**
+	 *  Marks the client and everything under it (details, cars, work orders) as
+	 *  archived. Already-archived rows keep their original timestamp.
+	 */
+	archiveClient: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("archive_client", { id })),
+	/**  Restores the client and everything under it (details, cars, work orders). */
+	restoreClient: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("restore_client", { id })),
+	/**
+	 *  Counts everything a permanent client deletion would cascade into, so the
+	 *  UI can warn the user before the irreversible delete.
+	 */
+	fetchClientDeleteImpact: (id: number) => typedError<ClientDeleteImpact, AppError>(__TAURI_INVOKE("fetch_client_delete_impact", { id })),
 	fetchServicesCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_services_count")),
 	fetchServiceById: (id: number) => typedError<Service, AppError>(__TAURI_INVOKE("fetch_service_by_id", { id })),
 	fetchServicesList: () => typedError<Service[], AppError>(__TAURI_INVOKE("fetch_services_list")),
@@ -26,6 +50,10 @@ export const commands = {
 	updateService: (id: number, payload: UpdateServicePayload) => typedError<Service, AppError>(__TAURI_INVOKE("update_service", { id, payload })),
 	deleteService: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_service", { id })),
 	deleteServices: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("delete_services", { ids })),
+	archiveService: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("archive_service", { id })),
+	archiveServices: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("archive_services", { ids })),
+	restoreService: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("restore_service", { id })),
+	restoreServices: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("restore_services", { ids })),
 	fetchSettings: () => typedError<AppSettings, AppError>(__TAURI_INVOKE("fetch_settings")),
 	updateTheme: (theme: ThemeMode) => typedError<ThemeMode, AppError>(__TAURI_INVOKE("update_theme", { theme })),
 	updateUiScale: (uiScale: number | null) => typedError<number | null, AppError>(__TAURI_INVOKE("update_ui_scale", { uiScale })),
@@ -44,6 +72,13 @@ export const commands = {
 	createWorkOrder: (payload: CreateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("create_work_order", { payload })),
 	updateWorkOrder: (payload: UpdateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("update_work_order", { payload })),
 	deleteWorkOrder: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order", { id })),
+	archiveWorkOrder: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("archive_work_order", { id })),
+	restoreWorkOrder: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("restore_work_order", { id })),
+	/**
+	 *  Counts everything a permanent work order deletion would cascade into, so
+	 *  the UI can warn the user before the irreversible delete.
+	 */
+	fetchWorkOrderDeleteImpact: (id: string) => typedError<WorkOrderDeleteImpact, AppError>(__TAURI_INVOKE("fetch_work_order_delete_impact", { id })),
 	fetchLaborItemById: (id: number) => typedError<LaborItem, AppError>(__TAURI_INVOKE("fetch_labor_item_by_id", { id })),
 	fetchLaborItemsList: () => typedError<LaborItem[], AppError>(__TAURI_INVOKE("fetch_labor_items_list")),
 	createLaborItem: (payload: CreateLaborItemPayload) => typedError<LaborItem, AppError>(__TAURI_INVOKE("create_labor_item", { payload })),
@@ -88,12 +123,19 @@ export type Car = {
 	vin: string | null,
 	notes: string | null,
 	createdAt: string,
+	archivedAt: string | null,
 };
 
 export type CarBrand = {
 	id: number,
 	name: string,
 	iconSlug: string,
+};
+
+export type CarDeleteImpact = {
+	workOrderCount: number,
+	laborItemCount: number,
+	partItemCount: number,
 };
 
 export type CarDetailsDto = {
@@ -118,6 +160,14 @@ export type Client = {
 	clientType: ClientType,
 	notes: string | null,
 	createdAt: string,
+	archivedAt: string | null,
+};
+
+export type ClientDeleteImpact = {
+	carCount: number,
+	workOrderCount: number,
+	laborItemCount: number,
+	partItemCount: number,
 };
 
 export type ClientDetails = {
@@ -137,6 +187,7 @@ export type ClientDetails = {
 	iban: string | null,
 	bankName: string | null,
 	vatPayer: boolean,
+	archivedAt: string | null,
 };
 
 export type ClientDetailsDto = {
@@ -156,6 +207,7 @@ export type ClientListItem = {
 	clientType: ClientType,
 	notes: string | null,
 	createdAt: string,
+	archivedAt: string | null,
 	contactPhone: string | null,
 	contactEmail: string | null,
 	rnokpp: string | null,
@@ -309,6 +361,7 @@ export type Service = {
 	priceType: LaborPriceType,
 	fixedPrice: string,
 	laborHours: string,
+	archivedAt: string | null,
 };
 
 export type ThemeMode = "light" | "dark" | "system";
@@ -394,10 +447,16 @@ export type WorkOrder = {
 	discountType: DiscountType,
 	discountValue: string,
 	createdAt: string,
+	archivedAt: string | null,
 	startedAt: string | null,
 	completedAt: string | null,
 	paidAt: string | null,
 	paymentMethod: PaymentMethod | null,
+};
+
+export type WorkOrderDeleteImpact = {
+	laborItemCount: number,
+	partItemCount: number,
 };
 
 export type WorkOrderDetailsDto = {

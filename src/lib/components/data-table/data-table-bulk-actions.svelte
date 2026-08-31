@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { Snippet } from "svelte";
+  import type { Component, Snippet } from "svelte";
 
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
   import TrashIcon from "@lucide/svelte/icons/trash";
@@ -9,9 +9,15 @@
 
   let {
     onDelete,
+    deleteLabel = "Видалити",
+    deleteVariant = "destructive",
+    deleteIcon = TrashIcon,
     menuItems,
   }: {
     onDelete?: () => void;
+    deleteLabel?: string;
+    deleteVariant?: "destructive" | "warning";
+    deleteIcon?: Component;
     menuItems?: Snippet;
   } = $props();
 </script>
@@ -25,13 +31,14 @@
       </Button>
     {/snippet}
   </DropdownMenu.Trigger>
-  <DropdownMenu.Content class="w-44 whitespace-nowrap" align="start">
+  <DropdownMenu.Content class="w-max whitespace-nowrap" align="start">
     <DropdownMenu.Group>
       {@render menuItems?.()}
       {#if onDelete}
-        <DropdownMenu.Item variant="destructive" onclick={onDelete}>
-          <TrashIcon />
-          Видалити
+        {@const DeleteIcon = deleteIcon}
+        <DropdownMenu.Item variant={deleteVariant} onclick={onDelete}>
+          <DeleteIcon />
+          {deleteLabel}
         </DropdownMenu.Item>
       {/if}
     </DropdownMenu.Group>

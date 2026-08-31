@@ -40,7 +40,7 @@
       </Button>
     {/snippet}
   </DropdownMenu.Trigger>
-  <DropdownMenu.Content class="w-55 whitespace-nowrap" align="end">
+  <DropdownMenu.Content class="w-max whitespace-nowrap" align="end">
     <DropdownMenu.RadioGroup bind:value={status}>
       {#each statuses as s}
         {@const localStyles = partStatusStylesRecord[s]}

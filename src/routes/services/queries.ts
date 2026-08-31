@@ -109,6 +109,58 @@ export function createDeleteServicesMutation(queryClient: QueryClient) {
   );
 }
 
+export function createArchiveServiceMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (id: number) => unwrap(commands.archiveService(id)),
+      onSuccess: () => {
+        invalidateServiceLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createArchiveServicesMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (ids: number[]) => unwrap(commands.archiveServices(ids)),
+      onSuccess: () => {
+        invalidateServiceLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createRestoreServiceMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (id: number) => unwrap(commands.restoreService(id)),
+      onSuccess: () => {
+        invalidateServiceLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createRestoreServicesMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (ids: number[]) => unwrap(commands.restoreServices(ids)),
+      onSuccess: () => {
+        invalidateServiceLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
 export function invalidateServiceLists(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: keys.services.list() });
   queryClient.invalidateQueries({ queryKey: keys.services.count() });

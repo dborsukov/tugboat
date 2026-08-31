@@ -1,8 +1,10 @@
 <script lang="ts">
-  import { createQueries } from "@tanstack/svelte-query";
+  import { createQueries, useQueryClient } from "@tanstack/svelte-query";
 
   import { goto } from "$app/navigation";
 
+  import ArchiveIcon from "@lucide/svelte/icons/archive";
+  import ArchiveRestoreIcon from "@lucide/svelte/icons/archive-restore";
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
   import DotIcon from "@lucide/svelte/icons/dot";
@@ -15,6 +17,7 @@
   import { Button } from "$lib/components/ui/button";
   import { Skeleton } from "$lib/components/ui/skeleton";
 
+  import ArchivedBadge from "$lib/components/archived-badge.svelte";
   import LogoLoader from "$lib/components/car-logo-loader.svelte";
   import DataTable from "$lib/components/data-table/data-table.svelte";
   import { buildTable } from "$lib/components/data-table/table-builder.svelte";
@@ -26,10 +29,17 @@
   import { prettifyIsoDateString } from "$lib/tools";
 
   import CarMutationSheet from "../../cars/car-mutation-sheet.svelte";
+  import { invalidateCars } from "../../cars/queries";
   import { columns } from "../../work_orders/columns";
-  import { workOrderDetailsListByClientIdQueryOptions } from "../../work_orders/queries";
+  import {
+    invalidateWorkOrderLists,
+    workOrderDetailsListByClientIdQueryOptions,
+  } from "../../work_orders/queries";
   import ClientAvatar from "../client-avatar.svelte";
-  import { clientDetailsQueryOptions } from "../queries";
+  import {
+    clientDetailsQueryOptions,
+    createRestoreClientMutation,
+  } from "../queries";
   import DropdownMenu from "./dropdown-menu.svelte";
 
   function composeName(
@@ -45,6 +55,9 @@
   let { params } = $props();
   let isCarMutationSheetOpen = $state(false);
   let clientId = $derived(Number(params.clientId));
+
+  const queryClient = useQueryClient();
+  const restoreClientMutation = createRestoreClientMutation(queryClient);
 
   const combinedQueries = createQueries(() => ({
     queries: [
@@ -85,6 +98,15 @@
     initialSorting: [{ id: "createdAt", desc: true }],
     hiddenColumns: ["client"],
   });
+
+  function handleRestore() {
+    restoreClientMutation.mutate(clientId, {
+      onSuccess: () => {
+        invalidateCars(queryClient);
+        invalidateWorkOrderLists(queryClient);
+      },
+    });
+  }
 </script>
 
 <PageLayout>
@@ -186,6 +208,26 @@
     />
   {:else}
     <div class="mt-4 border border-border rounded bg-card">
+      {#if clientDetails?.client?.archivedAt}
+        <div
+          class="flex items-center justify-between gap-2 rounded-t px-4 py-2 border-b border-border bg-muted/40 text-sm"
+        >
+          <span class="flex items-center gap-2 text-muted-foreground">
+            <ArchiveIcon class="size-4" />
+            Клієнт архівований
+            {prettifyIsoDateString(clientDetails.client.archivedAt, "datetime")}
+          </span>
+          <Button
+            variant="link"
+            class="p-0"
+            onclick={handleRestore}
+            disabled={restoreClientMutation.isPending}
+          >
+            <ArchiveRestoreIcon />
+            Відновити
+          </Button>
+        </div>
+      {/if}
       <div class="p-4">
         <div class="flex flex-row items-center gap-4">
           <ClientAvatar name={clientDetails?.client?.name} class="size-16" />
@@ -248,6 +290,7 @@
           <div class="h-full ml-auto flex flex-col items-start">
             <DropdownMenu
               clientId={clientDetails?.client?.id}
+              isArchived={clientDetails?.client?.archivedAt != null}
               phone={(clientDetails?.client?.clientType === "individual"
                 ? clientDetails?.client?.phone
                 : clientDetails?.details?.contactPhone) ?? null}
@@ -369,12 +412,14 @@
           <p class="text-muted-foreground">
             {clientDetails?.cars?.length}
           </p>
-          <Button
-            variant="link"
-            class="ml-auto text-base"
-            onclick={() => (isCarMutationSheetOpen = !isCarMutationSheetOpen)}
-            >Додати +</Button
-          >
+          {#if !clientDetails?.client?.archivedAt}
+            <Button
+              variant="link"
+              class="ml-auto text-base"
+              onclick={() => (isCarMutationSheetOpen = !isCarMutationSheetOpen)}
+              >Додати +</Button
+            >
+          {/if}
           <CarMutationSheet
             initClientId={clientDetails?.client?.id}
             bind:open={isCarMutationSheetOpen}
@@ -388,7 +433,10 @@
               {#each clientDetails?.cars as cli (cli.car.id)}
                 <Button
                   variant="ghost"
-                  class="w-full h-10 justify-start rounded-none px-3 shrink-0"
+                  class="w-full h-10 justify-start rounded-none px-3 shrink-0 {cli
+                    .car?.archivedAt
+                    ? 'opacity-60'
+                    : ''}"
                   onclick={async () => await goto(`/cars/${cli.car?.id}`)}
                 >
                   <div class="flex w-full items-center gap-1">
@@ -399,6 +447,9 @@
                       {cli.brand?.id != 0 ? cli.brand?.name + " " : ""}{cli.car
                         ?.model}
                     </p>
+                    {#if cli.car?.archivedAt}
+                      <ArchivedBadge date={cli.car.archivedAt} />
+                    {/if}
                     {#if cli.car?.licensePlate}
                       <span
                         class="shrink-0 text-muted-foreground font-mono text-sm"
@@ -438,6 +489,8 @@
             class="mt-4"
             emptyMessage="Пусто..."
             onRowClick={(row) => goto(`/work_orders/${row.workOrder.id}`)}
+            rowClassName={(row) =>
+              row.workOrder.archivedAt ? "opacity-60" : undefined}
             headerClasses={{
               total: "px-0 text-right",
               createdAt: "px-0 text-right",

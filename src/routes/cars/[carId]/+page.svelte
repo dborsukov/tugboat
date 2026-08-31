@@ -1,8 +1,10 @@
 <script lang="ts">
-  import { createQueries } from "@tanstack/svelte-query";
+  import { createQueries, useQueryClient } from "@tanstack/svelte-query";
 
   import { goto } from "$app/navigation";
 
+  import ArchiveIcon from "@lucide/svelte/icons/archive";
+  import ArchiveRestoreIcon from "@lucide/svelte/icons/archive-restore";
   import BarcodeIcon from "@lucide/svelte/icons/barcode";
   import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
   import DotIcon from "@lucide/svelte/icons/dot";
@@ -26,16 +28,23 @@
 
   import { prettifyIsoDateString } from "$lib/tools";
 
+  import { invalidateClients } from "../../clients/queries";
   import { columns } from "../../work_orders/columns";
-  import { workOrderDetailsListByCarIdQueryOptions } from "../../work_orders/queries";
+  import {
+    invalidateWorkOrderLists,
+    workOrderDetailsListByCarIdQueryOptions,
+  } from "../../work_orders/queries";
   import WorkOrderMutationSheet from "../../work_orders/work-order-mutation-sheet.svelte";
   import { driveTypeLabels, fuelTypeLabels } from "../enum-labels";
-  import { carDetailsQueryOptions } from "../queries";
+  import { carDetailsQueryOptions, createRestoreCarMutation } from "../queries";
   import DropdownMenu from "./dropdown-menu.svelte";
 
   let { params } = $props();
   let isSheetOpen: boolean = $state(false);
   let carId = $derived(Number(params.carId));
+
+  const queryClient = useQueryClient();
+  const restoreCarMutation = createRestoreCarMutation(queryClient);
 
   const combinedQueries = createQueries(() => ({
     queries: [
@@ -76,6 +85,15 @@
     initialSorting: [{ id: "createdAt", desc: true }],
     hiddenColumns: ["client", "car_id"],
   });
+
+  function handleRestore() {
+    restoreCarMutation.mutate(carId, {
+      onSuccess: () => {
+        invalidateClients(queryClient);
+        invalidateWorkOrderLists(queryClient);
+      },
+    });
+  }
 </script>
 
 <PageLayout>
@@ -173,6 +191,29 @@
     />
   {:else}
     <div class="mt-4 border border-border rounded rounded-b-none bg-card">
+      {#if carDetails?.carDto?.car?.archivedAt}
+        <div
+          class="flex items-center justify-between gap-2 rounded-t px-4 py-2 border-b border-border bg-muted/40 text-sm"
+        >
+          <span class="flex items-center gap-2 text-muted-foreground">
+            <ArchiveIcon class="size-4" />
+            Автомобіль архівований
+            {prettifyIsoDateString(
+              carDetails.carDto.car.archivedAt,
+              "datetime",
+            )}
+          </span>
+          <Button
+            variant="link"
+            class="p-0"
+            onclick={handleRestore}
+            disabled={restoreCarMutation.isPending}
+          >
+            <ArchiveRestoreIcon />
+            Відновити
+          </Button>
+        </div>
+      {/if}
       <div class="p-4 border-b border-border">
         <div class="flex flex-row items-center gap-4">
           <div class="h-16">
@@ -207,6 +248,7 @@
           <div class="h-full ml-auto flex flex-col items-start">
             <DropdownMenu
               carId={carDetails?.carDto?.car?.id}
+              isArchived={carDetails?.carDto?.car?.archivedAt != null}
               vin={carDetails?.carDto?.car?.vin ?? null}
               licensePlate={carDetails?.carDto?.car?.licensePlate ?? null}
             />
@@ -331,13 +373,15 @@
           <p class="text-muted-foreground">
             {workOrderListItems.length}
           </p>
-          <Button
-            variant="link"
-            class="ml-auto text-base"
-            onclick={() => (isSheetOpen = !isSheetOpen)}
-          >
-            Створити +
-          </Button>
+          {#if !carDetails?.carDto?.car?.archivedAt}
+            <Button
+              variant="link"
+              class="ml-auto text-base"
+              onclick={() => (isSheetOpen = !isSheetOpen)}
+            >
+              Створити +
+            </Button>
+          {/if}
           <WorkOrderMutationSheet
             bind:open={isSheetOpen}
             mode="create"
@@ -350,6 +394,8 @@
             class="mt-4"
             emptyMessage="Пусто..."
             onRowClick={(row) => goto(`/work_orders/${row.workOrder.id}`)}
+            rowClassName={(row) =>
+              row.workOrder.archivedAt ? "opacity-60" : undefined}
             headerClasses={{
               total: "px-0 text-right",
               createdAt: "px-0 text-right",

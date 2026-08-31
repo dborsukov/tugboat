@@ -10,6 +10,8 @@
 
   import PageLayout from "$lib/components/page-layout.svelte";
 
+  import { pluralizeUk } from "$lib/tools";
+
   import { createUpdateDefaultMarkupMutation } from "../queries";
   import {
     getSettingsContext,
@@ -40,15 +42,6 @@
   // ---------- Rate variants (managed on a separate page) ----------
 
   const rateVariantsCount = $derived(draft?.rateVariants.length ?? 0);
-
-  function pluralTariffs(count: number): string {
-    const n = Math.abs(count) % 100;
-    const n1 = n % 10;
-    if (n > 10 && n < 20) return `${count} тарифів`;
-    if (n1 > 1 && n1 < 5) return `${count} тарифи`;
-    if (n1 === 1) return `${count} тариф`;
-    return `${count} тарифів`;
-  }
 </script>
 
 <PageLayout contentWidthClass={SETTINGS_CONTENT_WIDTH_CLASS}>
@@ -99,7 +92,8 @@
       <Item.Actions>
         <div class="flex items-center gap-3">
           <p class="text-sm text-muted-foreground whitespace-nowrap">
-            {pluralTariffs(rateVariantsCount)}
+            {rateVariantsCount}{" "}
+            {pluralizeUk(rateVariantsCount, ["тариф", "тарифи", "тарифів"])}
           </p>
           <ChevronRightIcon class="size-4 shrink-0 text-muted-foreground" />
         </div>

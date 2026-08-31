@@ -26,6 +26,7 @@ pub struct Client {
     pub client_type: ClientType,
     pub notes: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub archived_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, specta::Type)]
@@ -42,6 +43,7 @@ pub struct ClientListItem {
     pub client_type: ClientType,
     pub notes: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub archived_at: Option<DateTime<Utc>>,
     pub contact_phone: Option<String>,
     pub contact_email: Option<String>,
     pub rnokpp: Option<String>,
@@ -62,6 +64,7 @@ impl From<ClientListItem> for Client {
             client_type: item.client_type,
             notes: item.notes,
             created_at: item.created_at,
+            archived_at: item.archived_at,
         }
     }
 }
@@ -86,6 +89,7 @@ pub struct ClientDetails {
     pub iban: Option<String>,
     pub bank_name: Option<String>,
     pub vat_payer: bool,
+    pub archived_at: Option<DateTime<Utc>>,
 }
 
 /// Discriminated payload

@@ -5,6 +5,8 @@
 
   import { goto } from "$app/navigation";
 
+  import ArchiveIcon from "@lucide/svelte/icons/archive";
+  import ArchiveRestoreIcon from "@lucide/svelte/icons/archive-restore";
   import CopyIcon from "@lucide/svelte/icons/copy";
   import EllipsisIcon from "@lucide/svelte/icons/ellipsis-vertical";
   import SearchIcon from "@lucide/svelte/icons/search";
@@ -17,30 +19,75 @@
 
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
 
+  import type { CarDeleteImpact } from "$lib/bindings";
   import { copyText } from "$lib/hooks/use-clipboard.svelte";
   import { settingsState } from "$lib/states/settings.svelte";
+  import { pluralizeUk } from "$lib/tools";
 
+  import { invalidateClients } from "../../clients/queries";
   import { settingsSearchIndex } from "../../settings/settings-search-index";
   import { settingsSearch } from "../../settings/settings-search.svelte";
+  import { invalidateWorkOrderLists } from "../../work_orders/queries";
   import CarMutationSheet from "../car-mutation-sheet.svelte";
-  import { createDeleteCarMutation } from "../queries";
+  import {
+    createArchiveCarMutation,
+    createCarDeleteImpactQuery,
+    createDeleteCarMutation,
+    createRestoreCarMutation,
+  } from "../queries";
 
   let {
     carId,
+    isArchived = false,
     vin,
     licensePlate,
   }: {
     carId: number;
+    isArchived?: boolean;
     vin: string | null;
     licensePlate: string | null;
   } = $props();
 
   let isSheetOpen = $state(false);
   let isDeleteDialogOpen = $state(false);
+  let isArchiveDialogOpen = $state(false);
 
   const queryClient = useQueryClient();
 
   const deleteCarMutation = createDeleteCarMutation(queryClient);
+  const archiveCarMutation = createArchiveCarMutation(queryClient);
+  const restoreCarMutation = createRestoreCarMutation(queryClient);
+
+  const deleteImpactQuery = createCarDeleteImpactQuery(
+    () => carId,
+    () => isDeleteDialogOpen,
+  );
+
+  function describeDeleteImpact(impact: CarDeleteImpact | undefined) {
+    if (!impact) {
+      return "Цю дію неможливо відмінити. Автомобіль буде видалено безповоротно разом з усіма пов'язаними даними.";
+    }
+    const parts: string[] = [];
+    if (impact.workOrderCount > 0) {
+      parts.push(
+        `${impact.workOrderCount} ${pluralizeUk(impact.workOrderCount, ["замовлення", "замовлення", "замовлень"])}`,
+      );
+    }
+    if (impact.laborItemCount > 0) {
+      parts.push(
+        `${impact.laborItemCount} ${pluralizeUk(impact.laborItemCount, ["робота", "роботи", "робіт"])}`,
+      );
+    }
+    if (impact.partItemCount > 0) {
+      parts.push(
+        `${impact.partItemCount} ${pluralizeUk(impact.partItemCount, ["запчастина", "запчастини", "запчастин"])}`,
+      );
+    }
+    if (parts.length === 0) {
+      return "Цю дію неможливо відмінити. Автомобіль буде видалено безповоротно.";
+    }
+    return `Буде видалено: ${parts.join(", ")}. Цю дію неможливо відмінити.`;
+  }
 
   const vinTemplates = $derived(
     settingsState.settings?.vinLookupTemplates ?? [],
@@ -49,11 +96,28 @@
     settingsState.settings?.licensePlateLookupTemplates ?? [],
   );
 
+  function invalidateCascades() {
+    invalidateClients(queryClient);
+    invalidateWorkOrderLists(queryClient);
+  }
+
   function handleDelete() {
     deleteCarMutation.mutate(carId, {
       onSuccess: async () => {
         await goto("/cars");
       },
+    });
+  }
+
+  function handleArchive() {
+    archiveCarMutation.mutate(carId, {
+      onSuccess: invalidateCascades,
+    });
+  }
+
+  function handleRestore() {
+    restoreCarMutation.mutate(carId, {
+      onSuccess: invalidateCascades,
     });
   }
 
@@ -99,11 +163,18 @@
   >
     <EllipsisIcon />
   </DropdownMenu.Trigger>
-  <DropdownMenu.Content class="w-40" align="end">
-    <DropdownMenu.Item onSelect={() => (isSheetOpen = true)}>
-      <EditIcon />
-      Редагувати
-    </DropdownMenu.Item>
+  <DropdownMenu.Content class="w-max whitespace-nowrap" align="end">
+    {#if isArchived}
+      <DropdownMenu.Item onSelect={handleRestore}>
+        <ArchiveRestoreIcon />
+        Відновити
+      </DropdownMenu.Item>
+    {:else}
+      <DropdownMenu.Item onSelect={() => (isSheetOpen = true)}>
+        <EditIcon />
+        Редагувати
+      </DropdownMenu.Item>
+    {/if}
 
     <DropdownMenu.Separator />
 
@@ -179,19 +250,40 @@
 
     <DropdownMenu.Separator />
 
-    <DropdownMenu.Item
-      variant="destructive"
-      onSelect={() => (isDeleteDialogOpen = true)}
-    >
-      <TrashIcon />
-      Видалити
-    </DropdownMenu.Item>
+    {#if isArchived}
+      <DropdownMenu.Item
+        variant="destructive"
+        onSelect={() => (isDeleteDialogOpen = true)}
+      >
+        <TrashIcon />
+        Видалити назавжди
+      </DropdownMenu.Item>
+    {:else}
+      <DropdownMenu.Item
+        variant="warning"
+        onSelect={() => (isArchiveDialogOpen = true)}
+      >
+        <ArchiveIcon />
+        Архівувати
+      </DropdownMenu.Item>
+    {/if}
   </DropdownMenu.Content>
 </DropdownMenu.Root>
 
 <CarMutationSheet bind:open={isSheetOpen} {carId} />
 <DeleteDialog
+  bind:open={isArchiveDialogOpen}
+  onDelete={handleArchive}
+  title="Підтвердіть архівацію"
+  confirmLabel="Архівувати"
+  actionVariant="warning"
+  description="Автомобіль буде архівований разом з його замовленнями. Ви зможете відновити його пізніше."
+/>
+<DeleteDialog
   bind:open={isDeleteDialogOpen}
   onDelete={handleDelete}
-  description="Цю дію неможливо відмінити. Усі пов'язані з цим автомобілем дані будуть видалені."
+  title="Видалити назавжди"
+  description={deleteImpactQuery.isPending
+    ? "Підрахунок пов'язаних даних…"
+    : describeDeleteImpact(deleteImpactQuery.data)}
 />

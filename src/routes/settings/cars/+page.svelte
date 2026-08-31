@@ -7,6 +7,8 @@
 
   import PageLayout from "$lib/components/page-layout.svelte";
 
+  import { pluralizeUk } from "$lib/tools";
+
   import {
     getSettingsContext,
     SETTINGS_CONTENT_WIDTH_CLASS,
@@ -23,15 +25,6 @@
   const plateTemplatesCount = $derived(
     draft?.licensePlateLookupTemplates.length ?? 0,
   );
-
-  function pluralTemplates(count: number): string {
-    const n = Math.abs(count) % 100;
-    const n1 = n % 10;
-    if (n > 10 && n < 20) return `${count} шаблонів`;
-    if (n1 > 1 && n1 < 5) return `${count} шаблони`;
-    if (n1 === 1) return `${count} шаблон`;
-    return `${count} шаблонів`;
-  }
 </script>
 
 <PageLayout contentWidthClass={SETTINGS_CONTENT_WIDTH_CLASS}>
@@ -58,7 +51,8 @@
       <Item.Actions>
         <div class="flex items-center gap-3">
           <p class="text-sm text-muted-foreground whitespace-nowrap">
-            {pluralTemplates(vinTemplatesCount)}
+            {vinTemplatesCount}{" "}
+            {pluralizeUk(vinTemplatesCount, ["шаблон", "шаблони", "шаблонів"])}
           </p>
           <ChevronRightIcon class="size-4 shrink-0 text-muted-foreground" />
         </div>
@@ -87,7 +81,12 @@
       <Item.Actions>
         <div class="flex items-center gap-3">
           <p class="text-sm text-muted-foreground whitespace-nowrap">
-            {pluralTemplates(plateTemplatesCount)}
+            {plateTemplatesCount}{" "}
+            {pluralizeUk(plateTemplatesCount, [
+              "шаблон",
+              "шаблони",
+              "шаблонів",
+            ])}
           </p>
           <ChevronRightIcon class="size-4 shrink-0 text-muted-foreground" />
         </div>

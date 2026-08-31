@@ -3,12 +3,15 @@ pub mod structs;
 
 use std::collections::HashMap;
 
+use serde::{Deserialize, Serialize};
+use sqlx::{Executor, Sqlite};
 use structs::*;
 use tauri::State;
 
 use crate::{
     database::{
         cars::dtos::{CarDetailsDto, CarDto},
+        clients,
         clients::{fetch_client_by_id, fetch_clients_list, structs::Client},
     },
     error::{AppError, AppResult},
@@ -17,7 +20,7 @@ use crate::{
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_cars_count(state: State<'_, crate::AppState>) -> AppResult<i32> {
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM cars")
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM cars WHERE archived_at IS NULL")
         .fetch_one(&state.db_pool)
         .await?;
     Ok(count as i32)
@@ -27,7 +30,7 @@ pub async fn fetch_cars_count(state: State<'_, crate::AppState>) -> AppResult<i3
 #[specta::specta]
 pub async fn fetch_cars_list(state: State<'_, crate::AppState>) -> AppResult<Vec<CarDto>> {
     let cars: Vec<Car> = sqlx::query_as(
-        "SELECT id, client_id, brand_id, model, year, license_plate, vin, engine_code, engine_displacement, fuel_type, drive_type, notes, created_at FROM cars",
+        "SELECT id, client_id, brand_id, model, year, license_plate, vin, engine_code, engine_displacement, fuel_type, drive_type, notes, created_at, archived_at FROM cars",
     )
     .fetch_all(&state.db_pool)
     .await?;
@@ -42,7 +45,7 @@ pub async fn fetch_cars_list_by_client_id(
     client_id: i32,
 ) -> AppResult<Vec<CarDto>> {
     let cars: Vec<Car> = sqlx::query_as(
-        "SELECT id, client_id, brand_id, model, year, license_plate, vin,  engine_code, engine_displacement, fuel_type, drive_type, notes, created_at FROM cars WHERE client_id = $1",
+        "SELECT id, client_id, brand_id, model, year, license_plate, vin,  engine_code, engine_displacement, fuel_type, drive_type, notes, created_at, archived_at FROM cars WHERE client_id = $1",
     )
     .bind(client_id)
     .fetch_all(&state.db_pool)
@@ -119,7 +122,7 @@ pub async fn fetch_car_details(
 #[specta::specta]
 pub async fn fetch_car_by_id(state: State<'_, crate::AppState>, id: i32) -> AppResult<CarDto> {
     let car: Car = sqlx::query_as(
-        "SELECT id, client_id, brand_id, model, year, license_plate, vin, engine_code, engine_displacement, fuel_type, drive_type, notes, created_at FROM cars WHERE id = $1",
+        "SELECT id, client_id, brand_id, model, year, license_plate, vin, engine_code, engine_displacement, fuel_type, drive_type, notes, created_at, archived_at FROM cars WHERE id = $1",
     )
     .bind(id)
     .fetch_one(&state.db_pool)
@@ -159,6 +162,8 @@ pub async fn create_car(
     state: State<'_, crate::AppState>,
     payload: CreateCarPayload,
 ) -> AppResult<Car> {
+    clients::ensure_client_active(&state.db_pool, payload.client_id as i32).await?;
+
     let car: Car =
         sqlx::query_as("INSERT INTO cars (client_id, brand_id, model, year, license_plate, vin, engine_code, engine_displacement, fuel_type, drive_type, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *")
             .bind(payload.client_id)
@@ -184,6 +189,9 @@ pub async fn update_car(
     id: i32,
     payload: UpdateCarPayload,
 ) -> AppResult<Car> {
+    ensure_car_active(&state.db_pool, id).await?;
+    clients::ensure_client_active(&state.db_pool, payload.client_id as i32).await?;
+
     let car: Car =
         sqlx::query_as("UPDATE cars SET client_id = $2, brand_id = $3, model = $4, year = $5, license_plate = $6, vin = $7, engine_code = $8, engine_displacement = $9, fuel_type = $10, drive_type = $11, notes = $12  WHERE id = $1 RETURNING *")
             .bind(id)
@@ -216,4 +224,128 @@ pub async fn delete_car(state: State<'_, crate::AppState>, id: i32) -> AppResult
         ));
     }
     Ok(())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CarDeleteImpact {
+    #[specta(type = specta_typescript::Number)]
+    pub work_order_count: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub labor_item_count: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub part_item_count: i64,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_car_delete_impact(
+    state: State<'_, crate::AppState>,
+    id: i32,
+) -> AppResult<CarDeleteImpact> {
+    let work_order_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM work_orders WHERE car_id = $1")
+            .bind(id)
+            .fetch_one(&state.db_pool)
+            .await?;
+
+    let labor_item_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM labor_items li \
+         JOIN work_orders wo ON wo.id = li.work_order_id \
+         WHERE wo.car_id = $1",
+    )
+    .bind(id)
+    .fetch_one(&state.db_pool)
+    .await?;
+
+    let part_item_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM part_items pi \
+         JOIN work_orders wo ON wo.id = pi.work_order_id \
+         WHERE wo.car_id = $1",
+    )
+    .bind(id)
+    .fetch_one(&state.db_pool)
+    .await?;
+
+    Ok(CarDeleteImpact {
+        work_order_count,
+        labor_item_count,
+        part_item_count,
+    })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn archive_car(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
+    let mut tx = state.db_pool.begin().await?;
+
+    let result = sqlx::query(
+        "UPDATE cars SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
+         WHERE id = $1 AND archived_at IS NULL",
+    )
+    .bind(id)
+    .execute(&mut *tx)
+    .await?;
+    if result.rows_affected() == 0 {
+        tx.rollback().await?;
+        return Err(AppError::NotFound(
+            "Автомобіля з таким ID не знайдено в базі даних".to_string(),
+        ));
+    }
+
+    sqlx::query(
+        "UPDATE work_orders SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
+         WHERE car_id = $1 AND archived_at IS NULL",
+    )
+    .bind(id)
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn restore_car(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
+    let mut tx = state.db_pool.begin().await?;
+
+    let result = sqlx::query("UPDATE cars SET archived_at = NULL WHERE id = $1")
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+    if result.rows_affected() == 0 {
+        tx.rollback().await?;
+        return Err(AppError::NotFound(
+            "Автомобіля з таким ID не знайдено в базі даних".to_string(),
+        ));
+    }
+
+    sqlx::query("UPDATE work_orders SET archived_at = NULL WHERE car_id = $1")
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
+pub(crate) async fn ensure_car_active<'e, E>(executor: E, id: i32) -> AppResult<()>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    let archived_at: Option<Option<String>> =
+        sqlx::query_scalar("SELECT archived_at FROM cars WHERE id = $1")
+            .bind(id)
+            .fetch_optional(executor)
+            .await?;
+    match archived_at {
+        None => Err(AppError::NotFound(
+            "Автомобіля з таким ID не знайдено в базі даних".to_string(),
+        )),
+        Some(Some(_)) => Err(AppError::Generic(
+            "Автомобіль архівований. Спочатку відновіть його з архіву.".to_string(),
+        )),
+        Some(None) => Ok(()),
+    }
 }

@@ -4,21 +4,26 @@ CREATE TABLE clients (
     surname TEXT,
     first_name TEXT,
     patronymic TEXT,
-    phone TEXT UNIQUE,
+    phone TEXT,
     email TEXT,
-    client_type TEXT NOT NULL DEFAULT 'individual' CHECK (
-        client_type IN ('individual', 'fop', 'company')
-    ),
+    client_type TEXT NOT NULL DEFAULT 'individual' CHECK (client_type IN ('individual', 'fop', 'company')),
     notes TEXT,
-    created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now'))
+    created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    archived_at TEXT
 );
 
 CREATE TABLE client_details (
     client_id INTEGER PRIMARY KEY,
     legal_name TEXT,
     legal_address TEXT,
-    edrpou TEXT CHECK (edrpou IS NULL OR length (edrpou) = 8),
-    rnokpp TEXT CHECK (rnokpp IS NULL OR length (rnokpp) = 10),
+    edrpou TEXT CHECK (
+        edrpou IS NULL
+        OR length (edrpou) = 8
+    ),
+    rnokpp TEXT CHECK (
+        rnokpp IS NULL
+        OR length (rnokpp) = 10
+    ),
     director_surname TEXT,
     director_first_name TEXT,
     director_patronymic TEXT,
@@ -30,6 +35,7 @@ CREATE TABLE client_details (
     iban TEXT,
     bank_name TEXT,
     vat_payer INTEGER NOT NULL DEFAULT 0,
+    archived_at TEXT,
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE
 );
 
@@ -53,14 +59,15 @@ CREATE TABLE cars (
     brand_id INTEGER NOT NULL,
     model TEXT NOT NULL,
     year INTEGER NOT NULL,
-    license_plate TEXT UNIQUE,
-    vin TEXT UNIQUE,
+    license_plate TEXT,
+    vin TEXT,
     engine_code TEXT,
     engine_displacement REAL,
     fuel_type TEXT,
     drive_type TEXT,
     notes TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    archived_at TEXT,
     FOREIGN KEY (client_id) REFERENCES clients (id) ON DELETE CASCADE,
     FOREIGN KEY (brand_id) REFERENCES car_brands (id) ON DELETE RESTRICT
 );
@@ -71,7 +78,8 @@ CREATE TABLE services (
     name TEXT NOT NULL,
     price_type TEXT NOT NULL,
     fixed_price TEXT NOT NULL DEFAULT '0',
-    labor_hours TEXT NOT NULL DEFAULT "1.0"
+    labor_hours TEXT NOT NULL DEFAULT "1.0",
+    archived_at TEXT
 );
 
 CREATE TABLE work_orders (
@@ -91,7 +99,8 @@ CREATE TABLE work_orders (
     completed_at TEXT,
     paid_at TEXT,
     payment_method TEXT,
-    FOREIGN KEY (car_id) REFERENCES cars (id) ON DELETE RESTRICT
+    archived_at TEXT,
+    FOREIGN KEY (car_id) REFERENCES cars (id) ON DELETE CASCADE
 );
 
 CREATE TABLE labor_items (
@@ -133,13 +142,40 @@ CREATE INDEX idx_cars_client_id ON cars (client_id);
 
 CREATE INDEX idx_cars_brand_id ON cars (brand_id);
 
-CREATE UNIQUE INDEX idx_client_details_edrpou
-ON client_details (edrpou)
-WHERE edrpou IS NOT NULL;
+CREATE UNIQUE INDEX idx_clients_phone_active ON clients (phone)
+WHERE
+    phone IS NOT NULL
+    AND archived_at IS NULL;
 
-CREATE UNIQUE INDEX idx_client_details_rnokpp
-ON client_details (rnokpp)
-WHERE rnokpp IS NOT NULL;
+CREATE UNIQUE INDEX idx_cars_license_plate_active ON cars (license_plate)
+WHERE
+    license_plate IS NOT NULL
+    AND archived_at IS NULL;
+
+CREATE UNIQUE INDEX idx_cars_vin_active ON cars (vin)
+WHERE
+    vin IS NOT NULL
+    AND archived_at IS NULL;
+
+CREATE UNIQUE INDEX idx_client_details_edrpou ON client_details (edrpou)
+WHERE
+    edrpou IS NOT NULL
+    AND archived_at IS NULL;
+
+CREATE UNIQUE INDEX idx_client_details_rnokpp ON client_details (rnokpp)
+WHERE
+    rnokpp IS NOT NULL
+    AND archived_at IS NULL;
+
+CREATE INDEX idx_clients_archived_at ON clients (archived_at);
+
+CREATE INDEX idx_client_details_archived_at ON client_details (archived_at);
+
+CREATE INDEX idx_cars_archived_at ON cars (archived_at);
+
+CREATE INDEX idx_work_orders_archived_at ON work_orders (archived_at);
+
+CREATE INDEX idx_services_archived_at ON services (archived_at);
 
 CREATE INDEX idx_work_orders_car_id ON work_orders (car_id);
 

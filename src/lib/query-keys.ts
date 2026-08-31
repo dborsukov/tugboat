@@ -5,6 +5,8 @@ export const keys = {
     count: () => [...keys.clients.all, "count"] as const,
     details: () => [...keys.clients.all, "detail"] as const,
     detail: (id: string | number) => [...keys.clients.details(), id] as const,
+    deleteImpact: (id: number) =>
+      [...keys.clients.all, "delete-impact", id] as const,
   },
   cars: {
     all: ["cars"] as const,
@@ -13,6 +15,8 @@ export const keys = {
     count: () => [...keys.cars.all, "count"] as const,
     details: () => [...keys.cars.all, "detail"] as const,
     detail: (id: string | number) => [...keys.cars.details(), id] as const,
+    deleteImpact: (id: number) =>
+      [...keys.cars.all, "delete-impact", id] as const,
   },
   carBrand: ["carBrand"] as const,
   workOrders: {
@@ -28,6 +32,8 @@ export const keys = {
     details: () => [...keys.workOrders.all, "detail"] as const,
     detail: (id: string | number) =>
       [...keys.workOrders.details(), id] as const,
+    deleteImpact: (id: string) =>
+      [...keys.workOrders.all, "delete-impact", id] as const,
   },
   services: {
     all: ["services"] as const,

@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite::SqliteRow, FromRow, Row};
@@ -14,6 +15,7 @@ pub struct Service {
     pub price_type: LaborPriceType,
     pub fixed_price: Decimal,
     pub labor_hours: Decimal,
+    pub archived_at: Option<DateTime<Utc>>,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for Service {
@@ -25,6 +27,7 @@ impl<'r> FromRow<'r, SqliteRow> for Service {
             price_type: row.try_get("price_type")?,
             fixed_price: decimal_column(row, "fixed_price")?,
             labor_hours: decimal_column(row, "labor_hours")?,
+            archived_at: row.try_get("archived_at")?,
         })
     }
 }

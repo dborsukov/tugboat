@@ -15,6 +15,8 @@ import TableDecimalDisplayCell from "./table-decimal-display-cell.svelte";
 
 export interface ServiceTableMeta {
   onEdit: (id: number) => void;
+  onArchive: (id: number) => void;
+  onRestore: (id: number) => void;
   onDelete: (id: number) => void;
 }
 
@@ -150,7 +152,10 @@ export const columns: ColumnDef<Service>[] = [
       const meta = table.options.meta as ServiceTableMeta | undefined;
       return renderComponent(DataTableActions, {
         id: row.original.id,
+        archived: row.original.archivedAt != null,
         onEdit: (id: number) => meta?.onEdit?.(id),
+        onArchive: (id: number) => meta?.onArchive?.(id),
+        onRestore: (id: number) => meta?.onRestore?.(id),
         onDelete: (id: number) => meta?.onDelete?.(id),
       });
     },

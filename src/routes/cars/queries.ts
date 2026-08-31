@@ -8,6 +8,7 @@ import { toast } from "svelte-sonner";
 import {
   commands,
   type CarBrand,
+  type CarDeleteImpact,
   type CarDetailsDto,
   type CarDto,
   type CreateCarPayload,
@@ -70,6 +71,26 @@ export function createCarDetailsListQuery() {
   return createQuery<CarDetailsDto[]>(() => carDetailsListQueryOptions());
 }
 
+export function carDeleteImpactQueryOptions(
+  id: number | null,
+  enabled: boolean,
+) {
+  return {
+    enabled: enabled && id != null,
+    queryKey: keys.cars.deleteImpact(id!),
+    queryFn: () => unwrap(commands.fetchCarDeleteImpact(id!)),
+  };
+}
+
+export function createCarDeleteImpactQuery(
+  getId: () => number | null,
+  getEnabled: () => boolean,
+) {
+  return createQuery<CarDeleteImpact>(() =>
+    carDeleteImpactQueryOptions(getId(), getEnabled()),
+  );
+}
+
 export function createCreateCarMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
@@ -107,6 +128,34 @@ export function createDeleteCarMutation(queryClient: QueryClient) {
     () => ({
       mutationFn: (id: number) => unwrap(commands.deleteCar(id)),
       onSuccess: async () => {
+        invalidateCars(queryClient);
+        invalidateClients(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createArchiveCarMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (id: number) => unwrap(commands.archiveCar(id)),
+      onSuccess: () => {
+        invalidateCars(queryClient);
+        invalidateClients(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createRestoreCarMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (id: number) => unwrap(commands.restoreCar(id)),
+      onSuccess: () => {
         invalidateCars(queryClient);
         invalidateClients(queryClient);
       },

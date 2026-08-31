@@ -3,17 +3,27 @@
 
   interface Props {
     open: boolean;
+    title?: string;
     description?: string | null;
+    confirmLabel?: string;
+    actionVariant?: "default" | "destructive" | "warning";
     onDelete?: (() => void) | null;
   }
 
-  let { open = $bindable(false), description, onDelete }: Props = $props();
+  let {
+    open = $bindable(false),
+    title = "Підтвердіть видалення",
+    description,
+    confirmLabel = "Видалити",
+    actionVariant = "destructive",
+    onDelete,
+  }: Props = $props();
 </script>
 
 <AlertDialog.Root bind:open>
   <AlertDialog.Content>
     <AlertDialog.Header>
-      <AlertDialog.Title>Підтвердіть видалення</AlertDialog.Title>
+      <AlertDialog.Title>{title}</AlertDialog.Title>
       {#if description != null}
         <AlertDialog.Description>
           {description}
@@ -21,8 +31,12 @@
       {/if}
     </AlertDialog.Header>
     <AlertDialog.Footer>
-      <AlertDialog.Action variant="destructive" onclick={onDelete}
-        >Видалити</AlertDialog.Action
+      <AlertDialog.Action
+        variant={actionVariant}
+        onclick={() => {
+          open = false;
+          onDelete?.();
+        }}>{confirmLabel}</AlertDialog.Action
       >
       <AlertDialog.Cancel variant="outline">Відмінити</AlertDialog.Cancel>
     </AlertDialog.Footer>

@@ -6,11 +6,14 @@ use std::collections::HashMap;
 
 use chrono::Utc;
 use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
+use sqlx::{Executor, Sqlite};
 use structs::*;
 use tauri::State;
 
 use crate::{
     database::{
+        cars,
         cars::{dtos::CarDto, fetch_car_by_id},
         clients::{
             fetch_client_by_id, fetch_client_details,
@@ -24,9 +27,10 @@ use crate::{
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_work_orders_count(state: State<'_, crate::AppState>) -> AppResult<i32> {
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM work_orders")
-        .fetch_one(&state.db_pool)
-        .await?;
+    let count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM work_orders WHERE archived_at IS NULL")
+            .fetch_one(&state.db_pool)
+            .await?;
     Ok(count as i32)
 }
 
@@ -36,7 +40,7 @@ pub async fn fetch_work_order_by_id(
     state: &State<'_, crate::AppState>,
     id: &String,
 ) -> AppResult<WorkOrder> {
-    let work_order: WorkOrder = sqlx::query_as("SELECT id, car_id, odometer_in, description, notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders WHERE id = $1")
+    let work_order: WorkOrder = sqlx::query_as("SELECT id, car_id, odometer_in, description, notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, archived_at, started_at, completed_at, paid_at, payment_method FROM work_orders WHERE id = $1")
         .bind(id)
         .fetch_one(&state.db_pool)
         .await?;
@@ -48,7 +52,7 @@ pub async fn fetch_work_order_by_id(
 pub async fn fetch_work_orders_list(
     state: State<'_, crate::AppState>,
 ) -> AppResult<Vec<WorkOrder>> {
-    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, description, notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders")
+    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, description, notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, archived_at, started_at, completed_at, paid_at, payment_method FROM work_orders")
         .fetch_all(&state.db_pool)
         .await?;
     Ok(work_orders)
@@ -184,7 +188,7 @@ pub async fn fetch_work_order_details_dto_by_car_id(
     let client = fetch_client_by_id(state.clone(), car_dto.car.client_id as i32).await?;
     let client_details = fetch_client_details(state.clone(), car_dto.car.client_id as i32).await?;
 
-    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, description, notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, started_at, completed_at, paid_at, payment_method FROM work_orders WHERE car_id = $1")
+    let work_orders: Vec<WorkOrder> = sqlx::query_as("SELECT id, car_id, odometer_in, description, notes, status, rate, labor_cost_type, labor_cost_value, discount_type, discount_value, created_at, archived_at, started_at, completed_at, paid_at, payment_method FROM work_orders WHERE car_id = $1")
         .bind(car_id)
         .fetch_all(&state.db_pool)
         .await?;
@@ -215,7 +219,7 @@ pub async fn fetch_work_order_details_dto_by_client_id(
     let client_details = fetch_client_details(state.clone(), client_id).await?;
 
     let work_orders: Vec<WorkOrder> = sqlx::query_as(
-        "SELECT wo.id, wo.car_id, wo.odometer_in, wo.description, wo.notes, wo.status, wo.rate, wo.labor_cost_type, wo.labor_cost_value, wo.discount_type, wo.discount_value, wo.created_at, wo.started_at, wo.completed_at, wo.paid_at, wo.payment_method \
+        "SELECT wo.id, wo.car_id, wo.odometer_in, wo.description, wo.notes, wo.status, wo.rate, wo.labor_cost_type, wo.labor_cost_value, wo.discount_type, wo.discount_value, wo.created_at, wo.archived_at, wo.started_at, wo.completed_at, wo.paid_at, wo.payment_method \
          FROM work_orders wo \
          JOIN cars c ON c.id = wo.car_id \
          WHERE c.client_id = $1",
@@ -277,6 +281,8 @@ pub async fn create_work_order(
     state: State<'_, crate::AppState>,
     payload: CreateWorkOrderPayload,
 ) -> AppResult<WorkOrder> {
+    cars::ensure_car_active(&state.db_pool, payload.car_id as i32).await?;
+
     let mut tx = state.db_pool.begin().await?;
 
     let id = generate_work_order_id(&mut tx).await?;
@@ -307,6 +313,9 @@ pub async fn update_work_order(
     state: State<'_, crate::AppState>,
     payload: UpdateWorkOrderPayload,
 ) -> AppResult<WorkOrder> {
+    ensure_work_order_active(&state.db_pool, &payload.id).await?;
+    cars::ensure_car_active(&state.db_pool, payload.car_id as i32).await?;
+
     let work_order: WorkOrder = sqlx::query_as(
         "UPDATE work_orders SET car_id = $2, odometer_in = $3, description = $4, notes = $5, status = $6, rate = $7, labor_cost_type = $8, labor_cost_value = $9, discount_type = $10, discount_value = $11, started_at = $12, completed_at = $13, paid_at = $14, payment_method = $15 WHERE id = $1 RETURNING *",
     )
@@ -345,6 +354,119 @@ pub async fn delete_work_order(state: State<'_, crate::AppState>, id: String) ->
     Ok(())
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkOrderDeleteImpact {
+    #[specta(type = specta_typescript::Number)]
+    pub labor_item_count: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub part_item_count: i64,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_work_order_delete_impact(
+    state: State<'_, crate::AppState>,
+    id: String,
+) -> AppResult<WorkOrderDeleteImpact> {
+    let labor_item_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM labor_items WHERE work_order_id = $1")
+            .bind(&id)
+            .fetch_one(&state.db_pool)
+            .await?;
+
+    let part_item_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM part_items WHERE work_order_id = $1")
+            .bind(&id)
+            .fetch_one(&state.db_pool)
+            .await?;
+
+    Ok(WorkOrderDeleteImpact {
+        labor_item_count,
+        part_item_count,
+    })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn archive_work_order(state: State<'_, crate::AppState>, id: String) -> AppResult<()> {
+    let result = sqlx::query(
+        "UPDATE work_orders SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
+         WHERE id = $1 AND archived_at IS NULL",
+    )
+    .bind(id)
+    .execute(&state.db_pool)
+    .await?;
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound(
+            "Замовлення з таким ID не знайдено в базі даних".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn restore_work_order(state: State<'_, crate::AppState>, id: String) -> AppResult<()> {
+    let result = sqlx::query("UPDATE work_orders SET archived_at = NULL WHERE id = $1")
+        .bind(id)
+        .execute(&state.db_pool)
+        .await?;
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound(
+            "Замовлення з таким ID не знайдено в базі даних".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+async fn ensure_work_order_active<'e, E>(executor: E, id: &str) -> AppResult<()>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    let archived_at: Option<Option<String>> =
+        sqlx::query_scalar("SELECT archived_at FROM work_orders WHERE id = $1")
+            .bind(id)
+            .fetch_optional(executor)
+            .await?;
+    match archived_at {
+        None => Err(AppError::NotFound(
+            "Замовлення з таким ID не знайдено в базі даних".to_string(),
+        )),
+        Some(Some(_)) => Err(AppError::Generic(
+            "Замовлення архівоване. Спочатку відновіть його з архіву.".to_string(),
+        )),
+        Some(None) => Ok(()),
+    }
+}
+
+async fn ensure_item_work_order_active<'e, E>(
+    executor: E,
+    table: &str,
+    item_id: i32,
+) -> AppResult<()>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    let archived_at: Option<Option<String>> = sqlx::query_scalar(&format!(
+        "SELECT wo.archived_at FROM {table} li \
+         JOIN work_orders wo ON wo.id = li.work_order_id \
+         WHERE li.id = $1"
+    ))
+    .bind(item_id)
+    .fetch_optional(executor)
+    .await?;
+    match archived_at {
+        None => Err(AppError::NotFound(
+            "Елемент з таким ID не знайдено в базі даних".to_string(),
+        )),
+        Some(Some(_)) => Err(AppError::Generic(
+            "Замовлення архівоване. Спочатку відновіть його з архіву.".to_string(),
+        )),
+        Some(None) => Ok(()),
+    }
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_labor_items_list(
@@ -379,6 +501,8 @@ pub async fn create_labor_item(
     state: State<'_, crate::AppState>,
     payload: CreateLaborItemPayload,
 ) -> AppResult<LaborItem> {
+    ensure_work_order_active(&state.db_pool, &payload.work_order_id).await?;
+
     let labor_item: LaborItem =
         sqlx::query_as("INSERT INTO labor_items (service_id, work_order_id, code, name, price_type, fixed_price, labor_hours, discount_type, discount_value) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *")
             .bind(payload.service_id)
@@ -402,6 +526,8 @@ pub async fn update_labor_item(
     id: i32,
     payload: UpdateLaborItemPayload,
 ) -> AppResult<LaborItem> {
+    ensure_item_work_order_active(&state.db_pool, "labor_items", id).await?;
+
     let labor_item: LaborItem = sqlx::query_as(
         "UPDATE labor_items SET service_id = $2, code = $3, name = $4, price_type = $5, fixed_price = $6, labor_hours = $7, discount_type = $8, discount_value = $9 WHERE id = $1 RETURNING *",
     )
@@ -422,6 +548,8 @@ pub async fn update_labor_item(
 #[tauri::command]
 #[specta::specta]
 pub async fn delete_labor_item(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
+    ensure_item_work_order_active(&state.db_pool, "labor_items", id).await?;
+
     let result = sqlx::query("DELETE FROM labor_items WHERE id = $1")
         .bind(id)
         .execute(&state.db_pool)
@@ -442,6 +570,7 @@ pub async fn delete_labor_items(state: State<'_, crate::AppState>, ids: Vec<i32>
     }
     let mut tx = state.db_pool.begin().await?;
     for id in &ids {
+        ensure_item_work_order_active(&mut *tx, "labor_items", *id).await?;
         let result = sqlx::query("DELETE FROM labor_items WHERE id = $1")
             .bind(id)
             .execute(&mut *tx)
@@ -487,6 +616,8 @@ pub async fn create_part_item(
     state: State<'_, crate::AppState>,
     payload: CreatePartItemPayload,
 ) -> AppResult<PartItem> {
+    ensure_work_order_active(&state.db_pool, &payload.work_order_id).await?;
+
     let part_item: PartItem =
         sqlx::query_as("INSERT INTO part_items (work_order_id, status, code, name, quantity, unit_type, base_cost, markup, discount_type, discount_value) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *")
             .bind(payload.work_order_id)
@@ -511,6 +642,8 @@ pub async fn update_part_item(
     id: i32,
     payload: UpdatePartItemPayload,
 ) -> AppResult<PartItem> {
+    ensure_item_work_order_active(&state.db_pool, "part_items", id).await?;
+
     let part_item: PartItem = sqlx::query_as(
         "UPDATE part_items SET status = $2, code = $3, name = $4, quantity = $5, unit_type = $6, base_cost = $7, markup = $8, discount_type = $9, discount_value = $10 WHERE id = $1 RETURNING *",
     )
@@ -532,6 +665,8 @@ pub async fn update_part_item(
 #[tauri::command]
 #[specta::specta]
 pub async fn delete_part_item(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
+    ensure_item_work_order_active(&state.db_pool, "part_items", id).await?;
+
     let result = sqlx::query("DELETE FROM part_items WHERE id = $1")
         .bind(id)
         .execute(&state.db_pool)
@@ -552,6 +687,7 @@ pub async fn delete_part_items(state: State<'_, crate::AppState>, ids: Vec<i32>)
     }
     let mut tx = state.db_pool.begin().await?;
     for id in &ids {
+        ensure_item_work_order_active(&mut *tx, "part_items", *id).await?;
         let result = sqlx::query("DELETE FROM part_items WHERE id = $1")
             .bind(id)
             .execute(&mut *tx)
@@ -579,6 +715,7 @@ pub async fn update_part_items_status(
     }
     let mut tx = state.db_pool.begin().await?;
     for id in &ids {
+        ensure_item_work_order_active(&mut *tx, "part_items", *id).await?;
         let result = sqlx::query("UPDATE part_items SET status = $2 WHERE id = $1")
             .bind(id)
             .bind(status)

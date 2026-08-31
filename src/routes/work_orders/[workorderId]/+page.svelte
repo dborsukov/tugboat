@@ -3,6 +3,8 @@
 
   import { goto } from "$app/navigation";
 
+  import ArchiveIcon from "@lucide/svelte/icons/archive";
+  import ArchiveRestoreIcon from "@lucide/svelte/icons/archive-restore";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import Info from "@lucide/svelte/icons/info";
@@ -30,7 +32,7 @@
   import type { PartStatus, Service, WorkOrderStatus } from "$lib/bindings";
   import { privacyState } from "$lib/states/privacy.svelte";
   import { TableActionState } from "$lib/states/table-actions.svelte";
-  import { prettifyIsoDateString } from "$lib/tools";
+  import { pluralizeUk, prettifyIsoDateString } from "$lib/tools";
 
   import ClientAvatar from "../../clients/client-avatar.svelte";
   import { servicesQueryOptions } from "../../services/queries";
@@ -40,6 +42,7 @@
     createDeleteLaborItemsMutation,
     createDeletePartItemMutation,
     createDeletePartItemsMutation,
+    createRestoreWorkOrderMutation,
     createUpdatePartItemsStatusMutation,
     workOrderDetailsQueryOptions,
   } from "../queries";
@@ -68,6 +71,7 @@
   const deleteLaborItemsMutation = createDeleteLaborItemsMutation(queryClient);
   const updatePartItemsStatusMutation =
     createUpdatePartItemsStatusMutation(queryClient);
+  const restoreWorkOrderMutation = createRestoreWorkOrderMutation(queryClient);
 
   const combinedQueries = createQueries(() => ({
     queries: [
@@ -94,11 +98,15 @@
   let services = $derived(combinedQueries.services.data);
   let workOrderDetails = $derived(combinedQueries.workOrderDetails.data);
 
+  const isArchived = $derived(workOrderDetails?.workOrder?.archivedAt != null);
   const isPaid = $derived(workOrderDetails?.workOrder?.status === "Paid");
 
   // Locks the whole order (status + details) once it's Paid.
   let isLocked = $state(true);
   let previousStatus: WorkOrderStatus | undefined;
+
+  // Archived orders are read-only regardless of the paid-lock state.
+  const isReadOnly = $derived(isLocked || isArchived);
 
   $effect(() => {
     const currentStatus = workOrderDetails?.workOrder?.status;
@@ -135,7 +143,7 @@
       return combinedQueries.workOrderDetails.data?.partItems ?? [];
     },
     get columns() {
-      const columns = isLocked
+      const columns = isReadOnly
         ? partsColumns.filter((c) => c.id !== "actions" && c.id !== "select")
         : partsColumns;
       if (privacyState.hidePricing) {
@@ -163,7 +171,7 @@
       return combinedQueries.workOrderDetails.data?.laborItems ?? [];
     },
     get columns() {
-      return isLocked
+      return isReadOnly
         ? laborColumns.filter((c) => c.id !== "actions" && c.id !== "select")
         : laborColumns;
     },
@@ -224,16 +232,6 @@
     }
   }
 
-  function pluralize(count: number, forms: [string, string, string]) {
-    const mod10 = count % 10;
-    const mod100 = count % 100;
-    if (mod10 === 1 && mod100 !== 11) return forms[0];
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-      return forms[1];
-    }
-    return forms[2];
-  }
-
   function confirmBulkLaborDelete() {
     if (laborTableActions.bulkDeleteIds.length > 0) {
       deleteLaborItemsMutation.mutate([...laborTableActions.bulkDeleteIds], {
@@ -267,6 +265,10 @@
         },
       },
     );
+  }
+
+  function handleRestore() {
+    restoreWorkOrderMutation.mutate(params.workorderId);
   }
 
   function carSecondaryLine(wod: typeof workOrderDetails) {
@@ -452,7 +454,30 @@
     />
   {:else}
     <div class="mt-4 border border-border rounded bg-card">
-      {#if isPaid}
+      {#if isArchived}
+        <div
+          class="flex items-center justify-between gap-2 rounded-t px-4 py-2 border-b border-border bg-muted/40 text-sm"
+        >
+          <span class="flex items-center gap-2 text-muted-foreground">
+            <ArchiveIcon class="size-4" />
+            Замовлення архівоване
+            {prettifyIsoDateString(
+              workOrderDetails?.workOrder?.archivedAt ?? "",
+              "datetime",
+            )}
+          </span>
+          <Button
+            variant="link"
+            class="p-0"
+            onclick={handleRestore}
+            disabled={restoreWorkOrderMutation.isPending}
+          >
+            <ArchiveRestoreIcon />
+            Відновити
+          </Button>
+        </div>
+      {/if}
+      {#if isPaid && !isArchived}
         <div
           class="flex items-center justify-between gap-2 rounded-t px-4 py-2 border-b border-border bg-muted/40 text-sm"
         >
@@ -583,11 +608,12 @@
           <StatusSelector
             workOrder={workOrderDetails?.workOrder}
             partItems={workOrderDetails?.partItems ?? []}
-            {isLocked}
+            isLocked={isReadOnly}
           />
           <DropdownMenu
             workOrderId={workOrderDetails.workOrder?.id ?? ""}
             {isLocked}
+            {isArchived}
           />
         </div>
       </div>
@@ -694,7 +720,7 @@
             </p>
           </div>
           <div>
-            {#if !isLocked}
+            {#if !isReadOnly}
               <Button
                 variant="link"
                 onclick={laborTableActions.openCreate}
@@ -757,7 +783,7 @@
               {workOrderDetails?.partItems.length}
             </p>
           </div>
-          {#if !isLocked}
+          {#if !isReadOnly}
             <Button
               variant="link"
               onclick={partsTableActions.openCreate}
@@ -802,7 +828,7 @@
       <DeleteDialog
         bind:open={laborTableActions.isBulkDeleteOpen}
         onDelete={confirmBulkLaborDelete}
-        description={`Видалити ${laborTableActions.bulkDeleteIds.length} ${pluralize(laborTableActions.bulkDeleteIds.length, ["сервіс", "сервіси", "сервісів"])}? Цю дію неможливо відмінити.`}
+        description={`Видалити ${laborTableActions.bulkDeleteIds.length} ${pluralizeUk(laborTableActions.bulkDeleteIds.length, ["сервіс", "сервіси", "сервісів"])}? Цю дію неможливо відмінити.`}
       />
       <WorkOrderPartsItemMutationSheet
         bind:open={partsTableActions.isMutationOpen}
@@ -817,7 +843,7 @@
       <DeleteDialog
         bind:open={partsTableActions.isBulkDeleteOpen}
         onDelete={confirmBulkPartDelete}
-        description={`Видалити ${partsTableActions.bulkDeleteIds.length} ${pluralize(partsTableActions.bulkDeleteIds.length, ["запчастину", "запчастини", "запчастин"])}? Цю дію неможливо відмінити.`}
+        description={`Видалити ${partsTableActions.bulkDeleteIds.length} ${pluralizeUk(partsTableActions.bulkDeleteIds.length, ["запчастину", "запчастини", "запчастин"])}? Цю дію неможливо відмінити.`}
       />
     </div>
   {/if}

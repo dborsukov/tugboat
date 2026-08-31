@@ -1,5 +1,6 @@
 pub mod structs;
 
+use sqlx::{Executor, Sqlite};
 use structs::*;
 use tauri::State;
 
@@ -8,7 +9,7 @@ use crate::error::{AppError, AppResult};
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_services_count(state: State<'_, crate::AppState>) -> AppResult<i32> {
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM services")
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM services WHERE archived_at IS NULL")
         .fetch_one(&state.db_pool)
         .await?;
     Ok(count as i32)
@@ -17,10 +18,11 @@ pub async fn fetch_services_count(state: State<'_, crate::AppState>) -> AppResul
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_services_list(state: State<'_, crate::AppState>) -> AppResult<Vec<Service>> {
-    let services: Vec<Service> =
-        sqlx::query_as("SELECT id, code, name, price_type, fixed_price, labor_hours FROM services")
-            .fetch_all(&state.db_pool)
-            .await?;
+    let services: Vec<Service> = sqlx::query_as(
+        "SELECT id, code, name, price_type, fixed_price, labor_hours, archived_at FROM services",
+    )
+    .fetch_all(&state.db_pool)
+    .await?;
     Ok(services)
 }
 
@@ -28,7 +30,7 @@ pub async fn fetch_services_list(state: State<'_, crate::AppState>) -> AppResult
 #[specta::specta]
 pub async fn fetch_service_by_id(state: State<'_, crate::AppState>, id: i32) -> AppResult<Service> {
     let service: Service = sqlx::query_as(
-        "SELECT id, code, name, price_type, fixed_price, labor_hours FROM services WHERE id = $1",
+        "SELECT id, code, name, price_type, fixed_price, labor_hours, archived_at FROM services WHERE id = $1",
     )
     .bind(id)
     .fetch_one(&state.db_pool)
@@ -62,6 +64,8 @@ pub async fn update_service(
     id: i32,
     payload: UpdateServicePayload,
 ) -> AppResult<Service> {
+    ensure_service_active(&state.db_pool, id).await?;
+
     let service: Service = sqlx::query_as(
         "UPDATE services SET code = $2, name = $3, price_type = $4, fixed_price =$5, labor_hours = $6 WHERE id = $1 RETURNING *",
     )
@@ -112,4 +116,106 @@ pub async fn delete_services(state: State<'_, crate::AppState>, ids: Vec<i32>) -
     }
     tx.commit().await?;
     Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn archive_service(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
+    let result = sqlx::query(
+        "UPDATE services SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
+         WHERE id = $1 AND archived_at IS NULL",
+    )
+    .bind(id)
+    .execute(&state.db_pool)
+    .await?;
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound(
+            "Сервіса з таким ID не знайдено в базі даних".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn archive_services(state: State<'_, crate::AppState>, ids: Vec<i32>) -> AppResult<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let mut tx = state.db_pool.begin().await?;
+    for id in &ids {
+        let result = sqlx::query(
+            "UPDATE services SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
+             WHERE id = $1 AND archived_at IS NULL",
+        )
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+        if result.rows_affected() == 0 {
+            tx.rollback().await?;
+            return Err(AppError::NotFound(
+                "Сервіса з таким ID не знайдено в базі даних".to_string(),
+            ));
+        }
+    }
+    tx.commit().await?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn restore_service(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
+    let result = sqlx::query("UPDATE services SET archived_at = NULL WHERE id = $1")
+        .bind(id)
+        .execute(&state.db_pool)
+        .await?;
+    if result.rows_affected() == 0 {
+        return Err(AppError::NotFound(
+            "Сервіса з таким ID не знайдено в базі даних".to_string(),
+        ));
+    }
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn restore_services(state: State<'_, crate::AppState>, ids: Vec<i32>) -> AppResult<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let mut tx = state.db_pool.begin().await?;
+    for id in &ids {
+        let result = sqlx::query("UPDATE services SET archived_at = NULL WHERE id = $1")
+            .bind(id)
+            .execute(&mut *tx)
+            .await?;
+        if result.rows_affected() == 0 {
+            tx.rollback().await?;
+            return Err(AppError::NotFound(
+                "Сервіса з таким ID не знайдено в базі даних".to_string(),
+            ));
+        }
+    }
+    tx.commit().await?;
+    Ok(())
+}
+
+async fn ensure_service_active<'e, E>(executor: E, id: i32) -> AppResult<()>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    let archived_at: Option<Option<String>> =
+        sqlx::query_scalar("SELECT archived_at FROM services WHERE id = $1")
+            .bind(id)
+            .fetch_optional(executor)
+            .await?;
+    match archived_at {
+        None => Err(AppError::NotFound(
+            "Сервіса з таким ID не знайдено в базі даних".to_string(),
+        )),
+        Some(Some(_)) => Err(AppError::Generic(
+            "Сервіс архівований. Спочатку відновіть його з архіву.".to_string(),
+        )),
+        Some(None) => Ok(()),
+    }
 }

@@ -1,6 +1,7 @@
 pub mod dtos;
 pub mod structs;
 
+use serde::{Deserialize, Serialize};
 use sqlx::{Executor, Sqlite};
 use structs::*;
 use tauri::State;
@@ -14,9 +15,12 @@ use crate::{
 };
 
 const CLIENT_COLUMNS: &str =
-    "id, name, surname, first_name, patronymic, phone, email, client_type, notes, created_at";
+    "id, name, surname, first_name, patronymic, phone, email, client_type, notes, created_at, archived_at";
 
 const CLIENT_DETAILS_COLUMNS: &str = "client_id, legal_name, legal_address, edrpou, rnokpp, director_surname, director_first_name, director_patronymic, contact_surname, contact_first_name, contact_patronymic, contact_phone, contact_email, iban, bank_name, vat_payer";
+
+const CLIENT_DETAILS_SELECT_COLUMNS: &str =
+    "client_id, legal_name, legal_address, edrpou, rnokpp, director_surname, director_first_name, director_patronymic, contact_surname, contact_first_name, contact_patronymic, contact_phone, contact_email, iban, bank_name, vat_payer, archived_at";
 
 struct ClientBase {
     name: String,
@@ -114,7 +118,7 @@ fn payload_common_fields(payload: &ClientPayload) -> (ClientType, ClientBase) {
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_clients_count(state: State<'_, crate::AppState>) -> AppResult<i32> {
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM clients")
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM clients WHERE archived_at IS NULL")
         .fetch_one(&state.db_pool)
         .await?;
     Ok(count as i32)
@@ -126,7 +130,7 @@ pub async fn fetch_clients_list(
     state: State<'_, crate::AppState>,
 ) -> AppResult<Vec<ClientListItem>> {
     let clients: Vec<ClientListItem> = sqlx::query_as(
-        "SELECT c.id, c.name, c.surname, c.first_name, c.patronymic, c.phone, c.email, c.client_type, c.notes, c.created_at, d.contact_phone, d.contact_email, d.rnokpp, d.edrpou, d.iban \
+        "SELECT c.id, c.name, c.surname, c.first_name, c.patronymic, c.phone, c.email, c.client_type, c.notes, c.created_at, c.archived_at, d.contact_phone, d.contact_email, d.rnokpp, d.edrpou, d.iban \
          FROM clients c \
          LEFT JOIN client_details d ON d.client_id = c.id",
     )
@@ -168,7 +172,7 @@ pub async fn fetch_client_details(
     client_id: i32,
 ) -> AppResult<Option<ClientDetails>> {
     let details: Option<ClientDetails> = sqlx::query_as(&format!(
-        "SELECT {CLIENT_DETAILS_COLUMNS} FROM client_details WHERE client_id = $1"
+        "SELECT {CLIENT_DETAILS_SELECT_COLUMNS} FROM client_details WHERE client_id = $1"
     ))
     .bind(client_id)
     .fetch_optional(&state.db_pool)
@@ -216,6 +220,7 @@ pub async fn update_client(
     payload: ClientPayload,
 ) -> AppResult<Client> {
     validate_payload(&payload)?;
+    ensure_client_active(&state.db_pool, id).await?;
 
     let mut tx = state.db_pool.begin().await?;
 
@@ -265,6 +270,172 @@ pub async fn delete_client(state: State<'_, crate::AppState>, id: i32) -> AppRes
     Ok(())
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ClientDeleteImpact {
+    #[specta(type = specta_typescript::Number)]
+    pub car_count: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub work_order_count: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub labor_item_count: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub part_item_count: i64,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_client_delete_impact(
+    state: State<'_, crate::AppState>,
+    id: i32,
+) -> AppResult<ClientDeleteImpact> {
+    let car_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM cars WHERE client_id = $1")
+        .bind(id)
+        .fetch_one(&state.db_pool)
+        .await?;
+
+    let work_order_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM work_orders wo \
+         JOIN cars c ON c.id = wo.car_id \
+         WHERE c.client_id = $1",
+    )
+    .bind(id)
+    .fetch_one(&state.db_pool)
+    .await?;
+
+    let labor_item_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM labor_items li \
+         JOIN work_orders wo ON wo.id = li.work_order_id \
+         JOIN cars c ON c.id = wo.car_id \
+         WHERE c.client_id = $1",
+    )
+    .bind(id)
+    .fetch_one(&state.db_pool)
+    .await?;
+
+    let part_item_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM part_items pi \
+         JOIN work_orders wo ON wo.id = pi.work_order_id \
+         JOIN cars c ON c.id = wo.car_id \
+         WHERE c.client_id = $1",
+    )
+    .bind(id)
+    .fetch_one(&state.db_pool)
+    .await?;
+
+    Ok(ClientDeleteImpact {
+        car_count,
+        work_order_count,
+        labor_item_count,
+        part_item_count,
+    })
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn archive_client(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
+    let mut tx = state.db_pool.begin().await?;
+
+    let result = sqlx::query(
+        "UPDATE clients SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
+         WHERE id = $1 AND archived_at IS NULL",
+    )
+    .bind(id)
+    .execute(&mut *tx)
+    .await?;
+    if result.rows_affected() == 0 {
+        tx.rollback().await?;
+        return Err(AppError::NotFound(
+            "Клієнта з таким ID не знайдено в базі даних".to_string(),
+        ));
+    }
+
+    sqlx::query(
+        "UPDATE client_details SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
+         WHERE client_id = $1 AND archived_at IS NULL",
+    )
+    .bind(id)
+    .execute(&mut *tx)
+    .await?;
+
+    sqlx::query(
+        "UPDATE cars SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
+         WHERE client_id = $1 AND archived_at IS NULL",
+    )
+    .bind(id)
+    .execute(&mut *tx)
+    .await?;
+
+    sqlx::query(
+        "UPDATE work_orders SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
+         WHERE car_id IN (SELECT id FROM cars WHERE client_id = $1) AND archived_at IS NULL",
+    )
+    .bind(id)
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn restore_client(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
+    let mut tx = state.db_pool.begin().await?;
+
+    let result = sqlx::query("UPDATE clients SET archived_at = NULL WHERE id = $1")
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+    if result.rows_affected() == 0 {
+        tx.rollback().await?;
+        return Err(AppError::NotFound(
+            "Клієнта з таким ID не знайдено в базі даних".to_string(),
+        ));
+    }
+
+    sqlx::query("UPDATE client_details SET archived_at = NULL WHERE client_id = $1")
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+
+    sqlx::query("UPDATE cars SET archived_at = NULL WHERE client_id = $1")
+        .bind(id)
+        .execute(&mut *tx)
+        .await?;
+
+    sqlx::query(
+        "UPDATE work_orders SET archived_at = NULL \
+         WHERE car_id IN (SELECT id FROM cars WHERE client_id = $1)",
+    )
+    .bind(id)
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+    Ok(())
+}
+
+pub(crate) async fn ensure_client_active<'e, E>(executor: E, id: i32) -> AppResult<()>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    let archived_at: Option<Option<String>> =
+        sqlx::query_scalar("SELECT archived_at FROM clients WHERE id = $1")
+            .bind(id)
+            .fetch_optional(executor)
+            .await?;
+    match archived_at {
+        None => Err(AppError::NotFound(
+            "Клієнта з таким ID не знайдено в базі даних".to_string(),
+        )),
+        Some(Some(_)) => Err(AppError::Generic(
+            "Клієнт архівований. Спочатку відновіть клієнта з архіву.".to_string(),
+        )),
+        Some(None) => Ok(()),
+    }
+}
+
 fn payload_to_details(client_id: i64, payload: &ClientPayload) -> Option<ClientDetails> {
     match payload {
         ClientPayload::Individual { .. } => None,
@@ -296,6 +467,7 @@ fn payload_to_details(client_id: i64, payload: &ClientPayload) -> Option<ClientD
             iban: trim_opt(iban),
             bank_name: trim_opt(bank_name),
             vat_payer: false,
+            archived_at: None,
         }),
         ClientPayload::Company {
             legal_name,
@@ -330,6 +502,7 @@ fn payload_to_details(client_id: i64, payload: &ClientPayload) -> Option<ClientD
             iban: trim_opt(iban),
             bank_name: trim_opt(bank_name),
             vat_payer: *vat_payer,
+            archived_at: None,
         }),
     }
 }

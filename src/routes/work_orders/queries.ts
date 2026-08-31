@@ -16,6 +16,7 @@ import type {
   UpdateLaborItemPayload,
   UpdatePartItemPayload,
   UpdateWorkOrderPayload,
+  WorkOrderDeleteImpact,
   WorkOrderDetailsDto,
 } from "$lib/bindings";
 import { keys } from "$lib/query-keys";
@@ -98,6 +99,26 @@ export function createWorkOrderDetailsDtoListQuery() {
   );
 }
 
+export function workOrderDeleteImpactQueryOptions(
+  id: string | null,
+  enabled: boolean,
+) {
+  return {
+    enabled: enabled && id != null,
+    queryKey: keys.workOrders.deleteImpact(id!),
+    queryFn: () => unwrap(commands.fetchWorkOrderDeleteImpact(id!)),
+  };
+}
+
+export function createWorkOrderDeleteImpactQuery(
+  getId: () => string | null,
+  getEnabled: () => boolean,
+) {
+  return createQuery<WorkOrderDeleteImpact>(() =>
+    workOrderDeleteImpactQueryOptions(getId(), getEnabled()),
+  );
+}
+
 export function createCreateWorkOrderMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
@@ -131,6 +152,32 @@ export function createDeleteWorkOrderMutation(queryClient: QueryClient) {
     () => ({
       mutationFn: (id: string) => unwrap(commands.deleteWorkOrder(id)),
       onSuccess: async () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createArchiveWorkOrderMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (id: string) => unwrap(commands.archiveWorkOrder(id)),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createRestoreWorkOrderMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (id: string) => unwrap(commands.restoreWorkOrder(id)),
+      onSuccess: () => {
         invalidateWorkOrderLists(queryClient);
       },
       onError: showMutationErrorToast,

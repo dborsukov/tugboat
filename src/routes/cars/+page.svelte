@@ -3,6 +3,7 @@
 
   import { goto } from "$app/navigation";
 
+  import ArchiveIcon from "@lucide/svelte/icons/archive";
   import SortIcon from "@lucide/svelte/icons/arrow-up-down";
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
   import PlusIcon from "@lucide/svelte/icons/plus";
@@ -13,6 +14,7 @@
   import * as Select from "$lib/components/ui/select/index.js";
   import { Skeleton } from "$lib/components/ui/skeleton";
 
+  import ArchivedBadge from "$lib/components/archived-badge.svelte";
   import CarLogoLoader from "$lib/components/car-logo-loader.svelte";
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
@@ -33,18 +35,31 @@
   let searchQuery = $state("");
   let isSheetOpen = $state(false);
   let sortBy = $state<SortOption>("date-desc");
+  let showArchived = $state(false);
   let searchInputEl = $state<HTMLInputElement | null>(null);
 
   const carDetailsQuery = createCarDetailsListQuery();
   const autoPageSize = new UseAutoPageSize({ minPageSize: 5 });
-  const carDetailsList = $derived(carDetailsQuery.data ?? []);
+
+  let visibleCarDetailsList = $derived.by(() => {
+    const cars = carDetailsQuery.data ?? [];
+    return showArchived
+      ? cars.filter((car) => car.carDto?.car?.archivedAt != null)
+      : cars.filter((car) => car.carDto?.car?.archivedAt == null);
+  });
+
+  const archivedCarsCount = $derived(
+    (carDetailsQuery.data ?? []).filter(
+      (car) => car.carDto?.car?.archivedAt != null,
+    ).length,
+  );
 
   let filteredCarListItems = $derived.by(() => {
     if (!carDetailsQuery.isSuccess) return [];
     const query = searchQuery.trim();
-    if (!query) return carDetailsList;
+    if (!query) return visibleCarDetailsList;
 
-    return carDetailsList
+    return visibleCarDetailsList
       .map((cli) => {
         const modelRank = rankItem(
           `${cli.carDto?.brand?.name} ${cli.carDto?.car?.model}`,
@@ -112,7 +127,7 @@
     currentPage = 1;
   }
 
-  function carSecondaryLine(cli: (typeof carDetailsList)[number]) {
+  function carSecondaryLine(cli: (typeof visibleCarDetailsList)[number]) {
     return [
       cli.carDto?.car?.year,
       cli.carDto?.car?.licensePlate,
@@ -123,8 +138,7 @@
   }
 
   let controlsDisabled = $derived(
-    !carDetailsQuery.isSuccess ||
-      (paginatedCarListItems.length === 0 && !searchQuery),
+    !carDetailsQuery.isSuccess || (carDetailsQuery.data?.length ?? 0) === 0,
   );
 
   $effect(() => searchInputEl?.focus());
@@ -176,9 +190,24 @@
         </Select.Content>
       </Select.Root>
       <Button
+        variant={showArchived ? "default" : "outline"}
+        onclick={() => {
+          showArchived = !showArchived;
+          currentPage = 1;
+        }}
+        disabled={controlsDisabled}
+        class="shrink-0"
+      >
+        <ArchiveIcon />
+        Архів
+        {#if archivedCarsCount > 0}
+          <span class="text-muted-foreground">{archivedCarsCount}</span>
+        {/if}
+      </Button>
+      <Button
         variant="outline"
         onclick={() => (isSheetOpen = !isSheetOpen)}
-        disabled={!carDetailsQuery.isSuccess}
+        disabled={!carDetailsQuery.isSuccess || showArchived}
       >
         Додати <PlusIcon />
       </Button>
@@ -209,6 +238,10 @@
             <div class="p-4 flex items-center justify-center">
               <p>Пошук не повернув результатів</p>
             </div>
+          {:else if showArchived}
+            <div class="p-4 flex flex-col items-center justify-center">
+              <p>Архівних автомобілів не знайдено</p>
+            </div>
           {:else}
             <div class="p-4 flex flex-col items-center justify-center">
               <p>Автомобілей не знайдено</p>
@@ -221,7 +254,10 @@
           {#each paginatedCarListItems as cli (cli.carDto?.car?.id)}
             <Button
               variant="ghost"
-              class="w-full h-auto justify-start rounded-none px-5 py-3 shrink-0"
+              class="w-full h-auto justify-start rounded-none px-5 py-3 shrink-0 {cli
+                .carDto?.car?.archivedAt
+                ? 'opacity-60'
+                : ''}"
               onclick={async () => await goto(`/cars/${cli.carDto?.car?.id}`)}
             >
               <div class="flex w-full items-center gap-3.5">
@@ -230,10 +266,15 @@
                   class="h-12"
                 />
                 <div class="flex-1 min-w-0 text-left flex flex-col gap-0.5">
-                  <p class="truncate text-lg font-medium">
-                    {cli.carDto?.brand?.name}
-                    {cli.carDto?.car?.model}
-                  </p>
+                  <div class="flex items-center gap-2">
+                    <p class="truncate text-lg font-medium">
+                      {cli.carDto?.brand?.name}
+                      {cli.carDto?.car?.model}
+                    </p>
+                    {#if cli.carDto?.car?.archivedAt}
+                      <ArchivedBadge date={cli.carDto?.car?.archivedAt} />
+                    {/if}
+                  </div>
                   <p class="truncate text-muted-foreground">
                     {carSecondaryLine(cli)}
                   </p>

@@ -11,6 +11,7 @@ import { prettifyIsoDateString } from "$lib/tools";
 import CarBadge from "../cars/car-badge.svelte";
 import ClientBadge from "../clients/client-badge.svelte";
 import { statusWeights } from "./work-order-status";
+import WorkOrderTableIdCell from "./work-order-table-id-cell.svelte";
 import WorkOrderTableStatusCell from "./work-order-table-status-cell.svelte";
 import WorkOrderTableTotalCell from "./work-order-table-total-cell.svelte";
 
@@ -27,13 +28,10 @@ export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
       return renderSnippet(nameCellSnippet);
     },
     cell: ({ row }) => {
-      const nameCellSnippet = createRawSnippet(() => {
-        return {
-          render: () =>
-            `<div class="px-2 font-mono">${row.original.workOrder.id}</div>`,
-        };
+      return renderComponent(WorkOrderTableIdCell, {
+        id: row.original.workOrder.id,
+        archivedAt: row.original.workOrder.archivedAt,
       });
-      return renderSnippet(nameCellSnippet);
     },
   },
   {

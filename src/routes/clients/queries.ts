@@ -7,6 +7,7 @@ import { toast } from "svelte-sonner";
 
 import {
   commands,
+  type ClientDeleteImpact,
   type ClientDetailsDto,
   type ClientListItem,
   type ClientPayload,
@@ -57,6 +58,26 @@ export function createClientDetailsQuery(getId: () => number | null) {
   );
 }
 
+export function clientDeleteImpactQueryOptions(
+  id: number | null,
+  enabled: boolean,
+) {
+  return {
+    enabled: enabled && id != null,
+    queryKey: keys.clients.deleteImpact(id!),
+    queryFn: () => unwrap(commands.fetchClientDeleteImpact(id!)),
+  };
+}
+
+export function createClientDeleteImpactQuery(
+  getId: () => number | null,
+  getEnabled: () => boolean,
+) {
+  return createQuery<ClientDeleteImpact>(() =>
+    clientDeleteImpactQueryOptions(getId(), getEnabled()),
+  );
+}
+
 export function createCreateClientMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
@@ -90,6 +111,32 @@ export function createDeleteClientMutation(queryClient: QueryClient) {
     () => ({
       mutationFn: (id: number) => unwrap(commands.deleteClient(id)),
       onSuccess: async () => {
+        invalidateClients(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createArchiveClientMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (id: number) => unwrap(commands.archiveClient(id)),
+      onSuccess: () => {
+        invalidateClients(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createRestoreClientMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (id: number) => unwrap(commands.restoreClient(id)),
+      onSuccess: () => {
         invalidateClients(queryClient);
       },
       onError: showMutationErrorToast,

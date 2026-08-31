@@ -36,6 +36,7 @@
     cellClasses = {},
     rounded = true,
     onRowClick,
+    rowClassName,
     selectionActions,
     autoPageSize = false,
     class: className,
@@ -46,6 +47,7 @@
     cellClasses?: Record<string, string>;
     rounded?: boolean;
     onRowClick?: (row: TData) => void;
+    rowClassName?: (row: TData) => string | undefined;
     selectionActions?: Snippet;
     autoPageSize?: boolean;
     class?: string;
@@ -236,6 +238,7 @@
               "divide-x divide-border",
               onRowClick &&
                 "hover:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:bg-muted/90",
+              rowClassName?.(row.original),
             )}
             onclick={() => onRowClick?.(row.original)}
             onkeydown={(e) => handleRowKeyDown(e, row.original)}

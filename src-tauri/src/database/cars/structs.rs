@@ -42,6 +42,7 @@ pub struct Car {
     pub vin: Option<String>,
     pub notes: Option<String>,
     pub created_at: DateTime<Utc>,
+    pub archived_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
