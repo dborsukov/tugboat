@@ -12,6 +12,8 @@ pub mod database;
 pub mod error;
 pub mod utils;
 
+use crate::error::AppError;
+
 #[derive(Debug)]
 pub struct AppState {
     pub data_dir: PathBuf,
@@ -136,17 +138,27 @@ pub fn run() {
                 .create_if_missing(true)
                 .journal_mode(SqliteJournalMode::Wal)
                 .synchronous(SqliteSynchronous::Normal)
-                .foreign_keys(true);
+                .foreign_keys(true)
+                .busy_timeout(Duration::from_secs(5));
             let db_pool = tauri::async_runtime::block_on(async {
                 let pool = SqlitePoolOptions::new()
                     .max_connections(5)
                     .acquire_timeout(Duration::from_secs(5))
                     .connect_with(options)
                     .await
-                    .unwrap();
-                sqlx::migrate!("./migrations").run(&pool).await.unwrap();
-                pool
-            });
+                    .map_err(|e| {
+                        AppError::Migration(format!("Не вдалося підключитися до бази даних: {e}"))
+                    })?;
+                sqlx::migrate!("./migrations")
+                    .run(&pool)
+                    .await
+                    .map_err(|e| {
+                        AppError::Migration(format!(
+                            "Не вдалося застосувати міграції бази даних: {e}"
+                        ))
+                    })?;
+                Ok::<_, AppError>(pool)
+            })?;
 
             let log_level = if cfg!(debug_assertions) {
                 log::LevelFilter::Debug

@@ -12,17 +12,8 @@ export const commands = {
 	createCar: (payload: CreateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("create_car", { payload })),
 	updateCar: (id: number, payload: UpdateCarPayload) => typedError<Car, AppError>(__TAURI_INVOKE("update_car", { id, payload })),
 	deleteCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_car", { id })),
-	/**
-	 *  Marks the car and its work orders as archived. Already-archived rows keep
-	 *  their original timestamp.
-	 */
 	archiveCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("archive_car", { id })),
-	/**  Restores the car and its work orders. */
 	restoreCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("restore_car", { id })),
-	/**
-	 *  Counts everything a permanent car deletion would cascade into, so the UI
-	 *  can warn the user before the irreversible delete.
-	 */
 	fetchCarDeleteImpact: (id: number) => typedError<CarDeleteImpact, AppError>(__TAURI_INVOKE("fetch_car_delete_impact", { id })),
 	fetchCarBrands: () => typedError<CarBrand[], AppError>(__TAURI_INVOKE("fetch_car_brands")),
 	fetchClientsCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_clients_count")),
@@ -31,17 +22,8 @@ export const commands = {
 	createClient: (payload: ClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("create_client", { payload })),
 	updateClient: (id: number, payload: ClientPayload) => typedError<Client, AppError>(__TAURI_INVOKE("update_client", { id, payload })),
 	deleteClient: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_client", { id })),
-	/**
-	 *  Marks the client and everything under it (details, cars, work orders) as
-	 *  archived. Already-archived rows keep their original timestamp.
-	 */
 	archiveClient: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("archive_client", { id })),
-	/**  Restores the client and everything under it (details, cars, work orders). */
 	restoreClient: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("restore_client", { id })),
-	/**
-	 *  Counts everything a permanent client deletion would cascade into, so the
-	 *  UI can warn the user before the irreversible delete.
-	 */
 	fetchClientDeleteImpact: (id: number) => typedError<ClientDeleteImpact, AppError>(__TAURI_INVOKE("fetch_client_delete_impact", { id })),
 	fetchServicesCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_services_count")),
 	fetchServiceById: (id: number) => typedError<Service, AppError>(__TAURI_INVOKE("fetch_service_by_id", { id })),
@@ -74,10 +56,6 @@ export const commands = {
 	deleteWorkOrder: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order", { id })),
 	archiveWorkOrder: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("archive_work_order", { id })),
 	restoreWorkOrder: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("restore_work_order", { id })),
-	/**
-	 *  Counts everything a permanent work order deletion would cascade into, so
-	 *  the UI can warn the user before the irreversible delete.
-	 */
 	fetchWorkOrderDeleteImpact: (id: string) => typedError<WorkOrderDeleteImpact, AppError>(__TAURI_INVOKE("fetch_work_order_delete_impact", { id })),
 	fetchLaborItemById: (id: number) => typedError<LaborItem, AppError>(__TAURI_INVOKE("fetch_labor_item_by_id", { id })),
 	fetchLaborItemsList: () => typedError<LaborItem[], AppError>(__TAURI_INVOKE("fetch_labor_items_list")),
@@ -96,7 +74,25 @@ export const commands = {
 };
 
 /* Types */
-export type AppError = { type: "NotFound"; message: string } | { type: "ConstraintViolation"; message: string } | { type: "Sqlx"; message: string } | { type: "Generic"; message: string };
+export type AppError = 
+/**  Generic application error. */
+{ type: "generic"; message: string } | 
+/**  Unclassified database failure. */
+{ type: "sqlx"; message: string } | 
+/**  The database is temporarily locked (SQLITE_BUSY / SQLITE_LOCKED). */
+{ type: "busy"; message: string } | 
+/**  Database connection / migration failure at startup. */
+{ type: "migration"; message: string } | 
+/**  Requested record does not exist. */
+{ type: "notFound"; message: string } | 
+/**  User-supplied input failed application-level validation. */
+{ type: "validation"; message: string } | 
+/**  A unique index / primary key constraint was violated. */
+{ type: "uniqueViolation"; message: string } | 
+/**  A database constraint (CHECK / NOT NULL / trigger / etc.) was violated. */
+{ type: "constraintViolation"; message: string } | 
+/**  A foreign key constraint was violated. */
+{ type: "foreignKeyViolation"; message: string };
 
 export type AppSettings = {
 	theme: ThemeMode,

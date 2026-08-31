@@ -1,8 +1,10 @@
 pub mod dtos;
 pub mod structs;
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, Sqlite};
+use sqlx::{Executor, QueryBuilder, Sqlite};
 use structs::*;
 use tauri::State;
 
@@ -10,17 +12,10 @@ use crate::{
     database::{
         cars::{dtos::CarDto, fetch_cars_list_by_client_id},
         clients::dtos::ClientDetailsDto,
+        utils::begin_immediate,
     },
     error::{AppError, AppResult},
 };
-
-const CLIENT_COLUMNS: &str =
-    "id, name, surname, first_name, patronymic, phone, email, client_type, notes, created_at, archived_at";
-
-const CLIENT_DETAILS_COLUMNS: &str = "client_id, legal_name, legal_address, edrpou, rnokpp, director_surname, director_first_name, director_patronymic, contact_surname, contact_first_name, contact_patronymic, contact_phone, contact_email, iban, bank_name, vat_payer";
-
-const CLIENT_DETAILS_SELECT_COLUMNS: &str =
-    "client_id, legal_name, legal_address, edrpou, rnokpp, director_surname, director_first_name, director_patronymic, contact_surname, contact_first_name, contact_patronymic, contact_phone, contact_email, iban, bank_name, vat_payer, archived_at";
 
 struct ClientBase {
     name: String,
@@ -130,9 +125,27 @@ pub async fn fetch_clients_list(
     state: State<'_, crate::AppState>,
 ) -> AppResult<Vec<ClientListItem>> {
     let clients: Vec<ClientListItem> = sqlx::query_as(
-        "SELECT c.id, c.name, c.surname, c.first_name, c.patronymic, c.phone, c.email, c.client_type, c.notes, c.created_at, c.archived_at, d.contact_phone, d.contact_email, d.rnokpp, d.edrpou, d.iban \
-         FROM clients c \
-         LEFT JOIN client_details d ON d.client_id = c.id",
+        r#"
+        SELECT
+            c.id,
+            c.name,
+            c.surname,
+            c.first_name,
+            c.patronymic,
+            c.phone,
+            c.email,
+            c.client_type,
+            c.notes,
+            c.created_at,
+            c.archived_at,
+            d.contact_phone,
+            d.contact_email,
+            d.rnokpp,
+            d.edrpou,
+            d.iban
+        FROM clients c
+        LEFT JOIN client_details d ON d.client_id = c.id
+        "#,
     )
     .fetch_all(&state.db_pool)
     .await?;
@@ -158,9 +171,24 @@ pub async fn fetch_client_details_dto(
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_client_by_id(state: State<'_, crate::AppState>, id: i32) -> AppResult<Client> {
-    let client: Client = sqlx::query_as(&format!(
-        "SELECT {CLIENT_COLUMNS} FROM clients WHERE id = $1"
-    ))
+    let client: Client = sqlx::query_as(
+        r#"
+        SELECT
+            id,
+            name,
+            surname,
+            first_name,
+            patronymic,
+            phone,
+            email,
+            client_type,
+            notes,
+            created_at,
+            archived_at
+        FROM clients
+        WHERE id = $1
+        "#,
+    )
     .bind(id)
     .fetch_one(&state.db_pool)
     .await?;
@@ -171,13 +199,116 @@ pub async fn fetch_client_details(
     state: State<'_, crate::AppState>,
     client_id: i32,
 ) -> AppResult<Option<ClientDetails>> {
-    let details: Option<ClientDetails> = sqlx::query_as(&format!(
-        "SELECT {CLIENT_DETAILS_SELECT_COLUMNS} FROM client_details WHERE client_id = $1"
-    ))
+    let details: Option<ClientDetails> = sqlx::query_as(
+        r#"
+        SELECT
+            client_id,
+            legal_name,
+            legal_address,
+            edrpou,
+            rnokpp,
+            director_surname,
+            director_first_name,
+            director_patronymic,
+            contact_surname,
+            contact_first_name,
+            contact_patronymic,
+            contact_phone,
+            contact_email,
+            iban,
+            bank_name,
+            vat_payer,
+            archived_at
+        FROM client_details
+        WHERE client_id = $1
+        "#,
+    )
     .bind(client_id)
     .fetch_optional(&state.db_pool)
     .await?;
     Ok(details)
+}
+
+pub(crate) async fn fetch_clients_by_ids(
+    state: &State<'_, crate::AppState>,
+    ids: &[i64],
+) -> AppResult<HashMap<i64, Client>> {
+    if ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let mut qb = QueryBuilder::new(
+        r#"
+        SELECT
+            id,
+            name,
+            surname,
+            first_name,
+            patronymic,
+            phone,
+            email,
+            client_type,
+            notes,
+            created_at,
+            archived_at
+        FROM clients
+        WHERE id IN ("#,
+    );
+    let mut separated = qb.separated(", ");
+    for id in ids {
+        separated.push_bind(id);
+    }
+    qb.push(")");
+
+    let clients: Vec<Client> = qb.build_query_as().fetch_all(&state.db_pool).await?;
+    Ok(clients
+        .into_iter()
+        .map(|client| (client.id, client))
+        .collect())
+}
+
+pub(crate) async fn fetch_client_details_by_ids(
+    state: &State<'_, crate::AppState>,
+    client_ids: &[i64],
+) -> AppResult<HashMap<i64, ClientDetails>> {
+    if client_ids.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let mut qb = QueryBuilder::new(
+        r#"
+        SELECT
+            client_id,
+            legal_name,
+            legal_address,
+            edrpou,
+            rnokpp,
+            director_surname,
+            director_first_name,
+            director_patronymic,
+            contact_surname,
+            contact_first_name,
+            contact_patronymic,
+            contact_phone,
+            contact_email,
+            iban,
+            bank_name,
+            vat_payer,
+            archived_at
+        FROM client_details
+        WHERE client_id IN ("#,
+    );
+    let mut separated = qb.separated(", ");
+    for id in client_ids {
+        separated.push_bind(id);
+    }
+    qb.push(")");
+
+    let details: Vec<ClientDetails> = qb.build_query_as().fetch_all(&state.db_pool).await?;
+    Ok(details
+        .into_iter()
+        .map(|details| (details.client_id, details))
+        .collect())
 }
 
 #[tauri::command]
@@ -188,13 +319,37 @@ pub async fn create_client(
 ) -> AppResult<Client> {
     validate_payload(&payload)?;
 
-    let mut tx = state.db_pool.begin().await?;
+    let mut tx = begin_immediate(&state.db_pool).await?;
 
     let (client_type, base) = payload_common_fields(&payload);
 
-    let client: Client = sqlx::query_as(&format!(
-        "INSERT INTO clients (name, surname, first_name, patronymic, phone, email, client_type, notes) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING {CLIENT_COLUMNS}"
-    ))
+    let client: Client = sqlx::query_as(
+        r#"
+        INSERT INTO clients (
+            name,
+            surname,
+            first_name,
+            patronymic,
+            phone,
+            email,
+            client_type,
+            notes
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING
+            id,
+            name,
+            surname,
+            first_name,
+            patronymic,
+            phone,
+            email,
+            client_type,
+            notes,
+            created_at,
+            archived_at
+        "#,
+    )
     .bind(&base.name)
     .bind(&base.surname)
     .bind(&base.first_name)
@@ -220,15 +375,39 @@ pub async fn update_client(
     payload: ClientPayload,
 ) -> AppResult<Client> {
     validate_payload(&payload)?;
-    ensure_client_active(&state.db_pool, id).await?;
 
-    let mut tx = state.db_pool.begin().await?;
+    let mut tx = begin_immediate(&state.db_pool).await?;
+
+    ensure_client_active(&mut *tx, id).await?;
 
     let (client_type, base) = payload_common_fields(&payload);
 
-    let client: Client = sqlx::query_as(&format!(
-        "UPDATE clients SET name = $2, surname = $3, first_name = $4, patronymic = $5, phone = $6, email = $7, client_type = $8, notes = $9 WHERE id = $1 RETURNING {CLIENT_COLUMNS}"
-    ))
+    let client: Client = sqlx::query_as(
+        r#"
+        UPDATE clients SET
+            name = $2,
+            surname = $3,
+            first_name = $4,
+            patronymic = $5,
+            phone = $6,
+            email = $7,
+            client_type = $8,
+            notes = $9
+        WHERE id = $1
+        RETURNING
+            id,
+            name,
+            surname,
+            first_name,
+            patronymic,
+            phone,
+            email,
+            client_type,
+            notes,
+            created_at,
+            archived_at
+        "#,
+    )
     .bind(id)
     .bind(&base.name)
     .bind(&base.surname)
@@ -263,9 +442,7 @@ pub async fn delete_client(state: State<'_, crate::AppState>, id: i32) -> AppRes
         .execute(&state.db_pool)
         .await?;
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(
-            "Клієнта з таким ID не знайдено в базі даних".to_string(),
-        ));
+        return Err(AppError::client_not_found());
     }
     Ok(())
 }
@@ -289,9 +466,11 @@ pub async fn fetch_client_delete_impact(
     state: State<'_, crate::AppState>,
     id: i32,
 ) -> AppResult<ClientDeleteImpact> {
+    let mut tx = state.db_pool.begin().await?;
+
     let car_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM cars WHERE client_id = $1")
         .bind(id)
-        .fetch_one(&state.db_pool)
+        .fetch_one(&mut *tx)
         .await?;
 
     let work_order_count: i64 = sqlx::query_scalar(
@@ -300,7 +479,7 @@ pub async fn fetch_client_delete_impact(
          WHERE c.client_id = $1",
     )
     .bind(id)
-    .fetch_one(&state.db_pool)
+    .fetch_one(&mut *tx)
     .await?;
 
     let labor_item_count: i64 = sqlx::query_scalar(
@@ -310,7 +489,7 @@ pub async fn fetch_client_delete_impact(
          WHERE c.client_id = $1",
     )
     .bind(id)
-    .fetch_one(&state.db_pool)
+    .fetch_one(&mut *tx)
     .await?;
 
     let part_item_count: i64 = sqlx::query_scalar(
@@ -320,8 +499,10 @@ pub async fn fetch_client_delete_impact(
          WHERE c.client_id = $1",
     )
     .bind(id)
-    .fetch_one(&state.db_pool)
+    .fetch_one(&mut *tx)
     .await?;
+
+    tx.commit().await?;
 
     Ok(ClientDeleteImpact {
         car_count,
@@ -334,41 +515,51 @@ pub async fn fetch_client_delete_impact(
 #[tauri::command]
 #[specta::specta]
 pub async fn archive_client(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
-    let mut tx = state.db_pool.begin().await?;
+    let mut tx = begin_immediate(&state.db_pool).await?;
 
     let result = sqlx::query(
-        "UPDATE clients SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
-         WHERE id = $1 AND archived_at IS NULL",
+        r#"
+        UPDATE clients SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+        WHERE id = $1
+          AND archived_at IS NULL
+        "#,
     )
     .bind(id)
     .execute(&mut *tx)
     .await?;
     if result.rows_affected() == 0 {
         tx.rollback().await?;
-        return Err(AppError::NotFound(
-            "Клієнта з таким ID не знайдено в базі даних".to_string(),
-        ));
+        return Err(AppError::client_not_found());
     }
 
     sqlx::query(
-        "UPDATE client_details SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
-         WHERE client_id = $1 AND archived_at IS NULL",
+        r#"
+        UPDATE client_details SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+        WHERE client_id = $1
+          AND archived_at IS NULL
+        "#,
     )
     .bind(id)
     .execute(&mut *tx)
     .await?;
 
     sqlx::query(
-        "UPDATE cars SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
-         WHERE client_id = $1 AND archived_at IS NULL",
+        r#"
+        UPDATE cars SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+        WHERE client_id = $1
+          AND archived_at IS NULL
+        "#,
     )
     .bind(id)
     .execute(&mut *tx)
     .await?;
 
     sqlx::query(
-        "UPDATE work_orders SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
-         WHERE car_id IN (SELECT id FROM cars WHERE client_id = $1) AND archived_at IS NULL",
+        r#"
+        UPDATE work_orders SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+        WHERE car_id IN (SELECT id FROM cars WHERE client_id = $1)
+          AND archived_at IS NULL
+        "#,
     )
     .bind(id)
     .execute(&mut *tx)
@@ -381,7 +572,7 @@ pub async fn archive_client(state: State<'_, crate::AppState>, id: i32) -> AppRe
 #[tauri::command]
 #[specta::specta]
 pub async fn restore_client(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
-    let mut tx = state.db_pool.begin().await?;
+    let mut tx = begin_immediate(&state.db_pool).await?;
 
     let result = sqlx::query("UPDATE clients SET archived_at = NULL WHERE id = $1")
         .bind(id)
@@ -389,9 +580,7 @@ pub async fn restore_client(state: State<'_, crate::AppState>, id: i32) -> AppRe
         .await?;
     if result.rows_affected() == 0 {
         tx.rollback().await?;
-        return Err(AppError::NotFound(
-            "Клієнта з таким ID не знайдено в базі даних".to_string(),
-        ));
+        return Err(AppError::client_not_found());
     }
 
     sqlx::query("UPDATE client_details SET archived_at = NULL WHERE client_id = $1")
@@ -426,12 +615,8 @@ where
             .fetch_optional(executor)
             .await?;
     match archived_at {
-        None => Err(AppError::NotFound(
-            "Клієнта з таким ID не знайдено в базі даних".to_string(),
-        )),
-        Some(Some(_)) => Err(AppError::Generic(
-            "Клієнт архівований. Спочатку відновіть клієнта з архіву.".to_string(),
-        )),
+        None => Err(AppError::client_not_found()),
+        Some(Some(_)) => Err(AppError::client_archived()),
         Some(None) => Ok(()),
     }
 }
@@ -515,19 +700,17 @@ fn validate_payload(payload: &ClientPayload) -> AppResult<()> {
     match payload {
         ClientPayload::Individual { first_name, .. } => {
             if first_name.trim().is_empty() {
-                return Err(AppError::Generic("Ім'я клієнта обов'язкове".to_string()));
+                return Err(AppError::validation("Ім'я клієнта обов'язкове"));
             }
         }
         ClientPayload::Fop {
             first_name, rnokpp, ..
         } => {
             if first_name.trim().is_empty() {
-                return Err(AppError::Generic("Ім'я клієнта обов'язкове".to_string()));
+                return Err(AppError::validation("Ім'я клієнта обов'язкове"));
             }
             if !is_n_digits(rnokpp, 10) {
-                return Err(AppError::Generic(
-                    "РНОКПП має містити рівно 10 цифр".to_string(),
-                ));
+                return Err(AppError::validation("РНОКПП має містити рівно 10 цифр"));
             }
         }
         ClientPayload::Company {
@@ -538,24 +721,20 @@ fn validate_payload(payload: &ClientPayload) -> AppResult<()> {
             ..
         } => {
             if name.trim().is_empty() {
-                return Err(AppError::Generic(
-                    "Назва організації обов'язкова".to_string(),
-                ));
+                return Err(AppError::validation("Назва організації обов'язкова"));
             }
             if legal_name.trim().is_empty() {
-                return Err(AppError::Generic(
-                    "Юридична назва організації обов'язкова".to_string(),
+                return Err(AppError::validation(
+                    "Юридична назва організації обов'язкова",
                 ));
             }
             if legal_address.trim().is_empty() {
-                return Err(AppError::Generic(
-                    "Юридична адреса організації обов'язкова".to_string(),
+                return Err(AppError::validation(
+                    "Юридична адреса організації обов'язкова",
                 ));
             }
             if !is_n_digits(edrpou, 8) {
-                return Err(AppError::Generic(
-                    "ЄДРПОУ має містити рівно 8 цифр".to_string(),
-                ));
+                return Err(AppError::validation("ЄДРПОУ має містити рівно 8 цифр"));
             }
         }
     }
@@ -574,9 +753,29 @@ where
         return Ok(());
     };
 
-    sqlx::query(&format!(
-        "INSERT INTO client_details ({CLIENT_DETAILS_COLUMNS}) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)"
-    ))
+    sqlx::query(
+        r#"
+        INSERT INTO client_details (
+            client_id,
+            legal_name,
+            legal_address,
+            edrpou,
+            rnokpp,
+            director_surname,
+            director_first_name,
+            director_patronymic,
+            contact_surname,
+            contact_first_name,
+            contact_patronymic,
+            contact_phone,
+            contact_email,
+            iban,
+            bank_name,
+            vat_payer
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        "#,
+    )
     .bind(details.client_id)
     .bind(details.legal_name)
     .bind(details.legal_address)
@@ -603,25 +802,45 @@ async fn upsert_client_details<'e, E>(executor: E, details: ClientDetails) -> Ap
 where
     E: Executor<'e, Database = Sqlite>,
 {
-    sqlx::query(&format!(
-        "INSERT INTO client_details ({CLIENT_DETAILS_COLUMNS}) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) \
-         ON CONFLICT (client_id) DO UPDATE SET \
-         legal_name = excluded.legal_name, \
-         legal_address = excluded.legal_address, \
-         edrpou = excluded.edrpou, \
-         rnokpp = excluded.rnokpp, \
-         director_surname = excluded.director_surname, \
-         director_first_name = excluded.director_first_name, \
-         director_patronymic = excluded.director_patronymic, \
-         contact_surname = excluded.contact_surname, \
-         contact_first_name = excluded.contact_first_name, \
-         contact_patronymic = excluded.contact_patronymic, \
-         contact_phone = excluded.contact_phone, \
-         contact_email = excluded.contact_email, \
-         iban = excluded.iban, \
-         bank_name = excluded.bank_name, \
-         vat_payer = excluded.vat_payer"
-    ))
+    sqlx::query(
+        r#"
+        INSERT INTO client_details (
+            client_id,
+            legal_name,
+            legal_address,
+            edrpou,
+            rnokpp,
+            director_surname,
+            director_first_name,
+            director_patronymic,
+            contact_surname,
+            contact_first_name,
+            contact_patronymic,
+            contact_phone,
+            contact_email,
+            iban,
+            bank_name,
+            vat_payer
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        ON CONFLICT (client_id) DO UPDATE SET
+            legal_name = excluded.legal_name,
+            legal_address = excluded.legal_address,
+            edrpou = excluded.edrpou,
+            rnokpp = excluded.rnokpp,
+            director_surname = excluded.director_surname,
+            director_first_name = excluded.director_first_name,
+            director_patronymic = excluded.director_patronymic,
+            contact_surname = excluded.contact_surname,
+            contact_first_name = excluded.contact_first_name,
+            contact_patronymic = excluded.contact_patronymic,
+            contact_phone = excluded.contact_phone,
+            contact_email = excluded.contact_email,
+            iban = excluded.iban,
+            bank_name = excluded.bank_name,
+            vat_payer = excluded.vat_payer
+        "#,
+    )
     .bind(details.client_id)
     .bind(details.legal_name)
     .bind(details.legal_address)

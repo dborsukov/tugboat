@@ -4,7 +4,10 @@ use sqlx::{Executor, Sqlite};
 use structs::*;
 use tauri::State;
 
-use crate::error::{AppError, AppResult};
+use crate::{
+    database::utils::begin_immediate,
+    error::{AppError, AppResult},
+};
 
 #[tauri::command]
 #[specta::specta]
@@ -19,7 +22,17 @@ pub async fn fetch_services_count(state: State<'_, crate::AppState>) -> AppResul
 #[specta::specta]
 pub async fn fetch_services_list(state: State<'_, crate::AppState>) -> AppResult<Vec<Service>> {
     let services: Vec<Service> = sqlx::query_as(
-        "SELECT id, code, name, price_type, fixed_price, labor_hours, archived_at FROM services",
+        r#"
+        SELECT
+            id,
+            code,
+            name,
+            price_type,
+            fixed_price,
+            labor_hours,
+            archived_at
+        FROM services
+        "#,
     )
     .fetch_all(&state.db_pool)
     .await?;
@@ -30,7 +43,18 @@ pub async fn fetch_services_list(state: State<'_, crate::AppState>) -> AppResult
 #[specta::specta]
 pub async fn fetch_service_by_id(state: State<'_, crate::AppState>, id: i32) -> AppResult<Service> {
     let service: Service = sqlx::query_as(
-        "SELECT id, code, name, price_type, fixed_price, labor_hours, archived_at FROM services WHERE id = $1",
+        r#"
+        SELECT
+            id,
+            code,
+            name,
+            price_type,
+            fixed_price,
+            labor_hours,
+            archived_at
+        FROM services
+        WHERE id = $1
+        "#,
     )
     .bind(id)
     .fetch_one(&state.db_pool)
@@ -45,7 +69,24 @@ pub async fn create_service(
     payload: CreateServicePayload,
 ) -> AppResult<Service> {
     let service: Service = sqlx::query_as(
-        "INSERT INTO services (code, name, price_type, fixed_price, labor_hours) VALUES ($1, $2, $3, $4, $5) RETURNING *",
+        r#"
+        INSERT INTO services (
+            code,
+            name,
+            price_type,
+            fixed_price,
+            labor_hours
+        )
+        VALUES ($1, $2, $3, $4, $5)
+        RETURNING
+            id,
+            code,
+            name,
+            price_type,
+            fixed_price,
+            labor_hours,
+            archived_at
+        "#,
     )
     .bind(payload.code)
     .bind(payload.name)
@@ -64,10 +105,28 @@ pub async fn update_service(
     id: i32,
     payload: UpdateServicePayload,
 ) -> AppResult<Service> {
-    ensure_service_active(&state.db_pool, id).await?;
+    let mut tx = begin_immediate(&state.db_pool).await?;
+
+    ensure_service_active(&mut *tx, id).await?;
 
     let service: Service = sqlx::query_as(
-        "UPDATE services SET code = $2, name = $3, price_type = $4, fixed_price =$5, labor_hours = $6 WHERE id = $1 RETURNING *",
+        r#"
+        UPDATE services SET
+            code = $2,
+            name = $3,
+            price_type = $4,
+            fixed_price = $5,
+            labor_hours = $6
+        WHERE id = $1
+        RETURNING
+            id,
+            code,
+            name,
+            price_type,
+            fixed_price,
+            labor_hours,
+            archived_at
+        "#,
     )
     .bind(id)
     .bind(payload.code)
@@ -75,8 +134,10 @@ pub async fn update_service(
     .bind(payload.price_type)
     .bind(payload.fixed_price.to_string())
     .bind(payload.labor_hours.to_string())
-    .fetch_one(&state.db_pool)
+    .fetch_one(&mut *tx)
     .await?;
+
+    tx.commit().await?;
     Ok(service)
 }
 
@@ -88,9 +149,7 @@ pub async fn delete_service(state: State<'_, crate::AppState>, id: i32) -> AppRe
         .execute(&state.db_pool)
         .await?;
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(
-            "Сервіса з таким ID не знайдено в базі даних".to_string(),
-        ));
+        return Err(AppError::service_not_found());
     }
     Ok(())
 }
@@ -101,7 +160,7 @@ pub async fn delete_services(state: State<'_, crate::AppState>, ids: Vec<i32>) -
     if ids.is_empty() {
         return Ok(());
     }
-    let mut tx = state.db_pool.begin().await?;
+    let mut tx = begin_immediate(&state.db_pool).await?;
     for id in &ids {
         let result = sqlx::query("DELETE FROM services WHERE id = $1")
             .bind(id)
@@ -109,9 +168,7 @@ pub async fn delete_services(state: State<'_, crate::AppState>, ids: Vec<i32>) -
             .await?;
         if result.rows_affected() == 0 {
             tx.rollback().await?;
-            return Err(AppError::NotFound(
-                "Сервіса з таким ID не знайдено в базі даних".to_string(),
-            ));
+            return Err(AppError::service_not_found());
         }
     }
     tx.commit().await?;
@@ -122,16 +179,17 @@ pub async fn delete_services(state: State<'_, crate::AppState>, ids: Vec<i32>) -
 #[specta::specta]
 pub async fn archive_service(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
     let result = sqlx::query(
-        "UPDATE services SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
-         WHERE id = $1 AND archived_at IS NULL",
+        r#"
+        UPDATE services SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+        WHERE id = $1
+          AND archived_at IS NULL
+        "#,
     )
     .bind(id)
     .execute(&state.db_pool)
     .await?;
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(
-            "Сервіса з таким ID не знайдено в базі даних".to_string(),
-        ));
+        return Err(AppError::service_not_found());
     }
     Ok(())
 }
@@ -142,20 +200,21 @@ pub async fn archive_services(state: State<'_, crate::AppState>, ids: Vec<i32>) 
     if ids.is_empty() {
         return Ok(());
     }
-    let mut tx = state.db_pool.begin().await?;
+    let mut tx = begin_immediate(&state.db_pool).await?;
     for id in &ids {
         let result = sqlx::query(
-            "UPDATE services SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now') \
-             WHERE id = $1 AND archived_at IS NULL",
+            r#"
+            UPDATE services SET archived_at = strftime('%Y-%m-%dT%H:%M:%SZ', 'now')
+            WHERE id = $1
+              AND archived_at IS NULL
+            "#,
         )
         .bind(id)
         .execute(&mut *tx)
         .await?;
         if result.rows_affected() == 0 {
             tx.rollback().await?;
-            return Err(AppError::NotFound(
-                "Сервіса з таким ID не знайдено в базі даних".to_string(),
-            ));
+            return Err(AppError::service_not_found());
         }
     }
     tx.commit().await?;
@@ -170,9 +229,7 @@ pub async fn restore_service(state: State<'_, crate::AppState>, id: i32) -> AppR
         .execute(&state.db_pool)
         .await?;
     if result.rows_affected() == 0 {
-        return Err(AppError::NotFound(
-            "Сервіса з таким ID не знайдено в базі даних".to_string(),
-        ));
+        return Err(AppError::service_not_found());
     }
     Ok(())
 }
@@ -183,7 +240,7 @@ pub async fn restore_services(state: State<'_, crate::AppState>, ids: Vec<i32>) 
     if ids.is_empty() {
         return Ok(());
     }
-    let mut tx = state.db_pool.begin().await?;
+    let mut tx = begin_immediate(&state.db_pool).await?;
     for id in &ids {
         let result = sqlx::query("UPDATE services SET archived_at = NULL WHERE id = $1")
             .bind(id)
@@ -191,9 +248,7 @@ pub async fn restore_services(state: State<'_, crate::AppState>, ids: Vec<i32>) 
             .await?;
         if result.rows_affected() == 0 {
             tx.rollback().await?;
-            return Err(AppError::NotFound(
-                "Сервіса з таким ID не знайдено в базі даних".to_string(),
-            ));
+            return Err(AppError::service_not_found());
         }
     }
     tx.commit().await?;
@@ -210,12 +265,8 @@ where
             .fetch_optional(executor)
             .await?;
     match archived_at {
-        None => Err(AppError::NotFound(
-            "Сервіса з таким ID не знайдено в базі даних".to_string(),
-        )),
-        Some(Some(_)) => Err(AppError::Generic(
-            "Сервіс архівований. Спочатку відновіть його з архіву.".to_string(),
-        )),
+        None => Err(AppError::service_not_found()),
+        Some(Some(_)) => Err(AppError::service_archived()),
         Some(None) => Ok(()),
     }
 }

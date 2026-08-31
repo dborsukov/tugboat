@@ -51,8 +51,7 @@ function createSettingsFieldMutation<K extends keyof AppSettings>(
         if (context?.previous !== undefined) {
           patchSettingsCache(queryClient, key, context.previous);
         }
-        // Invalid input is rejected client-side and surfaced in the UI
-        if ((error as { type?: string }).type === "ConstraintViolation") {
+        if ((error as { type?: string }).type === "validation") {
           return;
         }
         toast.error("Виникла помилка", {

@@ -25,9 +25,24 @@ const TIMEZONE_MAX_LEN: usize = 64;
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_settings(state: State<'_, crate::AppState>) -> AppResult<AppSettings> {
-    let settings: AppSettings = sqlx::query_as("SELECT * FROM app_settings WHERE id = 1")
-        .fetch_one(&state.db_pool)
-        .await?;
+    let settings: AppSettings = sqlx::query_as(
+        r#"
+        SELECT
+            id,
+            theme,
+            ui_scale,
+            default_markup,
+            rate_variants,
+            vin_lookup_templates,
+            license_plate_lookup_templates,
+            timezone,
+            default_phone_country_code
+        FROM app_settings
+        WHERE id = 1
+        "#,
+    )
+    .fetch_one(&state.db_pool)
+    .await?;
     Ok(settings)
 }
 
@@ -49,7 +64,7 @@ pub async fn update_theme(
 #[specta::specta]
 pub async fn update_ui_scale(ui_scale: f64, state: State<'_, crate::AppState>) -> AppResult<f64> {
     if !(UI_SCALE_MIN..=UI_SCALE_MAX).contains(&ui_scale) {
-        return Err(AppError::ConstraintViolation(format!(
+        return Err(AppError::validation(format!(
             "ui_scale must be between {UI_SCALE_MIN} and {UI_SCALE_MAX}"
         )));
     }
@@ -69,7 +84,7 @@ pub async fn update_default_markup(
     state: State<'_, crate::AppState>,
 ) -> AppResult<Decimal> {
     if default_markup < Decimal::from(MARKUP_MIN) || default_markup > Decimal::from(MARKUP_MAX) {
-        return Err(AppError::ConstraintViolation(format!(
+        return Err(AppError::validation(format!(
             "default_markup must be between {MARKUP_MIN} and {MARKUP_MAX}"
         )));
     }
@@ -104,23 +119,19 @@ fn validate_rate_variants(variants: &[RateVariants]) -> Result<(), AppError> {
     for v in variants {
         let name = v.name.trim();
         if name.is_empty() {
-            return Err(AppError::ConstraintViolation(
-                "rate variant name is required".into(),
-            ));
+            return Err(AppError::validation("rate variant name is required"));
         }
         if name.chars().count() > RATE_VARIANT_NAME_MAX_LEN {
-            return Err(AppError::ConstraintViolation(
-                "rate variant name is too long".into(),
-            ));
+            return Err(AppError::validation("rate variant name is too long"));
         }
         if !seen.insert(name.to_lowercase()) {
-            return Err(AppError::ConstraintViolation(format!(
+            return Err(AppError::validation(format!(
                 "duplicate rate variant name: {name}"
             )));
         }
         if v.value.is_sign_negative() {
-            return Err(AppError::ConstraintViolation(
-                "rate variant value must not be negative".into(),
+            return Err(AppError::validation(
+                "rate variant value must not be negative",
             ));
         }
     }
@@ -141,40 +152,32 @@ fn validate_lookup_templates(
     for entry in entries {
         let label = entry.label.trim();
         if label.is_empty() {
-            return Err(AppError::ConstraintViolation(format!(
-                "{kind} label is required"
-            )));
+            return Err(AppError::validation(format!("{kind} label is required")));
         }
         if label.chars().count() > LOOKUP_TEMPLATE_LABEL_MAX_LEN {
-            return Err(AppError::ConstraintViolation(format!(
-                "{kind} label is too long"
-            )));
+            return Err(AppError::validation(format!("{kind} label is too long")));
         }
         if !seen.insert(label.to_lowercase()) {
-            return Err(AppError::ConstraintViolation(format!(
+            return Err(AppError::validation(format!(
                 "duplicate {kind} label: {label}"
             )));
         }
 
         let url = entry.url_template.trim();
         if url.is_empty() {
-            return Err(AppError::ConstraintViolation(format!(
-                "{kind} url is required"
-            )));
+            return Err(AppError::validation(format!("{kind} url is required")));
         }
         if url.chars().count() > LOOKUP_TEMPLATE_URL_MAX_LEN {
-            return Err(AppError::ConstraintViolation(format!(
-                "{kind} url is too long"
-            )));
+            return Err(AppError::validation(format!("{kind} url is too long")));
         }
         if !url.contains(LOOKUP_PLACEHOLDER) {
-            return Err(AppError::ConstraintViolation(format!(
+            return Err(AppError::validation(format!(
                 "{kind} url must contain the {LOOKUP_PLACEHOLDER} placeholder"
             )));
         }
         let lower = url.to_lowercase();
         if !(lower.starts_with("http://") || lower.starts_with("https://")) {
-            return Err(AppError::ConstraintViolation(format!(
+            return Err(AppError::validation(format!(
                 "{kind} url must start with http:// or https://"
             )));
         }
@@ -256,13 +259,13 @@ pub async fn update_timezone(
 ) -> AppResult<String> {
     let timezone = timezone.trim();
     if timezone.is_empty() {
-        return Err(AppError::ConstraintViolation("timezone is required".into()));
+        return Err(AppError::validation("timezone is required"));
     }
     if timezone.chars().count() > TIMEZONE_MAX_LEN {
-        return Err(AppError::ConstraintViolation("timezone is too long".into()));
+        return Err(AppError::validation("timezone is too long"));
     }
     if timezone.parse::<chrono_tz::Tz>().is_err() {
-        return Err(AppError::ConstraintViolation(format!(
+        return Err(AppError::validation(format!(
             "unknown timezone: {timezone}"
         )));
     }
@@ -283,8 +286,8 @@ pub async fn update_default_phone_country_code(
 ) -> AppResult<String> {
     let code = default_phone_country_code.trim().to_ascii_uppercase();
     if code.len() != 2 || !code.chars().all(|c| c.is_ascii_alphabetic()) {
-        return Err(AppError::ConstraintViolation(
-            "default_phone_country_code must be a two-letter ISO country code".into(),
+        return Err(AppError::validation(
+            "default_phone_country_code must be a two-letter ISO country code",
         ));
     }
 
