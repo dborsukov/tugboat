@@ -7,7 +7,8 @@ CREATE TABLE app_settings (
     vin_lookup_templates TEXT NOT NULL DEFAULT '[]',
     license_plate_lookup_templates TEXT NOT NULL DEFAULT '[]',
     timezone TEXT NOT NULL DEFAULT 'Europe/Kiev',
-    default_phone_country_code TEXT NOT NULL DEFAULT 'UA'
+    default_phone_country_code TEXT NOT NULL DEFAULT 'UA',
+    company_info TEXT
 );
 
 -- Seed the initial default settings row

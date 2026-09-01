@@ -45,6 +45,7 @@ export const commands = {
 	updateLicensePlateLookupTemplates: (licensePlateLookupTemplates: LicensePlateLookupTemplates[]) => typedError<LicensePlateLookupTemplates[], AppError>(__TAURI_INVOKE("update_license_plate_lookup_templates", { licensePlateLookupTemplates })),
 	updateTimezone: (timezone: string) => typedError<string, AppError>(__TAURI_INVOKE("update_timezone", { timezone })),
 	updateDefaultPhoneCountryCode: (defaultPhoneCountryCode: string) => typedError<string, AppError>(__TAURI_INVOKE("update_default_phone_country_code", { defaultPhoneCountryCode })),
+	updateCompanyInfo: (companyInfo: CompanyInfo) => typedError<CompanyInfo, AppError>(__TAURI_INVOKE("update_company_info", { companyInfo })),
 	fetchWorkOrderDetailsDto: (id: string) => typedError<WorkOrderDetailsDto, AppError>(__TAURI_INVOKE("fetch_work_order_details_dto", { id })),
 	fetchWorkOrderDetailsDtoByCarId: (carId: number) => typedError<WorkOrderDetailsDto[], AppError>(__TAURI_INVOKE("fetch_work_order_details_dto_by_car_id", { carId })),
 	fetchWorkOrderDetailsDtoByClientId: (clientId: number) => typedError<WorkOrderDetailsDto[], AppError>(__TAURI_INVOKE("fetch_work_order_details_dto_by_client_id", { clientId })),
@@ -103,6 +104,7 @@ export type AppSettings = {
 	licensePlateLookupTemplates: LicensePlateLookupTemplates[],
 	timezone: string,
 	defaultPhoneCountryCode: string,
+	companyInfo: CompanyInfo | null,
 };
 
 export type Car = {
@@ -215,6 +217,35 @@ export type ClientListItem = {
 export type ClientPayload = { clientType: "individual"; surname: string | null; firstName: string; patronymic: string | null; phone: string | null; email: string | null; notes: string | null } | { clientType: "fop"; surname: string | null; firstName: string; patronymic: string | null; notes: string | null; rnokpp: string; legalAddress: string | null; contactSurname: string | null; contactFirstName: string | null; contactPatronymic: string | null; contactPhone: string | null; contactEmail: string | null; iban: string | null; bankName: string | null } | { clientType: "company"; name: string; notes: string | null; legalName: string; legalAddress: string; edrpou: string; directorSurname: string | null; directorFirstName: string | null; directorPatronymic: string | null; contactSurname: string | null; contactFirstName: string | null; contactPatronymic: string | null; contactPhone: string | null; contactEmail: string | null; iban: string | null; bankName: string | null; vatPayer: boolean };
 
 export type ClientType = "individual" | "fop" | "company";
+
+export type CompanyInfo = {
+	kind: CompanyKind,
+	/**  Short/trade name. */
+	name: string | null,
+	legalName: string | null,
+	legalAddress: string | null,
+	physicalAddress: string | null,
+	edrpou: string | null,
+	rnokpp: string | null,
+	/**  ПІБ of the ФОП. */
+	surname: string | null,
+	firstName: string | null,
+	patronymic: string | null,
+	/**  ПІБ of the company director. */
+	directorSurname: string | null,
+	directorFirstName: string | null,
+	directorPatronymic: string | null,
+	iban: string | null,
+	bankName: string | null,
+	vatPayer: boolean,
+	/**
+	 *  True when every field required for the chosen `kind`
+	 *  is filled out properly. Computed by the backend on save.
+	 */
+	isComplete?: boolean,
+};
+
+export type CompanyKind = "fop" | "company";
 
 export type CreateCarPayload = {
 	clientId: number,

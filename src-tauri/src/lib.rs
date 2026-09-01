@@ -65,6 +65,7 @@ pub fn run() {
         database::settings::update_license_plate_lookup_templates,
         database::settings::update_timezone,
         database::settings::update_default_phone_country_code,
+        database::settings::update_company_info,
         database::work_orders::fetch_work_order_details_dto,
         database::work_orders::fetch_work_order_details_dto_by_car_id,
         database::work_orders::fetch_work_order_details_dto_by_client_id,

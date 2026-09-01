@@ -4,6 +4,7 @@ import { toast } from "svelte-sonner";
 import {
   commands,
   type AppSettings,
+  type CompanyInfo,
   type LicensePlateLookupTemplates,
   type RateVariants,
   type ThemeMode,
@@ -31,12 +32,12 @@ function patchSettingsCache<K extends keyof AppSettings>(
 function createSettingsFieldMutation<K extends keyof AppSettings>(
   queryClient: QueryClient,
   key: K,
-  mutationFn: (value: AppSettings[K]) => Promise<AppSettings[K]>,
+  mutationFn: (value: NonNullable<AppSettings[K]>) => Promise<AppSettings[K]>,
 ) {
   return createMutation(
     () => ({
       mutationFn,
-      onMutate: async (next: AppSettings[K]) => {
+      onMutate: async (next) => {
         await queryClient.cancelQueries({ queryKey: keys.settings.all });
         const previous = queryClient.getQueryData<AppSettings>(
           keys.settings.all,
@@ -140,5 +141,14 @@ export function createUpdateDefaultPhoneCountryCodeMutation(
     "defaultPhoneCountryCode",
     (defaultPhoneCountryCode: string) =>
       unwrap(commands.updateDefaultPhoneCountryCode(defaultPhoneCountryCode)),
+  );
+}
+
+export function createUpdateCompanyInfoMutation(queryClient: QueryClient) {
+  return createSettingsFieldMutation(
+    queryClient,
+    "companyInfo",
+    (companyInfo: CompanyInfo) =>
+      unwrap(commands.updateCompanyInfo(companyInfo)),
   );
 }

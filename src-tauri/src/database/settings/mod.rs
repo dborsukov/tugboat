@@ -36,7 +36,8 @@ pub async fn fetch_settings(state: State<'_, crate::AppState>) -> AppResult<AppS
             vin_lookup_templates,
             license_plate_lookup_templates,
             timezone,
-            default_phone_country_code
+            default_phone_country_code,
+            company_info
         FROM app_settings
         WHERE id = 1
         "#,
@@ -298,4 +299,105 @@ pub async fn update_default_phone_country_code(
     .fetch_one(&state.db_pool)
     .await?;
     Ok(saved)
+}
+
+const COMPANY_INFO_TEXT_MAX_LEN: usize = 500;
+
+fn validate_company_info(info: &CompanyInfo) -> Result<(), AppError> {
+    for v in [
+        &info.name,
+        &info.legal_name,
+        &info.legal_address,
+        &info.physical_address,
+        &info.edrpou,
+        &info.rnokpp,
+        &info.surname,
+        &info.first_name,
+        &info.patronymic,
+        &info.director_surname,
+        &info.director_first_name,
+        &info.director_patronymic,
+        &info.iban,
+        &info.bank_name,
+    ]
+    .into_iter()
+    .flatten()
+    {
+        if v.trim().chars().count() > COMPANY_INFO_TEXT_MAX_LEN {
+            return Err(AppError::validation(format!(
+                "company info field is too long (max {COMPANY_INFO_TEXT_MAX_LEN} characters)"
+            )));
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_company_info(
+    mut company_info: CompanyInfo,
+    state: State<'_, crate::AppState>,
+) -> AppResult<CompanyInfo> {
+    validate_company_info(&company_info)?;
+
+    company_info.is_complete = company_info_is_complete(&company_info);
+
+    let saved: Json<CompanyInfo> = sqlx::query_scalar(
+        "UPDATE app_settings SET company_info = $1 WHERE id = 1 RETURNING company_info",
+    )
+    .bind(Json(&company_info))
+    .fetch_one(&state.db_pool)
+    .await?;
+    Ok(saved.0)
+}
+
+fn is_n_digits(value: &str, n: usize) -> bool {
+    value.len() == n && value.bytes().all(|b| b.is_ascii_digit())
+}
+
+fn is_valid_iban(value: &str) -> bool {
+    value.len() >= 15
+        && value.len() <= 34
+        && value
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+}
+
+fn filled(value: &Option<String>) -> bool {
+    value.as_deref().is_some_and(|v| !v.trim().is_empty())
+}
+
+fn company_info_is_complete(info: &CompanyInfo) -> bool {
+    fn bank_details_ok(info: &CompanyInfo) -> bool {
+        filled(&info.bank_name)
+            && info
+                .iban
+                .as_deref()
+                .is_some_and(|iban| is_valid_iban(iban.trim()))
+    }
+
+    match info.kind {
+        CompanyKind::Fop => {
+            filled(&info.surname)
+                && filled(&info.first_name)
+                && filled(&info.patronymic)
+                && filled(&info.rnokpp)
+                && is_n_digits(info.rnokpp.as_deref().unwrap_or_default(), 10)
+                && filled(&info.legal_address)
+                && filled(&info.physical_address)
+                && bank_details_ok(info)
+        }
+        CompanyKind::Company => {
+            filled(&info.name)
+                && filled(&info.legal_name)
+                && filled(&info.legal_address)
+                && filled(&info.physical_address)
+                && filled(&info.edrpou)
+                && is_n_digits(info.edrpou.as_deref().unwrap_or_default(), 8)
+                && filled(&info.director_surname)
+                && filled(&info.director_first_name)
+                && filled(&info.director_patronymic)
+                && bank_details_ok(info)
+        }
+    }
 }

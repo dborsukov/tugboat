@@ -39,7 +39,7 @@
   });
 </script>
 
-<Sidebar.Provider>
+<Sidebar.Provider style="height: 100%; min-height: 0;">
   <SettingsSidebar />
   <Sidebar.Inset class="h-full flex flex-col overflow-hidden">
     <main class="flex-1 flex flex-col min-h-0">
@@ -60,7 +60,7 @@
       {:else}
         {#key page.url.pathname}
           <div
-            class="flex-1 flex flex-col min-h-0 w-full max-w-5xl mx-auto"
+            class="flex-1 flex flex-col min-h-0 w-full"
             in:fly={{ y: 12, duration: 220, easing: cubicOut }}
           >
             {@render children?.()}

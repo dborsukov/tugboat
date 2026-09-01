@@ -16,6 +16,7 @@ pub struct AppSettings {
     pub license_plate_lookup_templates: Vec<LicensePlateLookupTemplates>,
     pub timezone: String,
     pub default_phone_country_code: String,
+    pub company_info: Option<CompanyInfo>,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for AppSettings {
@@ -37,6 +38,9 @@ impl<'r> FromRow<'r, SqliteRow> for AppSettings {
                 .0,
             timezone: row.try_get("timezone")?,
             default_phone_country_code: row.try_get("default_phone_country_code")?,
+            company_info: row
+                .try_get::<Option<Json<CompanyInfo>>, _>("company_info")?
+                .map(|json| json.0),
         })
     }
 }
@@ -69,4 +73,40 @@ pub struct VinLookupTemplates {
 pub struct LicensePlateLookupTemplates {
     pub label: String,
     pub url_template: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
+#[serde(rename_all = "lowercase")]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+pub enum CompanyKind {
+    Fop,
+    Company,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CompanyInfo {
+    pub kind: CompanyKind,
+    /// Short/trade name.
+    pub name: Option<String>,
+    pub legal_name: Option<String>,
+    pub legal_address: Option<String>,
+    pub physical_address: Option<String>,
+    pub edrpou: Option<String>,
+    pub rnokpp: Option<String>,
+    /// ПІБ of the ФОП.
+    pub surname: Option<String>,
+    pub first_name: Option<String>,
+    pub patronymic: Option<String>,
+    /// ПІБ of the company director.
+    pub director_surname: Option<String>,
+    pub director_first_name: Option<String>,
+    pub director_patronymic: Option<String>,
+    pub iban: Option<String>,
+    pub bank_name: Option<String>,
+    pub vat_payer: bool,
+    /// True when every field required for the chosen `kind`
+    /// is filled out properly. Computed by the backend on save.
+    #[serde(default)]
+    pub is_complete: bool,
 }

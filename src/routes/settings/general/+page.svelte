@@ -3,6 +3,11 @@
   import { countries } from "svelte-tel-input";
   import type { Country } from "svelte-tel-input/types";
 
+  import { goto } from "$app/navigation";
+
+  import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
+
+  import { Badge } from "$lib/components/ui/badge";
   import * as Item from "$lib/components/ui/item/index.js";
 
   import ComboSelect from "$lib/components/combo-select.svelte";
@@ -235,6 +240,33 @@
             </span>
           {/snippet}
         </ComboSelect>
+      </Item.Actions>
+    </Item.Root>
+
+    <Item.Root
+      id="settings-company-info-entry"
+      role="button"
+      tabindex={0}
+      class="hover:cursor-pointer hover:bg-muted/40 focus-visible:bg-muted/40"
+      onclick={() => goto("/settings/general/company-info")}
+      onkeydown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          goto("/settings/general/company-info");
+        }
+      }}
+    >
+      <Item.Content>
+        <Item.Title>Дані бізнесу</Item.Title>
+        <Item.Description
+          >Дані вашого бізнесу для використання в документах</Item.Description
+        >
+      </Item.Content>
+      <Item.Actions>
+        <Badge variant={draft?.companyInfo?.isComplete ? "success" : "warning"}>
+          {draft?.companyInfo?.isComplete ? "Заповнено" : "Не заповнено"}
+        </Badge>
+        <ChevronRightIcon class="size-4 shrink-0 text-muted-foreground" />
       </Item.Actions>
     </Item.Root>
   </div>

@@ -14,7 +14,9 @@ export type SettingsSearchItem = {
 /**
  * Registry of every searchable settings section. The `id` of each entry must
  * match an element id rendered on the corresponding page so the search can
- * scroll to and highlight it.
+ * scroll to and highlight it. Only sections on the main settings pages are
+ * indexed — sub-pages (rate variants, lookup templates, business data) are
+ * reached through their navigation rows, so they are not listed here.
  */
 export const settingsSearchIndex: SettingsSearchItem[] = [
   {
@@ -31,6 +33,14 @@ export const settingsSearchIndex: SettingsSearchItem[] = [
     label: "Країна за замовчуванням для телефонів",
     keywords:
       "телефон номер телефону код країни країна загальні phone country code dial",
+    hint: "Загальні",
+  },
+  {
+    id: "settings-company-info-entry",
+    route: "/settings/general",
+    label: "Дані бізнесу",
+    keywords:
+      "дані бізнесу реквізити організація компанія фоп єдрпоу рнокпп ібан банк адреса керівник пдв документи рахунок акт дані загальні company details",
     hint: "Загальні",
   },
   {
@@ -63,13 +73,6 @@ export const settingsSearchIndex: SettingsSearchItem[] = [
     hint: "Замовлення",
   },
   {
-    id: "settings-rate-variants",
-    route: "/settings/workorders/rate-variants",
-    label: "Список тарифів",
-    keywords: "тариф тарифи ставка розцінки rate список",
-    hint: "Замовлення",
-  },
-  {
     id: "settings-vin-templates-entry",
     route: "/settings/cars",
     label: "Шаблони пошуку VIN-кодів",
@@ -77,24 +80,9 @@ export const settingsSearchIndex: SettingsSearchItem[] = [
     hint: "Автомобілі",
   },
   {
-    id: "settings-vin-templates",
-    route: "/settings/cars/vin-lookup-templates",
-    label: "Список шаблонів VIN-кодів",
-    keywords: "vin код автомобіль авто пошук перевірка шаблон url template",
-    hint: "Автомобілі",
-  },
-  {
     id: "settings-plate-templates-entry",
     route: "/settings/cars",
     label: "Шаблони пошуку номерних знаків",
-    keywords:
-      "номерний знак номер авто автомобіль пошук перевірка шаблон plate license url template",
-    hint: "Автомобілі",
-  },
-  {
-    id: "settings-plate-templates",
-    route: "/settings/cars/license-plate-lookup-templates",
-    label: "Список шаблонів номерних знаків",
     keywords:
       "номерний знак номер авто автомобіль пошук перевірка шаблон plate license url template",
     hint: "Автомобілі",
