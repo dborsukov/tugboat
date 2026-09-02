@@ -14,7 +14,12 @@
   import CurrencyInput from "$lib/components/currency-input.svelte";
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
-  import { type DiscountType, type PartStatus } from "$lib/bindings";
+  import {
+    commands,
+    type DiscountType,
+    type PartStatus,
+    type PreviewPartItemQuote,
+  } from "$lib/bindings";
   import { zBigString } from "$lib/schemas/zbig";
   import {
     discountFields,
@@ -23,6 +28,7 @@
     refineDiscount,
   } from "$lib/schemas/zdiscount";
   import { settingsState } from "$lib/states/settings.svelte";
+  import { unwrap } from "$lib/tools";
 
   import DiscountField from "../discount-field.svelte";
   import {
@@ -45,44 +51,63 @@
   const formID = "part-item-mutation-form";
   const isEdit = $derived(partItemId != null);
 
-  /**
-   * Computes the final sale price: base cost + markup, minus discount.
-   * Returns null if any of the inputs aren't parseable numbers yet.
-   */
-  function computeFinalPrice(
-    costStr: string,
-    markupStr: string,
-    discountType: DiscountType,
-    discountStr: string,
-  ): { cost: Big; finalPrice: Big } | null {
+  async function fetchPartQuote(data: {
+    cost: string;
+    markup: string;
+    discountType: DiscountType;
+    discountValue: string;
+  }): Promise<PreviewPartItemQuote | null> {
+    if (!workOrderId) return null;
     try {
-      const cost = new Big(costStr || "0");
-      const markup = new Big(markupStr || "0");
-      let finalPrice = cost.times(Big(1).plus(markup.div(100)));
-
-      if (discountType === "Fixed") {
-        finalPrice = finalPrice.minus(new Big(discountStr || "0"));
-      } else if (discountType === "Percentage") {
-        finalPrice = finalPrice.times(
-          Big(1).minus(new Big(discountStr || "0").div(100)),
-        );
-      }
-
-      return { cost, finalPrice };
+      return await unwrap(
+        commands.previewPartItem({
+          workOrderId,
+          baseCost: data.cost || "0",
+          markup: data.markup || "0",
+          discountType: data.discountType,
+          discountValue: data.discountValue || "0",
+        }),
+      );
     } catch {
       return null;
     }
   }
 
+  let liveQuote = $state<PreviewPartItemQuote | null>(null);
+  let quoteSeq = 0;
+
+  $effect(() => {
+    if (!open || !workOrderId) return;
+    const snapshot = {
+      cost: $formData.cost,
+      markup: $formData.markup,
+      discountType: $formData.discountType as DiscountType,
+      discountValue: $formData.discountValue,
+    };
+    const seq = ++quoteSeq;
+    const timer = setTimeout(() => {
+      fetchPartQuote(snapshot).then((q) => {
+        if (seq === quoteSeq) liveQuote = q;
+      });
+    }, 200);
+    return () => clearTimeout(timer);
+  });
+
+  const liveWarning = $derived(
+    liveQuote && liveQuote.belowCost ? liveQuote : null,
+  );
+
+  const fmt = (v: string) => Big(v).toFixed(2);
+
   let priceConfirmOpen = $state(false);
   let pendingSubmitData = $state<z.infer<typeof partItemSchema> | null>(null);
+  let pendingQuote = $state<PreviewPartItemQuote | null>(null);
 
   const queryClient = useQueryClient();
 
   const createPartItemMutation = createCreatePartItemMutation(queryClient);
   const updatePartItemMutation = createUpdatePartItemMutation(queryClient);
 
-  // Default markup for new parts comes from the app settings (shared cache).
   const defaultMarkup = $derived(settingsState.settings?.defaultMarkup ?? "0");
 
   let partItemsQuery = createPartItemByIdQuery(() => partItemId);
@@ -121,16 +146,12 @@
     async onUpdate({ form: nativeForm, cancel }) {
       if (!nativeForm.valid) return;
 
-      const pricing = computeFinalPrice(
-        nativeForm.data.cost,
-        nativeForm.data.markup,
-        nativeForm.data.discountType,
-        nativeForm.data.discountValue,
-      );
+      // Fresh server-side quote at submit
+      const quote = await fetchPartQuote(nativeForm.data);
 
-      if (pricing && pricing.finalPrice.lt(pricing.cost)) {
-        // Final price undercuts base cost, halt submit
+      if (quote && quote.belowCost) {
         pendingSubmitData = nativeForm.data;
+        pendingQuote = quote;
         priceConfirmOpen = true;
         return;
       }
@@ -191,31 +212,23 @@
     if (pendingSubmitData) {
       await submitPartItem(pendingSubmitData);
       pendingSubmitData = null;
+      pendingQuote = null;
     }
   }
 
   function cancelPriceConfirm() {
     priceConfirmOpen = false;
     pendingSubmitData = null;
+    pendingQuote = null;
   }
 
   const { form: formData, enhance, submitting } = form;
-
-  const pricingWarning = $derived.by(() => {
-    const pricing = computeFinalPrice(
-      $formData.cost,
-      $formData.markup,
-      $formData.discountType as DiscountType,
-      $formData.discountValue,
-    );
-    if (pricing && pricing.finalPrice.lt(pricing.cost)) return pricing;
-    return null;
-  });
 
   $effect(() => {
     if (open) {
       priceConfirmOpen = false;
       pendingSubmitData = null;
+      pendingQuote = null;
 
       if (partItem) {
         $formData.status = partItem.status;
@@ -377,11 +390,19 @@
       {/snippet}
     </Form.Control>
     <Form.FieldErrors />
-    {#if pricingWarning}
-      <p class="text-sm text-amber-600 dark:text-amber-500 mt-1.5">
-        Увага: кінцева ціна {pricingWarning.finalPrice.toFixed(2)} грн. нижча за собівартість
-        {pricingWarning.cost.toFixed(2)} грн.
-      </p>
+    {#if liveWarning}
+      {#if liveWarning.kept !== liveWarning.discountedPrice}
+        <p class="text-sm text-amber-600 dark:text-amber-500 mt-1.5">
+          Увага: після сплати ПДВ залишиться {fmt(liveWarning.kept)} грн. (ціна {fmt(
+            liveWarning.discountedPrice,
+          )} грн.), що нижче за собівартість {fmt(liveWarning.cost)} грн.
+        </p>
+      {:else}
+        <p class="text-sm text-amber-600 dark:text-amber-500 mt-1.5">
+          Увага: кінцева ціна {fmt(liveWarning.discountedPrice)} грн. нижча за собівартість
+          {fmt(liveWarning.cost)} грн.
+        </p>
+      {/if}
     {/if}
   </Form.Field>
 </MutationSheetShell>
@@ -391,17 +412,16 @@
     <AlertDialog.Header>
       <AlertDialog.Title>Ціна нижча за собівартість</AlertDialog.Title>
       <AlertDialog.Description>
-        {#if pendingSubmitData}
-          {@const pricing = computeFinalPrice(
-            pendingSubmitData.cost,
-            pendingSubmitData.markup,
-            pendingSubmitData.discountType as DiscountType,
-            pendingSubmitData.discountValue,
-          )}
-          {#if pricing}
-            Кінцева ціна зі знижкою становить {pricing.finalPrice.toFixed(2)} грн.,
-            що нижче за собівартість {pricing.cost.toFixed(2)} грн. Зберегти запчастину
-            з такою ціною?
+        {#if pendingQuote && pendingQuote.belowCost}
+          {#if pendingQuote.kept !== pendingQuote.discountedPrice}
+            Після сплати ПДВ залишиться {fmt(pendingQuote.kept)} грн., що нижче за
+            собівартість {fmt(pendingQuote.cost)} грн. (клієнт заплатить {fmt(
+              pendingQuote.discountedPrice,
+            )} грн.). Зберегти?
+          {:else}
+            Кінцева ціна становить{" "}
+            {fmt(pendingQuote.discountedPrice)} грн., що нижче за собівартість{" "}
+            {fmt(pendingQuote.cost)} грн. Зберегти?
           {/if}
         {/if}
       </AlertDialog.Description>

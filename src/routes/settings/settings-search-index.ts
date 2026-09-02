@@ -66,6 +66,21 @@ export const settingsSearchIndex: SettingsSearchItem[] = [
     hint: "Замовлення",
   },
   {
+    id: "settings-vat-rate",
+    route: "/settings/workorders",
+    label: "Ставка ПДВ",
+    keywords:
+      "пдв податок ставка податкова vat tax відсоток ціни з пдв без пдв замовлення",
+    hint: "Замовлення",
+  },
+  {
+    id: "settings-vat-inclusive",
+    route: "/settings/workorders",
+    label: "Ціни з ПДВ",
+    keywords: "пдв податок ціни з пдв включено vat tax inclusive замовлення",
+    hint: "Замовлення",
+  },
+  {
     id: "settings-rate-variants-entry",
     route: "/settings/workorders",
     label: "Тарифи на замовлення",

@@ -29,13 +29,21 @@
   let orderDiscount = $derived(
     new Big(workOrderDetails?.totals?.orderDiscount ?? "0"),
   );
-  let grandTotal = $derived(
-    new Big(workOrderDetails?.totals?.grandTotal ?? "0"),
+  let vatAmount = $derived(new Big(workOrderDetails?.totals?.vatAmount ?? "0"));
+  let vatBase = $derived(new Big(workOrderDetails?.totals?.vatBase ?? "0"));
+  let totalWithVat = $derived(
+    new Big(workOrderDetails?.totals?.totalWithVat ?? "0"),
   );
+  let vatRate = $derived(workOrderDetails?.workOrder?.vatRate ?? "0");
+  let pricesIncludeVat = $derived(
+    workOrderDetails?.workOrder?.pricesIncludeVat ?? false,
+  );
+  let hasVat = $derived(vatAmount.gt(0));
   let partsCost = $derived(new Big(workOrderDetails?.totals?.partsCost ?? "0"));
   let laborCost = $derived(new Big(workOrderDetails?.totals?.laborCost ?? "0"));
   let totalCost = $derived(partsCost.plus(laborCost));
-  let belowCost = $derived(grandTotal.lt(totalCost));
+  // Computed by the backend: money actually kept (net of output VAT) vs cost.
+  let belowCost = $derived(workOrderDetails?.totals?.belowCost ?? false);
 </script>
 
 <Popover.Root>
@@ -52,7 +60,7 @@
       class={cn("size-5", belowCost && "text-rose-800 dark:text-rose-300")}
     />
     <CurrencyDisplay
-      amount={workOrderDetails?.totals?.grandTotal ?? "0"}
+      amount={totalWithVat.toString()}
       suffix="грн."
       class={cn("text-base font-medium")}
     />
@@ -71,10 +79,8 @@
       {#if laborDiscount.gt(0)}
         <div class="flex flex-col gap-1 border-l border-border pl-3">
           <div class="flex items-baseline justify-between">
-            <span class="text-xs text-muted-foreground">Сума</span>
-            <span
-              class="flex items-baseline gap-0.5 text-xs text-muted-foreground"
-            >
+            <span class="text-xs text-muted-foreground">Сума без знижки</span>
+            <span class="flex items-baseline text-xs text-muted-foreground">
               <span></span>
               <CurrencyDisplay
                 amount={Big(workOrderDetails?.totals.laborTotal)
@@ -87,9 +93,7 @@
           </div>
           <div class="flex items-baseline justify-between">
             <span class="text-xs text-muted-foreground">Знижка</span>
-            <span
-              class="flex items-baseline gap-0.5 text-xs text-muted-foreground"
-            >
+            <span class="flex items-baseline text-xs text-muted-foreground">
               <span>-</span>
               <CurrencyDisplay
                 amount={laborDiscount.toString()}
@@ -111,10 +115,8 @@
       {#if partsDiscount.gt(0)}
         <div class="flex flex-col gap-1 border-l border-border pl-3">
           <div class="flex items-baseline justify-between">
-            <span class="text-xs text-muted-foreground">Сума</span>
-            <span
-              class="flex items-baseline gap-0.5 text-xs text-muted-foreground"
-            >
+            <span class="text-xs text-muted-foreground">Сума без знижки</span>
+            <span class="flex items-baseline text-xs text-muted-foreground">
               <span></span>
               <CurrencyDisplay
                 amount={Big(workOrderDetails?.totals?.partsTotal)
@@ -127,9 +129,7 @@
           </div>
           <div class="flex items-baseline justify-between">
             <span class="text-xs text-muted-foreground">Знижка</span>
-            <span
-              class="flex items-baseline gap-0.5 text-xs text-muted-foreground"
-            >
+            <span class="flex items-baseline text-xs text-muted-foreground">
               <span>-</span>
               <CurrencyDisplay
                 amount={partsDiscount.toString()}
@@ -140,40 +140,58 @@
           </div>
         </div>
       {/if}
+      <div class="h-px bg-border"></div>
+      <div class="flex items-baseline justify-between">
+        <span class="text-sm">Разом</span>
+        <CurrencyDisplay
+          amount={workOrderDetails?.totals?.subtotal ?? "0"}
+          suffix="грн."
+          class="text-sm font-medium"
+        />
+      </div>
+      <div class="h-px bg-border"></div>
       {#if orderDiscount.gt(0)}
-        <div class="h-px bg-border"></div>
-        <div class="flex items-baseline justify-between">
-          <span class="text-sm">Проміжний підсумок</span>
-          <CurrencyDisplay
-            amount={workOrderDetails?.totals?.subtotal ?? "0"}
-            suffix="грн."
-            class="text-sm font-medium"
-          />
-        </div>
-        <div class="flex flex-col gap-1 border-l border-border pl-3">
-          <div class="flex items-baseline justify-between">
-            <span class="flex gap-1 text-xs text-muted-foreground">
-              <p>Знижка</p>
-              {#if workOrderDetails.workOrder.discountType === "Percentage"}
-                <span>({workOrderDetails.workOrder.discountValue}%)</span>
-              {:else}
-                <span>(фіксована)</span>
-              {/if}
-            </span>
-            <span
-              class="flex items-baseline gap-0.5 text-xs text-muted-foreground"
-            >
-              <span>-</span>
-              <CurrencyDisplay
-                amount={orderDiscount.toString()}
-                suffix="грн."
-                class="text-xs text-muted-foreground"
-              />
-            </span>
-          </div>
+        <div class="flex items-baseline justify-between text-sm">
+          <span class="flex gap-1">
+            <p>Знижка</p>
+            {#if workOrderDetails.workOrder.discountType === "Percentage"}
+              <span>({workOrderDetails.workOrder.discountValue}%)</span>
+            {:else}
+              <span>(фіксована)</span>
+            {/if}
+          </span>
+          <span class="flex items-baseline">
+            <span>-</span>
+            <CurrencyDisplay amount={orderDiscount.toString()} suffix="грн." />
+          </span>
         </div>
       {/if}
-      <div class="h-px bg-border"></div>
+      {#if hasVat && !pricesIncludeVat}
+        {#if orderDiscount.gt(0)}
+          <div class="flex items-baseline justify-between text-sm">
+            <span>Зі знижкою</span>
+            <CurrencyDisplay amount={vatBase.toString()} suffix="грн." />
+          </div>
+        {/if}
+        {#if !pricesIncludeVat}
+          <div class="flex items-baseline justify-between text-sm">
+            <span>
+              ПДВ ({vatRate}%)
+            </span>
+            <span class="flex items-baseline">
+              <span>+</span>
+              <CurrencyDisplay amount={vatAmount.toString()} suffix="грн." />
+            </span>
+          </div>
+        {/if}
+      {:else if vatRate === "0"}
+        <div
+          class="flex items-baseline justify-between text-sm text-muted-foreground"
+        >
+          <span>ПДВ</span>
+          <span>без ПДВ</span>
+        </div>
+      {/if}
       <div
         class={cn(
           "flex items-baseline justify-between rounded-md bg-green-100 dark:bg-green-500/15 px-3 py-2",
@@ -187,7 +205,7 @@
           )}>Всього</span
         >
         <CurrencyDisplay
-          amount={grandTotal.toString()}
+          amount={totalWithVat.toString()}
           suffix="грн."
           class={cn(
             "text-lg font-medium text-green-700 dark:text-green-300",
@@ -195,11 +213,47 @@
           )}
         />
       </div>
+      {#if hasVat && pricesIncludeVat}
+        <div class="flex flex-col gap-1 border-l border-border pl-3">
+          <div class="flex items-baseline justify-between">
+            <span class="text-xs text-muted-foreground">Без ПДВ</span>
+            <span class="flex items-baseline text-xs text-muted-foreground">
+              <span></span>
+              <CurrencyDisplay
+                amount={vatBase.toString()}
+                suffix="грн."
+                class="text-xs text-muted-foreground"
+              />
+            </span>
+          </div>
+          <div class="flex items-baseline justify-between">
+            <span class="text-xs text-muted-foreground">
+              У т.ч. ПДВ ({vatRate}%)
+            </span>
+            <span class="flex items-baseline text-xs text-muted-foreground">
+              <span></span>
+              <CurrencyDisplay
+                amount={vatAmount.toString()}
+                suffix="грн."
+                class="text-xs text-muted-foreground"
+              />
+            </span>
+          </div>
+        </div>
+      {/if}
       {#if belowCost}
-        <span class={cn("text-sm text-rose-700 dark:text-rose-300")}>
-          Кінцева сума зі знижкою становить {grandTotal.toString()} грн., що нижче
-          за собівартість робіт і запчастин {totalCost.toString()} грн.
-        </span>
+        {#if hasVat}
+          <span class={cn("text-sm text-rose-700 dark:text-rose-300")}>
+            Після сплати ПДВ залишиться {vatBase.toString()} грн., що нижче за собівартість
+            робіт і запчастин {totalCost.toString()} грн. (клієнт заплатить {totalWithVat.toString()}
+            грн.)
+          </span>
+        {:else}
+          <span class={cn("text-sm text-rose-700 dark:text-rose-300")}>
+            Кінцева сума зі знижкою становить {totalWithVat.toString()} грн., що нижче
+            за собівартість робіт і запчастин {totalCost.toString()} грн.
+          </span>
+        {/if}
       {/if}
     </div>
   </Popover.Content>

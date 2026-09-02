@@ -122,6 +122,7 @@ pub enum ClientPayload {
         contact_email: Option<String>,
         iban: Option<String>,
         bank_name: Option<String>,
+        vat_payer: bool,
     },
     Company {
         name: String,

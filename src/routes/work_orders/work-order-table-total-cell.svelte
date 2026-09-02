@@ -15,19 +15,16 @@
   } = $props();
 
   let paid = $derived(workOrderDetails?.workOrder.status === "Paid");
-  let grandTotal = $derived(
-    new Big(workOrderDetails?.totals?.grandTotal ?? "0"),
+  let totalWithVat = $derived(
+    new Big(workOrderDetails?.totals?.totalWithVat ?? "0"),
   );
-  let partsCost = $derived(new Big(workOrderDetails?.totals?.partsCost ?? "0"));
-  let laborCost = $derived(new Big(workOrderDetails?.totals?.laborCost ?? "0"));
-  let totalCost = $derived(partsCost.plus(laborCost));
-  let belowCost = $derived(grandTotal.lt(totalCost));
+  let belowCost = $derived(workOrderDetails?.totals?.belowCost ?? false);
 </script>
 
 <div
   class={cn(
     "w-full h-full flex items-center justify-center",
-    grandTotal.eq(0) && "text-muted-foreground",
+    totalWithVat.eq(0) && "text-muted-foreground",
     paid &&
       "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300 font-medium",
     belowCost &&
@@ -35,5 +32,5 @@
     className,
   )}
 >
-  <CurrencyDisplay amount={grandTotal.toString()} suffix="грн." />
+  <CurrencyDisplay amount={totalWithVat.toString()} suffix="грн." />
 </div>

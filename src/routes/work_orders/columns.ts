@@ -115,7 +115,8 @@ export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
   {
     id: "total",
     accessorFn: (row) => {
-      const rawTotal = row.totals?.grandTotal ?? "0";
+      const rawTotal =
+        row.totals?.totalWithVat ?? row.totals?.grandTotal ?? "0";
       return parseFloat(rawTotal);
     },
     header: ({ column }) => {

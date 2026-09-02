@@ -139,8 +139,8 @@ export const columns: ColumnDef<LaborItemDto>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(TableDiscountedWarningCell, {
-        cost: row.original.totals.cost,
         price: row.original.totals.total,
+        belowCost: row.original.totals.belowCost,
       });
     },
   },

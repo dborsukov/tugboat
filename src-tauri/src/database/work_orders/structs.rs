@@ -77,6 +77,8 @@ pub struct WorkOrder {
     pub labor_cost_value: Decimal,
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
+    pub vat_rate: Decimal,
+    pub prices_include_vat: bool,
     pub created_at: DateTime<Utc>,
     pub archived_at: Option<DateTime<Utc>>,
     pub started_at: Option<DateTime<Utc>>,
@@ -99,6 +101,8 @@ impl<'r> FromRow<'r, SqliteRow> for WorkOrder {
             labor_cost_value: decimal_column(row, "labor_cost_value")?,
             discount_type: row.try_get("discount_type")?,
             discount_value: decimal_column(row, "discount_value")?,
+            vat_rate: decimal_column(row, "vat_rate")?,
+            prices_include_vat: row.try_get("prices_include_vat")?,
             created_at: row.try_get("created_at")?,
             archived_at: row.try_get("archived_at")?,
             started_at: row.try_get("started_at")?,
@@ -123,6 +127,8 @@ pub struct CreateWorkOrderPayload {
     pub labor_cost_value: Decimal,
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
+    pub vat_rate: Decimal,
+    pub prices_include_vat: bool,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -140,6 +146,8 @@ pub struct UpdateWorkOrderPayload {
     pub labor_cost_value: Decimal,
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
+    pub vat_rate: Decimal,
+    pub prices_include_vat: bool,
     pub started_at: Option<DateTime<Utc>>,
     pub completed_at: Option<DateTime<Utc>>,
     pub paid_at: Option<DateTime<Utc>>,

@@ -92,6 +92,26 @@ export function createUpdateDefaultMarkupMutation(queryClient: QueryClient) {
   );
 }
 
+export function createUpdateDefaultVatRateMutation(queryClient: QueryClient) {
+  return createSettingsFieldMutation(
+    queryClient,
+    "defaultVatRate",
+    (defaultVatRate: string) =>
+      unwrap(commands.updateDefaultVatRate(defaultVatRate)),
+  );
+}
+
+export function createUpdateDefaultPricesIncludeVatMutation(
+  queryClient: QueryClient,
+) {
+  return createSettingsFieldMutation(
+    queryClient,
+    "defaultPricesIncludeVat",
+    (defaultPricesIncludeVat: boolean) =>
+      unwrap(commands.updateDefaultPricesIncludeVat(defaultPricesIncludeVat)),
+  );
+}
+
 export function createUpdateRateVariantsMutation(queryClient: QueryClient) {
   return createSettingsFieldMutation(
     queryClient,

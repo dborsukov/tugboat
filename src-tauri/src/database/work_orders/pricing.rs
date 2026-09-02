@@ -1,16 +1,30 @@
 use rust_decimal::Decimal;
 
-use super::structs::{DiscountType, LaborItem, PartItem, WorkOrder};
+use super::structs::{DiscountType, LaborItem, PartItem};
 use crate::database::work_orders::{
     dtos::{LaborItemTotals, PartItemTotals, WorkOrderTotals},
     structs::{LaborCostType, LaborPriceType},
 };
+
+pub fn net_kept_amount(gross: Decimal, vat_rate: Decimal, prices_include_vat: bool) -> Decimal {
+    if !prices_include_vat || vat_rate.is_zero() {
+        return gross;
+    }
+    (gross * (Decimal::ONE_HUNDRED / (Decimal::ONE_HUNDRED + vat_rate))).round_dp(2)
+}
+
+pub fn labor_cost_basis_known(price_type: LaborPriceType, labor_cost_type: LaborCostType) -> bool {
+    !matches!(labor_cost_type, LaborCostType::Hourly)
+        || matches!(price_type, LaborPriceType::Hourly)
+}
 
 pub fn calculate_labor_item_totals(
     labor_item: &LaborItem,
     rate: Decimal,
     labor_cost_type: LaborCostType,
     labor_cost: Decimal,
+    vat_rate: Decimal,
+    prices_include_vat: bool,
 ) -> LaborItemTotals {
     let subtotal = match labor_item.price_type {
         LaborPriceType::Hourly => (labor_item.labor_hours * rate).round_dp(2),
@@ -26,8 +40,6 @@ pub fn calculate_labor_item_totals(
     };
     let total = total.max(Decimal::ZERO);
 
-    // Derived from subtotal - total so it always reflects what was actually deducted,
-    // including cases where the raw discount would have pushed the total below zero.
     let discount = (subtotal - total).max(Decimal::ZERO);
 
     // When labor_cost_type is Hourly, cost is derived from labor_hours.
@@ -43,15 +55,24 @@ pub fn calculate_labor_item_totals(
         LaborCostType::Percentage => (subtotal * (labor_cost / Decimal::ONE_HUNDRED)).round_dp(2),
     };
 
+    let cost_basis_known = labor_cost_basis_known(labor_item.price_type, labor_cost_type);
+    let below_cost =
+        cost_basis_known && net_kept_amount(total, vat_rate, prices_include_vat) < cost;
+
     LaborItemTotals {
         cost,
         subtotal,
         discount,
         total,
+        below_cost,
     }
 }
 
-pub fn calculate_part_item_totals(part_item: &PartItem) -> PartItemTotals {
+pub fn calculate_part_item_totals(
+    part_item: &PartItem,
+    vat_rate: Decimal,
+    prices_include_vat: bool,
+) -> PartItemTotals {
     let cost = (part_item.base_cost * part_item.quantity).round_dp(2);
 
     let retail_price = (part_item.base_cost
@@ -71,9 +92,10 @@ pub fn calculate_part_item_totals(part_item: &PartItem) -> PartItemTotals {
         .round_dp(2)
         .max(Decimal::ZERO);
 
-    // Quantity-adjusted, so it lines up with `total` (also quantity-adjusted)
-    // rather than the per-unit retail_price/discounted_price fields.
     let discount = (retail_total - total).max(Decimal::ZERO);
+
+    let below_cost =
+        net_kept_amount(discounted_price, vat_rate, prices_include_vat) < part_item.base_cost;
 
     PartItemTotals {
         cost,
@@ -81,32 +103,67 @@ pub fn calculate_part_item_totals(part_item: &PartItem) -> PartItemTotals {
         discounted_price,
         discount,
         total,
+        below_cost,
     }
 }
 
+/// Computes the VAT breakdown for an order total (after discounts).
+///
+/// `prices_include_vat` selects how the entered prices relate to the tax:
+/// - `false` (prices without VAT): the base is the discounted total and VAT
+///   is added on top (`base * rate / 100`).
+/// - `true` (prices already include VAT): the discounted total is the
+///   VAT-inclusive amount, so VAT is extracted with the reverse rate
+///   (`total * rate / (100 + rate)`).
+///
+/// A zero rate yields zero VAT on both paths.
+pub fn calculate_vat(
+    total: Decimal,
+    vat_rate: Decimal,
+    prices_include_vat: bool,
+) -> (Decimal, Decimal, Decimal) {
+    let (vat_base, vat_amount, total_with_vat) = if prices_include_vat {
+        let vat_amount = (total * (vat_rate / (Decimal::ONE_HUNDRED + vat_rate))).round_dp(2);
+        let vat_base = (total - vat_amount).round_dp(2);
+        (vat_base, vat_amount, total)
+    } else {
+        let vat_base = total;
+        let vat_amount = (total * (vat_rate / Decimal::ONE_HUNDRED)).round_dp(2);
+        (vat_base, vat_amount, (total + vat_amount).round_dp(2))
+    };
+    (vat_base, vat_amount, total_with_vat)
+}
+
+#[allow(clippy::too_many_arguments)]
 pub fn calculate_work_order_totals(
-    work_order: &WorkOrder,
     labor_total: Decimal,
     labor_cost: Decimal,
     parts_total: Decimal,
     parts_cost: Decimal,
     labor_discount: Decimal,
     parts_discount: Decimal,
+    discount_type: DiscountType,
+    discount_value: Decimal,
+    vat_rate: Decimal,
+    prices_include_vat: bool,
 ) -> WorkOrderTotals {
     let subtotal = labor_total + parts_total;
 
-    let grand_total = match work_order.discount_type {
+    let grand_total = match discount_type {
         DiscountType::None => subtotal,
-        DiscountType::Fixed => subtotal - work_order.discount_value,
-        DiscountType::Percentage => (subtotal
-            * (Decimal::ONE - work_order.discount_value / Decimal::ONE_HUNDRED))
-            .round_dp(2),
+        DiscountType::Fixed => subtotal - discount_value,
+        DiscountType::Percentage => {
+            (subtotal * (Decimal::ONE - discount_value / Decimal::ONE_HUNDRED)).round_dp(2)
+        }
     };
     let grand_total = grand_total.max(Decimal::ZERO);
 
-    // The work order's own discount, on top of whatever was already taken off
-    // individual labor/part items.
     let order_discount = (subtotal - grand_total).max(Decimal::ZERO);
+
+    let (vat_base, vat_amount, total_with_vat) =
+        calculate_vat(grand_total, vat_rate, prices_include_vat);
+
+    let below_cost = vat_base < labor_cost + parts_cost;
 
     WorkOrderTotals {
         labor_total,
@@ -118,5 +175,9 @@ pub fn calculate_work_order_totals(
         parts_discount,
         order_discount,
         grand_total,
+        vat_base,
+        vat_amount,
+        total_with_vat,
+        below_cost,
     }
 }

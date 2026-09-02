@@ -12,6 +12,7 @@
 
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
   import { Button } from "$lib/components/ui/button";
+  import { Checkbox } from "$lib/components/ui/checkbox";
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
@@ -20,11 +21,11 @@
   import CurrencyInput from "$lib/components/currency-input.svelte";
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
-  import type {
-    DiscountType,
-    LaborCostType,
-    LaborItemDto,
-    WorkOrderDetailsDto,
+  import {
+    commands,
+    type DiscountType,
+    type LaborCostType,
+    type PreviewWorkOrderQuote,
   } from "$lib/bindings";
   import { zBigString } from "$lib/schemas/zbig";
   import {
@@ -39,6 +40,7 @@
     laborCostToPayload,
   } from "$lib/schemas/zlaborcost";
   import { settingsState } from "$lib/states/settings.svelte";
+  import { unwrap } from "$lib/tools";
   import type { CreateOrEditProps } from "$lib/types";
 
   import DiscountField from "./discount-field.svelte";
@@ -71,104 +73,82 @@
   let workOrderDetailsQuery = createWorkOrderDetailsQuery(() => workOrderId);
   let workOrderDetails = $derived(workOrderDetailsQuery.data);
 
-  /**
-   * Recomputes one labor item's subtotal/total/cost using a possibly-edited
-   * rate and labor cost setting, mirroring calculate_labor_item_totals in pricing.rs
-   */
-  function computeLaborItemLive(
-    item: LaborItemDto,
-    rate: Big,
-    laborCostType: LaborCostType,
-    laborCostValue: Big,
-  ): { total: Big; cost: Big } {
-    const subtotal =
-      item.priceType === "Hourly"
-        ? new Big(item.laborHours).times(rate)
-        : new Big(item.fixedPrice);
+  const businessIsNotVatPayer = $derived(
+    settingsState.settings?.companyInfo?.vatPayer === false,
+  );
+  const vatBlocked = $derived(businessIsNotVatPayer && !isEdit);
+  // Existing orders keep their snapshot; warn when it contradicts the
+  // seller's current status instead of silently rewriting history.
+  const vatMismatchWarning = $derived(
+    businessIsNotVatPayer &&
+      isEdit &&
+      workOrderDetails &&
+      workOrderDetails.workOrder.vatRate !== "0"
+      ? workOrderDetails.workOrder.vatRate
+      : null,
+  );
 
-    let total = subtotal;
-    if (item.discountType === "Fixed") {
-      total = total.minus(new Big(item.discountValue));
-    } else if (item.discountType === "Percentage") {
-      total = total.times(Big(1).minus(new Big(item.discountValue).div(100)));
-    }
-    if (total.lt(0)) total = new Big(0);
-
-    const cost =
-      laborCostType === "Hourly"
-        ? new Big(item.laborHours).times(laborCostValue)
-        : subtotal.times(laborCostValue.div(100));
-
-    return { total, cost };
-  }
-
-  /**
-   * Combined (labor + parts) grand total after the work order's own
-   * discount, and combined (labor + parts) cost. Labor items are recomputed
-   * live since rate/laborCostType/laborCostValue are edited in this very form.
-   *
-   * Returns null if any of the inputs aren't parseable numbers yet or in create mode.
-   */
-  function computeWorkOrderPricing(
-    rateStr: string,
-    laborCostType: LaborCostType,
-    laborCostStr: string,
-    discountType: DiscountType,
-    discountStr: string,
-    workOrderDetails: WorkOrderDetailsDto | null | undefined,
-  ): { grandTotal: Big; combinedCost: Big } | null {
-    if (!workOrderDetails) return null;
-
+  async function fetchWorkOrderQuote(data: {
+    rate: string;
+    laborCostType: LaborCostType;
+    laborCost: string;
+    discountType: DiscountType;
+    discountValue: string;
+    vatRate: string;
+    pricesIncludeVat: boolean;
+  }): Promise<PreviewWorkOrderQuote | null> {
+    if (!isEdit || !workOrderId) return null;
     try {
-      const rate = new Big(rateStr || "0");
-      const laborCostValue = new Big(laborCostStr || "0");
-
-      let laborTotal = new Big(0);
-      let laborCost = new Big(0);
-      for (const item of workOrderDetails.laborItems) {
-        const { total, cost } = computeLaborItemLive(
-          item,
-          rate,
-          laborCostType,
-          laborCostValue,
-        );
-        laborTotal = laborTotal.plus(total);
-        laborCost = laborCost.plus(cost);
-      }
-
-      const partsTotal = new Big(workOrderDetails.totals.partsTotal);
-      const partsCost = new Big(workOrderDetails.totals.partsCost);
-
-      const subtotal = laborTotal.plus(partsTotal);
-      const combinedCost = laborCost.plus(partsCost);
-
-      let grandTotal = subtotal;
-      if (discountType === "Fixed") {
-        grandTotal = grandTotal.minus(new Big(discountStr || "0"));
-      } else if (discountType === "Percentage") {
-        grandTotal = grandTotal.times(
-          Big(1).minus(new Big(discountStr || "0").div(100)),
-        );
-      }
-      console.log(
-        laborTotal.toString(),
-        laborCost.toString(),
-        partsTotal.toString(),
-        partsCost.toString(),
-        subtotal.toString(),
-        combinedCost.toString(),
-        grandTotal.toString(),
+      return await unwrap(
+        commands.previewWorkOrder({
+          workOrderId,
+          rate: data.rate || "0",
+          laborCostType: data.laborCostType,
+          laborCostValue: data.laborCost || "0",
+          discountType: data.discountType,
+          discountValue: data.discountValue || "0",
+          vatRate: data.vatRate || "0",
+          pricesIncludeVat: data.pricesIncludeVat,
+        }),
       );
-      if (grandTotal.lt(0)) grandTotal = new Big(0);
-
-      return { grandTotal, combinedCost };
     } catch {
       return null;
     }
   }
 
+  // Live (debounced) quote for the inline warning while editing.
+  let liveQuote = $state<PreviewWorkOrderQuote | null>(null);
+  let quoteSeq = 0;
+
+  $effect(() => {
+    if (!open || !isEdit || !workOrderId) return;
+    const snapshot = {
+      rate: $formData.rate,
+      laborCostType: $formData.laborCostType as LaborCostType,
+      laborCost: $formData.laborCost,
+      discountType: $formData.discountType as DiscountType,
+      discountValue: $formData.discountValue,
+      vatRate: $formData.vatRate,
+      pricesIncludeVat: $formData.pricesIncludeVat,
+    };
+    const seq = ++quoteSeq;
+    const timer = setTimeout(() => {
+      fetchWorkOrderQuote(snapshot).then((q) => {
+        if (seq === quoteSeq) liveQuote = q;
+      });
+    }, 200);
+    return () => clearTimeout(timer);
+  });
+
+  const liveWarning = $derived(
+    liveQuote && liveQuote.belowCost ? liveQuote : null,
+  );
+
+  const fmt = (v: string) => Big(v).toFixed(2);
+
   let priceConfirmOpen = $state(false);
   let pendingSubmitData = $state<z.infer<typeof workOrderSchema> | null>(null);
+  let pendingQuote = $state<PreviewWorkOrderQuote | null>(null);
 
   export const workOrderSchema = z
     .object({
@@ -190,6 +170,12 @@
         requiredError: "Вкажіть тариф",
         min: { value: 0, message: "Тариф не може бути від'ємним числом" },
       }).default("0"),
+      vatRate: zBigString({
+        requiredError: "Вкажіть ставку ПДВ",
+        min: { value: 0, message: "Ставка ПДВ не може бути від'ємним числом" },
+        max: { value: 100, message: "Ставка ПДВ має бути в межах 100%" },
+      }).default("20"),
+      pricesIncludeVat: z.boolean().default(true),
       ...laborCostFields,
       ...discountFields,
     })
@@ -205,18 +191,17 @@
       if (isLocked) return;
       if (!nativeForm.valid) return;
 
-      const pricing = computeWorkOrderPricing(
-        nativeForm.data.rate,
-        nativeForm.data.laborCostType,
-        nativeForm.data.laborCost,
-        nativeForm.data.discountType,
-        nativeForm.data.discountValue,
-        workOrderDetails,
-      );
+      if (!isEdit) {
+        await submitWorkOrder(nativeForm.data, cancel);
+        return;
+      }
 
-      if (pricing && pricing.grandTotal.lt(pricing.combinedCost)) {
-        // Discounted grand total undercuts combined labor + parts cost, halt submit
+      // Fresh server-side quote at submit
+      const quote = await fetchWorkOrderQuote(nativeForm.data);
+
+      if (quote && quote.belowCost) {
         pendingSubmitData = nativeForm.data;
+        pendingQuote = quote;
         priceConfirmOpen = true;
         return;
       }
@@ -239,6 +224,8 @@
       data.discountValue,
     );
 
+    const vatRate = !isEdit && businessIsNotVatPayer ? "0" : data.vatRate;
+
     if (!isEdit && !carId && !workOrderDetails) {
       toast.error("Виникла помилка", {
         position: "bottom-left",
@@ -256,6 +243,8 @@
               notes: data.notes?.trim() || null,
               status: workOrderDetails!.workOrder.status,
               rate: data.rate,
+              vatRate: data.vatRate,
+              pricesIncludeVat: data.pricesIncludeVat,
               ...laborCostPayload,
               ...discountPayload,
               startedAt: workOrderDetails!.workOrder.startedAt,
@@ -272,6 +261,8 @@
               description: data.description?.trim() || null,
               notes: data.notes?.trim() || null,
               rate: data.rate,
+              vatRate,
+              pricesIncludeVat: data.pricesIncludeVat,
               ...laborCostPayload,
               ...discountPayload,
             })
@@ -292,39 +283,32 @@
     if (pendingSubmitData) {
       await submitWorkOrder(pendingSubmitData);
       pendingSubmitData = null;
+      pendingQuote = null;
     }
   }
 
   function cancelPriceConfirm() {
     priceConfirmOpen = false;
     pendingSubmitData = null;
+    pendingQuote = null;
   }
 
   const { form: formData, enhance, submitting } = form;
-
-  const pricingWarning = $derived.by(() => {
-    const pricing = computeWorkOrderPricing(
-      $formData.rate,
-      $formData.laborCostType,
-      $formData.laborCost,
-      $formData.discountType,
-      $formData.discountValue,
-      workOrderDetails,
-    );
-    if (pricing && pricing.grandTotal.lt(pricing.combinedCost)) return pricing;
-    return null;
-  });
 
   $effect(() => {
     if (open) {
       priceConfirmOpen = false;
       pendingSubmitData = null;
+      pendingQuote = null;
 
       if (workOrderDetails) {
         $formData.odometerIn = workOrderDetails.workOrder.odometerIn;
         $formData.description = workOrderDetails.workOrder.description;
         $formData.notes = workOrderDetails.workOrder.notes;
         $formData.rate = workOrderDetails.workOrder.rate;
+        $formData.vatRate = workOrderDetails.workOrder.vatRate;
+        $formData.pricesIncludeVat =
+          workOrderDetails.workOrder.pricesIncludeVat;
         $formData.laborCostType = workOrderDetails.workOrder.laborCostType;
         $formData.laborCost = laborCostFromEntity(workOrderDetails.workOrder);
         $formData.discountType = workOrderDetails.workOrder.discountType;
@@ -333,6 +317,15 @@
         );
       } else {
         form.reset();
+        if (businessIsNotVatPayer) {
+          $formData.vatRate = "0";
+          $formData.pricesIncludeVat = true;
+        } else {
+          // New orders take the VAT defaults from app settings.
+          $formData.vatRate = settingsState.settings?.defaultVatRate ?? "20";
+          $formData.pricesIncludeVat =
+            settingsState.settings?.defaultPricesIncludeVat ?? true;
+        }
       }
     }
   });
@@ -465,6 +458,49 @@
       <Form.FieldErrors />
     </Form.Field>
 
+    <Form.Field {form} name="vatRate">
+      <Form.Control>
+        {#snippet children({ props })}
+          <Label>ПДВ</Label>
+          {#if vatBlocked}
+            <p
+              class="rounded border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
+            >
+              Бізнес не є платником ПДВ, податок не застосовується.
+            </p>
+          {:else}
+            <div class="flex items-center gap-2">
+              <Checkbox
+                id="pricesIncludeVat"
+                checked={$formData.pricesIncludeVat}
+                onCheckedChange={(checked) =>
+                  ($formData.pricesIncludeVat = checked === true)}
+              />
+              <Label for="pricesIncludeVat" class="font-normal">
+                Ціни вже включають ПДВ
+              </Label>
+            </div>
+            <div class="flex gap-2 items-baseline pt-1.5" {...props}>
+              <Input
+                bind:value={$formData.vatRate}
+                type="text"
+                inputmode="decimal"
+                class="flex-1"
+              />
+              <p>%</p>
+            </div>
+            {#if vatMismatchWarning}
+              <p class="text-sm text-amber-600 dark:text-amber-500 mt-1.5">
+                Продавець не є платником ПДВ, але це замовлення має ставку ПДВ{" "}
+                {vatMismatchWarning}%.
+              </p>
+            {/if}
+          {/if}
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
+
     <Form.Field {form} name="laborCost">
       <Form.Control>
         {#snippet children({ props })}
@@ -477,13 +513,20 @@
         {/snippet}
       </Form.Control>
       <Form.FieldErrors />
-      {#if pricingWarning}
-        <p class="text-sm text-amber-600 dark:text-amber-500 mt-1.5">
-          Увага: кінцева сума {pricingWarning.grandTotal.toFixed(2)} грн. нижча за
-          собівартість робіт і запчастин {pricingWarning.combinedCost.toFixed(
-            2,
-          )} грн.
-        </p>
+      {#if liveWarning}
+        {#if Big(liveWarning.vatAmount).gt(0)}
+          <p class="text-sm text-amber-600 dark:text-amber-500 mt-1.5">
+            Увага: після сплати ПДВ залишиться {fmt(liveWarning.vatBase)} грн., що
+            нижче за собівартість робіт і запчастин{" "}
+            {fmt(liveWarning.combinedCost)} грн.
+          </p>
+        {:else}
+          <p class="text-sm text-amber-600 dark:text-amber-500 mt-1.5">
+            Увага: кінцева сума {fmt(liveWarning.totalWithVat)} грн. нижча за собівартість
+            робіт і запчастин{" "}
+            {fmt(liveWarning.combinedCost)} грн.
+          </p>
+        {/if}
       {/if}
     </Form.Field>
 
@@ -512,20 +555,17 @@
     <AlertDialog.Header>
       <AlertDialog.Title>Ціна нижча за собівартість</AlertDialog.Title>
       <AlertDialog.Description>
-        {#if pendingSubmitData}
-          {@const pricing = computeWorkOrderPricing(
-            pendingSubmitData.rate,
-            pendingSubmitData.laborCostType,
-            pendingSubmitData.laborCost,
-            pendingSubmitData.discountType,
-            pendingSubmitData.discountValue,
-            workOrderDetails,
-          )}
-          {#if pricing}
-            Кінцева сума зі знижкою становить {pricing.grandTotal.toFixed(2)} грн.,
-            що нижче за собівартість робіт і запчастин {pricing.combinedCost.toFixed(
-              2,
-            )} грн. Зберегти наряд-замовлення з такою ціною?
+        {#if pendingQuote && pendingQuote.belowCost}
+          {#if Big(pendingQuote.vatAmount).gt(0)}
+            Після сплати ПДВ у вас залишиться {fmt(pendingQuote.vatBase)} грн., що
+            нижче за собівартість робіт і запчастин{" "}
+            {fmt(pendingQuote.combinedCost)} грн. (клієнт заплатить{" "}
+            {fmt(pendingQuote.totalWithVat)} грн.). Зберегти наряд-замовлення з такою
+            ціною?
+          {:else}
+            Кінцева сума становить {fmt(pendingQuote.totalWithVat)}{" "}
+            грн., що нижче за собівартість робіт і запчастин{" "}
+            {fmt(pendingQuote.combinedCost)} грн. Зберегти?
           {/if}
         {/if}
       </AlertDialog.Description>

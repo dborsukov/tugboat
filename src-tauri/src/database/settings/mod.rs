@@ -16,6 +16,8 @@ const UI_SCALE_MIN: f64 = 0.5;
 const UI_SCALE_MAX: f64 = 2.0;
 const MARKUP_MIN: i32 = 0;
 const MARKUP_MAX: i32 = 300;
+const VAT_RATE_MIN: u8 = 0;
+const VAT_RATE_MAX: u8 = 100;
 const RATE_VARIANT_NAME_MAX_LEN: usize = 60;
 const LOOKUP_TEMPLATE_LABEL_MAX_LEN: usize = 60;
 const LOOKUP_TEMPLATE_URL_MAX_LEN: usize = 500;
@@ -32,6 +34,8 @@ pub async fn fetch_settings(state: State<'_, crate::AppState>) -> AppResult<AppS
             theme,
             ui_scale,
             default_markup,
+            default_vat_rate,
+            default_prices_include_vat,
             rate_variants,
             vin_lookup_templates,
             license_plate_lookup_templates,
@@ -97,6 +101,49 @@ pub async fn update_default_markup(
     .await?;
     let default_markup = decimal_column(&row, "default_markup")?;
     Ok(default_markup)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_default_vat_rate(
+    default_vat_rate: Decimal,
+    state: State<'_, crate::AppState>,
+) -> AppResult<Decimal> {
+    if default_vat_rate < Decimal::from(VAT_RATE_MIN)
+        || default_vat_rate > Decimal::from(VAT_RATE_MAX)
+    {
+        return Err(AppError::validation(format!(
+            "default_vat_rate must be between {VAT_RATE_MIN} and {VAT_RATE_MAX}"
+        )));
+    }
+    if default_vat_rate.scale() > 2 {
+        return Err(AppError::validation(
+            "default_vat_rate must have at most 2 decimal places",
+        ));
+    }
+    let row = sqlx::query(
+        "UPDATE app_settings SET default_vat_rate = $1 WHERE id = 1 RETURNING default_vat_rate",
+    )
+    .bind(default_vat_rate.to_string())
+    .fetch_one(&state.db_pool)
+    .await?;
+    let default_vat_rate = decimal_column(&row, "default_vat_rate")?;
+    Ok(default_vat_rate)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_default_prices_include_vat(
+    default_prices_include_vat: bool,
+    state: State<'_, crate::AppState>,
+) -> AppResult<bool> {
+    let saved: bool = sqlx::query_scalar(
+        "UPDATE app_settings SET default_prices_include_vat = $1 WHERE id = 1 RETURNING default_prices_include_vat",
+    )
+    .bind(default_prices_include_vat)
+    .fetch_one(&state.db_pool)
+    .await?;
+    Ok(saved)
 }
 
 #[tauri::command]

@@ -13,9 +13,10 @@
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
   import {
+    commands,
     type DiscountType,
     type LaborPriceType,
-    type WorkOrder,
+    type PreviewLaborItemQuote,
   } from "$lib/bindings";
   import {
     discountFields,
@@ -29,13 +30,13 @@
     laborPriceToPayload,
     refineLaborPrice,
   } from "$lib/schemas/zlaborprice";
+  import { unwrap } from "$lib/tools";
 
   import DiscountField from "../discount-field.svelte";
   import {
     createCreateLaborItemMutation,
     createLaborItemByIdQuery,
     createUpdateLaborItemMutation,
-    createWorkOrderDetailsQuery,
   } from "../queries";
   import LaborPriceField from "./labor-price-field.svelte";
 
@@ -52,74 +53,59 @@
   const formID = "labor-item-mutation-form";
   const isEdit = $derived(laborItemId != null);
 
-  /**
-   * Computes the labor cost basis and the final discounted price.
-   *
-   * Price (subtotal) depends on the item's own pricing mode:
-   *  - Fixed: subtotal = laborPrice (the fixed price itself)
-   *  - Hourly: subtotal = laborPrice (hours) * workOrder.rate
-   *
-   * Cost depends on the work order's labor cost settings:
-   *  - Hourly: cost = hours worked * laborCostValue
-   *  - Percentage: cost = subtotal * laborCostValue / 100
-   *
-   * When laborCostType is Hourly but this item is priced Fixed,
-   * there's no hours-based cost basis so 'cost' comes out to 0.
-   * This is when costBasisKnown becomes false.
-   *
-   * Returns null if any of the inputs aren't parseable numbers yet.
-   */
-  function computeLaborPricing(
-    laborPriceType: LaborPriceType,
-    laborPriceStr: string,
-    discountType: DiscountType,
-    discountStr: string,
-    workOrder: WorkOrder | null | undefined,
-  ): { cost: Big; finalPrice: Big; costBasisKnown: boolean } | null {
-    if (!workOrder) return null;
-
+  async function fetchLaborQuote(data: {
+    laborPriceType: LaborPriceType;
+    laborPrice: string;
+    discountType: DiscountType;
+    discountValue: string;
+  }): Promise<PreviewLaborItemQuote | null> {
+    if (!workOrderId) return null;
     try {
-      const laborPrice = new Big(laborPriceStr || "0");
-
-      let subtotal: Big;
-      if (laborPriceType === "Fixed") {
-        subtotal = laborPrice;
-      } else {
-        subtotal = laborPrice.times(new Big(workOrder.rate || "0"));
-      }
-
-      const costBasisKnown = !(
-        workOrder.laborCostType === "Hourly" && laborPriceType !== "Hourly"
+      const isFixed = data.laborPriceType === "Fixed";
+      return await unwrap(
+        commands.previewLaborItem({
+          workOrderId,
+          priceType: data.laborPriceType,
+          fixedPrice: isFixed ? data.laborPrice || "0" : "0",
+          laborHours: isFixed ? "0" : data.laborPrice || "0",
+          discountType: data.discountType,
+          discountValue: data.discountValue || "0",
+        }),
       );
-
-      let cost: Big;
-      if (workOrder.laborCostType === "Hourly") {
-        const hours = laborPriceType === "Hourly" ? laborPrice : new Big(0);
-        cost = hours.times(new Big(workOrder.laborCostValue || "0"));
-      } else {
-        cost = subtotal.times(
-          new Big(workOrder.laborCostValue || "0").div(100),
-        );
-      }
-
-      let finalPrice = subtotal;
-      if (discountType === "Fixed") {
-        finalPrice = finalPrice.minus(new Big(discountStr || "0"));
-      } else if (discountType === "Percentage") {
-        finalPrice = finalPrice.times(
-          Big(1).minus(new Big(discountStr || "0").div(100)),
-        );
-      }
-      if (finalPrice.lt(0)) finalPrice = new Big(0);
-
-      return { cost, finalPrice, costBasisKnown };
     } catch {
       return null;
     }
   }
 
+  let liveQuote = $state<PreviewLaborItemQuote | null>(null);
+  let quoteSeq = 0;
+
+  $effect(() => {
+    if (!open || !workOrderId) return;
+    const snapshot = {
+      laborPriceType: $formData.laborPriceType as LaborPriceType,
+      laborPrice: $formData.laborPrice,
+      discountType: $formData.discountType as DiscountType,
+      discountValue: $formData.discountValue,
+    };
+    const seq = ++quoteSeq;
+    const timer = setTimeout(() => {
+      fetchLaborQuote(snapshot).then((q) => {
+        if (seq === quoteSeq) liveQuote = q;
+      });
+    }, 200);
+    return () => clearTimeout(timer);
+  });
+
+  const liveWarning = $derived(
+    liveQuote && liveQuote.belowCost ? liveQuote : null,
+  );
+
+  const fmt = (v: string) => Big(v).toFixed(2);
+
   let priceConfirmOpen = $state(false);
   let pendingSubmitData = $state<z.infer<typeof laborItemSchema> | null>(null);
+  let pendingQuote = $state<PreviewLaborItemQuote | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -128,9 +114,6 @@
 
   let laborItemByIdQuery = createLaborItemByIdQuery(() => laborItemId);
   let laborItem = $derived(laborItemByIdQuery.data);
-
-  let workOrderDetailsQuery = createWorkOrderDetailsQuery(() => workOrderId);
-  let workOrderDetails = $derived(workOrderDetailsQuery.data?.workOrder);
 
   const laborItemSchema = z
     .object({
@@ -152,21 +135,12 @@
     async onUpdate({ form: nativeForm, cancel }) {
       if (!nativeForm.valid) return;
 
-      const pricing = computeLaborPricing(
-        nativeForm.data.laborPriceType,
-        nativeForm.data.laborPrice,
-        nativeForm.data.discountType,
-        nativeForm.data.discountValue,
-        workOrderDetails,
-      );
+      // Fresh server-side quote at submit
+      const quote = await fetchLaborQuote(nativeForm.data);
 
-      if (
-        pricing &&
-        pricing.costBasisKnown &&
-        pricing.finalPrice.lt(pricing.cost)
-      ) {
-        // Final price undercuts labor cost, halt submit
+      if (quote && quote.belowCost) {
         pendingSubmitData = nativeForm.data;
+        pendingQuote = quote;
         priceConfirmOpen = true;
         return;
       }
@@ -227,42 +201,23 @@
     if (pendingSubmitData) {
       await submitLaborItem(pendingSubmitData);
       pendingSubmitData = null;
+      pendingQuote = null;
     }
   }
 
   function cancelPriceConfirm() {
     priceConfirmOpen = false;
     pendingSubmitData = null;
+    pendingQuote = null;
   }
 
   const { form: formData, enhance, submitting } = form;
-
-  const pricingWarning = $derived.by(() => {
-    const pricing = computeLaborPricing(
-      $formData.laborPriceType as LaborPriceType,
-      $formData.laborPrice,
-      $formData.discountType as DiscountType,
-      $formData.discountValue,
-      workOrderDetails,
-    );
-    if (
-      pricing &&
-      pricing.costBasisKnown &&
-      pricing.finalPrice.lt(pricing.cost)
-    )
-      return pricing;
-    return null;
-  });
-
-  const costBasisUnknown = $derived(
-    workOrderDetails?.laborCostType === "Hourly" &&
-      $formData.laborPriceType === "Fixed",
-  );
 
   $effect(() => {
     if (open) {
       priceConfirmOpen = false;
       pendingSubmitData = null;
+      pendingQuote = null;
 
       if (laborItem) {
         $formData.code = laborItem.code;
@@ -337,12 +292,21 @@
       {/snippet}
     </Form.Control>
     <Form.FieldErrors />
-    {#if pricingWarning}
-      <p class="text-sm text-amber-600 dark:text-amber-500 mt-1.5">
-        Увага: кінцева ціна {pricingWarning.finalPrice.toFixed(2)} грн. нижча за собівартість
-        {pricingWarning.cost.toFixed(2)} грн.
-      </p>
-    {:else if costBasisUnknown}
+    {#if liveWarning}
+      {#if liveWarning.kept !== liveWarning.total}
+        <p class="text-sm text-amber-600 dark:text-amber-500 mt-1.5">
+          Увага: після сплати ПДВ залишиться {fmt(liveWarning.kept)} грн. (ціна {fmt(
+            liveWarning.total,
+          )} грн.), що нижче за собівартість{" "}
+          {fmt(liveWarning.cost)} грн.
+        </p>
+      {:else}
+        <p class="text-sm text-amber-600 dark:text-amber-500 mt-1.5">
+          Увага: кінцева ціна {fmt(liveWarning.total)} грн. нижча за собівартість
+          {fmt(liveWarning.cost)} грн.
+        </p>
+      {/if}
+    {:else if liveQuote && !liveQuote.costBasisKnown}
       <p class="text-sm text-muted-foreground mt-1.5">
         Собівартість не відстежується для фіксованої ціни при погодинному типі
         витрат на роботу — перевірка на ціну нижче собівартості не виконується.
@@ -356,18 +320,14 @@
     <AlertDialog.Header>
       <AlertDialog.Title>Ціна нижча за собівартість</AlertDialog.Title>
       <AlertDialog.Description>
-        {#if pendingSubmitData}
-          {@const pricing = computeLaborPricing(
-            pendingSubmitData.laborPriceType as LaborPriceType,
-            pendingSubmitData.laborPrice,
-            pendingSubmitData.discountType as DiscountType,
-            pendingSubmitData.discountValue,
-            workOrderDetails,
-          )}
-          {#if pricing && pricing.costBasisKnown}
-            Кінцева ціна зі знижкою становить {pricing.finalPrice.toFixed(2)} грн.,
-            що нижче за собівартість {pricing.cost.toFixed(2)} грн. Зберегти роботу
-            з такою ціною?
+        {#if pendingQuote && pendingQuote.belowCost}
+          {#if pendingQuote.kept !== pendingQuote.total}
+            Після сплати ПДВ залишиться {fmt(pendingQuote.kept)} грн., що нижче за
+            собівартість {fmt(pendingQuote.cost)} грн. (клієнт заплатить{" "}
+            {fmt(pendingQuote.total)} грн.). Зберегти?
+          {:else}
+            Кінцева ціна становить {fmt(pendingQuote.total)} грн., що нижче за собівартість
+            {fmt(pendingQuote.cost)} грн. Зберегти?
           {/if}
         {/if}
       </AlertDialog.Description>

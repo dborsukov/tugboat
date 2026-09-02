@@ -190,8 +190,8 @@ export const columns: ColumnDef<PartItemDto>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(TableDiscountedWarningCell, {
-        cost: row.original.baseCost,
         price: row.original.totals.discountedPrice,
+        belowCost: row.original.totals.belowCost,
       });
     },
   },

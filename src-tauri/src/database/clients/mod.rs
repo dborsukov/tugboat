@@ -634,6 +634,7 @@ fn payload_to_details(client_id: i64, payload: &ClientPayload) -> Option<ClientD
             contact_email,
             iban,
             bank_name,
+            vat_payer,
             ..
         } => Some(ClientDetails {
             client_id,
@@ -651,7 +652,7 @@ fn payload_to_details(client_id: i64, payload: &ClientPayload) -> Option<ClientD
             contact_email: trim_opt(contact_email),
             iban: trim_opt(iban),
             bank_name: trim_opt(bank_name),
-            vat_payer: false,
+            vat_payer: *vat_payer,
             archived_at: None,
         }),
         ClientPayload::Company {

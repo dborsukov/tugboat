@@ -40,6 +40,8 @@ export const commands = {
 	updateTheme: (theme: ThemeMode) => typedError<ThemeMode, AppError>(__TAURI_INVOKE("update_theme", { theme })),
 	updateUiScale: (uiScale: number | null) => typedError<number | null, AppError>(__TAURI_INVOKE("update_ui_scale", { uiScale })),
 	updateDefaultMarkup: (defaultMarkup: string) => typedError<string, AppError>(__TAURI_INVOKE("update_default_markup", { defaultMarkup })),
+	updateDefaultVatRate: (defaultVatRate: string) => typedError<string, AppError>(__TAURI_INVOKE("update_default_vat_rate", { defaultVatRate })),
+	updateDefaultPricesIncludeVat: (defaultPricesIncludeVat: boolean) => typedError<boolean, AppError>(__TAURI_INVOKE("update_default_prices_include_vat", { defaultPricesIncludeVat })),
 	updateRateVariants: (rateVariants: RateVariants[]) => typedError<RateVariants[], AppError>(__TAURI_INVOKE("update_rate_variants", { rateVariants })),
 	updateVinLookupTemplates: (vinLookupTemplates: VinLookupTemplates[]) => typedError<VinLookupTemplates[], AppError>(__TAURI_INVOKE("update_vin_lookup_templates", { vinLookupTemplates })),
 	updateLicensePlateLookupTemplates: (licensePlateLookupTemplates: LicensePlateLookupTemplates[]) => typedError<LicensePlateLookupTemplates[], AppError>(__TAURI_INVOKE("update_license_plate_lookup_templates", { licensePlateLookupTemplates })),
@@ -71,6 +73,9 @@ export const commands = {
 	updatePartItemsStatus: (ids: number[], status: PartStatus) => typedError<null, AppError>(__TAURI_INVOKE("update_part_items_status", { ids, status })),
 	deletePartItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_part_item", { id })),
 	deletePartItems: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("delete_part_items", { ids })),
+	previewLaborItem: (payload: PreviewLaborItemPayload) => typedError<PreviewLaborItemQuote, AppError>(__TAURI_INVOKE("preview_labor_item", { payload })),
+	previewPartItem: (payload: PreviewPartItemPayload) => typedError<PreviewPartItemQuote, AppError>(__TAURI_INVOKE("preview_part_item", { payload })),
+	previewWorkOrder: (payload: PreviewWorkOrderPayload) => typedError<PreviewWorkOrderQuote, AppError>(__TAURI_INVOKE("preview_work_order", { payload })),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
 };
 
@@ -99,6 +104,8 @@ export type AppSettings = {
 	theme: ThemeMode,
 	uiScale: number,
 	defaultMarkup: string,
+	defaultVatRate: string,
+	defaultPricesIncludeVat: boolean,
 	rateVariants: RateVariants[],
 	vinLookupTemplates: VinLookupTemplates[],
 	licensePlateLookupTemplates: LicensePlateLookupTemplates[],
@@ -214,7 +221,7 @@ export type ClientListItem = {
 };
 
 /**  Discriminated payload */
-export type ClientPayload = { clientType: "individual"; surname: string | null; firstName: string; patronymic: string | null; phone: string | null; email: string | null; notes: string | null } | { clientType: "fop"; surname: string | null; firstName: string; patronymic: string | null; notes: string | null; rnokpp: string; legalAddress: string | null; contactSurname: string | null; contactFirstName: string | null; contactPatronymic: string | null; contactPhone: string | null; contactEmail: string | null; iban: string | null; bankName: string | null } | { clientType: "company"; name: string; notes: string | null; legalName: string; legalAddress: string; edrpou: string; directorSurname: string | null; directorFirstName: string | null; directorPatronymic: string | null; contactSurname: string | null; contactFirstName: string | null; contactPatronymic: string | null; contactPhone: string | null; contactEmail: string | null; iban: string | null; bankName: string | null; vatPayer: boolean };
+export type ClientPayload = { clientType: "individual"; surname: string | null; firstName: string; patronymic: string | null; phone: string | null; email: string | null; notes: string | null } | { clientType: "fop"; surname: string | null; firstName: string; patronymic: string | null; notes: string | null; rnokpp: string; legalAddress: string | null; contactSurname: string | null; contactFirstName: string | null; contactPatronymic: string | null; contactPhone: string | null; contactEmail: string | null; iban: string | null; bankName: string | null; vatPayer: boolean } | { clientType: "company"; name: string; notes: string | null; legalName: string; legalAddress: string; edrpou: string; directorSurname: string | null; directorFirstName: string | null; directorPatronymic: string | null; contactSurname: string | null; contactFirstName: string | null; contactPatronymic: string | null; contactPhone: string | null; contactEmail: string | null; iban: string | null; bankName: string | null; vatPayer: boolean };
 
 export type ClientType = "individual" | "fop" | "company";
 
@@ -305,6 +312,8 @@ export type CreateWorkOrderPayload = {
 	laborCostValue: string,
 	discountType: DiscountType,
 	discountValue: string,
+	vatRate: string,
+	pricesIncludeVat: boolean,
 };
 
 export type DiscountType = "None" | "Fixed" | "Percentage";
@@ -337,6 +346,7 @@ export type LaborItemTotals = {
 	subtotal: string,
 	discount: string,
 	total: string,
+	belowCost: boolean,
 };
 
 export type LaborPriceType = "Hourly" | "Fixed";
@@ -370,11 +380,77 @@ export type PartItemTotals = {
 	discountedPrice: string,
 	discount: string,
 	total: string,
+	belowCost: boolean,
 };
 
 export type PartStatus = "Quoted" | "Ordered" | "InStock" | "Installing" | "Installed" | "AwaitingReturn" | "Returned" | "Warranty";
 
 export type PaymentMethod = "Cash" | "Card" | "BankTransfer" | "CardTransfer";
+
+export type PreviewLaborItemPayload = {
+	workOrderId: string,
+	priceType: LaborPriceType,
+	fixedPrice: string,
+	laborHours: string,
+	discountType: DiscountType,
+	discountValue: string,
+};
+
+export type PreviewLaborItemQuote = {
+	cost: string,
+	subtotal: string,
+	discount: string,
+	total: string,
+	/**  Money kept after VAT */
+	kept: string,
+	costBasisKnown: boolean,
+	belowCost: boolean,
+};
+
+export type PreviewPartItemPayload = {
+	workOrderId: string,
+	baseCost: string,
+	markup: string,
+	discountType: DiscountType,
+	discountValue: string,
+};
+
+export type PreviewPartItemQuote = {
+	cost: string,
+	retailPrice: string,
+	discountedPrice: string,
+	/**  Money kept after VAT */
+	kept: string,
+	belowCost: boolean,
+};
+
+export type PreviewWorkOrderPayload = {
+	workOrderId: string,
+	rate: string,
+	laborCostType: LaborCostType,
+	laborCostValue: string,
+	discountType: DiscountType,
+	discountValue: string,
+	vatRate: string,
+	pricesIncludeVat: boolean,
+};
+
+export type PreviewWorkOrderQuote = {
+	laborTotal: string,
+	laborCost: string,
+	partsTotal: string,
+	partsCost: string,
+	combinedCost: string,
+	subtotal: string,
+	laborDiscount: string,
+	partsDiscount: string,
+	orderDiscount: string,
+	grandTotal: string,
+	vatBase: string,
+	vatAmount: string,
+	totalWithVat: string,
+	belowCost: boolean,
+};
 
 export type RateVariants = {
 	name: string,
@@ -450,6 +526,8 @@ export type UpdateWorkOrderPayload = {
 	laborCostValue: string,
 	discountType: DiscountType,
 	discountValue: string,
+	vatRate: string,
+	pricesIncludeVat: boolean,
 	startedAt: string | null,
 	completedAt: string | null,
 	paidAt: string | null,
@@ -473,6 +551,8 @@ export type WorkOrder = {
 	laborCostValue: string,
 	discountType: DiscountType,
 	discountValue: string,
+	vatRate: string,
+	pricesIncludeVat: boolean,
 	createdAt: string,
 	archivedAt: string | null,
 	startedAt: string | null,
@@ -508,6 +588,14 @@ export type WorkOrderTotals = {
 	partsDiscount: string,
 	orderDiscount: string,
 	grandTotal: string,
+	/**
+	 *  Taxable base: total after discounts, excluding VAT.
+	 *  Equals `grand_total` when `prices_include_vat` is false.
+	 */
+	vatBase: string,
+	vatAmount: string,
+	totalWithVat: string,
+	belowCost: boolean,
 };
 
 /* Tauri Specta runtime */

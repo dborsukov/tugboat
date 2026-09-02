@@ -31,6 +31,12 @@ pub struct WorkOrderTotals {
     pub parts_discount: Decimal,
     pub order_discount: Decimal,
     pub grand_total: Decimal,
+    /// Taxable base: total after discounts, excluding VAT.
+    /// Equals `grand_total` when `prices_include_vat` is false.
+    pub vat_base: Decimal,
+    pub vat_amount: Decimal,
+    pub total_with_vat: Decimal,
+    pub below_cost: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -48,6 +54,7 @@ pub struct LaborItemTotals {
     pub subtotal: Decimal,
     pub discount: Decimal,
     pub total: Decimal,
+    pub below_cost: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -66,4 +73,5 @@ pub struct PartItemTotals {
     pub discounted_price: Decimal,
     pub discount: Decimal,
     pub total: Decimal,
+    pub below_cost: bool,
 }

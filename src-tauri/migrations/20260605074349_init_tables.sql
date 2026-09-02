@@ -94,6 +94,8 @@ CREATE TABLE work_orders (
     labor_cost_value TEXT NOT NULL DEFAULT "0",
     discount_type TEXT NOT NULL,
     discount_value TEXT NOT NULL DEFAULT "0",
+    vat_rate TEXT NOT NULL DEFAULT "0",
+    prices_include_vat INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
     started_at TEXT,
     completed_at TEXT,

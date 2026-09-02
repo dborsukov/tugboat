@@ -1,24 +1,23 @@
 <script lang="ts">
-  import Big from "big.js";
-
   import CurrencyDisplay from "$lib/components/currency-display.svelte";
 
   import { cn } from "$lib/utils";
 
   let {
-    cost: costString,
     price: priceString,
+    belowCost = false,
     class: className,
-  }: { cost: string; price: string; class?: string } = $props();
-
-  let cost = $derived(Big(costString ?? "0"));
-  let price = $derived(Big(priceString ?? "0"));
+  }: {
+    price: string;
+    belowCost?: boolean;
+    class?: string;
+  } = $props();
 </script>
 
 <div
   class={cn(
     "w-full h-full flex items-center justify-end px-2",
-    cost.gt(price) &&
+    belowCost &&
       "bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300 font-medium",
     className,
   )}

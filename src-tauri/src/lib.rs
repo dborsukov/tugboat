@@ -60,6 +60,8 @@ pub fn run() {
         database::settings::update_theme,
         database::settings::update_ui_scale,
         database::settings::update_default_markup,
+        database::settings::update_default_vat_rate,
+        database::settings::update_default_prices_include_vat,
         database::settings::update_rate_variants,
         database::settings::update_vin_lookup_templates,
         database::settings::update_license_plate_lookup_templates,
@@ -91,6 +93,9 @@ pub fn run() {
         database::work_orders::update_part_items_status,
         database::work_orders::delete_part_item,
         database::work_orders::delete_part_items,
+        database::work_orders::preview_labor_item,
+        database::work_orders::preview_part_item,
+        database::work_orders::preview_work_order,
         utils::get_app_version
     ]);
 

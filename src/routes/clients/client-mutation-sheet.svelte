@@ -386,6 +386,7 @@
           ...contactCommon,
           rnokpp: data.rnokpp.trim(),
           legalAddress: trimToNull(data.legalAddress),
+          vatPayer: data.vatPayer,
         };
       case "company":
         return {
@@ -768,6 +769,22 @@
             placeholder="Адреса реєстрації ФОП..."
             rows={2}
           />
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
+
+    <Form.Field {form} name="vatPayer">
+      <Form.Control>
+        {#snippet children({ props })}
+          <div class="flex items-center gap-2">
+            <Checkbox
+              {...props}
+              id="vatPayerFop"
+              bind:checked={$formData.vatPayer}
+            />
+            <Label for="vatPayerFop" class="font-normal">Платник ПДВ</Label>
+          </div>
         {/snippet}
       </Form.Control>
       <Form.FieldErrors />

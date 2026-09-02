@@ -388,6 +388,24 @@
           "Фізична адреса, де фактично знаходиться бізнес...",
         )}
 
+        <Form.Field {form} name="vatPayer">
+          <Form.Control>
+            {#snippet children({ props })}
+              <div class="flex items-center gap-2">
+                <Checkbox
+                  {...props}
+                  id="companyInfoVatPayer"
+                  bind:checked={$formData.vatPayer}
+                />
+                <Label for="companyInfoVatPayer" class="font-normal"
+                  >Платник ПДВ</Label
+                >
+              </div>
+            {/snippet}
+          </Form.Control>
+          <Form.FieldErrors />
+        </Form.Field>
+
         {#if $formData.kind === "company"}
           {@render sectionTitle("Дані організації", BuildingIcon)}
 
@@ -403,24 +421,6 @@
             "Юридична адреса",
             "Адреса реєстрації організації...",
           )}
-
-          <Form.Field {form} name="vatPayer">
-            <Form.Control>
-              {#snippet children({ props })}
-                <div class="flex items-center gap-2">
-                  <Checkbox
-                    {...props}
-                    id="companyInfoVatPayer"
-                    bind:checked={$formData.vatPayer}
-                  />
-                  <Label for="companyInfoVatPayer" class="font-normal"
-                    >Платник ПДВ</Label
-                  >
-                </div>
-              {/snippet}
-            </Form.Control>
-            <Form.FieldErrors />
-          </Form.Field>
 
           {@render sectionTitle("Керівник", UserIcon)}
 

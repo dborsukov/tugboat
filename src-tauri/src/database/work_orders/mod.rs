@@ -7,13 +7,14 @@ use std::collections::HashMap;
 use chrono::Utc;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, QueryBuilder, Sqlite};
+use sqlx::{types::Json, Executor, QueryBuilder, Sqlite};
 use structs::*;
 use tauri::State;
 
 use crate::{
     database::{
         cars, clients,
+        settings::structs::CompanyInfo,
         utils::begin_immediate,
         work_orders::dtos::{LaborItemDto, PartItemDto, WorkOrderDetailsDto},
     },
@@ -66,6 +67,8 @@ pub async fn fetch_work_order_by_id(
             labor_cost_value,
             discount_type,
             discount_value,
+            vat_rate,
+            prices_include_vat,
             created_at,
             archived_at,
             started_at,
@@ -101,6 +104,8 @@ pub async fn fetch_work_orders_list(
             labor_cost_value,
             discount_type,
             discount_value,
+            vat_rate,
+            prices_include_vat,
             created_at,
             archived_at,
             started_at,
@@ -251,6 +256,8 @@ async fn build_work_order_details_dtos(
                     work_order.rate,
                     work_order.labor_cost_type,
                     work_order.labor_cost_value,
+                    work_order.vat_rate,
+                    work_order.prices_include_vat,
                 );
                 LaborItemDto {
                     item,
@@ -264,7 +271,11 @@ async fn build_work_order_details_dtos(
             .unwrap_or_default()
             .into_iter()
             .map(|item| {
-                let item_totals = pricing::calculate_part_item_totals(&item);
+                let item_totals = pricing::calculate_part_item_totals(
+                    &item,
+                    work_order.vat_rate,
+                    work_order.prices_include_vat,
+                );
                 PartItemDto {
                     item,
                     totals: item_totals,
@@ -282,13 +293,16 @@ async fn build_work_order_details_dtos(
             part_item_dtos.iter().map(|dto| dto.totals.discount).sum();
 
         let totals = pricing::calculate_work_order_totals(
-            &work_order,
             labor_sum,
             labor_cost_sum,
             parts_sum,
             parts_cost_sum,
             labor_discount_sum,
             parts_discount_sum,
+            work_order.discount_type,
+            work_order.discount_value,
+            work_order.vat_rate,
+            work_order.prices_include_vat,
         );
 
         details_list.push(WorkOrderDetailsDto {
@@ -345,6 +359,8 @@ pub async fn fetch_work_order_details_dto_by_car_id(
             labor_cost_value,
             discount_type,
             discount_value,
+            vat_rate,
+            prices_include_vat,
             created_at,
             archived_at,
             started_at,
@@ -382,6 +398,8 @@ pub async fn fetch_work_order_details_dto_by_client_id(
             wo.labor_cost_value,
             wo.discount_type,
             wo.discount_value,
+            wo.vat_rate,
+            wo.prices_include_vat,
             wo.created_at,
             wo.archived_at,
             wo.started_at,
@@ -398,6 +416,17 @@ pub async fn fetch_work_order_details_dto_by_client_id(
     .await?;
 
     build_work_order_details_dtos(&state, work_orders).await
+}
+
+async fn is_company_not_vat_payer(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>) -> AppResult<bool> {
+    let company_info: Option<Json<CompanyInfo>> =
+        sqlx::query_scalar("SELECT company_info FROM app_settings WHERE id = 1")
+            .fetch_optional(&mut **tx)
+            .await?;
+    Ok(match company_info {
+        Some(Json(info)) => !info.vat_payer,
+        None => false,
+    })
 }
 
 /// Generates a new work order id in the form `YYYYMM-NNNN`, where the
@@ -429,6 +458,12 @@ pub async fn create_work_order(
 
     cars::ensure_car_active(&mut *tx, payload.car_id as i32).await?;
 
+    let vat_rate = if is_company_not_vat_payer(&mut tx).await? {
+        Decimal::ZERO
+    } else {
+        payload.vat_rate
+    };
+
     let id = generate_work_order_id(&mut tx).await?;
 
     let work_order: WorkOrder = sqlx::query_as(
@@ -444,9 +479,11 @@ pub async fn create_work_order(
             labor_cost_type,
             labor_cost_value,
             discount_type,
-            discount_value
+            discount_value,
+            vat_rate,
+            prices_include_vat
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING
             id,
             car_id,
@@ -459,6 +496,8 @@ pub async fn create_work_order(
             labor_cost_value,
             discount_type,
             discount_value,
+            vat_rate,
+            prices_include_vat,
             created_at,
             archived_at,
             started_at,
@@ -478,6 +517,8 @@ pub async fn create_work_order(
     .bind(payload.labor_cost_value.to_string())
     .bind(payload.discount_type)
     .bind(payload.discount_value.to_string())
+    .bind(vat_rate.to_string())
+    .bind(payload.prices_include_vat)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -509,10 +550,12 @@ pub async fn update_work_order(
             labor_cost_value = $9,
             discount_type = $10,
             discount_value = $11,
-            started_at = $12,
-            completed_at = $13,
-            paid_at = $14,
-            payment_method = $15
+            vat_rate = $12,
+            prices_include_vat = $13,
+            started_at = $14,
+            completed_at = $15,
+            paid_at = $16,
+            payment_method = $17
         WHERE id = $1
         RETURNING
             id,
@@ -526,6 +569,8 @@ pub async fn update_work_order(
             labor_cost_value,
             discount_type,
             discount_value,
+            vat_rate,
+            prices_include_vat,
             created_at,
             archived_at,
             started_at,
@@ -545,6 +590,8 @@ pub async fn update_work_order(
     .bind(payload.labor_cost_value.to_string())
     .bind(payload.discount_type)
     .bind(payload.discount_value.to_string())
+    .bind(payload.vat_rate.to_string())
+    .bind(payload.prices_include_vat)
     .bind(payload.started_at)
     .bind(payload.completed_at)
     .bind(payload.paid_at)
@@ -1086,6 +1133,264 @@ pub async fn delete_part_items(state: State<'_, crate::AppState>, ids: Vec<i32>)
     }
     tx.commit().await?;
     Ok(())
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewLaborItemPayload {
+    pub work_order_id: String,
+    pub price_type: LaborPriceType,
+    pub fixed_price: Decimal,
+    pub labor_hours: Decimal,
+    pub discount_type: DiscountType,
+    pub discount_value: Decimal,
+}
+
+#[derive(Debug, Clone, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewLaborItemQuote {
+    pub cost: Decimal,
+    pub subtotal: Decimal,
+    pub discount: Decimal,
+    pub total: Decimal,
+    /// Money kept after VAT
+    pub kept: Decimal,
+    pub cost_basis_known: bool,
+    pub below_cost: bool,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn preview_labor_item(
+    state: State<'_, crate::AppState>,
+    payload: PreviewLaborItemPayload,
+) -> AppResult<PreviewLaborItemQuote> {
+    let work_order = fetch_work_order_by_id(&state, &payload.work_order_id).await?;
+
+    let item = LaborItem {
+        id: 0,
+        service_id: None,
+        work_order_id: payload.work_order_id.clone(),
+        code: None,
+        name: String::new(),
+        price_type: payload.price_type,
+        fixed_price: payload.fixed_price,
+        labor_hours: payload.labor_hours,
+        discount_type: payload.discount_type,
+        discount_value: payload.discount_value,
+    };
+
+    let totals = pricing::calculate_labor_item_totals(
+        &item,
+        work_order.rate,
+        work_order.labor_cost_type,
+        work_order.labor_cost_value,
+        work_order.vat_rate,
+        work_order.prices_include_vat,
+    );
+
+    Ok(PreviewLaborItemQuote {
+        cost: totals.cost,
+        subtotal: totals.subtotal,
+        discount: totals.discount,
+        total: totals.total,
+        kept: pricing::net_kept_amount(
+            totals.total,
+            work_order.vat_rate,
+            work_order.prices_include_vat,
+        ),
+        cost_basis_known: pricing::labor_cost_basis_known(
+            item.price_type,
+            work_order.labor_cost_type,
+        ),
+        below_cost: totals.below_cost,
+    })
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewPartItemPayload {
+    pub work_order_id: String,
+    pub base_cost: Decimal,
+    pub markup: Decimal,
+    pub discount_type: DiscountType,
+    pub discount_value: Decimal,
+}
+
+#[derive(Debug, Clone, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewPartItemQuote {
+    pub cost: Decimal,
+    pub retail_price: Decimal,
+    pub discounted_price: Decimal,
+    /// Money kept after VAT
+    pub kept: Decimal,
+    pub below_cost: bool,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn preview_part_item(
+    state: State<'_, crate::AppState>,
+    payload: PreviewPartItemPayload,
+) -> AppResult<PreviewPartItemQuote> {
+    let work_order = fetch_work_order_by_id(&state, &payload.work_order_id).await?;
+
+    let item = PartItem {
+        id: 0,
+        work_order_id: payload.work_order_id.clone(),
+        status: PartStatus::Quoted,
+        code: None,
+        name: String::new(),
+        quantity: Decimal::ONE,
+        unit_type: String::new(),
+        base_cost: payload.base_cost,
+        markup: payload.markup,
+        discount_type: payload.discount_type,
+        discount_value: payload.discount_value,
+    };
+
+    let totals = pricing::calculate_part_item_totals(
+        &item,
+        work_order.vat_rate,
+        work_order.prices_include_vat,
+    );
+
+    Ok(PreviewPartItemQuote {
+        cost: totals.cost,
+        retail_price: totals.retail_price,
+        discounted_price: totals.discounted_price,
+        kept: pricing::net_kept_amount(
+            totals.discounted_price,
+            work_order.vat_rate,
+            work_order.prices_include_vat,
+        ),
+        below_cost: totals.below_cost,
+    })
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewWorkOrderPayload {
+    pub work_order_id: String,
+    pub rate: Decimal,
+    pub labor_cost_type: LaborCostType,
+    pub labor_cost_value: Decimal,
+    pub discount_type: DiscountType,
+    pub discount_value: Decimal,
+    pub vat_rate: Decimal,
+    pub prices_include_vat: bool,
+}
+
+#[derive(Debug, Clone, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PreviewWorkOrderQuote {
+    pub labor_total: Decimal,
+    pub labor_cost: Decimal,
+    pub parts_total: Decimal,
+    pub parts_cost: Decimal,
+    pub combined_cost: Decimal,
+    pub subtotal: Decimal,
+    pub labor_discount: Decimal,
+    pub parts_discount: Decimal,
+    pub order_discount: Decimal,
+    pub grand_total: Decimal,
+    pub vat_base: Decimal,
+    pub vat_amount: Decimal,
+    pub total_with_vat: Decimal,
+    pub below_cost: bool,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn preview_work_order(
+    state: State<'_, crate::AppState>,
+    payload: PreviewWorkOrderPayload,
+) -> AppResult<PreviewWorkOrderQuote> {
+    fetch_work_order_by_id(&state, &payload.work_order_id).await?;
+
+    let work_order_ids = [payload.work_order_id.as_str()];
+    let mut labor_items_by_order =
+        fetch_labor_items_by_work_order_ids(&state, &work_order_ids).await?;
+    let mut part_items_by_order =
+        fetch_part_items_by_work_order_ids(&state, &work_order_ids).await?;
+
+    let labor_items = labor_items_by_order
+        .remove(&payload.work_order_id)
+        .unwrap_or_default();
+    let part_items = part_items_by_order
+        .remove(&payload.work_order_id)
+        .unwrap_or_default();
+
+    let labor_item_dtos: Vec<LaborItemDto> = labor_items
+        .iter()
+        .map(|item| {
+            let item_totals = pricing::calculate_labor_item_totals(
+                item,
+                payload.rate,
+                payload.labor_cost_type,
+                payload.labor_cost_value,
+                payload.vat_rate,
+                payload.prices_include_vat,
+            );
+            LaborItemDto {
+                item: item.clone(),
+                totals: item_totals,
+            }
+        })
+        .collect();
+
+    let part_item_dtos: Vec<PartItemDto> = part_items
+        .iter()
+        .map(|item| {
+            let item_totals = pricing::calculate_part_item_totals(
+                item,
+                payload.vat_rate,
+                payload.prices_include_vat,
+            );
+            PartItemDto {
+                item: item.clone(),
+                totals: item_totals,
+            }
+        })
+        .collect();
+
+    let labor_sum: Decimal = labor_item_dtos.iter().map(|dto| dto.totals.total).sum();
+    let parts_sum: Decimal = part_item_dtos.iter().map(|dto| dto.totals.total).sum();
+    let labor_cost_sum: Decimal = labor_item_dtos.iter().map(|dto| dto.totals.cost).sum();
+    let parts_cost_sum: Decimal = part_item_dtos.iter().map(|dto| dto.totals.cost).sum();
+    let labor_discount_sum: Decimal = labor_item_dtos.iter().map(|dto| dto.totals.discount).sum();
+    let parts_discount_sum: Decimal = part_item_dtos.iter().map(|dto| dto.totals.discount).sum();
+
+    let totals = pricing::calculate_work_order_totals(
+        labor_sum,
+        labor_cost_sum,
+        parts_sum,
+        parts_cost_sum,
+        labor_discount_sum,
+        parts_discount_sum,
+        payload.discount_type,
+        payload.discount_value,
+        payload.vat_rate,
+        payload.prices_include_vat,
+    );
+
+    Ok(PreviewWorkOrderQuote {
+        labor_total: totals.labor_total,
+        labor_cost: totals.labor_cost,
+        parts_total: totals.parts_total,
+        parts_cost: totals.parts_cost,
+        combined_cost: labor_cost_sum + parts_cost_sum,
+        subtotal: totals.subtotal,
+        labor_discount: totals.labor_discount,
+        parts_discount: totals.parts_discount,
+        order_discount: totals.order_discount,
+        grand_total: totals.grand_total,
+        vat_base: totals.vat_base,
+        vat_amount: totals.vat_amount,
+        total_with_vat: totals.total_with_vat,
+        below_cost: totals.below_cost,
+    })
 }
 
 #[tauri::command]

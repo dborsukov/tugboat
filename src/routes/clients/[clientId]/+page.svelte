@@ -395,6 +395,10 @@
                   )}
                   {@render detailRow("IBAN", clientDetails?.details?.iban)}
                   {@render detailRow("Банк", clientDetails?.details?.bankName)}
+                  {@render detailRow(
+                    "Платник ПДВ",
+                    clientDetails?.details?.vatPayer ? "Так" : "Ні",
+                  )}
                 {/if}
               </div>
             </Accordion.Content>

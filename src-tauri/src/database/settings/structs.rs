@@ -11,6 +11,8 @@ pub struct AppSettings {
     #[specta(type = specta_typescript::Number)]
     pub ui_scale: f64,
     pub default_markup: Decimal,
+    pub default_vat_rate: Decimal,
+    pub default_prices_include_vat: bool,
     pub rate_variants: Vec<RateVariants>,
     pub vin_lookup_templates: Vec<VinLookupTemplates>,
     pub license_plate_lookup_templates: Vec<LicensePlateLookupTemplates>,
@@ -25,6 +27,8 @@ impl<'r> FromRow<'r, SqliteRow> for AppSettings {
             theme: row.try_get("theme")?,
             ui_scale: row.try_get("ui_scale")?,
             default_markup: decimal_column(row, "default_markup")?,
+            default_vat_rate: decimal_column(row, "default_vat_rate")?,
+            default_prices_include_vat: row.try_get("default_prices_include_vat")?,
             rate_variants: row
                 .try_get::<Json<Vec<RateVariants>>, _>("rate_variants")?
                 .0,
