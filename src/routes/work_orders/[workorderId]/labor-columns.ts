@@ -138,6 +138,16 @@ export const columns: ColumnDef<LaborItemDto>[] = [
       );
     },
     cell: ({ row }) => {
+      if (row.original.isFree) {
+        return renderSnippet(
+          createRawSnippet(() => {
+            return {
+              render: () =>
+                `<div class="w-full h-full flex items-center justify-end px-2 bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300 font-medium whitespace-nowrap">Безкоштовно</div>`,
+            };
+          }),
+        );
+      }
       return renderComponent(TableDiscountedWarningCell, {
         price: row.original.totals.total,
         belowCost: row.original.totals.belowCost,

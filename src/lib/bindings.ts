@@ -55,6 +55,13 @@ export const commands = {
 	fetchWorkOrdersCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_work_orders_count")),
 	fetchWorkOrdersList: () => typedError<WorkOrder[], AppError>(__TAURI_INVOKE("fetch_work_orders_list")),
 	createWorkOrder: (payload: CreateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("create_work_order", { payload })),
+	/**
+	 *  Creates a warranty claim work order linked to a fulfilled source order.
+	 *  The source order must exist, must not be archived and must be a regular
+	 *  (non-warranty) order. Order-level money settings (rate, labor cost, VAT)
+	 *  are cloned from the source, parts and labor are added afterwards as usual.
+	 */
+	createWarrantyWorkOrder: (sourceWorkOrderId: string, odometerIn: number, description: string | null, notes: string | null) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("create_warranty_work_order", { sourceWorkOrderId, odometerIn, description, notes })),
 	updateWorkOrder: (payload: UpdateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("update_work_order", { payload })),
 	deleteWorkOrder: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order", { id })),
 	archiveWorkOrder: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("archive_work_order", { id })),
@@ -278,6 +285,7 @@ export type CreateLaborItemPayload = {
 	laborHours: string,
 	discountType: DiscountType,
 	discountValue: string,
+	isFree: boolean,
 };
 
 export type CreatePartItemPayload = {
@@ -291,6 +299,7 @@ export type CreatePartItemPayload = {
 	markup: string,
 	discountType: DiscountType,
 	discountValue: string,
+	isFree: boolean,
 };
 
 export type CreateServicePayload = {
@@ -335,6 +344,7 @@ export type LaborItem = {
 	laborHours: string,
 	discountType: DiscountType,
 	discountValue: string,
+	isFree: boolean,
 };
 
 export type LaborItemDto = {
@@ -368,6 +378,7 @@ export type PartItem = {
 	markup: string,
 	discountType: DiscountType,
 	discountValue: string,
+	isFree: boolean,
 };
 
 export type PartItemDto = {
@@ -383,7 +394,7 @@ export type PartItemTotals = {
 	belowCost: boolean,
 };
 
-export type PartStatus = "Quoted" | "Ordered" | "InStock" | "Installing" | "Installed" | "AwaitingReturn" | "Returned" | "Warranty";
+export type PartStatus = "Quoted" | "Ordered" | "InStock" | "Installing" | "Installed" | "AwaitingReturn" | "Returned";
 
 export type PaymentMethod = "Cash" | "Card" | "BankTransfer" | "CardTransfer";
 
@@ -394,6 +405,7 @@ export type PreviewLaborItemPayload = {
 	laborHours: string,
 	discountType: DiscountType,
 	discountValue: string,
+	isFree: boolean,
 };
 
 export type PreviewLaborItemQuote = {
@@ -413,6 +425,7 @@ export type PreviewPartItemPayload = {
 	markup: string,
 	discountType: DiscountType,
 	discountValue: string,
+	isFree: boolean,
 };
 
 export type PreviewPartItemQuote = {
@@ -492,6 +505,7 @@ export type UpdateLaborItemPayload = {
 	laborHours: string,
 	discountType: DiscountType,
 	discountValue: string,
+	isFree: boolean,
 };
 
 export type UpdatePartItemPayload = {
@@ -504,6 +518,7 @@ export type UpdatePartItemPayload = {
 	markup: string,
 	discountType: DiscountType,
 	discountValue: string,
+	isFree: boolean,
 };
 
 export type UpdateServicePayload = {
@@ -546,6 +561,8 @@ export type WorkOrder = {
 	description: string | null,
 	notes: string | null,
 	status: WorkOrderStatus,
+	type: WorkOrderType,
+	warrantyOf: string | null,
 	rate: string,
 	laborCostType: LaborCostType,
 	laborCostValue: string,
@@ -564,6 +581,7 @@ export type WorkOrder = {
 export type WorkOrderDeleteImpact = {
 	laborItemCount: number,
 	partItemCount: number,
+	warrantyClaimCount: number,
 };
 
 export type WorkOrderDetailsDto = {
@@ -576,13 +594,17 @@ export type WorkOrderDetailsDto = {
 	totals: WorkOrderTotals,
 };
 
-export type WorkOrderStatus = "Received" | "InDiagnostics" | "AwaitingApproval" | "AwaitingParts" | "Working" | "ReadyForPickup" | "Paid" | "Canceled";
+export type WorkOrderStatus = "Received" | "InDiagnostics" | "AwaitingApproval" | "AwaitingParts" | "Working" | "ReadyForPickup" | 
+/**  Terminal state for no-payment orders (warranty claims) */
+"Completed" | "Paid" | "Canceled";
 
 export type WorkOrderTotals = {
 	laborTotal: string,
 	laborCost: string,
 	partsTotal: string,
 	partsCost: string,
+	/**  Parts staged but not yet installed */
+	partsPendingTotal: string,
 	subtotal: string,
 	laborDiscount: string,
 	partsDiscount: string,
@@ -597,6 +619,8 @@ export type WorkOrderTotals = {
 	totalWithVat: string,
 	belowCost: boolean,
 };
+
+export type WorkOrderType = "Regular" | "Warranty";
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

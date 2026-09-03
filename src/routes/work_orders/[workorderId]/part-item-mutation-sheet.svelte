@@ -7,6 +7,7 @@
 
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
   import { Button } from "$lib/components/ui/button";
+  import { Checkbox } from "$lib/components/ui/checkbox";
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
@@ -19,6 +20,7 @@
     type DiscountType,
     type PartStatus,
     type PreviewPartItemQuote,
+    type WorkOrderType,
   } from "$lib/bindings";
   import { zBigString } from "$lib/schemas/zbig";
   import {
@@ -41,10 +43,12 @@
   let {
     partItemId = null,
     workOrderId = null,
+    workOrderType = "Regular",
     open = $bindable(false),
   }: {
     partItemId?: number | null;
     workOrderId?: string | null;
+    workOrderType?: WorkOrderType;
     open: boolean;
   } = $props();
 
@@ -56,6 +60,7 @@
     markup: string;
     discountType: DiscountType;
     discountValue: string;
+    isFree: boolean;
   }): Promise<PreviewPartItemQuote | null> {
     if (!workOrderId) return null;
     try {
@@ -66,6 +71,7 @@
           markup: data.markup || "0",
           discountType: data.discountType,
           discountValue: data.discountValue || "0",
+          isFree: data.isFree,
         }),
       );
     } catch {
@@ -83,6 +89,7 @@
       markup: $formData.markup,
       discountType: $formData.discountType as DiscountType,
       discountValue: $formData.discountValue,
+      isFree: $formData.isFree,
     };
     const seq = ++quoteSeq;
     const timer = setTimeout(() => {
@@ -123,6 +130,7 @@
         min: { value: 0, message: "Кількість не може бути від'ємним числом" },
       }).default("1"),
       unitType: z.string().min(1, { error: "Вкажіть одиницю вимірювання" }),
+      isFree: z.boolean().default(false),
       cost: zBigString({
         requiredError: "Вкажіть ціну",
         min: { value: 0, message: "Ціна не може бути від'ємним числом" },
@@ -178,6 +186,7 @@
       baseCost: data.cost,
       markup: data.markup,
       ...discountPayload,
+      isFree: data.isFree,
     };
 
     if (isEdit && partItemId) {
@@ -196,6 +205,7 @@
           baseCost: data.cost,
           markup: data.markup,
           ...discountPayload,
+          isFree: data.isFree,
         })
         .catch(() => {});
     }
@@ -236,6 +246,7 @@
         $formData.name = partItem.name;
         $formData.quantity = partItem.quantity;
         $formData.unitType = partItem.unitType;
+        $formData.isFree = partItem.isFree;
         $formData.cost = partItem.baseCost;
         $formData.markup = partItem.markup;
         $formData.discountType = partItem.discountType;
@@ -244,6 +255,8 @@
         form.reset();
         $formData.unitType = "штука";
         $formData.markup = defaultMarkup;
+        // Parts on warranty orders are free by default; uncheck to bill.
+        $formData.isFree = workOrderType === "Warranty";
       }
     }
   });
@@ -404,6 +417,32 @@
         </p>
       {/if}
     {/if}
+  </Form.Field>
+
+  <Form.Field {form} name="isFree">
+    <Form.Control>
+      {#snippet children({ props })}
+        <div class="flex items-center gap-2" {...props}>
+          <Checkbox
+            id="part-is-free"
+            checked={$formData.isFree}
+            onCheckedChange={(checked: boolean) =>
+              ($formData.isFree = checked === true)}
+            aria-label="Безкоштовно — не входить у вартість"
+          />
+          <Label for="part-is-free">Безкоштовно — не входить у вартість</Label>
+        </div>
+      {/snippet}
+    </Form.Control>
+    <p class="text-xs text-muted-foreground mt-1.5">
+      Коли клієнт не платить за позицію зовсім (гарантійна заміна, подарунок).
+    </p>
+    <p class="text-xs text-muted-foreground">
+      Позиція не входить у вартість замовлення, і збиток за нею не фіксується —
+      попередження «ціна нижче собівартості» не спрацьовує. Якщо клієнт платить
+      зі знижкою — використовуйте поле «Знижка» вище.
+    </p>
+    <Form.FieldErrors />
   </Form.Field>
 </MutationSheetShell>
 

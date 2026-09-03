@@ -6,6 +6,7 @@
   import z from "zod";
 
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
+  import { Checkbox } from "$lib/components/ui/checkbox";
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
@@ -17,6 +18,7 @@
     type DiscountType,
     type LaborPriceType,
     type PreviewLaborItemQuote,
+    type WorkOrderType,
   } from "$lib/bindings";
   import {
     discountFields,
@@ -43,10 +45,12 @@
   let {
     laborItemId,
     workOrderId,
+    workOrderType = "Regular",
     open = $bindable(false),
   }: {
     laborItemId: number | null;
     workOrderId: string | null;
+    workOrderType?: WorkOrderType;
     open: boolean;
   } = $props();
 
@@ -58,6 +62,7 @@
     laborPrice: string;
     discountType: DiscountType;
     discountValue: string;
+    isFree: boolean;
   }): Promise<PreviewLaborItemQuote | null> {
     if (!workOrderId) return null;
     try {
@@ -70,6 +75,7 @@
           laborHours: isFixed ? "0" : data.laborPrice || "0",
           discountType: data.discountType,
           discountValue: data.discountValue || "0",
+          isFree: data.isFree,
         }),
       );
     } catch {
@@ -87,6 +93,7 @@
       laborPrice: $formData.laborPrice,
       discountType: $formData.discountType as DiscountType,
       discountValue: $formData.discountValue,
+      isFree: $formData.isFree,
     };
     const seq = ++quoteSeq;
     const timer = setTimeout(() => {
@@ -119,6 +126,7 @@
     .object({
       code: z.string().nullable(),
       name: z.string().min(1, { error: "Вкажіть назву" }),
+      isFree: z.boolean().default(false),
       ...laborPriceFields,
       ...discountFields,
     })
@@ -173,6 +181,7 @@
             name: data.name,
             ...laborPricePayload,
             ...discountPayload,
+            isFree: data.isFree,
           },
         })
         .catch(() => {});
@@ -185,6 +194,7 @@
           name: data.name,
           ...laborPricePayload,
           ...discountPayload,
+          isFree: data.isFree,
         })
         .catch(() => {});
     }
@@ -222,12 +232,16 @@
       if (laborItem) {
         $formData.code = laborItem.code;
         $formData.name = laborItem.name;
+        $formData.isFree = laborItem.isFree;
         $formData.laborPriceType = laborItem.priceType;
         $formData.laborPrice = laborPriceFromEntity(laborItem);
         $formData.discountType = laborItem.discountType;
         $formData.discountValue = discountFromEntity(laborItem);
       } else {
         form.reset();
+        // Warranty work is free by default (most claims cover labor too);
+        // flip the checkbox when the client pays for the labor.
+        $formData.isFree = workOrderType === "Warranty";
       }
     }
   });
@@ -312,6 +326,32 @@
         витрат на роботу — перевірка на ціну нижче собівартості не виконується.
       </p>
     {/if}
+  </Form.Field>
+
+  <Form.Field {form} name="isFree">
+    <Form.Control>
+      {#snippet children({ props })}
+        <div class="flex items-center gap-2" {...props}>
+          <Checkbox
+            id="labor-is-free"
+            checked={$formData.isFree}
+            onCheckedChange={(checked: boolean) =>
+              ($formData.isFree = checked === true)}
+            aria-label="Безкоштовно — не входить у вартість"
+          />
+          <Label for="labor-is-free">Безкоштовно — не входить у вартість</Label>
+        </div>
+      {/snippet}
+    </Form.Control>
+    <p class="text-xs text-muted-foreground mt-1.5">
+      Коли клієнт не платить за позицію зовсім (гарантійна заміна, подарунок).
+    </p>
+    <p class="text-xs text-muted-foreground">
+      Позиція не входить у вартість замовлення, і збиток за нею не фіксується —
+      попередження «ціна нижче собівартості» не спрацьовує. Якщо клієнт платить
+      зі знижкою — використовуйте поле «Знижка» вище.
+    </p>
+    <Form.FieldErrors />
   </Form.Field>
 </MutationSheetShell>
 

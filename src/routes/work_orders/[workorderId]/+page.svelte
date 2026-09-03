@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createQueries, useQueryClient } from "@tanstack/svelte-query";
+  import Big from "big.js";
 
   import { goto } from "$app/navigation";
 
@@ -11,6 +12,7 @@
   import LockIcon from "@lucide/svelte/icons/lock";
   import LockOpenIcon from "@lucide/svelte/icons/lock-open";
   import QuoteIcon from "@lucide/svelte/icons/message-square-quote";
+  import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
   import StickyNoteIcon from "@lucide/svelte/icons/sticky-note";
 
   import Button from "$lib/components/ui/button/button.svelte";
@@ -33,6 +35,7 @@
   import { privacyState } from "$lib/states/privacy.svelte";
   import { TableActionState } from "$lib/states/table-actions.svelte";
   import { pluralizeUk, prettifyIsoDateString } from "$lib/tools";
+  import { cn } from "$lib/utils";
 
   import ClientAvatar from "../../clients/client-avatar.svelte";
   import { servicesQueryOptions } from "../../services/queries";
@@ -100,26 +103,40 @@
 
   const isArchived = $derived(workOrderDetails?.workOrder?.archivedAt != null);
   const isPaid = $derived(workOrderDetails?.workOrder?.status === "Paid");
+  const isCompleted = $derived(
+    workOrderDetails?.workOrder?.status === "Completed",
+  );
+  const isTerminalStatus = $derived(isPaid || isCompleted);
 
-  // Locks the whole order (status + details) once it's Paid.
   let isLocked = $state(true);
   let previousStatus: WorkOrderStatus | undefined;
 
   // Archived orders are read-only regardless of the paid-lock state.
   const isReadOnly = $derived(isLocked || isArchived);
 
+  let hasPendingParts = $derived(
+    Big(workOrderDetails?.totals?.partsPendingTotal ?? "0").gt(0),
+  );
+
   $effect(() => {
     const currentStatus = workOrderDetails?.workOrder?.status;
     if (currentStatus === undefined) return;
 
+    const currentTerminal =
+      currentStatus === "Paid" || currentStatus === "Completed";
+
     if (previousStatus === undefined) {
-      isLocked = currentStatus === "Paid";
-    } else if (currentStatus === "Paid" && previousStatus !== "Paid") {
+      isLocked = currentTerminal;
+    } else if (currentTerminal && !isTerminal(previousStatus)) {
       isLocked = true;
     }
 
     previousStatus = currentStatus;
   });
+
+  function isTerminal(status: WorkOrderStatus): boolean {
+    return status === "Paid" || status === "Completed";
+  }
 
   let [datetime_label, datetime_iso_string] = $derived.by(() => {
     if (!combinedQueries.isReady || !workOrderDetails) return ["", ""];
@@ -207,6 +224,7 @@
         laborHours: service.laborHours,
         discountType: "None",
         discountValue: "0",
+        isFree: workOrderDetails?.workOrder?.type === "Warranty",
       },
       {
         onSuccess: () => {
@@ -454,6 +472,34 @@
     />
   {:else}
     <div class="mt-4 border border-border rounded bg-card">
+      {#if workOrderDetails?.workOrder?.type === "Warranty"}
+        <div
+          class={cn(
+            "flex items-center justify-between gap-2 px-4 py-2 border-b border-border bg-amber-50 dark:bg-amber-500/10 text-sm",
+            !isArchived && "rounded-t",
+          )}
+        >
+          <span
+            class="flex items-center gap-2 text-amber-800 dark:text-amber-300"
+          >
+            <ShieldCheckIcon class="size-4 shrink-0" />
+            Гарантійний випадок
+            {#if workOrderDetails?.workOrder?.warrantyOf}
+              до {workOrderDetails?.workOrder?.warrantyOf}
+            {/if}
+          </span>
+          {#if workOrderDetails?.workOrder?.warrantyOf}
+            <Button
+              variant="link"
+              class="p-0"
+              onclick={() =>
+                goto(`/work_orders/${workOrderDetails?.workOrder?.warrantyOf}`)}
+            >
+              Відкрити замовлення
+            </Button>
+          {/if}
+        </div>
+      {/if}
       {#if isArchived}
         <div
           class="flex items-center justify-between gap-2 rounded-t px-4 py-2 border-b border-border bg-muted/40 text-sm"
@@ -477,14 +523,18 @@
           </Button>
         </div>
       {/if}
-      {#if isPaid && !isArchived}
+      {#if isTerminalStatus && !isArchived}
         <div
           class="flex items-center justify-between gap-2 rounded-t px-4 py-2 border-b border-border bg-muted/40 text-sm"
         >
           <span class="flex items-center gap-2 text-muted-foreground">
             {#if isLocked}
               <LockIcon class="size-4" />
-              Замовлення оплачено і заблоковано від змін
+              {#if isPaid}
+                Замовлення оплачено і заблоковано від змін
+              {:else}
+                Замовлення завершено і заблоковано від змін
+              {/if}
             {:else}
               <LockOpenIcon class="size-4" />
               Замовлення тимчасово розблоковано для редагування
@@ -612,6 +662,8 @@
           />
           <DropdownMenu
             workOrderId={workOrderDetails.workOrder?.id ?? ""}
+            type={workOrderDetails?.workOrder?.type}
+            odometerIn={workOrderDetails?.workOrder?.odometerIn ?? 0}
             {isLocked}
             {isArchived}
           />
@@ -713,11 +765,13 @@
     <div class="mt-4 border border-border rounded bg-card">
       <div class="p-4">
         <div class="flex flex-row items-center justify-between">
-          <div class="flex flex-row gap-2 text-xl font-medium">
-            <p>Робота</p>
-            <p class="text-muted-foreground">
-              {workOrderDetails?.laborItems.length}
-            </p>
+          <div class="flex flex-row items-baseline gap-2">
+            <p class="text-xl font-medium">Робота</p>
+            <CurrencyDisplay
+              amount={workOrderDetails?.totals?.laborTotal ?? "0"}
+              suffix="грн."
+              class="items-baseline text-base font-normal text-muted-foreground"
+            />
           </div>
           <div>
             {#if !isReadOnly}
@@ -777,11 +831,28 @@
 
       <div class="p-4 pt-0">
         <div class="flex flex-row items-center justify-between">
-          <div class="flex flex-row gap-2 text-xl font-medium">
-            <p>Запчастини</p>
-            <p class="text-muted-foreground">
-              {workOrderDetails?.partItems.length}
-            </p>
+          <div class="flex flex-col gap-0.5">
+            <div class="flex flex-row items-baseline gap-2">
+              <p class="text-xl font-medium">Запчастини</p>
+              <CurrencyDisplay
+                amount={workOrderDetails?.totals?.partsTotal ?? "0"}
+                suffix="грн."
+                class="items-baseline text-base font-normal text-muted-foreground"
+              />
+            </div>
+            {#if hasPendingParts}
+              <p
+                class="flex items-baseline gap-1 text-sm text-muted-foreground/70"
+              >
+                <span>+</span>
+                <CurrencyDisplay
+                  amount={workOrderDetails?.totals?.partsPendingTotal ?? "0"}
+                  suffix="грн."
+                  class="items-baseline"
+                />
+                <span>очікують встановлення</span>
+              </p>
+            {/if}
           </div>
           {#if !isReadOnly}
             <Button
@@ -803,6 +874,7 @@
             status: "p-0",
             actions: "p-0",
             discountedPrice: "p-0",
+            sum: "p-0",
             select: "p-0",
           }}
         >
@@ -819,6 +891,7 @@
         bind:open={laborTableActions.isMutationOpen}
         laborItemId={laborTableActions.editId}
         workOrderId={workOrderDetails?.workOrder?.id}
+        workOrderType={workOrderDetails?.workOrder?.type}
       />
       <DeleteDialog
         bind:open={laborTableActions.isDeleteOpen}
@@ -834,6 +907,7 @@
         bind:open={partsTableActions.isMutationOpen}
         partItemId={partsTableActions.editId}
         workOrderId={workOrderDetails?.workOrder?.id}
+        workOrderType={workOrderDetails?.workOrder?.type}
       />
       <DeleteDialog
         bind:open={partsTableActions.isDeleteOpen}

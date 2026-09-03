@@ -73,8 +73,10 @@
   let workOrderDetailsQuery = createWorkOrderDetailsQuery(() => workOrderId);
   let workOrderDetails = $derived(workOrderDetailsQuery.data);
 
+  // Missing company info defaults to a non-payer
   const businessIsNotVatPayer = $derived(
-    settingsState.settings?.companyInfo?.vatPayer === false,
+    settingsState.settings?.companyInfo == null ||
+      settingsState.settings.companyInfo.vatPayer === false,
   );
   const vatBlocked = $derived(businessIsNotVatPayer && !isEdit);
   // Existing orders keep their snapshot; warn when it contradicts the

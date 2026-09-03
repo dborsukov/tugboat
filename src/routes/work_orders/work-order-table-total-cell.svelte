@@ -14,7 +14,10 @@
     class?: string;
   } = $props();
 
-  let paid = $derived(workOrderDetails?.workOrder.status === "Paid");
+  let closed = $derived(
+    workOrderDetails?.workOrder.status === "Paid" ||
+      workOrderDetails?.workOrder.status === "Completed",
+  );
   let totalWithVat = $derived(
     new Big(workOrderDetails?.totals?.totalWithVat ?? "0"),
   );
@@ -25,7 +28,7 @@
   class={cn(
     "w-full h-full flex items-center justify-center",
     totalWithVat.eq(0) && "text-muted-foreground",
-    paid &&
+    closed &&
       "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300 font-medium",
     belowCost &&
       "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300 font-medium",

@@ -207,10 +207,20 @@ export const columns: ColumnDef<PartItemDto>[] = [
       );
     },
     cell: ({ row }) => {
+      if (row.original.isFree) {
+        return renderSnippet(
+          createRawSnippet(() => {
+            return {
+              render: () =>
+                `<div class="w-full h-full flex items-center justify-end px-2 bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300 font-medium whitespace-nowrap">Безкоштовно</div>`,
+            };
+          }),
+        );
+      }
       return renderComponent(CurrencyDisplay, {
         amount: row.original.totals.total,
         suffix: "грн.",
-        class: "font-medium justify-end",
+        class: "font-medium justify-end px-2",
       });
     },
   },

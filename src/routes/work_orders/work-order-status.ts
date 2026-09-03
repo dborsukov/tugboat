@@ -1,6 +1,7 @@
 import type { Component } from "svelte";
 
 import AwaitingPartsIcon from "@lucide/svelte/icons/boxes";
+import CircleCheckIcon from "@lucide/svelte/icons/circle-check";
 import ReadyForPickupIcon from "@lucide/svelte/icons/flag";
 import AwaitingApprovalIcon from "@lucide/svelte/icons/handshake";
 import ReceivedIcon from "@lucide/svelte/icons/inbox";
@@ -16,6 +17,7 @@ import type {
   PartStatus,
   WorkOrder,
   WorkOrderStatus,
+  WorkOrderType,
 } from "$lib/bindings";
 
 export const statuses: WorkOrderStatus[] = [
@@ -25,9 +27,18 @@ export const statuses: WorkOrderStatus[] = [
   "AwaitingParts",
   "Working",
   "ReadyForPickup",
+  "Completed",
   "Paid",
   "Canceled",
 ];
+
+/// Statuses a given order type may move to. Warranty orders never receive
+/// money (`Paid` doesn't apply); regular orders never use `Completed`.
+export function selectableStatuses(type: WorkOrderType): WorkOrderStatus[] {
+  return statuses.filter((s) =>
+    type === "Warranty" ? s !== "Paid" : s !== "Completed",
+  );
+}
 
 export const statusWeights: Record<string, number> = {
   Received: 1,
@@ -36,8 +47,9 @@ export const statusWeights: Record<string, number> = {
   AwaitingParts: 4,
   Working: 5,
   ReadyForPickup: 6,
-  Paid: 7,
-  Canceled: 8,
+  Completed: 7,
+  Paid: 8,
+  Canceled: 9,
 };
 
 export type StatusColor =
@@ -166,6 +178,12 @@ export const statusConfig: Record<
     color: "green",
     rounding: "",
   },
+  Completed: {
+    text: "Завершено",
+    icon: CircleCheckIcon,
+    color: "teal",
+    rounding: "",
+  },
   Paid: { text: "Сплачено", icon: PaidIcon, color: "green", rounding: "" },
   Canceled: {
     text: "Скасовано",
@@ -237,9 +255,18 @@ export const statusEffects: Partial<
       completedAt: workOrder.completedAt ?? new Date().toISOString(),
     }),
   },
+  Completed: {
+    parts: {
+      from: ["Quoted", "Ordered", "InStock", "Installing"],
+      to: "Installed",
+    },
+    workOrderFields: (workOrder) => ({
+      completedAt: workOrder.completedAt ?? new Date().toISOString(),
+    }),
+  },
   Paid: {
     parts: {
-      from: ["Quoted", "Ordered", "InStock", "Installing", "Warranty"],
+      from: ["Quoted", "Ordered", "InStock", "Installing"],
       to: "Installed",
     },
     workOrderFields: (workOrder) => ({

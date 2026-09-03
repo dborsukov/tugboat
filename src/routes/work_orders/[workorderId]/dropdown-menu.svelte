@@ -6,6 +6,7 @@
   import ArchiveIcon from "@lucide/svelte/icons/archive";
   import ArchiveRestoreIcon from "@lucide/svelte/icons/archive-restore";
   import EllipsisIcon from "@lucide/svelte/icons/ellipsis-vertical";
+  import ShieldIcon from "@lucide/svelte/icons/shield-check";
   import EditIcon from "@lucide/svelte/icons/square-pen";
   import TrashIcon from "@lucide/svelte/icons/trash";
 
@@ -14,7 +15,7 @@
 
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
 
-  import type { WorkOrderDeleteImpact } from "$lib/bindings";
+  import type { WorkOrderDeleteImpact, WorkOrderType } from "$lib/bindings";
   import { pluralizeUk } from "$lib/tools";
 
   import {
@@ -24,19 +25,25 @@
     createWorkOrderDeleteImpactQuery,
   } from "../queries";
   import WorkOrderMutationSheet from "../work-order-mutation-sheet.svelte";
+  import WarrantyOrderCreateDialog from "./warranty-order-create-dialog.svelte";
 
   let {
     workOrderId,
+    type = "Regular",
+    odometerIn = 0,
     isLocked = false,
     isArchived = false,
   }: {
     workOrderId: string;
+    type?: WorkOrderType;
+    odometerIn?: number;
     isLocked?: boolean;
     isArchived?: boolean;
   } = $props();
   let isSheetOpen = $state(false);
   let isDeleteDialogOpen = $state(false);
   let isArchiveDialogOpen = $state(false);
+  let isWarrantyCreateOpen = $state(false);
 
   const queryClient = useQueryClient();
 
@@ -68,6 +75,19 @@
       return "Цю дію неможливо відмінити. Замовлення буде видалено безповоротно.";
     }
     return `Буде видалено: ${parts.join(", ")}. Цю дію неможливо відмінити.`;
+  }
+
+  function describeDeleteBlocked(impact: WorkOrderDeleteImpact | undefined) {
+    const count = impact?.warrantyClaimCount ?? 0;
+    if (count === 0) return null;
+    return `Видалення неможливе: із замовленням пов'язано ${count} ${pluralizeUk(
+      count,
+      [
+        "гарантійне замовлення",
+        "гарантійні замовлення",
+        "гарантійних замовлень",
+      ],
+    )}. Спочатку видаліть їх.`;
   }
 
   function handleDelete() {
@@ -113,6 +133,14 @@
           <EditIcon />
           Редагувати
         </DropdownMenu.Item>
+        {#if type === "Regular"}
+          <DropdownMenu.Separator />
+          <DropdownMenu.Item onSelect={() => (isWarrantyCreateOpen = true)}>
+            <ShieldIcon />
+            Оформити гарантійний випадок
+          </DropdownMenu.Item>
+        {/if}
+        <DropdownMenu.Separator />
         <DropdownMenu.Item
           variant="warning"
           onSelect={() => (isArchiveDialogOpen = true)}
@@ -131,6 +159,11 @@
   mode="edit"
   {workOrderId}
 />
+<WarrantyOrderCreateDialog
+  bind:open={isWarrantyCreateOpen}
+  sourceWorkOrderId={type === "Regular" ? workOrderId : null}
+  {odometerIn}
+/>
 <DeleteDialog
   bind:open={isArchiveDialogOpen}
   onDelete={handleArchive}
@@ -145,5 +178,6 @@
   title="Видалити назавжди"
   description={deleteImpactQuery.isPending
     ? "Підрахунок пов'язаних даних…"
-    : describeDeleteImpact(deleteImpactQuery.data)}
+    : (describeDeleteBlocked(deleteImpactQuery.data) ??
+      describeDeleteImpact(deleteImpactQuery.data))}
 />

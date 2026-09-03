@@ -26,6 +26,8 @@ pub struct WorkOrderTotals {
     pub labor_cost: Decimal,
     pub parts_total: Decimal,
     pub parts_cost: Decimal,
+    /// Parts staged but not yet installed
+    pub parts_pending_total: Decimal,
     pub subtotal: Decimal,
     pub labor_discount: Decimal,
     pub parts_discount: Decimal,

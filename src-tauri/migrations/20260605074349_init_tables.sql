@@ -89,6 +89,8 @@ CREATE TABLE work_orders (
     description TEXT,
     notes TEXT,
     status TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'regular', -- 'regular' | 'warranty'
+    warranty_of TEXT, -- source work order id for warranty claims
     rate TEXT NOT NULL DEFAULT "0",
     labor_cost_type TEXT NOT NULL,
     labor_cost_value TEXT NOT NULL DEFAULT "0",
@@ -102,7 +104,8 @@ CREATE TABLE work_orders (
     paid_at TEXT,
     payment_method TEXT,
     archived_at TEXT,
-    FOREIGN KEY (car_id) REFERENCES cars (id) ON DELETE CASCADE
+    FOREIGN KEY (car_id) REFERENCES cars (id) ON DELETE CASCADE,
+    FOREIGN KEY (warranty_of) REFERENCES work_orders (id) ON DELETE SET NULL
 );
 
 CREATE TABLE labor_items (
@@ -116,6 +119,7 @@ CREATE TABLE labor_items (
     labor_hours TEXT NOT NULL DEFAULT "1.0",
     discount_type TEXT NOT NULL,
     discount_value TEXT NOT NULL DEFAULT "0",
+    is_free INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE,
     FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE SET NULL
 );
@@ -132,6 +136,7 @@ CREATE TABLE part_items (
     markup TEXT NOT NULL DEFAULT "0",
     discount_type TEXT NOT NULL,
     discount_value TEXT NOT NULL DEFAULT "0",
+    is_free INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE
 );
 

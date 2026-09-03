@@ -21,6 +21,13 @@ pub struct AppSettings {
     pub company_info: Option<CompanyInfo>,
 }
 
+pub(crate) fn decode_company_info(raw: Option<String>) -> Option<CompanyInfo> {
+    match raw.as_deref() {
+        None | Some("") => None,
+        Some(text) => serde_json::from_str(text).ok(),
+    }
+}
+
 impl<'r> FromRow<'r, SqliteRow> for AppSettings {
     fn from_row(row: &'r SqliteRow) -> sqlx::Result<Self> {
         Ok(Self {
@@ -42,9 +49,7 @@ impl<'r> FromRow<'r, SqliteRow> for AppSettings {
                 .0,
             timezone: row.try_get("timezone")?,
             default_phone_country_code: row.try_get("default_phone_country_code")?,
-            company_info: row
-                .try_get::<Option<Json<CompanyInfo>>, _>("company_info")?
-                .map(|json| json.0),
+            company_info: decode_company_info(row.try_get("company_info")?),
         })
     }
 }

@@ -14,6 +14,8 @@ pub enum WorkOrderStatus {
     AwaitingParts,
     Working,
     ReadyForPickup,
+    /// Terminal state for no-payment orders (warranty claims)
+    Completed,
     Paid,
     Canceled,
 }
@@ -28,6 +30,12 @@ pub enum PartStatus {
     Installed,
     AwaitingReturn,
     Returned,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+pub enum WorkOrderType {
+    Regular,
     Warranty,
 }
 
@@ -72,6 +80,8 @@ pub struct WorkOrder {
     pub description: Option<String>,
     pub notes: Option<String>,
     pub status: WorkOrderStatus,
+    pub r#type: WorkOrderType,
+    pub warranty_of: Option<String>,
     pub rate: Decimal,
     pub labor_cost_type: LaborCostType,
     pub labor_cost_value: Decimal,
@@ -96,6 +106,8 @@ impl<'r> FromRow<'r, SqliteRow> for WorkOrder {
             description: row.try_get("description")?,
             notes: row.try_get("notes")?,
             status: row.try_get("status")?,
+            r#type: row.try_get("type")?,
+            warranty_of: row.try_get("warranty_of")?,
             rate: decimal_column(row, "rate")?,
             labor_cost_type: row.try_get("labor_cost_type")?,
             labor_cost_value: decimal_column(row, "labor_cost_value")?,
@@ -169,6 +181,7 @@ pub struct LaborItem {
     pub labor_hours: Decimal,
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
+    pub is_free: bool,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for LaborItem {
@@ -184,6 +197,7 @@ impl<'r> FromRow<'r, SqliteRow> for LaborItem {
             labor_hours: decimal_column(row, "labor_hours")?,
             discount_type: row.try_get("discount_type")?,
             discount_value: decimal_column(row, "discount_value")?,
+            is_free: row.try_get("is_free")?,
         })
     }
 }
@@ -201,6 +215,7 @@ pub struct CreateLaborItemPayload {
     pub labor_hours: Decimal,
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
+    pub is_free: bool,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -215,6 +230,7 @@ pub struct UpdateLaborItemPayload {
     pub labor_hours: Decimal,
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
+    pub is_free: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -232,6 +248,7 @@ pub struct PartItem {
     pub markup: Decimal,
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
+    pub is_free: bool,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for PartItem {
@@ -248,6 +265,7 @@ impl<'r> FromRow<'r, SqliteRow> for PartItem {
             markup: decimal_column(row, "markup")?,
             discount_type: row.try_get("discount_type")?,
             discount_value: decimal_column(row, "discount_value")?,
+            is_free: row.try_get("is_free")?,
         })
     }
 }
@@ -265,6 +283,7 @@ pub struct CreatePartItemPayload {
     pub markup: Decimal,
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
+    pub is_free: bool,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -279,4 +298,5 @@ pub struct UpdatePartItemPayload {
     pub markup: Decimal,
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
+    pub is_free: bool,
 }

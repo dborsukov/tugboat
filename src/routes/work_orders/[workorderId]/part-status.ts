@@ -5,7 +5,6 @@ import AwaitingReturnIcon from "@lucide/svelte/icons/history";
 import InStockIcon from "@lucide/svelte/icons/package-2";
 import ReturnedIcon from "@lucide/svelte/icons/rotate-ccw";
 import QuotedIcon from "@lucide/svelte/icons/scan-search";
-import WarrantyIcon from "@lucide/svelte/icons/shield";
 import OrderedIcon from "@lucide/svelte/icons/truck";
 import InstallingIcon from "@lucide/svelte/icons/wrench";
 
@@ -19,7 +18,6 @@ export const statuses: PartStatus[] = [
   "Installed",
   "AwaitingReturn",
   "Returned",
-  "Warranty",
 ];
 
 export type PartStatusColor =
@@ -29,8 +27,7 @@ export type PartStatusColor =
   | "blue"
   | "emerald"
   | "amber"
-  | "gray"
-  | "rose";
+  | "gray";
 
 export const partStatusColorThemes: Record<
   PartStatusColor,
@@ -98,14 +95,6 @@ export const partStatusColorThemes: Record<
       "data-highlighted:bg-gray-200 data-highlighted:text-gray-900 dark:data-highlighted:bg-gray-500/25 dark:data-highlighted:text-gray-100",
     border: "border-gray-300 dark:border-gray-500/30",
   },
-  rose: {
-    bgColor: "bg-rose-700",
-    textColor: "text-rose-300",
-    base: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
-    highlighted:
-      "data-highlighted:bg-rose-200 data-highlighted:text-rose-900 dark:data-highlighted:bg-rose-500/25 dark:data-highlighted:text-rose-100",
-    border: "border-rose-300 dark:border-rose-500/30",
-  },
 };
 
 export const partStatusConfig: Record<
@@ -152,12 +141,6 @@ export const partStatusConfig: Record<
     text: "Повернено",
     icon: ReturnedIcon,
     color: "gray",
-    rounding: "",
-  },
-  Warranty: {
-    text: "Гарантійний випадок",
-    icon: WarrantyIcon,
-    color: "rose",
     rounding: "rounded-b-xl",
   },
 };

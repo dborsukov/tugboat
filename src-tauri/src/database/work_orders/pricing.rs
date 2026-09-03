@@ -1,10 +1,32 @@
 use rust_decimal::Decimal;
 
-use super::structs::{DiscountType, LaborItem, PartItem};
+use super::structs::{DiscountType, LaborItem, PartItem, PartStatus};
 use crate::database::work_orders::{
     dtos::{LaborItemTotals, PartItemTotals, WorkOrderTotals},
     structs::{LaborCostType, LaborPriceType},
 };
+
+/// A part counts toward the current order total only once it is actually
+/// installed and billed: status `Installed` and not marked free.
+pub fn part_is_billed(status: PartStatus, is_free: bool) -> bool {
+    !is_free && status == PartStatus::Installed
+}
+
+pub fn part_is_pending(status: PartStatus, is_free: bool) -> bool {
+    !is_free
+        && matches!(
+            status,
+            PartStatus::Quoted | PartStatus::Ordered | PartStatus::InStock | PartStatus::Installing
+        )
+}
+
+pub fn part_is_projected_billed(status: PartStatus, is_free: bool) -> bool {
+    part_is_billed(status, is_free) || part_is_pending(status, is_free)
+}
+
+pub fn labor_is_billed(is_free: bool) -> bool {
+    !is_free
+}
 
 pub fn net_kept_amount(gross: Decimal, vat_rate: Decimal, prices_include_vat: bool) -> Decimal {
     if !prices_include_vat || vat_rate.is_zero() {
@@ -56,8 +78,10 @@ pub fn calculate_labor_item_totals(
     };
 
     let cost_basis_known = labor_cost_basis_known(labor_item.price_type, labor_cost_type);
-    let below_cost =
-        cost_basis_known && net_kept_amount(total, vat_rate, prices_include_vat) < cost;
+
+    let below_cost = !labor_item.is_free
+        && cost_basis_known
+        && net_kept_amount(total, vat_rate, prices_include_vat) < cost;
 
     LaborItemTotals {
         cost,
@@ -94,8 +118,8 @@ pub fn calculate_part_item_totals(
 
     let discount = (retail_total - total).max(Decimal::ZERO);
 
-    let below_cost =
-        net_kept_amount(discounted_price, vat_rate, prices_include_vat) < part_item.base_cost;
+    let below_cost = !part_item.is_free
+        && net_kept_amount(discounted_price, vat_rate, prices_include_vat) < part_item.base_cost;
 
     PartItemTotals {
         cost,
@@ -140,6 +164,7 @@ pub fn calculate_work_order_totals(
     labor_cost: Decimal,
     parts_total: Decimal,
     parts_cost: Decimal,
+    parts_pending_total: Decimal,
     labor_discount: Decimal,
     parts_discount: Decimal,
     discount_type: DiscountType,
@@ -170,6 +195,7 @@ pub fn calculate_work_order_totals(
         labor_cost,
         parts_total,
         parts_cost,
+        parts_pending_total,
         subtotal,
         labor_discount,
         parts_discount,

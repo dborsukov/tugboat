@@ -133,6 +133,34 @@ export function createCreateWorkOrderMutation(queryClient: QueryClient) {
   );
 }
 
+export function createCreateWarrantyWorkOrderMutation(
+  queryClient: QueryClient,
+) {
+  return createMutation(
+    () => ({
+      mutationFn: (variables: {
+        sourceWorkOrderId: string;
+        odometerIn: number;
+        description: string | null;
+        notes: string | null;
+      }) =>
+        unwrap(
+          commands.createWarrantyWorkOrder(
+            variables.sourceWorkOrderId,
+            variables.odometerIn,
+            variables.description,
+            variables.notes,
+          ),
+        ),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
 export function createUpdateWorkOrderMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({

@@ -75,6 +75,7 @@ pub fn run() {
         database::work_orders::fetch_work_orders_count,
         database::work_orders::fetch_work_orders_list,
         database::work_orders::create_work_order,
+        database::work_orders::create_warranty_work_order,
         database::work_orders::update_work_order,
         database::work_orders::delete_work_order,
         database::work_orders::archive_work_order,

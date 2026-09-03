@@ -27,8 +27,8 @@
   } from "./queries";
   import {
     getAffectedParts,
+    selectableStatuses,
     statusEffects,
-    statuses,
     workOrderStatusStylesRecord,
   } from "./work-order-status";
 
@@ -50,6 +50,9 @@
     workOrder != undefined ? workOrder.status : status,
   );
   const styles = $derived(workOrderStatusStylesRecord[localStatus]);
+  const availableStatuses = $derived(
+    selectableStatuses(workOrder?.type ?? "Regular"),
+  );
 
   const queryClient = useQueryClient();
   const updateWorkOrderMutation = createUpdateWorkOrderMutation(queryClient);
@@ -155,6 +158,7 @@
             markup: part.markup,
             discountType: part.discountType,
             discountValue: part.discountValue,
+            isFree: part.isFree,
           },
         });
       }
@@ -270,7 +274,7 @@
                 </span>
               </Select.Trigger>
               <Select.Content>
-                {#each statuses as s}
+                {#each availableStatuses as s}
                   {@const optionStyles = workOrderStatusStylesRecord[s]}
                   <Select.Item
                     value={s}

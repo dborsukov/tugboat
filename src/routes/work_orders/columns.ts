@@ -30,6 +30,7 @@ export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
     cell: ({ row }) => {
       return renderComponent(WorkOrderTableIdCell, {
         id: row.original.workOrder.id,
+        type: row.original.workOrder.type,
         archivedAt: row.original.workOrder.archivedAt,
       });
     },

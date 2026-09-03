@@ -26,6 +26,34 @@
   let partsDiscount = $derived(
     new Big(workOrderDetails?.totals?.partsDiscount ?? "0"),
   );
+  let partsPendingTotal = $derived(
+    new Big(workOrderDetails?.totals?.partsPendingTotal ?? "0"),
+  );
+
+  let freeLaborTotal = $derived(
+    (workOrderDetails?.laborItems ?? []).reduce(
+      (acc, item) => (item.isFree ? acc.plus(item.totals.total) : acc),
+      new Big(0),
+    ),
+  );
+  let freeLaborCost = $derived(
+    (workOrderDetails?.laborItems ?? []).reduce(
+      (acc, item) => (item.isFree ? acc.plus(item.totals.cost) : acc),
+      new Big(0),
+    ),
+  );
+  let freePartsTotal = $derived(
+    (workOrderDetails?.partItems ?? []).reduce(
+      (acc, item) => (item.isFree ? acc.plus(item.totals.total) : acc),
+      new Big(0),
+    ),
+  );
+  let freePartsCost = $derived(
+    (workOrderDetails?.partItems ?? []).reduce(
+      (acc, item) => (item.isFree ? acc.plus(item.totals.cost) : acc),
+      new Big(0),
+    ),
+  );
   let orderDiscount = $derived(
     new Big(workOrderDetails?.totals?.orderDiscount ?? "0"),
   );
@@ -104,6 +132,35 @@
           </div>
         </div>
       {/if}
+      {#if freeLaborTotal.gt(0)}
+        <div
+          class="flex flex-col gap-1 rounded-md border border-border bg-muted/40 px-3 py-1.5"
+        >
+          <p class="text-xs text-muted-foreground">
+            Деякі роботи були надані безкоштовно
+          </p>
+          {#if freeLaborCost.gt(0)}
+            <div class="flex items-baseline justify-between">
+              <span class="text-xs text-muted-foreground"
+                >Їхня собівартість:</span
+              >
+              <CurrencyDisplay
+                amount={freeLaborCost.toString()}
+                suffix="грн."
+                class="text-xs font-medium text-foreground"
+              />
+            </div>
+          {/if}
+          <div class="flex items-baseline justify-between">
+            <span class="text-xs text-muted-foreground">Їхня вартість:</span>
+            <CurrencyDisplay
+              amount={freeLaborTotal.toString()}
+              suffix="грн."
+              class="text-xs font-medium text-foreground"
+            />
+          </div>
+        </div>
+      {/if}
       <div class="flex items-baseline justify-between">
         <span class="text-sm">Запчастини</span>
         <CurrencyDisplay
@@ -137,6 +194,52 @@
                 class="text-xs text-muted-foreground"
               />
             </span>
+          </div>
+        </div>
+      {/if}
+      {#if freePartsTotal.gt(0)}
+        <div
+          class="flex flex-col gap-1 rounded-md border border-border bg-muted/40 px-3 py-1.5"
+        >
+          <p class="text-xs text-muted-foreground">
+            Деякі запчастини були надані безкоштовно
+          </p>
+          {#if freePartsCost.gt(0)}
+            <div class="flex items-baseline justify-between">
+              <span class="text-xs text-muted-foreground"
+                >Їхня собівартість:</span
+              >
+              <CurrencyDisplay
+                amount={freePartsCost.toString()}
+                suffix="грн."
+                class="text-xs font-medium text-foreground"
+              />
+            </div>
+          {/if}
+          <div class="flex items-baseline justify-between">
+            <span class="text-xs text-muted-foreground">Їхня вартість:</span>
+            <CurrencyDisplay
+              amount={freePartsTotal.toString()}
+              suffix="грн."
+              class="text-xs font-medium text-foreground"
+            />
+          </div>
+        </div>
+      {/if}
+      {#if partsPendingTotal.gt(0)}
+        <div
+          class="flex flex-col gap-1 rounded-md border border-border bg-muted/40 px-3 py-1.5"
+        >
+          <div class="flex gap-1 items-center justify-between">
+            <span class="text-xs text-muted-foreground">
+              Деякі запчастини очікують встановлення, їхня вартість не
+              враховується та становить:</span
+            >
+            <CurrencyDisplay
+              amount={partsPendingTotal.toString()}
+              suffix="грн."
+              class="text-xs font-medium text-foreground"
+            />
           </div>
         </div>
       {/if}

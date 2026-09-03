@@ -7,14 +7,14 @@ use std::collections::HashMap;
 use chrono::Utc;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use sqlx::{types::Json, Executor, QueryBuilder, Sqlite};
+use sqlx::{Executor, QueryBuilder, Sqlite};
 use structs::*;
 use tauri::State;
 
 use crate::{
     database::{
         cars, clients,
-        settings::structs::CompanyInfo,
+        settings::structs::decode_company_info,
         utils::begin_immediate,
         work_orders::dtos::{LaborItemDto, PartItemDto, WorkOrderDetailsDto},
     },
@@ -62,6 +62,8 @@ pub async fn fetch_work_order_by_id(
             description,
             notes,
             status,
+            type,
+            warranty_of,
             rate,
             labor_cost_type,
             labor_cost_value,
@@ -99,6 +101,8 @@ pub async fn fetch_work_orders_list(
             description,
             notes,
             status,
+            type,
+            warranty_of,
             rate,
             labor_cost_type,
             labor_cost_value,
@@ -140,7 +144,8 @@ async fn fetch_labor_items_by_work_order_ids(
             fixed_price,
             labor_hours,
             discount_type,
-            discount_value
+            discount_value,
+            is_free
         FROM labor_items
         WHERE work_order_id IN ("#,
     );
@@ -183,7 +188,8 @@ async fn fetch_part_items_by_work_order_ids(
             base_cost,
             markup,
             discount_type,
-            discount_value
+            discount_value,
+            is_free
         FROM part_items
         WHERE work_order_id IN ("#,
     );
@@ -283,20 +289,51 @@ async fn build_work_order_details_dtos(
             })
             .collect();
 
-        let labor_sum: Decimal = labor_item_dtos.iter().map(|dto| dto.totals.total).sum();
-        let parts_sum: Decimal = part_item_dtos.iter().map(|dto| dto.totals.total).sum();
-        let labor_cost_sum: Decimal = labor_item_dtos.iter().map(|dto| dto.totals.cost).sum();
-        let parts_cost_sum: Decimal = part_item_dtos.iter().map(|dto| dto.totals.cost).sum();
-        let labor_discount_sum: Decimal =
-            labor_item_dtos.iter().map(|dto| dto.totals.discount).sum();
-        let parts_discount_sum: Decimal =
-            part_item_dtos.iter().map(|dto| dto.totals.discount).sum();
+        // Only billed items count: labor unless marked free, parts only when
+        // installed and not marked free. Parts staged for installation form
+        // the pending balance, returned parts never count.
+        let labor_sum: Decimal = labor_item_dtos
+            .iter()
+            .filter(|dto| pricing::labor_is_billed(dto.item.is_free))
+            .map(|dto| dto.totals.total)
+            .sum();
+        let labor_cost_sum: Decimal = labor_item_dtos
+            .iter()
+            .filter(|dto| pricing::labor_is_billed(dto.item.is_free))
+            .map(|dto| dto.totals.cost)
+            .sum();
+        let labor_discount_sum: Decimal = labor_item_dtos
+            .iter()
+            .filter(|dto| pricing::labor_is_billed(dto.item.is_free))
+            .map(|dto| dto.totals.discount)
+            .sum();
+        let parts_sum: Decimal = part_item_dtos
+            .iter()
+            .filter(|dto| pricing::part_is_billed(dto.item.status, dto.item.is_free))
+            .map(|dto| dto.totals.total)
+            .sum();
+        let parts_cost_sum: Decimal = part_item_dtos
+            .iter()
+            .filter(|dto| pricing::part_is_billed(dto.item.status, dto.item.is_free))
+            .map(|dto| dto.totals.cost)
+            .sum();
+        let parts_discount_sum: Decimal = part_item_dtos
+            .iter()
+            .filter(|dto| pricing::part_is_billed(dto.item.status, dto.item.is_free))
+            .map(|dto| dto.totals.discount)
+            .sum();
+        let parts_pending_sum: Decimal = part_item_dtos
+            .iter()
+            .filter(|dto| pricing::part_is_pending(dto.item.status, dto.item.is_free))
+            .map(|dto| dto.totals.total)
+            .sum();
 
         let totals = pricing::calculate_work_order_totals(
             labor_sum,
             labor_cost_sum,
             parts_sum,
             parts_cost_sum,
+            parts_pending_sum,
             labor_discount_sum,
             parts_discount_sum,
             work_order.discount_type,
@@ -354,6 +391,8 @@ pub async fn fetch_work_order_details_dto_by_car_id(
             description,
             notes,
             status,
+            type,
+            warranty_of,
             rate,
             labor_cost_type,
             labor_cost_value,
@@ -393,6 +432,8 @@ pub async fn fetch_work_order_details_dto_by_client_id(
             wo.description,
             wo.notes,
             wo.status,
+            wo.type,
+            wo.warranty_of,
             wo.rate,
             wo.labor_cost_type,
             wo.labor_cost_value,
@@ -419,13 +460,18 @@ pub async fn fetch_work_order_details_dto_by_client_id(
 }
 
 async fn is_company_not_vat_payer(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>) -> AppResult<bool> {
-    let company_info: Option<Json<CompanyInfo>> =
-        sqlx::query_scalar("SELECT company_info FROM app_settings WHERE id = 1")
-            .fetch_optional(&mut **tx)
-            .await?;
+    let company_info = decode_company_info(
+        sqlx::query_scalar::<_, Option<String>>(
+            "SELECT company_info FROM app_settings WHERE id = 1",
+        )
+        .fetch_optional(&mut **tx)
+        .await?
+        .flatten(),
+    );
     Ok(match company_info {
-        Some(Json(info)) => !info.vat_payer,
-        None => false,
+        Some(info) => !info.vat_payer,
+        // Company info not configured yet default to a non-payer
+        None => true,
     })
 }
 
@@ -491,6 +537,8 @@ pub async fn create_work_order(
             description,
             notes,
             status,
+            type,
+            warranty_of,
             rate,
             labor_cost_type,
             labor_cost_value,
@@ -519,6 +567,139 @@ pub async fn create_work_order(
     .bind(payload.discount_value.to_string())
     .bind(vat_rate.to_string())
     .bind(payload.prices_include_vat)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+    Ok(work_order)
+}
+
+/// Creates a warranty claim work order linked to a fulfilled source order.
+/// The source order must exist, must not be archived and must be a regular
+/// (non-warranty) order. Order-level money settings (rate, labor cost, VAT)
+/// are cloned from the source, parts and labor are added afterwards as usual.
+#[tauri::command]
+#[specta::specta]
+pub async fn create_warranty_work_order(
+    state: State<'_, crate::AppState>,
+    source_work_order_id: String,
+    odometer_in: i32,
+    description: Option<String>,
+    notes: Option<String>,
+) -> AppResult<WorkOrder> {
+    let mut tx = begin_immediate(&state.db_pool).await?;
+
+    let source: WorkOrder = sqlx::query_as(
+        r#"
+        SELECT
+            id,
+            car_id,
+            odometer_in,
+            description,
+            notes,
+            status,
+            type,
+            warranty_of,
+            rate,
+            labor_cost_type,
+            labor_cost_value,
+            discount_type,
+            discount_value,
+            vat_rate,
+            prices_include_vat,
+            created_at,
+            archived_at,
+            started_at,
+            completed_at,
+            paid_at,
+            payment_method
+        FROM work_orders
+        WHERE id = $1
+        "#,
+    )
+    .bind(&source_work_order_id)
+    .fetch_optional(&mut *tx)
+    .await?
+    .ok_or_else(AppError::work_order_not_found)?;
+
+    if source.archived_at.is_some() {
+        return Err(AppError::work_order_archived());
+    }
+    if source.r#type != WorkOrderType::Regular {
+        return Err(AppError::validation(
+            "Гарантійне замовлення можна створити лише від звичайного замовлення.",
+        ));
+    }
+
+    cars::ensure_car_active(&mut *tx, source.car_id as i32).await?;
+
+    let vat_rate = if is_company_not_vat_payer(&mut tx).await? {
+        Decimal::ZERO
+    } else {
+        source.vat_rate
+    };
+
+    let id = generate_work_order_id(&mut tx).await?;
+
+    let work_order: WorkOrder = sqlx::query_as(
+        r#"
+        INSERT INTO work_orders (
+            id,
+            car_id,
+            odometer_in,
+            description,
+            notes,
+            status,
+            type,
+            warranty_of,
+            rate,
+            labor_cost_type,
+            labor_cost_value,
+            discount_type,
+            discount_value,
+            vat_rate,
+            prices_include_vat
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        RETURNING
+            id,
+            car_id,
+            odometer_in,
+            description,
+            notes,
+            status,
+            type,
+            warranty_of,
+            rate,
+            labor_cost_type,
+            labor_cost_value,
+            discount_type,
+            discount_value,
+            vat_rate,
+            prices_include_vat,
+            created_at,
+            archived_at,
+            started_at,
+            completed_at,
+            paid_at,
+            payment_method
+        "#,
+    )
+    .bind(id)
+    .bind(source.car_id)
+    .bind(odometer_in)
+    .bind(description)
+    .bind(notes)
+    .bind(WorkOrderStatus::Received)
+    .bind(WorkOrderType::Warranty)
+    .bind(&source_work_order_id)
+    .bind(source.rate.to_string())
+    .bind(source.labor_cost_type)
+    .bind(source.labor_cost_value.to_string())
+    .bind(DiscountType::None)
+    .bind(Decimal::ZERO.to_string())
+    .bind(vat_rate.to_string())
+    .bind(source.prices_include_vat)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -564,6 +745,8 @@ pub async fn update_work_order(
             description,
             notes,
             status,
+            type,
+            warranty_of,
             rate,
             labor_cost_type,
             labor_cost_value,
@@ -606,6 +789,16 @@ pub async fn update_work_order(
 #[tauri::command]
 #[specta::specta]
 pub async fn delete_work_order(state: State<'_, crate::AppState>, id: String) -> AppResult<()> {
+    let warranty_claim_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM work_orders WHERE warranty_of = $1")
+            .bind(&id)
+            .fetch_one(&state.db_pool)
+            .await?;
+    if warranty_claim_count > 0 {
+        return Err(AppError::validation(format!(
+            "Спочатку видаліть пов'язані гарантійні замовлення ({warranty_claim_count})."
+        )));
+    }
     let result = sqlx::query("DELETE FROM work_orders WHERE id = $1")
         .bind(id)
         .execute(&state.db_pool)
@@ -623,6 +816,8 @@ pub struct WorkOrderDeleteImpact {
     pub labor_item_count: i64,
     #[specta(type = specta_typescript::Number)]
     pub part_item_count: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub warranty_claim_count: i64,
 }
 
 #[tauri::command]
@@ -645,11 +840,18 @@ pub async fn fetch_work_order_delete_impact(
             .fetch_one(&mut *tx)
             .await?;
 
+    let warranty_claim_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM work_orders WHERE warranty_of = $1")
+            .bind(&id)
+            .fetch_one(&mut *tx)
+            .await?;
+
     tx.commit().await?;
 
     Ok(WorkOrderDeleteImpact {
         labor_item_count,
         part_item_count,
+        warranty_claim_count,
     })
 }
 
@@ -742,7 +944,8 @@ pub async fn fetch_labor_items_list(
             fixed_price,
             labor_hours,
             discount_type,
-            discount_value
+            discount_value,
+            is_free
         FROM labor_items
         "#,
     )
@@ -769,7 +972,8 @@ pub async fn fetch_labor_item_by_id(
             fixed_price,
             labor_hours,
             discount_type,
-            discount_value
+            discount_value,
+            is_free
         FROM labor_items
         WHERE id = $1
         "#,
@@ -801,9 +1005,10 @@ pub async fn create_labor_item(
             fixed_price,
             labor_hours,
             discount_type,
-            discount_value
+            discount_value,
+            is_free
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         RETURNING
             id,
             service_id,
@@ -814,7 +1019,8 @@ pub async fn create_labor_item(
             fixed_price,
             labor_hours,
             discount_type,
-            discount_value
+            discount_value,
+            is_free
         "#,
     )
     .bind(payload.service_id)
@@ -826,6 +1032,7 @@ pub async fn create_labor_item(
     .bind(payload.labor_hours.to_string())
     .bind(payload.discount_type)
     .bind(payload.discount_value.to_string())
+    .bind(payload.is_free)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -854,7 +1061,8 @@ pub async fn update_labor_item(
             fixed_price = $6,
             labor_hours = $7,
             discount_type = $8,
-            discount_value = $9
+            discount_value = $9,
+            is_free = $10
         WHERE id = $1
         RETURNING
             id,
@@ -866,7 +1074,8 @@ pub async fn update_labor_item(
             fixed_price,
             labor_hours,
             discount_type,
-            discount_value
+            discount_value,
+            is_free
         "#,
     )
     .bind(id)
@@ -878,6 +1087,7 @@ pub async fn update_labor_item(
     .bind(payload.labor_hours.to_string())
     .bind(payload.discount_type)
     .bind(payload.discount_value.to_string())
+    .bind(payload.is_free)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -943,7 +1153,8 @@ pub async fn fetch_part_items_list(state: State<'_, crate::AppState>) -> AppResu
             base_cost,
             markup,
             discount_type,
-            discount_value
+            discount_value,
+            is_free
         FROM part_items
         "#,
     )
@@ -971,7 +1182,8 @@ pub async fn fetch_part_item_by_id(
             base_cost,
             markup,
             discount_type,
-            discount_value
+            discount_value,
+            is_free
         FROM part_items
         WHERE id = $1
         "#,
@@ -1004,9 +1216,10 @@ pub async fn create_part_item(
             base_cost,
             markup,
             discount_type,
-            discount_value
+            discount_value,
+            is_free
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING
             id,
             work_order_id,
@@ -1018,7 +1231,8 @@ pub async fn create_part_item(
             base_cost,
             markup,
             discount_type,
-            discount_value
+            discount_value,
+            is_free
         "#,
     )
     .bind(payload.work_order_id)
@@ -1031,6 +1245,7 @@ pub async fn create_part_item(
     .bind(payload.markup.to_string())
     .bind(payload.discount_type)
     .bind(payload.discount_value.to_string())
+    .bind(payload.is_free)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -1060,7 +1275,8 @@ pub async fn update_part_item(
             base_cost = $7,
             markup = $8,
             discount_type = $9,
-            discount_value = $10
+            discount_value = $10,
+            is_free = $11
         WHERE id = $1
         RETURNING
             id,
@@ -1073,7 +1289,8 @@ pub async fn update_part_item(
             base_cost,
             markup,
             discount_type,
-            discount_value
+            discount_value,
+            is_free
         "#,
     )
     .bind(id)
@@ -1086,6 +1303,7 @@ pub async fn update_part_item(
     .bind(payload.markup.to_string())
     .bind(payload.discount_type)
     .bind(payload.discount_value.to_string())
+    .bind(payload.is_free)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -1144,6 +1362,7 @@ pub struct PreviewLaborItemPayload {
     pub labor_hours: Decimal,
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
+    pub is_free: bool,
 }
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
@@ -1178,6 +1397,7 @@ pub async fn preview_labor_item(
         labor_hours: payload.labor_hours,
         discount_type: payload.discount_type,
         discount_value: payload.discount_value,
+        is_free: payload.is_free,
     };
 
     let totals = pricing::calculate_labor_item_totals(
@@ -1215,6 +1435,7 @@ pub struct PreviewPartItemPayload {
     pub markup: Decimal,
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
+    pub is_free: bool,
 }
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
@@ -1248,6 +1469,7 @@ pub async fn preview_part_item(
         markup: payload.markup,
         discount_type: payload.discount_type,
         discount_value: payload.discount_value,
+        is_free: payload.is_free,
     };
 
     let totals = pricing::calculate_part_item_totals(
@@ -1307,6 +1529,7 @@ pub async fn preview_work_order(
     state: State<'_, crate::AppState>,
     payload: PreviewWorkOrderPayload,
 ) -> AppResult<PreviewWorkOrderQuote> {
+    // Validate the order exists, the preview itself is payload driven.
     fetch_work_order_by_id(&state, &payload.work_order_id).await?;
 
     let work_order_ids = [payload.work_order_id.as_str()];
@@ -1355,18 +1578,53 @@ pub async fn preview_work_order(
         })
         .collect();
 
-    let labor_sum: Decimal = labor_item_dtos.iter().map(|dto| dto.totals.total).sum();
-    let parts_sum: Decimal = part_item_dtos.iter().map(|dto| dto.totals.total).sum();
-    let labor_cost_sum: Decimal = labor_item_dtos.iter().map(|dto| dto.totals.cost).sum();
-    let parts_cost_sum: Decimal = part_item_dtos.iter().map(|dto| dto.totals.cost).sum();
-    let labor_discount_sum: Decimal = labor_item_dtos.iter().map(|dto| dto.totals.discount).sum();
-    let parts_discount_sum: Decimal = part_item_dtos.iter().map(|dto| dto.totals.discount).sum();
+    let labor_sum: Decimal = labor_item_dtos
+        .iter()
+        .filter(|dto| pricing::labor_is_billed(dto.item.is_free))
+        .map(|dto| dto.totals.total)
+        .sum();
+    let labor_cost_sum: Decimal = labor_item_dtos
+        .iter()
+        .filter(|dto| pricing::labor_is_billed(dto.item.is_free))
+        .map(|dto| dto.totals.cost)
+        .sum();
+    let labor_discount_sum: Decimal = labor_item_dtos
+        .iter()
+        .filter(|dto| pricing::labor_is_billed(dto.item.is_free))
+        .map(|dto| dto.totals.discount)
+        .sum();
+
+    // The preview is a projected-final view: it counts every part that will
+    // be billed if the order completes as composed (pending + installed,
+    // excluding free parts), so the below-cost guard keeps working while
+    // parts are still staged. Returned parts never count.
+    let parts_sum: Decimal = part_item_dtos
+        .iter()
+        .filter(|dto| pricing::part_is_projected_billed(dto.item.status, dto.item.is_free))
+        .map(|dto| dto.totals.total)
+        .sum();
+    let parts_cost_sum: Decimal = part_item_dtos
+        .iter()
+        .filter(|dto| pricing::part_is_projected_billed(dto.item.status, dto.item.is_free))
+        .map(|dto| dto.totals.cost)
+        .sum();
+    let parts_discount_sum: Decimal = part_item_dtos
+        .iter()
+        .filter(|dto| pricing::part_is_projected_billed(dto.item.status, dto.item.is_free))
+        .map(|dto| dto.totals.discount)
+        .sum();
+    let parts_pending_sum: Decimal = part_item_dtos
+        .iter()
+        .filter(|dto| pricing::part_is_pending(dto.item.status, dto.item.is_free))
+        .map(|dto| dto.totals.total)
+        .sum();
 
     let totals = pricing::calculate_work_order_totals(
         labor_sum,
         labor_cost_sum,
         parts_sum,
         parts_cost_sum,
+        parts_pending_sum,
         labor_discount_sum,
         parts_discount_sum,
         payload.discount_type,
