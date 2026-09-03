@@ -15,6 +15,12 @@
     value: string;
     inputProps?: Record<string, unknown>;
   } = $props();
+
+  function selectType(next: DiscountType) {
+    if (next === type) return;
+    type = next;
+    value = next === "None" ? "0" : "";
+  }
 </script>
 
 <div class="flex flex-col gap-2">
@@ -23,7 +29,7 @@
       type="button"
       variant={type === "None" ? "default" : "outline"}
       class="flex-1"
-      onclick={() => (type = "None")}
+      onclick={() => selectType("None")}
     >
       Немає
     </Button>
@@ -31,7 +37,7 @@
       type="button"
       variant={type === "Fixed" ? "default" : "outline"}
       class="flex-1"
-      onclick={() => (type = "Fixed")}
+      onclick={() => selectType("Fixed")}
     >
       Фіксована
     </Button>
@@ -39,7 +45,7 @@
       type="button"
       variant={type === "Percentage" ? "default" : "outline"}
       class="flex-1"
-      onclick={() => (type = "Percentage")}
+      onclick={() => selectType("Percentage")}
     >
       Відсоток
     </Button>
