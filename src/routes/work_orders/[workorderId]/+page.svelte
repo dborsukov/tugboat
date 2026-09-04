@@ -31,10 +31,18 @@
   import PageLayout from "$lib/components/page-layout.svelte";
   import PhoneDisplay from "$lib/components/phone-display.svelte";
 
-  import type { PartStatus, Service, WorkOrderStatus } from "$lib/bindings";
+  import type {
+    DiscountType,
+    LaborItemDto,
+    PartItemDto,
+    PartStatus,
+    Service,
+    WorkOrderStatus,
+  } from "$lib/bindings";
+  import { commands } from "$lib/bindings";
   import { privacyState } from "$lib/states/privacy.svelte";
   import { TableActionState } from "$lib/states/table-actions.svelte";
-  import { pluralizeUk, prettifyIsoDateString } from "$lib/tools";
+  import { pluralizeUk, prettifyIsoDateString, unwrap } from "$lib/tools";
   import { cn } from "$lib/utils";
 
   import ClientAvatar from "../../clients/client-avatar.svelte";
@@ -46,11 +54,15 @@
     createDeletePartItemMutation,
     createDeletePartItemsMutation,
     createRestoreWorkOrderMutation,
+    createUpdateLaborItemsDiscountMutation,
+    createUpdatePartItemsDiscountMutation,
     createUpdatePartItemsStatusMutation,
     workOrderDetailsQueryOptions,
   } from "../queries";
   import StatusSelector from "../work-order-status-selector.svelte";
   import WorkOrderTotalsPopover from "../work-order-totals-popover.svelte";
+  import BulkDiscountDialog from "./bulk-discount-dialog.svelte";
+  import BulkDiscountMenuItem from "./bulk-discount-menu-item.svelte";
   import DropdownMenu from "./dropdown-menu.svelte";
   import {
     columns as laborColumns,
@@ -74,6 +86,10 @@
   const deleteLaborItemsMutation = createDeleteLaborItemsMutation(queryClient);
   const updatePartItemsStatusMutation =
     createUpdatePartItemsStatusMutation(queryClient);
+  const updateLaborItemsDiscountMutation =
+    createUpdateLaborItemsDiscountMutation(queryClient);
+  const updatePartItemsDiscountMutation =
+    createUpdatePartItemsDiscountMutation(queryClient);
   const restoreWorkOrderMutation = createRestoreWorkOrderMutation(queryClient);
 
   const combinedQueries = createQueries(() => ({
@@ -154,6 +170,16 @@
 
   let partsTableActions = new TableActionState<number>();
   let laborTableActions = new TableActionState<number>();
+
+  let isLaborBulkDiscountOpen = $state(false);
+  let isPartsBulkDiscountOpen = $state(false);
+  // Row snapshots taken when the bulk discount dialog is opened, so the
+  // preflight quotes and the mutation always target the same rows even if
+  // the selection changes while the dialog is on screen.
+  let laborBulkTargets = $state<{ id: number }[]>([]);
+  let partsBulkTargets = $state<{ id: number }[]>([]);
+  let laborBulkRowsById = new Map<number, LaborItemDto>();
+  let partsBulkRowsById = new Map<number, PartItemDto>();
 
   let partsTable = buildTable({
     get data() {
@@ -283,6 +309,107 @@
         },
       },
     );
+  }
+
+  function openLaborBulkDiscount() {
+    const selected = laborTable
+      .getFilteredSelectedRowModel()
+      .rows.map((row) => row.original);
+    laborBulkRowsById = new Map(selected.map((row) => [row.id, row]));
+    laborBulkTargets = selected.map((row) => ({ id: row.id }));
+    isLaborBulkDiscountOpen = true;
+  }
+
+  function openPartsBulkDiscount() {
+    const selected = partsTable
+      .getFilteredSelectedRowModel()
+      .rows.map((row) => row.original);
+    partsBulkRowsById = new Map(selected.map((row) => [row.id, row]));
+    partsBulkTargets = selected.map((row) => ({ id: row.id }));
+    isPartsBulkDiscountOpen = true;
+  }
+
+  async function previewLaborBulkDiscount(
+    id: number,
+    discountType: DiscountType,
+    discountValue: string,
+  ) {
+    const row = laborBulkRowsById.get(id);
+    if (!row) return null;
+    try {
+      const quote = await unwrap(
+        commands.previewLaborItem({
+          workOrderId: row.workOrderId,
+          priceType: row.priceType,
+          fixedPrice: row.priceType === "Fixed" ? row.fixedPrice : "0",
+          laborHours: row.priceType === "Hourly" ? row.laborHours : "0",
+          discountType,
+          discountValue,
+          isFree: row.isFree,
+        }),
+      );
+      return { belowCost: quote.belowCost, belowCostNow: row.totals.belowCost };
+    } catch {
+      return null;
+    }
+  }
+
+  async function previewPartsBulkDiscount(
+    id: number,
+    discountType: DiscountType,
+    discountValue: string,
+  ) {
+    const row = partsBulkRowsById.get(id);
+    if (!row) return null;
+    try {
+      const quote = await unwrap(
+        commands.previewPartItem({
+          workOrderId: row.workOrderId,
+          baseCost: row.baseCost,
+          markup: row.markup,
+          discountType,
+          discountValue,
+          isFree: row.isFree,
+        }),
+      );
+      return { belowCost: quote.belowCost, belowCostNow: row.totals.belowCost };
+    } catch {
+      return null;
+    }
+  }
+
+  async function applyBulkLaborDiscount(
+    ids: number[],
+    discountType: DiscountType,
+    discountValue: string,
+  ) {
+    try {
+      await updateLaborItemsDiscountMutation.mutateAsync({
+        ids,
+        discountType,
+        discountValue,
+      });
+      laborTable.resetRowSelection();
+    } catch {
+      // Error toast is shown by the mutation layer.
+    }
+  }
+
+  async function applyBulkPartsDiscount(
+    ids: number[],
+    discountType: DiscountType,
+    discountValue: string,
+  ) {
+    try {
+      await updatePartItemsDiscountMutation.mutateAsync({
+        ids,
+        discountType,
+        discountValue,
+      });
+      partsTable.resetRowSelection();
+    } catch {
+      // Error toast is shown by the mutation layer.
+    }
   }
 
   function handleRestore() {
@@ -813,6 +940,9 @@
             {/if}
           </div>
         </div>
+        {#snippet laborBulkMenuItems()}
+          <BulkDiscountMenuItem onclick={openLaborBulkDiscount} />
+        {/snippet}
         <DataTable
           table={laborTable}
           emptyMessage="Сервісів не знайдено..."
@@ -824,6 +954,7 @@
             <DataTableBulkActions
               onDelete={() =>
                 laborTableActions.openBulkDelete(selectedLaborIds)}
+              menuItems={laborBulkMenuItems}
             />
           {/snippet}
         </DataTable>
@@ -864,6 +995,7 @@
         </div>
         {#snippet partsBulkMenuItems()}
           <PartBulkStatusSubmenu onStatusChange={confirmBulkPartStatusChange} />
+          <BulkDiscountMenuItem onclick={openPartsBulkDiscount} />
         {/snippet}
         <DataTable
           table={partsTable}
@@ -918,6 +1050,20 @@
         bind:open={partsTableActions.isBulkDeleteOpen}
         onDelete={confirmBulkPartDelete}
         description={`Видалити ${partsTableActions.bulkDeleteIds.length} ${pluralizeUk(partsTableActions.bulkDeleteIds.length, ["запчастину", "запчастини", "запчастин"])}? Цю дію неможливо відмінити.`}
+      />
+      <BulkDiscountDialog
+        bind:open={isLaborBulkDiscountOpen}
+        description={`Знижка застосується до ${laborBulkTargets.length} ${pluralizeUk(laborBulkTargets.length, ["сервісу", "сервісів", "сервісів"])}.`}
+        rows={laborBulkTargets}
+        preview={previewLaborBulkDiscount}
+        applyDiscount={applyBulkLaborDiscount}
+      />
+      <BulkDiscountDialog
+        bind:open={isPartsBulkDiscountOpen}
+        description={`Знижка застосується до ${partsBulkTargets.length} ${pluralizeUk(partsBulkTargets.length, ["запчастини", "запчастин", "запчастин"])}.`}
+        rows={partsBulkTargets}
+        preview={previewPartsBulkDiscount}
+        applyDiscount={applyBulkPartsDiscount}
       />
     </div>
   {/if}

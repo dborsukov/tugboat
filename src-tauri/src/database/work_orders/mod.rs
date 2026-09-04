@@ -574,10 +574,6 @@ pub async fn create_work_order(
     Ok(work_order)
 }
 
-/// Creates a warranty claim work order linked to a fulfilled source order.
-/// The source order must exist, must not be archived and must be a regular
-/// (non-warranty) order. Order-level money settings (rate, labor cost, VAT)
-/// are cloned from the source, parts and labor are added afterwards as usual.
 #[tauri::command]
 #[specta::specta]
 pub async fn create_warranty_work_order(
@@ -1669,6 +1665,68 @@ pub async fn update_part_items_status(
             .bind(status)
             .execute(&mut *tx)
             .await?;
+        if result.rows_affected() == 0 {
+            tx.rollback().await?;
+            return Err(AppError::part_item_not_found());
+        }
+    }
+    tx.commit().await?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_labor_items_discount(
+    state: State<'_, crate::AppState>,
+    ids: Vec<i32>,
+    discount_type: DiscountType,
+    discount_value: Decimal,
+) -> AppResult<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let mut tx = begin_immediate(&state.db_pool).await?;
+    for id in &ids {
+        ensure_item_work_order_active(&mut *tx, ItemTable::Labor, *id).await?;
+        let result = sqlx::query(
+            "UPDATE labor_items SET discount_type = $2, discount_value = $3 WHERE id = $1",
+        )
+        .bind(id)
+        .bind(discount_type)
+        .bind(discount_value.to_string())
+        .execute(&mut *tx)
+        .await?;
+        if result.rows_affected() == 0 {
+            tx.rollback().await?;
+            return Err(AppError::item_not_found());
+        }
+    }
+    tx.commit().await?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_part_items_discount(
+    state: State<'_, crate::AppState>,
+    ids: Vec<i32>,
+    discount_type: DiscountType,
+    discount_value: Decimal,
+) -> AppResult<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let mut tx = begin_immediate(&state.db_pool).await?;
+    for id in &ids {
+        ensure_item_work_order_active(&mut *tx, ItemTable::Part, *id).await?;
+        let result = sqlx::query(
+            "UPDATE part_items SET discount_type = $2, discount_value = $3 WHERE id = $1",
+        )
+        .bind(id)
+        .bind(discount_type)
+        .bind(discount_value.to_string())
+        .execute(&mut *tx)
+        .await?;
         if result.rows_affected() == 0 {
             tx.rollback().await?;
             return Err(AppError::part_item_not_found());

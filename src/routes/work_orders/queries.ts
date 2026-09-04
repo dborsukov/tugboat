@@ -10,6 +10,7 @@ import type {
   CreateLaborItemPayload,
   CreatePartItemPayload,
   CreateWorkOrderPayload,
+  DiscountType,
   LaborItem,
   PartItem,
   PartStatus,
@@ -293,6 +294,32 @@ export function createDeleteLaborItemsMutation(queryClient: QueryClient) {
   );
 }
 
+export function createUpdateLaborItemsDiscountMutation(
+  queryClient: QueryClient,
+) {
+  return createMutation(
+    () => ({
+      mutationFn: (variables: {
+        ids: number[];
+        discountType: DiscountType;
+        discountValue: string;
+      }) =>
+        unwrap(
+          commands.updateLaborItemsDiscount(
+            variables.ids,
+            variables.discountType,
+            variables.discountValue,
+          ),
+        ),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
 export function partItemByIdQueryOptions(id: number | null) {
   return {
     enabled: id != null,
@@ -375,6 +402,32 @@ export function createUpdatePartItemsStatusMutation(queryClient: QueryClient) {
     () => ({
       mutationFn: (variables: { ids: number[]; status: PartStatus }) =>
         unwrap(commands.updatePartItemsStatus(variables.ids, variables.status)),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createUpdatePartItemsDiscountMutation(
+  queryClient: QueryClient,
+) {
+  return createMutation(
+    () => ({
+      mutationFn: (variables: {
+        ids: number[];
+        discountType: DiscountType;
+        discountValue: string;
+      }) =>
+        unwrap(
+          commands.updatePartItemsDiscount(
+            variables.ids,
+            variables.discountType,
+            variables.discountValue,
+          ),
+        ),
       onSuccess: () => {
         invalidateWorkOrderLists(queryClient);
       },

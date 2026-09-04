@@ -55,12 +55,6 @@ export const commands = {
 	fetchWorkOrdersCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_work_orders_count")),
 	fetchWorkOrdersList: () => typedError<WorkOrder[], AppError>(__TAURI_INVOKE("fetch_work_orders_list")),
 	createWorkOrder: (payload: CreateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("create_work_order", { payload })),
-	/**
-	 *  Creates a warranty claim work order linked to a fulfilled source order.
-	 *  The source order must exist, must not be archived and must be a regular
-	 *  (non-warranty) order. Order-level money settings (rate, labor cost, VAT)
-	 *  are cloned from the source, parts and labor are added afterwards as usual.
-	 */
 	createWarrantyWorkOrder: (sourceWorkOrderId: string, odometerIn: number, description: string | null, notes: string | null) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("create_warranty_work_order", { sourceWorkOrderId, odometerIn, description, notes })),
 	updateWorkOrder: (payload: UpdateWorkOrderPayload) => typedError<WorkOrder, AppError>(__TAURI_INVOKE("update_work_order", { payload })),
 	deleteWorkOrder: (id: string) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order", { id })),
@@ -71,6 +65,7 @@ export const commands = {
 	fetchLaborItemsList: () => typedError<LaborItem[], AppError>(__TAURI_INVOKE("fetch_labor_items_list")),
 	createLaborItem: (payload: CreateLaborItemPayload) => typedError<LaborItem, AppError>(__TAURI_INVOKE("create_labor_item", { payload })),
 	updateLaborItem: (id: number, payload: UpdateLaborItemPayload) => typedError<LaborItem, AppError>(__TAURI_INVOKE("update_labor_item", { id, payload })),
+	updateLaborItemsDiscount: (ids: number[], discountType: DiscountType, discountValue: string) => typedError<null, AppError>(__TAURI_INVOKE("update_labor_items_discount", { ids, discountType, discountValue })),
 	deleteLaborItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_labor_item", { id })),
 	deleteLaborItems: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("delete_labor_items", { ids })),
 	fetchPartItemById: (id: number) => typedError<PartItem, AppError>(__TAURI_INVOKE("fetch_part_item_by_id", { id })),
@@ -78,6 +73,7 @@ export const commands = {
 	createPartItem: (payload: CreatePartItemPayload) => typedError<PartItem, AppError>(__TAURI_INVOKE("create_part_item", { payload })),
 	updatePartItem: (id: number, payload: UpdatePartItemPayload) => typedError<PartItem, AppError>(__TAURI_INVOKE("update_part_item", { id, payload })),
 	updatePartItemsStatus: (ids: number[], status: PartStatus) => typedError<null, AppError>(__TAURI_INVOKE("update_part_items_status", { ids, status })),
+	updatePartItemsDiscount: (ids: number[], discountType: DiscountType, discountValue: string) => typedError<null, AppError>(__TAURI_INVOKE("update_part_items_discount", { ids, discountType, discountValue })),
 	deletePartItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_part_item", { id })),
 	deletePartItems: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("delete_part_items", { ids })),
 	previewLaborItem: (payload: PreviewLaborItemPayload) => typedError<PreviewLaborItemQuote, AppError>(__TAURI_INVOKE("preview_labor_item", { payload })),
