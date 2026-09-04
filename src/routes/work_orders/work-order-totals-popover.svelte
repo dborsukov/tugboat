@@ -72,13 +72,17 @@
   let totalCost = $derived(partsCost.plus(laborCost));
   // Computed by the backend: money actually kept (net of output VAT) vs cost.
   let belowCost = $derived(workOrderDetails?.totals?.belowCost ?? false);
+  let totalIsZero = $derived(totalWithVat.eq(0));
 </script>
 
 <Popover.Root>
   <Popover.Trigger
     class={cn(
       buttonVariants({ size: "lg", variant: "outline" }),
-      "text-base px-2 border-none bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
+      "text-base px-2 border-none",
+      !totalIsZero &&
+        "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
+      totalIsZero && !belowCost && "bg-muted text-muted-foreground",
       belowCost &&
         "bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300",
       className,
@@ -297,13 +301,17 @@
       {/if}
       <div
         class={cn(
-          "flex items-baseline justify-between rounded-md bg-green-100 dark:bg-green-500/15 px-3 py-2",
+          "flex items-baseline justify-between rounded-md px-3 py-2",
+          !totalIsZero && "bg-green-100 dark:bg-green-500/15",
+          totalIsZero && !belowCost && "bg-muted",
           belowCost && "bg-rose-100 dark:bg-rose-500/15",
         )}
       >
         <span
           class={cn(
-            "text-sm font-medium text-green-700 dark:text-green-300",
+            "text-sm font-medium",
+            !totalIsZero && "text-green-700 dark:text-green-300",
+            totalIsZero && !belowCost && "text-muted-foreground",
             belowCost && "text-rose-800 dark:text-rose-300",
           )}>Всього</span
         >
@@ -311,7 +319,9 @@
           amount={totalWithVat.toString()}
           suffix="грн."
           class={cn(
-            "text-lg font-medium text-green-700 dark:text-green-300",
+            "text-lg font-medium",
+            !totalIsZero && "text-green-700 dark:text-green-300",
+            totalIsZero && !belowCost && "text-muted-foreground",
             belowCost && "text-rose-800 dark:text-rose-300",
           )}
         />

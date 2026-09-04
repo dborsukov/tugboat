@@ -32,15 +32,22 @@
     {/snippet}
   </DropdownMenu.Trigger>
   <DropdownMenu.Content class="w-max whitespace-nowrap" align="start">
-    <DropdownMenu.Group>
-      {@render menuItems?.()}
-      {#if onDelete}
+    {#if menuItems}
+      <DropdownMenu.Group>
+        {@render menuItems()}
+      </DropdownMenu.Group>
+    {/if}
+    {#if menuItems && onDelete}
+      <DropdownMenu.Separator />
+    {/if}
+    {#if onDelete}
+      <DropdownMenu.Group>
         {@const DeleteIcon = deleteIcon}
         <DropdownMenu.Item variant={deleteVariant} onclick={onDelete}>
           <DeleteIcon />
           {deleteLabel}
         </DropdownMenu.Item>
-      {/if}
-    </DropdownMenu.Group>
+      </DropdownMenu.Group>
+    {/if}
   </DropdownMenu.Content>
 </DropdownMenu.Root>
