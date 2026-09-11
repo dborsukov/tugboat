@@ -48,21 +48,36 @@ pub fn calculate_labor_item_totals(
     vat_rate: Decimal,
     prices_include_vat: bool,
 ) -> LaborItemTotals {
-    let subtotal = match labor_item.price_type {
-        LaborPriceType::Hourly => (labor_item.labor_hours * rate).round_dp(2),
+    let price = match labor_item.price_type {
+        LaborPriceType::Hourly => rate.round_dp(2),
         LaborPriceType::Fixed => labor_item.fixed_price.round_dp(2),
     };
 
-    let total = match labor_item.discount_type {
-        DiscountType::None => subtotal,
-        DiscountType::Fixed => subtotal - labor_item.discount_value,
-        DiscountType::Percentage => (subtotal
-            * (Decimal::ONE - labor_item.discount_value / Decimal::ONE_HUNDRED))
-            .round_dp(2),
-    };
-    let total = total.max(Decimal::ZERO);
+    let discounted_price = match labor_item.discount_type {
+        DiscountType::None => price,
+        DiscountType::Fixed => price - labor_item.discount_value,
+        DiscountType::Percentage => {
+            (price * (Decimal::ONE - labor_item.discount_value / Decimal::ONE_HUNDRED)).round_dp(2)
+        }
+    }
+    .max(Decimal::ZERO);
 
-    let discount = (subtotal - total).max(Decimal::ZERO);
+    let total = match labor_item.price_type {
+        LaborPriceType::Hourly => (discounted_price * labor_item.labor_hours).round_dp(2),
+        LaborPriceType::Fixed => discounted_price,
+    };
+
+    let discount = match labor_item.price_type {
+        LaborPriceType::Hourly => ((price - discounted_price) * labor_item.labor_hours)
+            .round_dp(2)
+            .max(Decimal::ZERO),
+        LaborPriceType::Fixed => (price - discounted_price).max(Decimal::ZERO),
+    };
+
+    let gross = match labor_item.price_type {
+        LaborPriceType::Hourly => (price * labor_item.labor_hours).round_dp(2),
+        LaborPriceType::Fixed => price,
+    };
 
     // When labor_cost_type is Hourly, cost is derived from labor_hours.
     // For a Fixed-priced item, labor_hours is always zero (it's not tracked
@@ -74,7 +89,7 @@ pub fn calculate_labor_item_totals(
     // type + Fixed price_type) as "no cost basis available", not as true 0.
     let cost = match labor_cost_type {
         LaborCostType::Hourly => (labor_item.labor_hours * labor_cost).round_dp(2),
-        LaborCostType::Percentage => (subtotal * (labor_cost / Decimal::ONE_HUNDRED)).round_dp(2),
+        LaborCostType::Percentage => (gross * (labor_cost / Decimal::ONE_HUNDRED)).round_dp(2),
     };
 
     let cost_basis_known = labor_cost_basis_known(labor_item.price_type, labor_cost_type);
@@ -85,7 +100,8 @@ pub fn calculate_labor_item_totals(
 
     LaborItemTotals {
         cost,
-        subtotal,
+        price,
+        discounted_price,
         discount,
         total,
         below_cost,

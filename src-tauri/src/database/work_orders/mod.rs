@@ -58,9 +58,17 @@ pub async fn fetch_work_order_by_id(
         SELECT
             id,
             car_id,
+            payer_client_id,
+            customer_client_id,
             odometer_in,
+            odometer_out,
+            driver_surname,
+            driver_first_name,
+            driver_patronymic,
+            driver_phone,
             description,
             notes,
+            condition_report,
             status,
             type,
             warranty_of,
@@ -97,9 +105,17 @@ pub async fn fetch_work_orders_list(
         SELECT
             id,
             car_id,
+            payer_client_id,
+            customer_client_id,
             odometer_in,
+            odometer_out,
+            driver_surname,
+            driver_first_name,
+            driver_patronymic,
+            driver_phone,
             description,
             notes,
+            condition_report,
             status,
             type,
             warranty_of,
@@ -387,9 +403,17 @@ pub async fn fetch_work_order_details_dto_by_car_id(
         SELECT
             id,
             car_id,
+            payer_client_id,
+            customer_client_id,
             odometer_in,
+            odometer_out,
+            driver_surname,
+            driver_first_name,
+            driver_patronymic,
+            driver_phone,
             description,
             notes,
+            condition_report,
             status,
             type,
             warranty_of,
@@ -428,9 +452,17 @@ pub async fn fetch_work_order_details_dto_by_client_id(
         SELECT
             wo.id,
             wo.car_id,
+            wo.payer_client_id,
+            wo.customer_client_id,
             wo.odometer_in,
+            wo.odometer_out,
+            wo.driver_surname,
+            wo.driver_first_name,
+            wo.driver_patronymic,
+            wo.driver_phone,
             wo.description,
             wo.notes,
+            wo.condition_report,
             wo.status,
             wo.type,
             wo.warranty_of,
@@ -479,7 +511,6 @@ async fn is_company_not_vat_payer(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>) 
 /// counter resets automatically at the start of each month.
 /// Transaction failure will roll back counter, leaving no gap.
 async fn generate_work_order_id(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>) -> AppResult<String> {
-    const PREFIX: &str = "ПП";
     let year_month = Utc::now().format("%Y%m").to_string();
 
     let counter: i64 = sqlx::query_scalar(
@@ -491,7 +522,62 @@ async fn generate_work_order_id(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>) ->
     .fetch_one(&mut **tx)
     .await?;
 
-    Ok(format!("{PREFIX}-{year_month}-{counter:03}"))
+    Ok(format!("{year_month}-{counter:03}"))
+}
+
+async fn client_type_for_car<'e, E>(
+    executor: E,
+    car_id: i64,
+) -> AppResult<clients::structs::ClientType>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    let client_type: Option<clients::structs::ClientType> = sqlx::query_scalar(
+        r#"
+        SELECT cl.client_type
+        FROM clients cl
+        JOIN cars c ON c.client_id = cl.id
+        WHERE c.id = $1
+        "#,
+    )
+    .bind(car_id)
+    .fetch_optional(executor)
+    .await?;
+    client_type.ok_or_else(|| AppError::validation("Автомобіль для замовлення не знайдено"))
+}
+
+async fn ensure_driver_info_allowed<'e, E>(
+    executor: E,
+    car_id: i64,
+    driver_surname: &Option<String>,
+    driver_first_name: &Option<String>,
+    driver_patronymic: &Option<String>,
+    driver_phone: &Option<String>,
+) -> AppResult<()>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    let has_driver = driver_surname
+        .as_deref()
+        .is_some_and(|s| !s.trim().is_empty())
+        || driver_first_name
+            .as_deref()
+            .is_some_and(|s| !s.trim().is_empty())
+        || driver_patronymic
+            .as_deref()
+            .is_some_and(|s| !s.trim().is_empty())
+        || driver_phone
+            .as_deref()
+            .is_some_and(|s| !s.trim().is_empty());
+    if !has_driver {
+        return Ok(());
+    }
+    if client_type_for_car(executor, car_id).await? == clients::structs::ClientType::Individual {
+        return Err(AppError::validation(
+            "Водій вказується лише для замовлень ФОП або організацій",
+        ));
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -503,6 +589,15 @@ pub async fn create_work_order(
     let mut tx = begin_immediate(&state.db_pool).await?;
 
     cars::ensure_car_active(&mut *tx, payload.car_id as i32).await?;
+    ensure_driver_info_allowed(
+        &mut *tx,
+        payload.car_id,
+        &payload.driver_surname,
+        &payload.driver_first_name,
+        &payload.driver_patronymic,
+        &payload.driver_phone,
+    )
+    .await?;
 
     let vat_rate = if is_company_not_vat_payer(&mut tx).await? {
         Decimal::ZERO
@@ -518,8 +613,14 @@ pub async fn create_work_order(
             id,
             car_id,
             odometer_in,
+            odometer_out,
+            driver_surname,
+            driver_first_name,
+            driver_patronymic,
+            driver_phone,
             description,
             notes,
+            condition_report,
             status,
             rate,
             labor_cost_type,
@@ -527,15 +628,25 @@ pub async fn create_work_order(
             discount_type,
             discount_value,
             vat_rate,
-            prices_include_vat
+            prices_include_vat,
+            payer_client_id,
+            customer_client_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
         RETURNING
             id,
             car_id,
+            payer_client_id,
+            customer_client_id,
             odometer_in,
+            odometer_out,
+            driver_surname,
+            driver_first_name,
+            driver_patronymic,
+            driver_phone,
             description,
             notes,
+            condition_report,
             status,
             type,
             warranty_of,
@@ -557,8 +668,14 @@ pub async fn create_work_order(
     .bind(id)
     .bind(payload.car_id)
     .bind(payload.odometer_in)
+    .bind(payload.odometer_out)
+    .bind(payload.driver_surname)
+    .bind(payload.driver_first_name)
+    .bind(payload.driver_patronymic)
+    .bind(payload.driver_phone)
     .bind(payload.description)
     .bind(payload.notes)
+    .bind(payload.condition_report)
     .bind(payload.status)
     .bind(payload.rate.to_string())
     .bind(payload.labor_cost_type)
@@ -567,6 +684,8 @@ pub async fn create_work_order(
     .bind(payload.discount_value.to_string())
     .bind(vat_rate.to_string())
     .bind(payload.prices_include_vat)
+    .bind(payload.payer_client_id)
+    .bind(payload.customer_client_id)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -590,9 +709,17 @@ pub async fn create_warranty_work_order(
         SELECT
             id,
             car_id,
+            payer_client_id,
+            customer_client_id,
             odometer_in,
+            odometer_out,
+            driver_surname,
+            driver_first_name,
+            driver_patronymic,
+            driver_phone,
             description,
             notes,
+            condition_report,
             status,
             type,
             warranty_of,
@@ -643,8 +770,14 @@ pub async fn create_warranty_work_order(
             id,
             car_id,
             odometer_in,
+            odometer_out,
+            driver_surname,
+            driver_first_name,
+            driver_patronymic,
+            driver_phone,
             description,
             notes,
+            condition_report,
             status,
             type,
             warranty_of,
@@ -654,15 +787,25 @@ pub async fn create_warranty_work_order(
             discount_type,
             discount_value,
             vat_rate,
-            prices_include_vat
+            prices_include_vat,
+            payer_client_id,
+            customer_client_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
         RETURNING
             id,
             car_id,
+            payer_client_id,
+            customer_client_id,
             odometer_in,
+            odometer_out,
+            driver_surname,
+            driver_first_name,
+            driver_patronymic,
+            driver_phone,
             description,
             notes,
+            condition_report,
             status,
             type,
             warranty_of,
@@ -684,8 +827,14 @@ pub async fn create_warranty_work_order(
     .bind(id)
     .bind(source.car_id)
     .bind(odometer_in)
+    .bind(None::<i32>)
+    .bind(None::<String>)
+    .bind(None::<String>)
+    .bind(None::<String>)
+    .bind(None::<String>)
     .bind(description)
     .bind(notes)
+    .bind(None::<String>)
     .bind(WorkOrderStatus::Received)
     .bind(WorkOrderType::Warranty)
     .bind(&source_work_order_id)
@@ -696,6 +845,8 @@ pub async fn create_warranty_work_order(
     .bind(Decimal::ZERO.to_string())
     .bind(vat_rate.to_string())
     .bind(source.prices_include_vat)
+    .bind(None::<i32>)
+    .bind(None::<i32>)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -713,33 +864,58 @@ pub async fn update_work_order(
 
     ensure_work_order_active(&mut *tx, &payload.id).await?;
     cars::ensure_car_active(&mut *tx, payload.car_id as i32).await?;
+    ensure_driver_info_allowed(
+        &mut *tx,
+        payload.car_id,
+        &payload.driver_surname,
+        &payload.driver_first_name,
+        &payload.driver_patronymic,
+        &payload.driver_phone,
+    )
+    .await?;
 
     let work_order: WorkOrder = sqlx::query_as(
         r#"
         UPDATE work_orders SET
             car_id = $2,
             odometer_in = $3,
-            description = $4,
-            notes = $5,
-            status = $6,
-            rate = $7,
-            labor_cost_type = $8,
-            labor_cost_value = $9,
-            discount_type = $10,
-            discount_value = $11,
-            vat_rate = $12,
-            prices_include_vat = $13,
-            started_at = $14,
-            completed_at = $15,
-            paid_at = $16,
-            payment_method = $17
+            odometer_out = $4,
+            description = $5,
+            notes = $6,
+            condition_report = $7,
+            status = $8,
+            rate = $9,
+            labor_cost_type = $10,
+            labor_cost_value = $11,
+            discount_type = $12,
+            discount_value = $13,
+            vat_rate = $14,
+            prices_include_vat = $15,
+            started_at = $16,
+            completed_at = $17,
+            paid_at = $18,
+            payment_method = $19,
+            payer_client_id = $20,
+            driver_surname = $21,
+            driver_first_name = $22,
+            driver_patronymic = $23,
+            driver_phone = $24,
+            customer_client_id = $25
         WHERE id = $1
         RETURNING
             id,
             car_id,
+            payer_client_id,
+            customer_client_id,
             odometer_in,
+            odometer_out,
+            driver_surname,
+            driver_first_name,
+            driver_patronymic,
+            driver_phone,
             description,
             notes,
+            condition_report,
             status,
             type,
             warranty_of,
@@ -761,8 +937,10 @@ pub async fn update_work_order(
     .bind(payload.id)
     .bind(payload.car_id)
     .bind(payload.odometer_in)
+    .bind(payload.odometer_out)
     .bind(payload.description)
     .bind(payload.notes)
+    .bind(payload.condition_report)
     .bind(payload.status)
     .bind(payload.rate.to_string())
     .bind(payload.labor_cost_type)
@@ -775,6 +953,12 @@ pub async fn update_work_order(
     .bind(payload.completed_at)
     .bind(payload.paid_at)
     .bind(payload.payment_method)
+    .bind(payload.payer_client_id)
+    .bind(payload.driver_surname)
+    .bind(payload.driver_first_name)
+    .bind(payload.driver_patronymic)
+    .bind(payload.driver_phone)
+    .bind(payload.customer_client_id)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -1365,7 +1549,8 @@ pub struct PreviewLaborItemPayload {
 #[serde(rename_all = "camelCase")]
 pub struct PreviewLaborItemQuote {
     pub cost: Decimal,
-    pub subtotal: Decimal,
+    pub price: Decimal,
+    pub discounted_price: Decimal,
     pub discount: Decimal,
     pub total: Decimal,
     /// Money kept after VAT
@@ -1407,7 +1592,8 @@ pub async fn preview_labor_item(
 
     Ok(PreviewLaborItemQuote {
         cost: totals.cost,
-        subtotal: totals.subtotal,
+        price: totals.price,
+        discounted_price: totals.discounted_price,
         discount: totals.discount,
         total: totals.total,
         kept: pricing::net_kept_amount(

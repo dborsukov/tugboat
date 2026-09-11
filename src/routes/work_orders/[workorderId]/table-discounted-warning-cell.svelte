@@ -6,10 +6,12 @@
   let {
     price: priceString,
     belowCost = false,
+    suffix = "грн.",
     class: className,
   }: {
     price: string;
     belowCost?: boolean;
+    suffix?: string;
     class?: string;
   } = $props();
 </script>
@@ -22,5 +24,5 @@
     className,
   )}
 >
-  <CurrencyDisplay amount={priceString} suffix="грн." class="justify-end" />
+  <CurrencyDisplay amount={priceString} {suffix} class="justify-end" />
 </div>

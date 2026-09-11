@@ -11,6 +11,10 @@ import type {
   CreatePartItemPayload,
   CreateWorkOrderPayload,
   DiscountType,
+  DocumentConflictAction,
+  DocumentFormat,
+  DocumentKind,
+  GenerateDocumentOptions,
   LaborItem,
   PartItem,
   PartStatus,
@@ -19,6 +23,7 @@ import type {
   UpdateWorkOrderPayload,
   WorkOrderDeleteImpact,
   WorkOrderDetailsDto,
+  WorkOrderDocuments,
 } from "$lib/bindings";
 import { keys } from "$lib/query-keys";
 import { unwrap } from "$lib/tools";
@@ -439,4 +444,50 @@ export function createUpdatePartItemsDiscountMutation(
 
 export function invalidateWorkOrderLists(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: keys.workOrders.all });
+}
+
+// ---------------------------------------------------------------------------
+// Documents
+// ---------------------------------------------------------------------------
+
+export function workOrderDocumentsQueryOptions(id: string | null) {
+  return {
+    enabled: id != null,
+    queryKey: keys.workOrders.documents(id!),
+    queryFn: () => unwrap(commands.fetchWorkOrderDocuments(id!)),
+  };
+}
+
+export function createWorkOrderDocumentsQuery(getId: () => string | null) {
+  return createQuery<WorkOrderDocuments>(() =>
+    workOrderDocumentsQueryOptions(getId()),
+  );
+}
+
+export function createGenerateDocumentMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (variables: {
+        workOrderId: string;
+        kind: DocumentKind;
+        format: DocumentFormat;
+        options: GenerateDocumentOptions;
+        conflict: DocumentConflictAction;
+      }) =>
+        unwrap(
+          commands.generateDocument(
+            variables.workOrderId,
+            variables.kind,
+            variables.format,
+            variables.options,
+            variables.conflict,
+          ),
+        ),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
 }

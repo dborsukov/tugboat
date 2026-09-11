@@ -6,6 +6,7 @@
 
   import ArchiveIcon from "@lucide/svelte/icons/archive";
   import ArchiveRestoreIcon from "@lucide/svelte/icons/archive-restore";
+  import CarFrontIcon from "@lucide/svelte/icons/car-front";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
   import ChevronRight from "@lucide/svelte/icons/chevron-right";
   import Info from "@lucide/svelte/icons/info";
@@ -14,6 +15,7 @@
   import QuoteIcon from "@lucide/svelte/icons/message-square-quote";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
   import StickyNoteIcon from "@lucide/svelte/icons/sticky-note";
+  import UserRoundIcon from "@lucide/svelte/icons/user-round";
 
   import Button from "$lib/components/ui/button/button.svelte";
   import * as Command from "$lib/components/ui/command/index.js";
@@ -33,6 +35,8 @@
 
   import type {
     DiscountType,
+    DocumentFormat,
+    DocumentKind,
     LaborItemDto,
     PartItemDto,
     PartStatus,
@@ -63,6 +67,8 @@
   import WorkOrderTotalsPopover from "../work-order-totals-popover.svelte";
   import BulkDiscountDialog from "./bulk-discount-dialog.svelte";
   import BulkDiscountMenuItem from "./bulk-discount-menu-item.svelte";
+  import DocumentGenerateDialog from "./document-generate-dialog.svelte";
+  import DocumentsSection from "./documents-section.svelte";
   import DropdownMenu from "./dropdown-menu.svelte";
   import {
     columns as laborColumns,
@@ -76,6 +82,17 @@
   let { params } = $props();
 
   let isPopoverOpen: boolean = $state(false);
+
+  let generateRequest = $state<{
+    kind: DocumentKind;
+    format: DocumentFormat;
+  } | null>(null);
+  let isGenerateDialogOpen = $state(false);
+
+  function openGenerate(kind: DocumentKind, format: DocumentFormat) {
+    generateRequest = { kind, format };
+    isGenerateDialogOpen = true;
+  }
 
   const queryClient = useQueryClient();
 
@@ -116,6 +133,16 @@
 
   let services = $derived(combinedQueries.services.data);
   let workOrderDetails = $derived(combinedQueries.workOrderDetails.data);
+
+  const driverName = $derived(
+    [
+      workOrderDetails?.workOrder?.driverSurname,
+      workOrderDetails?.workOrder?.driverFirstName,
+      workOrderDetails?.workOrder?.driverPatronymic,
+    ]
+      .filter((part) => part && part.trim() !== "")
+      .join(" "),
+  );
 
   const isArchived = $derived(workOrderDetails?.workOrder?.archivedAt != null);
   const isPaid = $derived(workOrderDetails?.workOrder?.status === "Paid");
@@ -769,6 +796,18 @@
           </div>
         </div>
 
+        {#if workOrderDetails?.workOrder?.odometerOut != null}
+          <div class="block h-8/12 w-px bg-border"></div>
+
+          <div class="p-4 flex flex-col justify-start items-start">
+            <span class="text-sm text-muted-foreground">Пробіг при видачі</span>
+            <div class="flex gap-2 text-base">
+              <p>{workOrderDetails?.workOrder?.odometerOut}</p>
+              <p class="text-muted-foreground">км.</p>
+            </div>
+          </div>
+        {/if}
+
         <div class="block h-8/12 w-px bg-border"></div>
 
         <div class="p-4 flex flex-col justify-start items-start">
@@ -793,6 +832,7 @@
             odometerIn={workOrderDetails?.workOrder?.odometerIn ?? 0}
             {isLocked}
             {isArchived}
+            onGenerate={openGenerate}
           />
         </div>
       </div>
@@ -847,7 +887,7 @@
         </div>
       </div>
 
-      {#if workOrderDetails?.workOrder?.description || (!privacyState.hideNotes && workOrderDetails?.workOrder?.notes)}
+      {#if workOrderDetails?.workOrder?.description || workOrderDetails?.workOrder?.conditionReport || driverName || workOrderDetails?.workOrder?.driverPhone || (!privacyState.hideNotes && workOrderDetails?.workOrder?.notes)}
         <div
           class="flex flex-col divide-y divide-border rounded-b overflow-hidden border-t border-border"
         >
@@ -865,6 +905,48 @@
                 class="text-base italic text-foreground/90 whitespace-pre-wrap"
               >
                 {workOrderDetails.workOrder.description}
+              </p>
+            </div>
+          {/if}
+          {#if workOrderDetails?.workOrder?.conditionReport}
+            <div
+              class="flex-1 flex flex-col items-start gap-1 px-4 py-2 bg-muted/40"
+            >
+              <span
+                class="flex items-center justify-center gap-2 text-base text-muted-foreground"
+              >
+                <CarFrontIcon class="size-4" />
+                <span>Огляд автомобіля при прийнятті</span>
+              </span>
+              <p
+                class="text-base italic text-foreground/90 whitespace-pre-wrap"
+              >
+                {workOrderDetails.workOrder.conditionReport}
+              </p>
+            </div>
+          {/if}
+          {#if driverName || workOrderDetails?.workOrder?.driverPhone}
+            <div
+              class="flex-1 flex flex-col items-start gap-1 px-4 py-2 bg-muted/40"
+            >
+              <span
+                class="flex items-center justify-center gap-2 text-base text-muted-foreground"
+              >
+                <UserRoundIcon class="size-4" />
+                <span>Водій</span>
+              </span>
+              <p
+                class="text-base italic text-foreground/90 whitespace-pre-wrap"
+              >
+                {#if driverName}
+                  {driverName}
+                {/if}
+                {#if driverName && workOrderDetails.workOrder.driverPhone}
+                  {" — "}
+                {/if}
+                {#if workOrderDetails.workOrder.driverPhone}
+                  {workOrderDetails.workOrder.driverPhone}
+                {/if}
               </p>
             </div>
           {/if}
@@ -948,7 +1030,12 @@
           emptyMessage="Сервісів не знайдено..."
           class="mt-4"
           headerClasses={{ name: "w-full", select: "w-10 p-0" }}
-          cellClasses={{ actions: "p-0", sum: "p-0", select: "p-0" }}
+          cellClasses={{
+            actions: "p-0",
+            discountedPrice: "p-0",
+            sum: "p-0",
+            select: "p-0",
+          }}
         >
           {#snippet selectionActions()}
             <DataTableBulkActions
@@ -1066,5 +1153,17 @@
         applyDiscount={applyBulkPartsDiscount}
       />
     </div>
+
+    <DocumentsSection workOrderId={params.workorderId} />
+
+    {#if generateRequest}
+      <DocumentGenerateDialog
+        workOrderId={params.workorderId}
+        {workOrderDetails}
+        kind={generateRequest.kind}
+        format={generateRequest.format}
+        bind:open={isGenerateDialogOpen}
+      />
+    {/if}
   {/if}
 </PageLayout>

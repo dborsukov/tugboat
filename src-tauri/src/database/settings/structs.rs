@@ -19,6 +19,7 @@ pub struct AppSettings {
     pub timezone: String,
     pub default_phone_country_code: String,
     pub company_info: Option<CompanyInfo>,
+    pub documents_dir: Option<String>,
 }
 
 pub(crate) fn decode_company_info(raw: Option<String>) -> Option<CompanyInfo> {
@@ -50,6 +51,7 @@ impl<'r> FromRow<'r, SqliteRow> for AppSettings {
             timezone: row.try_get("timezone")?,
             default_phone_country_code: row.try_get("default_phone_country_code")?,
             company_info: decode_company_info(row.try_get("company_info")?),
+            documents_dir: row.try_get("documents_dir")?,
         })
     }
 }
@@ -96,11 +98,13 @@ pub enum CompanyKind {
 #[serde(rename_all = "camelCase")]
 pub struct CompanyInfo {
     pub kind: CompanyKind,
-    /// Short/trade name.
+    /// Назва бізнесу (коротка/торгова) — спільне поле для обох типів.
     pub name: Option<String>,
     pub legal_name: Option<String>,
     pub legal_address: Option<String>,
     pub physical_address: Option<String>,
+    /// Contact phone number of the business.
+    pub phone: Option<String>,
     pub edrpou: Option<String>,
     pub rnokpp: Option<String>,
     /// ПІБ of the ФОП.

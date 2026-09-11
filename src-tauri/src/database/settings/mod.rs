@@ -24,9 +24,9 @@ const LOOKUP_TEMPLATE_URL_MAX_LEN: usize = 500;
 const LOOKUP_PLACEHOLDER: &str = "%s";
 const TIMEZONE_MAX_LEN: usize = 64;
 
-#[tauri::command]
-#[specta::specta]
-pub async fn fetch_settings(state: State<'_, crate::AppState>) -> AppResult<AppSettings> {
+pub(crate) async fn fetch_settings_from_pool(
+    pool: &sqlx::Pool<sqlx::Sqlite>,
+) -> AppResult<AppSettings> {
     let settings: AppSettings = sqlx::query_as(
         r#"
         SELECT
@@ -41,14 +41,21 @@ pub async fn fetch_settings(state: State<'_, crate::AppState>) -> AppResult<AppS
             license_plate_lookup_templates,
             timezone,
             default_phone_country_code,
-            company_info
+            company_info,
+            documents_dir
         FROM app_settings
         WHERE id = 1
         "#,
     )
-    .fetch_one(&state.db_pool)
+    .fetch_one(pool)
     .await?;
     Ok(settings)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_settings(state: State<'_, crate::AppState>) -> AppResult<AppSettings> {
+    fetch_settings_from_pool(&state.db_pool).await
 }
 
 #[tauri::command]
@@ -356,6 +363,7 @@ fn validate_company_info(info: &CompanyInfo) -> Result<(), AppError> {
         &info.legal_name,
         &info.legal_address,
         &info.physical_address,
+        &info.phone,
         &info.edrpou,
         &info.rnokpp,
         &info.surname,

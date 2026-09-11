@@ -34,6 +34,8 @@ export const keys = {
       [...keys.workOrders.details(), id] as const,
     deleteImpact: (id: string) =>
       [...keys.workOrders.all, "delete-impact", id] as const,
+    documents: (id: string | number) =>
+      [...keys.workOrders.all, "documents", id] as const,
   },
   services: {
     all: ["services"] as const,
@@ -44,6 +46,7 @@ export const keys = {
   },
   settings: {
     all: ["settings"] as const,
+    documentsDirInfo: ["settings", "documents-dir-info"] as const,
   },
   version: ["version"] as const,
 };

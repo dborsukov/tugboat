@@ -101,9 +101,9 @@ export const columns: ColumnDef<LaborItemDto>[] = [
     },
     cell: ({ row }) => {
       return renderComponent(CurrencyDisplay, {
-        amount: row.original.totals.subtotal,
+        amount: row.original.totals.price,
         suffix: "грн.",
-        class: "font-medium justify-end",
+        class: "justify-end",
       });
     },
   },
@@ -123,6 +123,25 @@ export const columns: ColumnDef<LaborItemDto>[] = [
         type: row.original.discountType,
         value: row.original.discountValue,
         class: "justify-center",
+      });
+    },
+  },
+  {
+    id: "discountedPrice",
+    header: () => {
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () => `<div class="text-end">Відпускна ціна</div>`,
+          };
+        }),
+      );
+    },
+    cell: ({ row }) => {
+      return renderComponent(TableDiscountedWarningCell, {
+        price: row.original.totals.discountedPrice,
+        belowCost: row.original.totals.belowCost,
+        suffix: "грн.",
       });
     },
   },
@@ -148,9 +167,10 @@ export const columns: ColumnDef<LaborItemDto>[] = [
           }),
         );
       }
-      return renderComponent(TableDiscountedWarningCell, {
-        price: row.original.totals.total,
-        belowCost: row.original.totals.belowCost,
+      return renderComponent(CurrencyDisplay, {
+        amount: row.original.totals.total,
+        suffix: "грн.",
+        class: "font-medium justify-end px-2",
       });
     },
   },

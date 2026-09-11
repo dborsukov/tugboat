@@ -61,6 +61,7 @@
       legalName: z.string().default(""),
       legalAddress: z.string().default(""),
       physicalAddress: z.string().default(""),
+      phone: z.string().default(""),
       edrpou: z.string().default(""),
       rnokpp: z.string().default(""),
       surname: z.string().default(""),
@@ -117,6 +118,7 @@
       legalName: trimToNull(data.legalName),
       legalAddress: trimToNull(data.legalAddress),
       physicalAddress: trimToNull(data.physicalAddress),
+      phone: trimToNull(data.phone),
       edrpou: trimToNull(data.edrpou),
       rnokpp: trimToNull(data.rnokpp),
       surname: trimToNull(data.surname),
@@ -139,6 +141,7 @@
     $formData.legalName = saved?.legalName ?? "";
     $formData.legalAddress = saved?.legalAddress ?? "";
     $formData.physicalAddress = saved?.physicalAddress ?? "";
+    $formData.phone = saved?.phone ?? "";
     $formData.edrpou = saved?.edrpou ?? "";
     $formData.rnokpp = saved?.rnokpp ?? "";
     $formData.surname = saved?.surname ?? "";
@@ -382,11 +385,15 @@
 
         {@render sectionTitle("Основні дані", MapPinIcon)}
 
+        {@render inputField("name", "Назва бізнесу", "Автосервіс Плюс")}
+
         {@render textAreaField(
           "physicalAddress",
           "Фактична адреса",
           "Фізична адреса, де фактично знаходиться бізнес...",
         )}
+
+        {@render inputField("phone", "Телефон", "+380...")}
 
         <Form.Field {form} name="vatPayer">
           <Form.Control>
@@ -409,7 +416,6 @@
         {#if $formData.kind === "company"}
           {@render sectionTitle("Дані організації", BuildingIcon)}
 
-          {@render inputField("name", "Коротка назва", "Автосервіс Плюс")}
           {@render inputField(
             "legalName",
             "Юридична назва",

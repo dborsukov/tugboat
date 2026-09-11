@@ -6,6 +6,9 @@
   import ArchiveIcon from "@lucide/svelte/icons/archive";
   import ArchiveRestoreIcon from "@lucide/svelte/icons/archive-restore";
   import EllipsisIcon from "@lucide/svelte/icons/ellipsis-vertical";
+  import FileCheckIcon from "@lucide/svelte/icons/file-check-2";
+  import FileDownIcon from "@lucide/svelte/icons/file-down";
+  import FileTextIcon from "@lucide/svelte/icons/file-text";
   import ShieldIcon from "@lucide/svelte/icons/shield-check";
   import EditIcon from "@lucide/svelte/icons/square-pen";
   import TrashIcon from "@lucide/svelte/icons/trash";
@@ -15,7 +18,12 @@
 
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
 
-  import type { WorkOrderDeleteImpact, WorkOrderType } from "$lib/bindings";
+  import type {
+    DocumentFormat,
+    DocumentKind,
+    WorkOrderDeleteImpact,
+    WorkOrderType,
+  } from "$lib/bindings";
   import { pluralizeUk } from "$lib/tools";
 
   import {
@@ -33,12 +41,14 @@
     odometerIn = 0,
     isLocked = false,
     isArchived = false,
+    onGenerate,
   }: {
     workOrderId: string;
     type?: WorkOrderType;
     odometerIn?: number;
     isLocked?: boolean;
     isArchived?: boolean;
+    onGenerate: (kind: DocumentKind, format: DocumentFormat) => void;
   } = $props();
   let isSheetOpen = $state(false);
   let isDeleteDialogOpen = $state(false);
@@ -108,6 +118,29 @@
   }
 </script>
 
+{#snippet documentSubmenu(
+  kind: DocumentKind,
+  title: string,
+  Icon: typeof FileTextIcon,
+)}
+  <DropdownMenu.Sub>
+    <DropdownMenu.SubTrigger>
+      <Icon />
+      {title}
+    </DropdownMenu.SubTrigger>
+    <DropdownMenu.SubContent class="w-max whitespace-nowrap">
+      <DropdownMenu.Item onclick={() => onGenerate(kind, "pdf")}>
+        <FileDownIcon />
+        PDF
+      </DropdownMenu.Item>
+      <DropdownMenu.Item onclick={() => onGenerate(kind, "xlsx")}>
+        <FileDownIcon />
+        XLSX
+      </DropdownMenu.Item>
+    </DropdownMenu.SubContent>
+  </DropdownMenu.Sub>
+{/snippet}
+
 <DropdownMenu.Root>
   <DropdownMenu.Trigger
     class={buttonVariants({ variant: "ghost", size: "icon-lg" })}
@@ -133,6 +166,18 @@
           <EditIcon />
           Редагувати
         </DropdownMenu.Item>
+        <DropdownMenu.Separator />
+        <DropdownMenu.Label>Документи</DropdownMenu.Label>
+        {@render documentSubmenu(
+          "naryad_zamovlennya",
+          "Наряд-замовлення",
+          FileTextIcon,
+        )}
+        {@render documentSubmenu(
+          "akt_vykonanykh_robit",
+          "Акт виконаних робіт",
+          FileCheckIcon,
+        )}
         {#if type === "Regular"}
           <DropdownMenu.Separator />
           <DropdownMenu.Item onSelect={() => (isWarrantyCreateOpen = true)}>

@@ -113,4 +113,10 @@ impl From<sqlx::Error> for AppError {
     }
 }
 
+impl From<rust_xlsxwriter::XlsxError> for AppError {
+    fn from(error: rust_xlsxwriter::XlsxError) -> Self {
+        AppError::Generic(format!("Помилка формування XLSX: {error}"))
+    }
+}
+
 pub type AppResult<T> = Result<T, AppError>;

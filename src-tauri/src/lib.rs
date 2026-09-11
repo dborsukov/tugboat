@@ -9,6 +9,7 @@ use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 use tauri_specta::{collect_commands, Builder};
 
 pub mod database;
+pub mod documents;
 pub mod error;
 pub mod utils;
 
@@ -99,6 +100,12 @@ pub fn run() {
         database::work_orders::preview_labor_item,
         database::work_orders::preview_part_item,
         database::work_orders::preview_work_order,
+        documents::fetch_work_order_documents,
+        documents::fetch_documents_dir_info,
+        documents::document_target_path,
+        documents::generate_document,
+        documents::pick_documents_folder,
+        documents::update_documents_dir,
         utils::get_app_version
     ]);
 
@@ -112,6 +119,7 @@ pub fn run() {
         .unwrap();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(specta_builder.invoke_handler())
         .setup(move |app| {
@@ -192,6 +200,12 @@ pub fn run() {
                 db_pool,
                 version: env!("CARGO_PKG_VERSION"),
             });
+
+            // Make sure the documents folder (configured or default) exists.
+            {
+                let appstate = app.state::<AppState>();
+                let _ = tauri::async_runtime::block_on(documents::resolve_documents_dir(&appstate));
+            }
 
             let appstate = app.state::<AppState>();
             print!("{:#?}", appstate);

@@ -4,6 +4,7 @@
 
   import CheckIcon from "@lucide/svelte/icons/check";
   import ChevronsUpDownIcon from "@lucide/svelte/icons/chevrons-up-down";
+  import XIcon from "@lucide/svelte/icons/x";
 
   import { Button } from "$lib/components/ui/button";
   import * as Command from "$lib/components/ui/command";
@@ -15,6 +16,7 @@
     items,
     value = $bindable(),
     disabled,
+    clearable = false,
     getKey,
     getLabel,
     getSearchValue,
@@ -31,6 +33,7 @@
     items: T[];
     value: unknown;
     disabled?: boolean;
+    clearable?: boolean;
     getKey: (item: T) => unknown;
     getLabel: (item: T) => string;
     getSearchValue?: (item: T) => string;
@@ -74,7 +77,33 @@
         {:else}
           {selected ? getLabel(selected) : placeholder}
         {/if}
-        <ChevronsUpDownIcon class="opacity-50" />
+        {#if clearable && selected}
+          <span
+            role="button"
+            tabindex="0"
+            aria-label="Прибрати вибір"
+            class="shrink-0 opacity-70 hover:opacity-100"
+            onclick={(e) => {
+              e.stopPropagation();
+              value = null;
+              onValueChange?.(null);
+              closeAndFocus();
+            }}
+            onkeydown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                e.stopPropagation();
+                value = null;
+                onValueChange?.(null);
+                closeAndFocus();
+              }
+            }}
+          >
+            <XIcon class="size-4" />
+          </span>
+        {:else}
+          <ChevronsUpDownIcon class="opacity-50" />
+        {/if}
       </Button>
     {/snippet}
   </Popover.Trigger>

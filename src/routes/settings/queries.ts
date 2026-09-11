@@ -1,10 +1,15 @@
-import { createMutation, QueryClient } from "@tanstack/svelte-query";
+import {
+  createMutation,
+  createQuery,
+  QueryClient,
+} from "@tanstack/svelte-query";
 import { toast } from "svelte-sonner";
 
 import {
   commands,
   type AppSettings,
   type CompanyInfo,
+  type DocumentsDirInfo,
   type LicensePlateLookupTemplates,
   type RateVariants,
   type ThemeMode,
@@ -170,5 +175,44 @@ export function createUpdateCompanyInfoMutation(queryClient: QueryClient) {
     "companyInfo",
     (companyInfo: CompanyInfo) =>
       unwrap(commands.updateCompanyInfo(companyInfo)),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Documents folder
+// ---------------------------------------------------------------------------
+
+export function documentsDirInfoQueryOptions() {
+  return {
+    queryKey: keys.settings.documentsDirInfo,
+    queryFn: () => unwrap(commands.fetchDocumentsDirInfo()),
+  };
+}
+
+export function createDocumentsDirInfoQuery() {
+  return createQuery<DocumentsDirInfo>(() => documentsDirInfoQueryOptions());
+}
+
+export function createUpdateDocumentsDirMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (variables: { path: string; moveDocuments: boolean }) =>
+        unwrap(
+          commands.updateDocumentsDir(variables.path, variables.moveDocuments),
+        ),
+      onSuccess: (saved: string) => {
+        patchSettingsCache(queryClient, "documentsDir", saved);
+        queryClient.invalidateQueries({
+          queryKey: keys.settings.documentsDirInfo,
+        });
+      },
+      onError: (error: Error) => {
+        toast.error("Виникла помилка", {
+          description: error.message,
+          position: "bottom-left",
+        });
+      },
+    }),
+    () => queryClient,
   );
 }

@@ -53,7 +53,8 @@ pub struct LaborItemDto {
 #[serde(rename_all = "camelCase")]
 pub struct LaborItemTotals {
     pub cost: Decimal,
-    pub subtotal: Decimal,
+    pub price: Decimal,
+    pub discounted_price: Decimal,
     pub discount: Decimal,
     pub total: Decimal,
     pub below_cost: bool,

@@ -18,8 +18,10 @@
   import { Label } from "$lib/components/ui/label";
   import { Textarea } from "$lib/components/ui/textarea";
 
+  import ComboSelect from "$lib/components/combo-select.svelte";
   import CurrencyInput from "$lib/components/currency-input.svelte";
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
+  import PhoneInput from "$lib/components/phone-input.svelte";
 
   import {
     commands,
@@ -42,7 +44,11 @@
   import { settingsState } from "$lib/states/settings.svelte";
   import { unwrap } from "$lib/tools";
   import type { CreateOrEditProps } from "$lib/types";
+  import { cn } from "$lib/utils";
 
+  import { createCarDetailsQuery } from "../cars/queries";
+  import ClientBadge from "../clients/client-badge.svelte";
+  import { createClientsQuery } from "../clients/queries";
   import DiscountField from "./discount-field.svelte";
   import LaborCostField from "./labor-cost-field.svelte";
   import {
@@ -68,12 +74,23 @@
   const updateWorkOrderMutation = createUpdateWorkOrderMutation(queryClient);
   const createWorkOrderMutation = createCreateWorkOrderMutation(queryClient);
 
+  const clientsQuery = createClientsQuery();
+  const carDetailsQuery = createCarDetailsQuery(() => carId);
+
   const rateVariants = $derived(settingsState.settings?.rateVariants ?? []);
 
   let workOrderDetailsQuery = createWorkOrderDetailsQuery(() => workOrderId);
   let workOrderDetails = $derived(workOrderDetailsQuery.data);
 
-  // Missing company info defaults to a non-payer
+  const driverFieldsEnabled = $derived(
+    (isEdit
+      ? workOrderDetails?.client.clientType
+      : carDetailsQuery.data?.client.clientType) === "fop" ||
+      (isEdit
+        ? workOrderDetails?.client.clientType
+        : carDetailsQuery.data?.client.clientType) === "company",
+  );
+
   const businessIsNotVatPayer = $derived(
     settingsState.settings?.companyInfo == null ||
       settingsState.settings.companyInfo.vatPayer === false,
@@ -154,11 +171,29 @@
 
   export const workOrderSchema = z
     .object({
+      ownerIsPayer: z.boolean().default(true),
+      payerClientId: z.number().int().nullable().default(null),
+      ownerIsCustomer: z.boolean().default(true),
+      customerClientId: z.number().int().nullable().default(null),
       odometerIn: z
         .number({ error: "Вкажіть пробіг" })
         .nonnegative("Неправильний пробіг")
         .default(0),
+      odometerOut: z
+        .number({ error: "Неправильний пробіг" })
+        .nonnegative("Неправильний пробіг")
+        .nullable()
+        .default(null),
+      driverSurname: z.string().default(""),
+      driverFirstName: z.string().default(""),
+      driverPatronymic: z.string().default(""),
+      driverPhone: z.string().default(""),
       description: z
+        .string()
+        .nullable()
+        .default(null)
+        .transform((val) => (val === "" ? null : val)),
+      conditionReport: z
         .string()
         .nullable()
         .default(null)
@@ -240,8 +275,16 @@
             .mutateAsync({
               id: workOrderDetails!.workOrder.id,
               carId: workOrderDetails!.workOrder.carId,
+              payerClientId: data.payerClientId,
+              customerClientId: data.customerClientId,
               odometerIn: data.odometerIn,
+              odometerOut: data.odometerOut,
+              driverSurname: data.driverSurname.trim() || null,
+              driverFirstName: data.driverFirstName.trim() || null,
+              driverPatronymic: data.driverPatronymic.trim() || null,
+              driverPhone: data.driverPhone.trim() || null,
               description: data.description?.trim() || null,
+              conditionReport: data.conditionReport?.trim() || null,
               notes: data.notes?.trim() || null,
               status: workOrderDetails!.workOrder.status,
               rate: data.rate,
@@ -258,9 +301,17 @@
         : await createWorkOrderMutation
             .mutateAsync({
               carId: carId!,
+              payerClientId: data.payerClientId,
+              customerClientId: data.customerClientId,
               odometerIn: data.odometerIn,
+              odometerOut: data.odometerOut,
+              driverSurname: data.driverSurname.trim() || null,
+              driverFirstName: data.driverFirstName.trim() || null,
+              driverPatronymic: data.driverPatronymic.trim() || null,
+              driverPhone: data.driverPhone.trim() || null,
               status: "Received",
               description: data.description?.trim() || null,
+              conditionReport: data.conditionReport?.trim() || null,
               notes: data.notes?.trim() || null,
               rate: data.rate,
               vatRate,
@@ -304,8 +355,25 @@
       pendingQuote = null;
 
       if (workOrderDetails) {
+        $formData.payerClientId =
+          workOrderDetails.workOrder.payerClientId ?? null;
+        $formData.ownerIsPayer =
+          workOrderDetails.workOrder.payerClientId == null;
+        $formData.customerClientId =
+          workOrderDetails.workOrder.customerClientId ?? null;
+        $formData.ownerIsCustomer =
+          workOrderDetails.workOrder.customerClientId == null;
         $formData.odometerIn = workOrderDetails.workOrder.odometerIn;
+        $formData.odometerOut = workOrderDetails.workOrder.odometerOut;
+        $formData.driverSurname =
+          workOrderDetails.workOrder.driverSurname ?? "";
+        $formData.driverFirstName =
+          workOrderDetails.workOrder.driverFirstName ?? "";
+        $formData.driverPatronymic =
+          workOrderDetails.workOrder.driverPatronymic ?? "";
+        $formData.driverPhone = workOrderDetails.workOrder.driverPhone ?? "";
         $formData.description = workOrderDetails.workOrder.description;
+        $formData.conditionReport = workOrderDetails.workOrder.conditionReport;
         $formData.notes = workOrderDetails.workOrder.notes;
         $formData.rate = workOrderDetails.workOrder.rate;
         $formData.vatRate = workOrderDetails.workOrder.vatRate;
@@ -387,6 +455,25 @@
       <Form.FieldErrors />
     </Form.Field>
 
+    <Form.Field {form} name="odometerOut">
+      <Form.Control>
+        {#snippet children({ props })}
+          <Label>Одометр(пробіг) при видачі</Label>
+          <div class="flex gap-2 items-baseline">
+            <Input
+              type="number"
+              min="0"
+              {...props}
+              bind:value={$formData.odometerOut}
+              class="flex-1"
+            />
+            <p>км.</p>
+          </div>
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
+
     <Form.Field {form} name="description">
       <Form.Control>
         {#snippet children({ props })}
@@ -404,6 +491,69 @@
       </Form.Control>
       <Form.FieldErrors />
     </Form.Field>
+
+    <Form.Field {form} name="conditionReport">
+      <Form.Control>
+        {#snippet children({ props })}
+          <Label>Огляд автомобіля при прийнятті</Label>
+          <Textarea
+            {...props}
+            value={$formData.conditionReport ?? ""}
+            oninput={(e) => {
+              $formData.conditionReport = e.currentTarget.value;
+            }}
+            placeholder="Опис зовнішнього стану кузова: наявні пошкодження, подряпини, вм'ятини..."
+            rows={2}
+          />
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
+
+    {#if driverFieldsEnabled}
+      <div class="flex flex-col gap-2">
+        <Label>Водій (ПІБ)</Label>
+        <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <Form.Field {form} name="driverSurname">
+            <Form.Control>
+              {#snippet children({ props })}
+                <Label>Прізвище</Label>
+                <Input {...props} bind:value={$formData.driverSurname} />
+              {/snippet}
+            </Form.Control>
+            <Form.FieldErrors />
+          </Form.Field>
+          <Form.Field {form} name="driverFirstName">
+            <Form.Control>
+              {#snippet children({ props })}
+                <Label>Ім'я</Label>
+                <Input {...props} bind:value={$formData.driverFirstName} />
+              {/snippet}
+            </Form.Control>
+            <Form.FieldErrors />
+          </Form.Field>
+          <Form.Field {form} name="driverPatronymic">
+            <Form.Control>
+              {#snippet children({ props })}
+                <Label>По-батькові</Label>
+                <Input {...props} bind:value={$formData.driverPatronymic} />
+              {/snippet}
+            </Form.Control>
+            <Form.FieldErrors />
+          </Form.Field>
+        </div>
+      </div>
+
+      <Form.Field {form} name="driverPhone">
+        <Form.Control>
+          {#snippet children({ props })}
+            <Label>Телефон водія</Label>
+            <PhoneInput {...props} bind:value={$formData.driverPhone} />
+          {/snippet}
+        </Form.Control>
+        <Form.FieldErrors />
+      </Form.Field>
+    {/if}
 
     <Form.Field {form} name="rate">
       <Form.Control>
@@ -441,6 +591,110 @@
               {/each}
             </div>
           {/if}
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
+
+    <Form.Field {form} name="customerClientId">
+      <Form.Control>
+        {#snippet children({ props: formProps })}
+          <div class="flex items-center gap-2 pb-1.5">
+            <Checkbox
+              id="ownerIsCustomer"
+              checked={$formData.ownerIsCustomer}
+              onCheckedChange={(checked) => {
+                $formData.ownerIsCustomer = checked === true;
+                if ($formData.ownerIsCustomer) {
+                  $formData.customerClientId = null;
+                }
+              }}
+            />
+            <Label for="ownerIsCustomer" class="font-normal">
+              Власник є замовником
+            </Label>
+          </div>
+          <ComboSelect
+            items={clientsQuery.data ?? []}
+            bind:value={$formData.customerClientId}
+            disabled={$formData.ownerIsCustomer}
+            clearable
+            getKey={(c) => c.id}
+            getLabel={(c) => c.name}
+            getSearchValue={(c) => c.name}
+            placeholder="Оберіть замовника..."
+            searchPlaceholder="Пошук клієнтів..."
+            emptyText="Клієнта не знайдено."
+            triggerClass={cn(
+              !$formData.ownerIsCustomer &&
+                $formData.customerClientId != null &&
+                "pl-2",
+            )}
+            {formProps}
+          >
+            {#snippet trigger(selected)}
+              {#if selected}
+                <ClientBadge name={selected.name} iconSize="size-5" />
+              {:else}
+                Оберіть замовника...
+              {/if}
+            {/snippet}
+            {#snippet item(client)}
+              <ClientBadge name={client.name} />
+            {/snippet}
+          </ComboSelect>
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
+
+    <Form.Field {form} name="payerClientId">
+      <Form.Control>
+        {#snippet children({ props: formProps })}
+          <div class="flex items-center gap-2 pb-1.5">
+            <Checkbox
+              id="ownerIsPayer"
+              checked={$formData.ownerIsPayer}
+              onCheckedChange={(checked) => {
+                $formData.ownerIsPayer = checked === true;
+                if ($formData.ownerIsPayer) {
+                  $formData.payerClientId = null;
+                }
+              }}
+            />
+            <Label for="ownerIsPayer" class="font-normal">
+              Власник є платником
+            </Label>
+          </div>
+          <ComboSelect
+            items={clientsQuery.data ?? []}
+            bind:value={$formData.payerClientId}
+            disabled={$formData.ownerIsPayer}
+            clearable
+            getKey={(c) => c.id}
+            getLabel={(c) => c.name}
+            getSearchValue={(c) => c.name}
+            placeholder="Оберіть платника..."
+            searchPlaceholder="Пошук клієнтів..."
+            emptyText="Клієнта не знайдено."
+            triggerClass={cn(
+              !$formData.ownerIsPayer &&
+                $formData.payerClientId != null &&
+                "pl-2",
+            )}
+            {formProps}
+          >
+            {#snippet trigger(selected)}
+              {#if selected}
+                <ClientBadge name={selected.name} iconSize="size-5" />
+              {:else}
+                Оберіть платника...
+              {/if}
+            {/snippet}
+            {#snippet item(client)}
+              <ClientBadge name={client.name} />
+            {/snippet}
+          </ComboSelect>
         {/snippet}
       </Form.Control>
       <Form.FieldErrors />

@@ -1,23 +1,30 @@
 <script lang="ts">
   import { useQueryClient } from "@tanstack/svelte-query";
+  import { toast } from "svelte-sonner";
   import { countries } from "svelte-tel-input";
   import type { Country } from "svelte-tel-input/types";
 
   import { goto } from "$app/navigation";
 
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
+  import FolderOpenIcon from "@lucide/svelte/icons/folder-open";
 
+  import * as AlertDialog from "$lib/components/ui/alert-dialog";
   import { Badge } from "$lib/components/ui/badge";
+  import { Button } from "$lib/components/ui/button";
   import * as Item from "$lib/components/ui/item/index.js";
 
   import ComboSelect from "$lib/components/combo-select.svelte";
   import CountryFlag from "$lib/components/country-flag.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
+  import { commands } from "$lib/bindings";
   import { getCountryNameUk } from "$lib/tools";
 
   import {
+    createDocumentsDirInfoQuery,
     createUpdateDefaultPhoneCountryCodeMutation,
+    createUpdateDocumentsDirMutation,
     createUpdateTimezoneMutation,
   } from "../queries";
   import {
@@ -31,6 +38,65 @@
   const updateTimezoneMutation = createUpdateTimezoneMutation(queryClient);
   const updateDefaultPhoneCountryCodeMutation =
     createUpdateDefaultPhoneCountryCodeMutation(queryClient);
+  const updateDocumentsDirMutation =
+    createUpdateDocumentsDirMutation(queryClient);
+
+  const documentsDirInfoQuery = createDocumentsDirInfoQuery();
+  const documentsDirInfo = $derived(documentsDirInfoQuery.data);
+
+  // ---------- Documents folder ----------
+
+  let isMoveDialogOpen = $state(false);
+  let pendingFolderPath = $state<string | null>(null);
+
+  async function pickDocumentsFolder() {
+    let picked: string | null = null;
+    try {
+      picked = await commands.pickDocumentsFolder();
+    } catch (error) {
+      toast.error("Не вдалося обрати теку", {
+        description: (error as Error).message,
+        position: "bottom-left",
+      });
+      return;
+    }
+    if (!picked) return;
+    if (picked === documentsDirInfo?.path) return;
+
+    if (documentsDirInfo?.hasContent) {
+      pendingFolderPath = picked;
+      isMoveDialogOpen = true;
+      return;
+    }
+    await applyDocumentsFolder(picked, false);
+  }
+
+  async function applyDocumentsFolder(path: string, moveDocuments: boolean) {
+    await updateDocumentsDirMutation.mutateAsync({ path, moveDocuments });
+  }
+
+  function confirmMove() {
+    isMoveDialogOpen = false;
+    const path = pendingFolderPath;
+    pendingFolderPath = null;
+    if (path) {
+      applyDocumentsFolder(path, true);
+    }
+  }
+
+  function skipMove() {
+    isMoveDialogOpen = false;
+    const path = pendingFolderPath;
+    pendingFolderPath = null;
+    if (path) {
+      applyDocumentsFolder(path, false);
+    }
+  }
+
+  function cancelMove() {
+    isMoveDialogOpen = false;
+    pendingFolderPath = null;
+  }
 
   // ---------- Timezone ----------
 
@@ -243,6 +309,36 @@
       </Item.Actions>
     </Item.Root>
 
+    <Item.Root id="settings-documents-dir">
+      <Item.Content>
+        <Item.Title>Тека документів</Item.Title>
+        <Item.Description>
+          Куди за замовчуванням зберігаються згенеровані документи
+          (наряд-замовлення, акти виконаних робіт)
+        </Item.Description>
+        <p class="mt-1 truncate text-xs text-muted-foreground">
+          {documentsDirInfo?.path ?? "Завантаження..."}
+        </p>
+        {#if updateDocumentsDirMutation.isError}
+          <p class="text-xs text-destructive mt-1">
+            Не вдалося зберегти теку:
+            {updateDocumentsDirMutation.error?.message}
+          </p>
+        {/if}
+      </Item.Content>
+      <Item.Actions>
+        <Button
+          variant="outline"
+          size="sm"
+          onclick={pickDocumentsFolder}
+          disabled={updateDocumentsDirMutation.isPending}
+        >
+          <FolderOpenIcon />
+          Змінити...
+        </Button>
+      </Item.Actions>
+    </Item.Root>
+
     <Item.Root
       id="settings-company-info-entry"
       role="button"
@@ -270,4 +366,23 @@
       </Item.Actions>
     </Item.Root>
   </div>
+
+  <AlertDialog.Root bind:open={isMoveDialogOpen}>
+    <AlertDialog.Content>
+      <AlertDialog.Header>
+        <AlertDialog.Title>Перенести документи?</AlertDialog.Title>
+        <AlertDialog.Description>
+          У старій теці є документи. Перенести їх у нову теку{" "}
+          {pendingFolderPath}?
+        </AlertDialog.Description>
+      </AlertDialog.Header>
+      <AlertDialog.Footer>
+        <AlertDialog.Cancel onclick={cancelMove}>Скасувати</AlertDialog.Cancel>
+        <AlertDialog.Action onclick={skipMove}>
+          Не переносити
+        </AlertDialog.Action>
+        <AlertDialog.Action onclick={confirmMove}>Перенести</AlertDialog.Action>
+      </AlertDialog.Footer>
+    </AlertDialog.Content>
+  </AlertDialog.Root>
 </PageLayout>

@@ -36,6 +36,14 @@ export const settingsSearchIndex: SettingsSearchItem[] = [
     hint: "Загальні",
   },
   {
+    id: "settings-documents-dir",
+    route: "/settings/general",
+    label: "Тека документів",
+    keywords:
+      "тека документи збереження документів шлях папка наряд замовлення акт виконаних робіт pdf xlsx загальні documents folder",
+    hint: "Загальні",
+  },
+  {
     id: "settings-company-info-entry",
     route: "/settings/general",
     label: "Дані бізнесу",

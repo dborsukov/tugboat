@@ -79,6 +79,21 @@ export const commands = {
 	previewLaborItem: (payload: PreviewLaborItemPayload) => typedError<PreviewLaborItemQuote, AppError>(__TAURI_INVOKE("preview_labor_item", { payload })),
 	previewPartItem: (payload: PreviewPartItemPayload) => typedError<PreviewPartItemQuote, AppError>(__TAURI_INVOKE("preview_part_item", { payload })),
 	previewWorkOrder: (payload: PreviewWorkOrderPayload) => typedError<PreviewWorkOrderQuote, AppError>(__TAURI_INVOKE("preview_work_order", { payload })),
+	fetchWorkOrderDocuments: (workOrderId: string) => typedError<WorkOrderDocuments, AppError>(__TAURI_INVOKE("fetch_work_order_documents", { workOrderId })),
+	fetchDocumentsDirInfo: () => typedError<DocumentsDirInfo, AppError>(__TAURI_INVOKE("fetch_documents_dir_info")),
+	/**
+	 *  Returns `Some(target path)` when a file with the default document name
+	 *  already exists, `None` otherwise. Used to show the replace/rename dialog.
+	 */
+	documentTargetPath: (workOrderId: string, kind: DocumentKind, format: DocumentFormat) => typedError<string | null, AppError>(__TAURI_INVOKE("document_target_path", { workOrderId, kind, format })),
+	generateDocument: (workOrderId: string, kind: DocumentKind, format: DocumentFormat, options: GenerateDocumentOptions, conflict: DocumentConflictAction) => typedError<WorkOrderDocument, AppError>(__TAURI_INVOKE("generate_document", { workOrderId, kind, format, options, conflict })),
+	/**  Opens the OS folder picker. Runs on the main thread (sync command). */
+	pickDocumentsFolder: () => __TAURI_INVOKE<string | null>("pick_documents_folder"),
+	/**
+	 *  Saves the documents folder setting. When `move_documents` is true and the
+	 *  old folder still has documents, its contents are moved into the new one.
+	 */
+	updateDocumentsDir: (path: string, moveDocuments: boolean) => typedError<string, AppError>(__TAURI_INVOKE("update_documents_dir", { path, moveDocuments })),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
 };
 
@@ -115,6 +130,7 @@ export type AppSettings = {
 	timezone: string,
 	defaultPhoneCountryCode: string,
 	companyInfo: CompanyInfo | null,
+	documentsDir: string | null,
 };
 
 export type Car = {
@@ -230,11 +246,13 @@ export type ClientType = "individual" | "fop" | "company";
 
 export type CompanyInfo = {
 	kind: CompanyKind,
-	/**  Short/trade name. */
+	/**  Назва бізнесу (коротка/торгова) — спільне поле для обох типів. */
 	name: string | null,
 	legalName: string | null,
 	legalAddress: string | null,
 	physicalAddress: string | null,
+	/**  Contact phone number of the business. */
+	phone: string | null,
 	edrpou: string | null,
 	rnokpp: string | null,
 	/**  ПІБ of the ФОП. */
@@ -308,9 +326,17 @@ export type CreateServicePayload = {
 
 export type CreateWorkOrderPayload = {
 	carId: number,
+	payerClientId: number | null,
+	customerClientId: number | null,
 	odometerIn: number,
+	odometerOut: number | null,
+	driverSurname: string | null,
+	driverFirstName: string | null,
+	driverPatronymic: string | null,
+	driverPhone: string | null,
 	description: string | null,
 	notes: string | null,
+	conditionReport: string | null,
 	status: WorkOrderStatus,
 	rate: string,
 	laborCostType: LaborCostType,
@@ -323,9 +349,39 @@ export type CreateWorkOrderPayload = {
 
 export type DiscountType = "None" | "Fixed" | "Percentage";
 
+export type DocumentConflictAction = "replace" | "rename";
+
+export type DocumentFormat = "pdf" | "xlsx";
+
+export type DocumentKind = "naryad_zamovlennya" | "akt_vykonanykh_robit";
+
+/**  Info about the effective documents folder, used by the settings page. */
+export type DocumentsDirInfo = {
+	path: string,
+	hasContent: boolean,
+};
+
 export type DriveType = "FrontWheel" | "RearWheel" | "AllWheel" | "FourWheel";
 
 export type FuelType = "Gasoline" | "Diesel" | "LpgCng" | "Hybrid" | "Electric";
+
+/**  Extra information collected from the user right before generation. */
+export type GenerateDocumentOptions = {
+	performerSurname: string | null,
+	performerFirstName: string | null,
+	performerPatronymic: string | null,
+	performerPosition: string | null,
+	receivedAt: string | null,
+	plannedCompletionAt: string | null,
+	location: string | null,
+	completedAt: string | null,
+	odometerOut: number | null,
+	refusedDefects: string | null,
+	skipDate?: boolean,
+	skipLocation?: boolean,
+	skipPerformerSignature?: boolean,
+	skipCustomerSignature?: boolean,
+};
 
 export type LaborCostType = "Hourly" | "Percentage";
 
@@ -349,7 +405,8 @@ export type LaborItemDto = {
 
 export type LaborItemTotals = {
 	cost: string,
-	subtotal: string,
+	price: string,
+	discountedPrice: string,
 	discount: string,
 	total: string,
 	belowCost: boolean,
@@ -406,7 +463,8 @@ export type PreviewLaborItemPayload = {
 
 export type PreviewLaborItemQuote = {
 	cost: string,
-	subtotal: string,
+	price: string,
+	discountedPrice: string,
 	discount: string,
 	total: string,
 	/**  Money kept after VAT */
@@ -528,9 +586,17 @@ export type UpdateServicePayload = {
 export type UpdateWorkOrderPayload = {
 	id: string,
 	carId: number,
+	payerClientId: number | null,
+	customerClientId: number | null,
 	odometerIn: number,
+	odometerOut: number | null,
+	driverSurname: string | null,
+	driverFirstName: string | null,
+	driverPatronymic: string | null,
+	driverPhone: string | null,
 	description: string | null,
 	notes: string | null,
+	conditionReport: string | null,
 	status: WorkOrderStatus,
 	rate: string,
 	laborCostType: LaborCostType,
@@ -553,9 +619,20 @@ export type VinLookupTemplates = {
 export type WorkOrder = {
 	id: string,
 	carId: number,
+	/**  Client who pays for the order, may be different from the owner */
+	payerClientId: number | null,
+	/**  Client who initiated the order, maybe be different from the owner */
+	customerClientId: number | null,
 	odometerIn: number,
+	odometerOut: number | null,
+	/**  Driver or representative who delivers the vehicle */
+	driverSurname: string | null,
+	driverFirstName: string | null,
+	driverPatronymic: string | null,
+	driverPhone: string | null,
 	description: string | null,
 	notes: string | null,
+	conditionReport: string | null,
 	status: WorkOrderStatus,
 	type: WorkOrderType,
 	warrantyOf: string | null,
@@ -588,6 +665,18 @@ export type WorkOrderDetailsDto = {
 	laborItems: LaborItemDto[],
 	partItems: PartItemDto[],
 	totals: WorkOrderTotals,
+};
+
+export type WorkOrderDocument = {
+	name: string,
+	path: string,
+	size: number,
+	modifiedAt: string,
+};
+
+export type WorkOrderDocuments = {
+	folderPath: string,
+	files: WorkOrderDocument[],
 };
 
 export type WorkOrderStatus = "Received" | "InDiagnostics" | "AwaitingApproval" | "AwaitingParts" | "Working" | "ReadyForPickup" | 

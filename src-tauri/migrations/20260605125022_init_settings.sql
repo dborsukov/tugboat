@@ -10,7 +10,8 @@ CREATE TABLE app_settings (
     license_plate_lookup_templates TEXT NOT NULL DEFAULT '[]',
     timezone TEXT NOT NULL DEFAULT 'Europe/Kiev',
     default_phone_country_code TEXT NOT NULL DEFAULT 'UA',
-    company_info TEXT
+    company_info TEXT,
+    documents_dir TEXT
 );
 
 -- Seed the initial default settings row
@@ -26,7 +27,9 @@ OR IGNORE INTO app_settings (
     vin_lookup_templates,
     license_plate_lookup_templates,
     timezone,
-    default_phone_country_code
+    default_phone_country_code,
+    company_info,
+    documents_dir
 )
 VALUES
     (
@@ -40,5 +43,7 @@ VALUES
         '[]',
         '[]',
         'Europe/Kiev',
-        'UA'
+        'UA',
+        '',
+        ''
     );
