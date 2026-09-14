@@ -10,6 +10,8 @@
   import Spinner from "$lib/components/ui/spinner/spinner.svelte";
   import { Textarea } from "$lib/components/ui/textarea";
 
+  import ComboSelect from "$lib/components/combo-select.svelte";
+
   import {
     commands,
     type DocumentConflictAction,
@@ -21,6 +23,9 @@
   import { settingsState } from "$lib/states/settings.svelte";
   import { unwrap } from "$lib/tools";
 
+  import { workerFullName } from "../../workers/labels";
+  import { createWorkersQuery } from "../../workers/queries";
+  import WorkerOption from "../../workers/worker-option.svelte";
   import { createGenerateDocumentMutation } from "../queries";
 
   let {
@@ -40,15 +45,14 @@
   const queryClient = useQueryClient();
   const generateDocumentMutation = createGenerateDocumentMutation(queryClient);
 
+  const workersQuery = createWorkersQuery();
+
   const isNaryad = $derived(kind === "naryad_zamovlennya");
   const isAkt = $derived(kind === "akt_vykonanykh_robit");
 
   // ---------- Form state ----------
 
-  let performerSurname = $state("");
-  let performerFirstName = $state("");
-  let performerPatronymic = $state("");
-  let performerPosition = $state("");
+  let performerWorkerId = $state<number | null>(null);
   let skipPerformerSignature = $state(false);
   let skipCustomerSignature = $state(false);
   let receivedAt = $state("");
@@ -88,10 +92,7 @@
       generating = false;
 
       const wo = workOrderDetails?.workOrder;
-      performerSurname = "";
-      performerFirstName = "";
-      performerPatronymic = "";
-      performerPosition = "";
+      performerWorkerId = workOrderDetails?.worker?.id ?? wo?.workerId ?? null;
       skipPerformerSignature = false;
       skipCustomerSignature = false;
       receivedAt = toLocalDateTimeValue(wo?.createdAt);
@@ -113,11 +114,8 @@
   }
 
   function validate(): string | null {
-    if (
-      !skipPerformerSignature &&
-      (!performerSurname.trim() || !performerFirstName.trim())
-    ) {
-      return "Вкажіть ПІБ виконавця";
+    if (!skipPerformerSignature && performerWorkerId == null) {
+      return "Оберіть виконавця";
     }
     if (isNaryad) {
       if (!skipDate && !receivedAt)
@@ -143,10 +141,7 @@
       value ? new Date(value).toISOString() : null;
     const rawOdometer = Number(odometerOut.trim());
     return {
-      performerSurname: performerSurname.trim() || null,
-      performerFirstName: performerFirstName.trim() || null,
-      performerPatronymic: performerPatronymic.trim() || null,
-      performerPosition: performerPosition.trim() || null,
+      performerWorkerId,
       receivedAt: parseIso(receivedAt),
       plannedCompletionAt: parseIso(plannedCompletionAt),
       location: location.trim() || null,
@@ -224,63 +219,30 @@
       </Dialog.Description>
     </Dialog.Header>
 
-    <div class="flex flex-col gap-3">
-      <div class="flex flex-col gap-1.5">
-        <Label>Виконавець *</Label>
-        <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <div class="flex flex-col gap-1.5">
-            <Label
-              for="doc-performer-surname"
-              class="text-xs text-muted-foreground"
-            >
-              Прізвище
-            </Label>
-            <Input
-              id="doc-performer-surname"
-              placeholder="Прізвище"
-              bind:value={performerSurname}
-              disabled={skipPerformerSignature}
-            />
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <Label
-              for="doc-performer-first-name"
-              class="text-xs text-muted-foreground"
-            >
-              Ім'я
-            </Label>
-            <Input
-              id="doc-performer-first-name"
-              placeholder="Ім'я"
-              bind:value={performerFirstName}
-              disabled={skipPerformerSignature}
-            />
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <Label
-              for="doc-performer-patronymic"
-              class="text-xs text-muted-foreground"
-            >
-              По-батькові
-            </Label>
-            <Input
-              id="doc-performer-patronymic"
-              placeholder="По-батькові"
-              bind:value={performerPatronymic}
-              disabled={skipPerformerSignature}
-            />
-          </div>
-        </div>
-      </div>
-      <div class="flex flex-col gap-1.5">
-        <Label for="doc-performer-position">Посада</Label>
-        <Input
-          id="doc-performer-position"
-          placeholder="Наприклад: приймальник"
-          bind:value={performerPosition}
-          disabled={skipPerformerSignature}
-        />
-      </div>
+    <div class="flex min-w-0 flex-col gap-1.5">
+      <Label>Виконавець</Label>
+      <ComboSelect
+        items={workersQuery.data ?? []}
+        bind:value={performerWorkerId}
+        disabled={skipPerformerSignature}
+        getKey={(w) => w.id}
+        getLabel={workerFullName}
+        getSearchValue={(w) => `${workerFullName(w)} ${w.position ?? ""}`}
+        placeholder="Оберіть виконавця..."
+        searchPlaceholder="Пошук працівників..."
+        emptyText="Працівника не знайдено."
+      >
+        {#snippet trigger(selected)}
+          {#if selected}
+            <WorkerOption worker={selected} short />
+          {:else}
+            Оберіть виконавця...
+          {/if}
+        {/snippet}
+        {#snippet item(worker)}
+          <WorkerOption {worker} />
+        {/snippet}
+      </ComboSelect>
       <div class="flex items-center gap-2">
         <Checkbox
           id="doc-skip-performer-signature"
@@ -306,7 +268,7 @@
 
       {#if isNaryad}
         <div class="flex flex-col gap-1.5">
-          <Label for="doc-received-at">Дата та час прийняття *</Label>
+          <Label for="doc-received-at">Дата та час прийняття</Label>
           <Input
             id="doc-received-at"
             type="datetime-local"
@@ -314,7 +276,7 @@
           />
         </div>
         <div class="flex flex-col gap-1.5">
-          <Label for="doc-planned-at">Орієнтовний термін виконання *</Label>
+          <Label for="doc-planned-at">Орієнтовний термін виконання</Label>
           <Input
             id="doc-planned-at"
             type="datetime-local"
@@ -323,7 +285,7 @@
         </div>
       {:else}
         <div class="flex flex-col gap-1.5">
-          <Label for="doc-location">Місце складання акту *</Label>
+          <Label for="doc-location">Місце складання акту</Label>
           <Input
             id="doc-location"
             bind:value={location}
@@ -342,7 +304,7 @@
           </Label>
         </div>
         <div class="flex flex-col gap-1.5">
-          <Label for="doc-completed-at">Дата складання акту *</Label>
+          <Label for="doc-completed-at">Дата складання акту</Label>
           <Input
             id="doc-completed-at"
             type="date"
@@ -361,7 +323,7 @@
           </Label>
         </div>
         <div class="flex flex-col gap-1.5">
-          <Label for="doc-odometer-out">Пробіг при видачі, км *</Label>
+          <Label for="doc-odometer-out">Пробіг при видачі, км</Label>
           <Input
             id="doc-odometer-out"
             type="text"

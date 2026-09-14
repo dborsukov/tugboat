@@ -44,6 +44,13 @@ export const keys = {
     details: () => [...keys.services.all, "detail"] as const,
     detail: (id: string | number) => [...keys.services.details(), id] as const,
   },
+  workers: {
+    all: ["workers"] as const,
+    list: () => [...keys.workers.all, "list"] as const,
+    count: () => [...keys.workers.all, "count"] as const,
+    details: () => [...keys.workers.all, "detail"] as const,
+    detail: (id: string | number) => [...keys.workers.details(), id] as const,
+  },
   settings: {
     all: ["settings"] as const,
     documentsDirInfo: ["settings", "documents-dir-info"] as const,

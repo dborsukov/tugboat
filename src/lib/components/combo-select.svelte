@@ -67,7 +67,10 @@
         {...formProps}
         {...triggerProps}
         variant="outline"
-        class={cn("w-full justify-between", triggerClass)}
+        class={cn(
+          "w-full min-w-0 justify-between overflow-hidden",
+          triggerClass,
+        )}
         role="combobox"
         aria-expanded={comboOpen}
         {disabled}

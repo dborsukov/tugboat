@@ -36,6 +36,13 @@ export const commands = {
 	archiveServices: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("archive_services", { ids })),
 	restoreService: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("restore_service", { id })),
 	restoreServices: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("restore_services", { ids })),
+	fetchWorkersCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_workers_count")),
+	fetchWorkersList: () => typedError<Worker[], AppError>(__TAURI_INVOKE("fetch_workers_list")),
+	fetchWorkerById: (id: number) => typedError<Worker, AppError>(__TAURI_INVOKE("fetch_worker_by_id", { id })),
+	createWorker: (payload: CreateWorkerPayload) => typedError<Worker, AppError>(__TAURI_INVOKE("create_worker", { payload })),
+	updateWorker: (id: number, payload: UpdateWorkerPayload) => typedError<Worker, AppError>(__TAURI_INVOKE("update_worker", { id, payload })),
+	deleteWorker: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_worker", { id })),
+	deleteWorkers: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("delete_workers", { ids })),
 	fetchSettings: () => typedError<AppSettings, AppError>(__TAURI_INVOKE("fetch_settings")),
 	updateTheme: (theme: ThemeMode) => typedError<ThemeMode, AppError>(__TAURI_INVOKE("update_theme", { theme })),
 	updateUiScale: (uiScale: number | null) => typedError<number | null, AppError>(__TAURI_INVOKE("update_ui_scale", { uiScale })),
@@ -328,6 +335,7 @@ export type CreateWorkOrderPayload = {
 	carId: number,
 	payerClientId: number | null,
 	customerClientId: number | null,
+	workerId: number | null,
 	odometerIn: number,
 	odometerOut: number | null,
 	driverSurname: string | null,
@@ -345,6 +353,14 @@ export type CreateWorkOrderPayload = {
 	discountValue: string,
 	vatRate: string,
 	pricesIncludeVat: boolean,
+};
+
+export type CreateWorkerPayload = {
+	firstName: string,
+	surname: string,
+	patronymic: string | null,
+	position: string | null,
+	isActive: boolean,
 };
 
 export type DiscountType = "None" | "Fixed" | "Percentage";
@@ -367,10 +383,8 @@ export type FuelType = "Gasoline" | "Diesel" | "LpgCng" | "Hybrid" | "Electric";
 
 /**  Extra information collected from the user right before generation. */
 export type GenerateDocumentOptions = {
-	performerSurname: string | null,
-	performerFirstName: string | null,
-	performerPatronymic: string | null,
-	performerPosition: string | null,
+	/**  Worker credited as the performer of the job. */
+	performerWorkerId: number | null,
 	receivedAt: string | null,
 	plannedCompletionAt: string | null,
 	location: string | null,
@@ -588,6 +602,7 @@ export type UpdateWorkOrderPayload = {
 	carId: number,
 	payerClientId: number | null,
 	customerClientId: number | null,
+	workerId: number | null,
 	odometerIn: number,
 	odometerOut: number | null,
 	driverSurname: string | null,
@@ -611,6 +626,14 @@ export type UpdateWorkOrderPayload = {
 	paymentMethod: PaymentMethod | null,
 };
 
+export type UpdateWorkerPayload = {
+	firstName: string,
+	surname: string,
+	patronymic: string | null,
+	position: string | null,
+	isActive: boolean,
+};
+
 export type VinLookupTemplates = {
 	label: string,
 	urlTemplate: string,
@@ -623,6 +646,7 @@ export type WorkOrder = {
 	payerClientId: number | null,
 	/**  Client who initiated the order, maybe be different from the owner */
 	customerClientId: number | null,
+	workerId: number | null,
 	odometerIn: number,
 	odometerOut: number | null,
 	/**  Driver or representative who delivers the vehicle */
@@ -662,6 +686,8 @@ export type WorkOrderDetailsDto = {
 	carDto: CarDto,
 	client: Client,
 	clientDetails: ClientDetails | null,
+	/**  Worker (mechanic) assigned to the order, when one is set. */
+	worker: Worker | null,
 	laborItems: LaborItemDto[],
 	partItems: PartItemDto[],
 	totals: WorkOrderTotals,
@@ -706,6 +732,15 @@ export type WorkOrderTotals = {
 };
 
 export type WorkOrderType = "Regular" | "Warranty";
+
+export type Worker = {
+	id: number,
+	firstName: string,
+	surname: string,
+	patronymic: string | null,
+	position: string | null,
+	isActive: boolean,
+};
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {

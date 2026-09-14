@@ -49,6 +49,9 @@
   import { createCarDetailsQuery } from "../cars/queries";
   import ClientBadge from "../clients/client-badge.svelte";
   import { createClientsQuery } from "../clients/queries";
+  import { workerFullName } from "../workers/labels";
+  import { createWorkersQuery } from "../workers/queries";
+  import WorkerOption from "../workers/worker-option.svelte";
   import DiscountField from "./discount-field.svelte";
   import LaborCostField from "./labor-cost-field.svelte";
   import {
@@ -75,6 +78,7 @@
   const createWorkOrderMutation = createCreateWorkOrderMutation(queryClient);
 
   const clientsQuery = createClientsQuery();
+  const workersQuery = createWorkersQuery();
   const carDetailsQuery = createCarDetailsQuery(() => carId);
 
   const rateVariants = $derived(settingsState.settings?.rateVariants ?? []);
@@ -175,6 +179,7 @@
       payerClientId: z.number().int().nullable().default(null),
       ownerIsCustomer: z.boolean().default(true),
       customerClientId: z.number().int().nullable().default(null),
+      workerId: z.number().int().nullable().default(null),
       odometerIn: z
         .number({ error: "Вкажіть пробіг" })
         .nonnegative("Неправильний пробіг")
@@ -277,6 +282,7 @@
               carId: workOrderDetails!.workOrder.carId,
               payerClientId: data.payerClientId,
               customerClientId: data.customerClientId,
+              workerId: data.workerId,
               odometerIn: data.odometerIn,
               odometerOut: data.odometerOut,
               driverSurname: data.driverSurname.trim() || null,
@@ -303,6 +309,7 @@
               carId: carId!,
               payerClientId: data.payerClientId,
               customerClientId: data.customerClientId,
+              workerId: data.workerId,
               odometerIn: data.odometerIn,
               odometerOut: data.odometerOut,
               driverSurname: data.driverSurname.trim() || null,
@@ -363,6 +370,7 @@
           workOrderDetails.workOrder.customerClientId ?? null;
         $formData.ownerIsCustomer =
           workOrderDetails.workOrder.customerClientId == null;
+        $formData.workerId = workOrderDetails.workOrder.workerId ?? null;
         $formData.odometerIn = workOrderDetails.workOrder.odometerIn;
         $formData.odometerOut = workOrderDetails.workOrder.odometerOut;
         $formData.driverSurname =
@@ -693,6 +701,39 @@
             {/snippet}
             {#snippet item(client)}
               <ClientBadge name={client.name} />
+            {/snippet}
+          </ComboSelect>
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
+
+    <Form.Field {form} name="workerId">
+      <Form.Control>
+        {#snippet children({ props: formProps })}
+          <Label class="pb-1.5">Виконавець</Label>
+          <ComboSelect
+            items={workersQuery.data ?? []}
+            bind:value={$formData.workerId}
+            clearable
+            getKey={(w) => w.id}
+            getLabel={workerFullName}
+            getSearchValue={(w) => `${workerFullName(w)} ${w.position ?? ""}`}
+            placeholder="Оберіть виконавця..."
+            searchPlaceholder="Пошук працівників..."
+            emptyText="Працівника не знайдено."
+            triggerClass={cn($formData.workerId != null && "pl-2")}
+            {formProps}
+          >
+            {#snippet trigger(selected)}
+              {#if selected}
+                <WorkerOption worker={selected} short />
+              {:else}
+                Оберіть виконавця...
+              {/if}
+            {/snippet}
+            {#snippet item(worker)}
+              <WorkerOption {worker} />
             {/snippet}
           </ComboSelect>
         {/snippet}

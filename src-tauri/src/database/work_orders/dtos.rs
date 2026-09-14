@@ -5,6 +5,7 @@ use crate::database::{
     cars::dtos::CarDto,
     clients::structs::{Client, ClientDetails},
     work_orders::structs::{LaborItem, PartItem, WorkOrder},
+    workers::structs::Worker,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -14,6 +15,8 @@ pub struct WorkOrderDetailsDto {
     pub car_dto: CarDto,
     pub client: Client,
     pub client_details: Option<ClientDetails>,
+    /// Worker (mechanic) assigned to the order, when one is set.
+    pub worker: Option<Worker>,
     pub labor_items: Vec<LaborItemDto>,
     pub part_items: Vec<PartItemDto>,
     pub totals: WorkOrderTotals,

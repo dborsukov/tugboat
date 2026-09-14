@@ -22,9 +22,8 @@ pub struct AppState {
     pub version: &'static str,
 }
 
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    let specta_builder = Builder::<tauri::Wry>::new().commands(collect_commands![
+pub fn specta_builder() -> Builder<tauri::Wry> {
+    Builder::<tauri::Wry>::new().commands(collect_commands![
         database::cars::fetch_cars_count,
         database::cars::fetch_car_by_id,
         database::cars::fetch_cars_list,
@@ -57,6 +56,13 @@ pub fn run() {
         database::services::archive_services,
         database::services::restore_service,
         database::services::restore_services,
+        database::workers::fetch_workers_count,
+        database::workers::fetch_workers_list,
+        database::workers::fetch_worker_by_id,
+        database::workers::create_worker,
+        database::workers::update_worker,
+        database::workers::delete_worker,
+        database::workers::delete_workers,
         database::settings::fetch_settings,
         database::settings::update_theme,
         database::settings::update_ui_scale,
@@ -107,7 +113,12 @@ pub fn run() {
         documents::pick_documents_folder,
         documents::update_documents_dir,
         utils::get_app_version
-    ]);
+    ])
+}
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    let specta_builder = specta_builder();
 
     // gen only in dev
     #[cfg(debug_assertions)]

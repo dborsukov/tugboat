@@ -8,6 +8,7 @@
   import CustomerIcon from "@lucide/svelte/icons/circle-user";
   import HomeIcon from "@lucide/svelte/icons/home";
   import SettingsIcon from "@lucide/svelte/icons/settings";
+  import UsersIcon from "@lucide/svelte/icons/users";
   import WrenchIcon from "@lucide/svelte/icons/wrench";
 
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
@@ -16,6 +17,7 @@
   import { clientsCountQueryOptions } from "../../routes/clients/queries";
   import { servicesCountQueryOptions } from "../../routes/services/queries";
   import { workOrdersCountQueryOptions } from "../../routes/work_orders/queries";
+  import { workersCountQueryOptions } from "../../routes/workers/queries";
   import SidebarFooter from "./ui/sidebar/sidebar-footer.svelte";
   import SidebarMenuBadge from "./ui/sidebar/sidebar-menu-badge.svelte";
 
@@ -25,6 +27,7 @@
       carsCountQueryOptions(),
       workOrdersCountQueryOptions(),
       servicesCountQueryOptions(),
+      workersCountQueryOptions(),
     ],
     combine: (results) => {
       return {
@@ -32,6 +35,7 @@
         carsCount: results[1],
         workOrdersCount: results[2],
         servicesCount: results[3],
+        workersCount: results[4],
 
         isReady: results.every((r) => r.isSuccess),
         isLoading: results.some((r) => r.isPending),
@@ -77,6 +81,12 @@
   ]);
 
   const management_menu = $derived([
+    {
+      title: "Працівники",
+      url: "/workers",
+      icon: UsersIcon,
+      badge: combinedQueries.isReady ? combinedQueries.workersCount.data : null,
+    },
     {
       title: "Сервіси",
       url: "/services",

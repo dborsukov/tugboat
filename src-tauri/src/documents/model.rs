@@ -13,6 +13,7 @@ use crate::{
             pricing::{self, calculate_vat, calculate_work_order_totals},
             structs::{DiscountType, LaborPriceType},
         },
+        workers::structs::Worker,
     },
     error::{AppError, AppResult},
 };
@@ -60,10 +61,7 @@ pub enum DocumentConflictAction {
 #[derive(Debug, Clone, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct GenerateDocumentOptions {
-    pub performer_surname: Option<String>,
-    pub performer_first_name: Option<String>,
-    pub performer_patronymic: Option<String>,
-    pub performer_position: Option<String>,
+    pub performer_worker_id: Option<i32>,
     pub received_at: Option<DateTime<Utc>>,
     pub planned_completion_at: Option<DateTime<Utc>>,
     pub location: Option<String>,
@@ -568,6 +566,7 @@ pub fn build_document_data(
     options: &GenerateDocumentOptions,
     customer: Option<DocClient>,
     payer: Option<DocClient>,
+    performer: Option<&Worker>,
 ) -> AppResult<DocumentData> {
     let work_order = &details.work_order;
     let tz: Tz = settings
@@ -627,16 +626,17 @@ pub fn build_document_data(
     let performer_signature = if options.skip_performer_signature {
         String::new()
     } else {
-        let performer_surname = trim(&options.performer_surname)
-            .ok_or_else(|| AppError::validation("Вкажіть прізвище виконавця"))?;
-        let performer_first_name = trim(&options.performer_first_name)
-            .ok_or_else(|| AppError::validation("Вкажіть ім'я виконавця"))?;
-        let performer_patronymic = trim(&options.performer_patronymic);
+        let performer = performer.ok_or_else(|| AppError::validation("Оберіть виконавця"))?;
+        if performer.surname.trim().is_empty() || performer.first_name.trim().is_empty() {
+            return Err(AppError::validation(
+                "У виконавця не заповнено ПІБ. Відредагуйте працівника в довіднику.",
+            ));
+        }
         performer_signature_name(
-            &options.performer_position,
-            &performer_surname,
-            &performer_first_name,
-            performer_patronymic.as_deref().unwrap_or(""),
+            &performer.position,
+            &performer.surname,
+            &performer.first_name,
+            performer.patronymic.as_deref().unwrap_or(""),
         )
     };
     let customer_signature = if options.skip_customer_signature {

@@ -17,6 +17,7 @@ use crate::{
         settings::structs::decode_company_info,
         utils::begin_immediate,
         work_orders::dtos::{LaborItemDto, PartItemDto, WorkOrderDetailsDto},
+        workers,
     },
     error::{AppError, AppResult},
 };
@@ -60,6 +61,7 @@ pub async fn fetch_work_order_by_id(
             car_id,
             payer_client_id,
             customer_client_id,
+            worker_id,
             odometer_in,
             odometer_out,
             driver_surname,
@@ -107,6 +109,7 @@ pub async fn fetch_work_orders_list(
             car_id,
             payer_client_id,
             customer_client_id,
+            worker_id,
             odometer_in,
             odometer_out,
             driver_surname,
@@ -242,6 +245,12 @@ async fn build_work_order_details_dtos(
     let clients_by_id = clients::fetch_clients_by_ids(state, &client_ids).await?;
     let client_details_by_id = clients::fetch_client_details_by_ids(state, &client_ids).await?;
 
+    let worker_ids: Vec<i64> = work_orders
+        .iter()
+        .filter_map(|wo| wo.worker_id.map(i64::from))
+        .collect();
+    let workers_by_id = workers::fetch_workers_by_ids(state, &worker_ids).await?;
+
     let work_order_ids: Vec<&str> = work_orders.iter().map(|wo| wo.id.as_str()).collect();
     let mut labor_items_by_order =
         fetch_labor_items_by_work_order_ids(state, &work_order_ids).await?;
@@ -267,6 +276,9 @@ async fn build_work_order_details_dtos(
                 ))
             })?;
         let client_details = client_details_by_id.get(&car_dto.car.client_id).cloned();
+        let worker = work_order
+            .worker_id
+            .and_then(|id| workers_by_id.get(&i64::from(id)).cloned());
 
         let labor_item_dtos: Vec<LaborItemDto> = labor_items_by_order
             .remove(&work_order.id)
@@ -363,6 +375,7 @@ async fn build_work_order_details_dtos(
             car_dto,
             client,
             client_details,
+            worker,
             labor_items: labor_item_dtos,
             part_items: part_item_dtos,
             totals,
@@ -405,6 +418,7 @@ pub async fn fetch_work_order_details_dto_by_car_id(
             car_id,
             payer_client_id,
             customer_client_id,
+            worker_id,
             odometer_in,
             odometer_out,
             driver_surname,
@@ -454,6 +468,7 @@ pub async fn fetch_work_order_details_dto_by_client_id(
             wo.car_id,
             wo.payer_client_id,
             wo.customer_client_id,
+            wo.worker_id,
             wo.odometer_in,
             wo.odometer_out,
             wo.driver_surname,
@@ -598,6 +613,9 @@ pub async fn create_work_order(
         &payload.driver_phone,
     )
     .await?;
+    if let Some(worker_id) = payload.worker_id {
+        workers::ensure_worker_exists(&mut *tx, worker_id).await?;
+    }
 
     let vat_rate = if is_company_not_vat_payer(&mut tx).await? {
         Decimal::ZERO
@@ -630,14 +648,16 @@ pub async fn create_work_order(
             vat_rate,
             prices_include_vat,
             payer_client_id,
-            customer_client_id
+            customer_client_id,
+            worker_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
         RETURNING
             id,
             car_id,
             payer_client_id,
             customer_client_id,
+            worker_id,
             odometer_in,
             odometer_out,
             driver_surname,
@@ -686,6 +706,7 @@ pub async fn create_work_order(
     .bind(payload.prices_include_vat)
     .bind(payload.payer_client_id)
     .bind(payload.customer_client_id)
+    .bind(payload.worker_id)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -711,6 +732,7 @@ pub async fn create_warranty_work_order(
             car_id,
             payer_client_id,
             customer_client_id,
+            worker_id,
             odometer_in,
             odometer_out,
             driver_surname,
@@ -789,14 +811,16 @@ pub async fn create_warranty_work_order(
             vat_rate,
             prices_include_vat,
             payer_client_id,
-            customer_client_id
+            customer_client_id,
+            worker_id
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
         RETURNING
             id,
             car_id,
             payer_client_id,
             customer_client_id,
+            worker_id,
             odometer_in,
             odometer_out,
             driver_surname,
@@ -847,6 +871,7 @@ pub async fn create_warranty_work_order(
     .bind(source.prices_include_vat)
     .bind(None::<i32>)
     .bind(None::<i32>)
+    .bind(source.worker_id)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -873,6 +898,9 @@ pub async fn update_work_order(
         &payload.driver_phone,
     )
     .await?;
+    if let Some(worker_id) = payload.worker_id {
+        workers::ensure_worker_exists(&mut *tx, worker_id).await?;
+    }
 
     let work_order: WorkOrder = sqlx::query_as(
         r#"
@@ -900,13 +928,15 @@ pub async fn update_work_order(
             driver_first_name = $22,
             driver_patronymic = $23,
             driver_phone = $24,
-            customer_client_id = $25
+            customer_client_id = $25,
+            worker_id = $26
         WHERE id = $1
         RETURNING
             id,
             car_id,
             payer_client_id,
             customer_client_id,
+            worker_id,
             odometer_in,
             odometer_out,
             driver_surname,
@@ -959,6 +989,7 @@ pub async fn update_work_order(
     .bind(payload.driver_patronymic)
     .bind(payload.driver_phone)
     .bind(payload.customer_client_id)
+    .bind(payload.worker_id)
     .fetch_one(&mut *tx)
     .await?;
 

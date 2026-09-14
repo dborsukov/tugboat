@@ -17,6 +17,7 @@ use tauri::State;
 use crate::{
     database::{
         clients, settings::fetch_settings_from_pool, work_orders::fetch_work_order_details_dto,
+        workers,
     },
     error::{AppError, AppResult},
     AppState,
@@ -254,7 +255,26 @@ pub async fn generate_document(
     let customer = doc_client(details.work_order.customer_client_id);
     let payer = doc_client(details.work_order.payer_client_id);
 
-    let data = model::build_document_data(&details, &settings, kind, &options, customer, payer)?;
+    // The dialog sends the selected worker; the order's own worker is the
+    // fallback so a document can always be generated for an assigned order.
+    let performer = if options.skip_performer_signature {
+        None
+    } else {
+        match options.performer_worker_id.or(details.work_order.worker_id) {
+            Some(worker_id) => Some(workers::fetch_worker_by_id(state.clone(), worker_id).await?),
+            None => None,
+        }
+    };
+
+    let data = model::build_document_data(
+        &details,
+        &settings,
+        kind,
+        &options,
+        customer,
+        payer,
+        performer.as_ref(),
+    )?;
 
     let bytes = match format {
         DocumentFormat::Pdf => pdf::render(&data)?,

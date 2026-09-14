@@ -59,6 +59,10 @@ impl AppError {
         Self::Generic("Сервіс архівований. Спочатку відновіть його з архіву.".to_string())
     }
 
+    pub(crate) fn worker_not_found() -> Self {
+        Self::NotFound("Працівника з таким ID не знайдено в базі даних".to_string())
+    }
+
     pub(crate) fn work_order_not_found() -> Self {
         Self::NotFound("Замовлення з таким ID не знайдено в базі даних".to_string())
     }

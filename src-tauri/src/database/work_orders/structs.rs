@@ -80,6 +80,7 @@ pub struct WorkOrder {
     pub payer_client_id: Option<i32>,
     /// Client who initiated the order, maybe be different from the owner
     pub customer_client_id: Option<i32>,
+    pub worker_id: Option<i32>,
     pub odometer_in: i32,
     pub odometer_out: Option<i32>,
     /// Driver or representative who delivers the vehicle
@@ -115,6 +116,7 @@ impl<'r> FromRow<'r, SqliteRow> for WorkOrder {
             car_id: row.try_get("car_id")?,
             payer_client_id: row.try_get("payer_client_id")?,
             customer_client_id: row.try_get("customer_client_id")?,
+            worker_id: row.try_get("worker_id")?,
             odometer_in: row.try_get("odometer_in")?,
             odometer_out: row.try_get("odometer_out")?,
             driver_surname: row.try_get("driver_surname")?,
@@ -151,6 +153,7 @@ pub struct CreateWorkOrderPayload {
     pub car_id: i64,
     pub payer_client_id: Option<i32>,
     pub customer_client_id: Option<i32>,
+    pub worker_id: Option<i32>,
     pub odometer_in: i32,
     pub odometer_out: Option<i32>,
     pub driver_surname: Option<String>,
@@ -178,6 +181,7 @@ pub struct UpdateWorkOrderPayload {
     pub car_id: i64,
     pub payer_client_id: Option<i32>,
     pub customer_client_id: Option<i32>,
+    pub worker_id: Option<i32>,
     pub odometer_in: i32,
     pub odometer_out: Option<i32>,
     pub driver_surname: Option<String>,
