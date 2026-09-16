@@ -191,8 +191,14 @@
 
 <svelte:window onkeydown={handleShortcut} />
 
+<!-- `relative z-titlebar` keeps every overlay backdrop (dialogs, sheets) painted
+     behind the titlebar, and `data-window-controls` tells open overlays that
+     interacting with it is not a dismissal. `pointer-events-auto` is required
+     because bits-ui sets `pointer-events: none` on <body> while a modal is
+     open, without it the controls stay visible but stop receiving clicks. -->
 <div
-  class="flex h-9 items-center justify-between border-b border-border bg-sidebar text-sidebar-foreground"
+  data-window-controls
+  class="pointer-events-auto relative z-titlebar flex h-(--titlebar-height) items-center justify-between border-b border-border bg-sidebar text-sidebar-foreground"
 >
   <!-- Left: menu, sidebar, navigation -->
   <div data-tauri-drag-region class="flex items-center gap-0.5 pl-1">

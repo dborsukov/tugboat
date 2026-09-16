@@ -74,7 +74,8 @@
   <Toaster position="bottom-center" richColors />
 
   {#if isStandaloneWindow}
-    <main class="h-screen w-screen overflow-hidden">
+    <!-- No titlebar in standalone windows, set overlay inset to zero -->
+    <main class="h-screen w-screen overflow-hidden [--overlay-inset:0px]">
       {@render children?.()}
     </main>
   {:else}

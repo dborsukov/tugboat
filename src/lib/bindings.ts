@@ -383,7 +383,6 @@ export type FuelType = "Gasoline" | "Diesel" | "LpgCng" | "Hybrid" | "Electric";
 
 /**  Extra information collected from the user right before generation. */
 export type GenerateDocumentOptions = {
-	/**  Worker credited as the performer of the job. */
 	performerWorkerId: number | null,
 	receivedAt: string | null,
 	plannedCompletionAt: string | null,

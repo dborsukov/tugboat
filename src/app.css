@@ -237,6 +237,63 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Layer scale for the frameless window's stacking order.
+ *
+ * Overlays, menus and dialogs are all portaled to <body>, so they are painted
+ * after the app shell and would otherwise cover the custom titlebar. Body
+ * children that share a z-index fall back to DOM order, which is why an equal
+ * z-index is not enough: each layer below is strictly above the previous one.
+ *
+ * backdrop (40) < titlebar (50) < menus/tooltips (60) < dialog & sheet (70)
+ *   < menus/tooltips opened from inside an overlay (80)
+ *
+ * The backdrop stays behind the titlebar so opening a dialog no longer blurs
+ * and dims the window controls, while the dialog body and any dropdown opened
+ * from it still paint above the titlebar. Because floating layers are portaled
+ * to <body>, a dropdown opened from inside a dialog would otherwise be painted
+ * under the dialog panel */
+@theme {
+  --z-index-backdrop: 40;
+  --z-index-titlebar: 50;
+  --z-index-floating: 60;
+  --z-index-overlay-content: 70;
+  --z-index-overlay-floating: 80;
+}
+
+/* Floating layers (dropdown, select, popover, tooltip, command) live in a
+ * wrapper portaled to <body>, so they cannot see which dialog opened them and
+ * `--bits-dialog-depth` does not reach them either. Whenever a dialog, sheet or
+ * alert dialog is open anywhere on the page, floating content has to sit above
+ * the overlay panels; when none is open they keep the page-level layer. Only
+ * floating popups match this selector, so overlay panels and backdrops are
+ * unaffected.
+ *
+ * Two forms are matched on purpose:
+ *   `.z-floating`                          -> custom wrappers, and the element bits-ui
+ *                                             copies the computed z-index from.
+ *   `[data-bits-floating-content-wrapper]` -> the actual portaled wrapper, so a
+ *                                             floating layer that forgets the class
+ *                                             (or overrides it) is still lifted
+ *                                             instead of silently sliding under a
+ *                                             dialog. */
+body:has([data-slot="dialog-content"])
+  :is(.z-floating, [data-bits-floating-content-wrapper]),
+body:has([data-slot="sheet-content"])
+  :is(.z-floating, [data-bits-floating-content-wrapper]),
+body:has([data-slot="alert-dialog-content"])
+  :is(.z-floating, [data-bits-floating-content-wrapper]) {
+  z-index: var(--z-index-overlay-floating);
+}
+
+/* Height of the window chrome that overlays must not cover.
+ *
+ * Standalone windows without a titlebar (e.g. About) set `--overlay-inset: 0px` explicitly. */
+:root {
+  --titlebar-height: calc(var(--spacing) * 9);
+
+  --overlay-inset: var(--titlebar-height);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
