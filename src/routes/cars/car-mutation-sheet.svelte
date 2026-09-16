@@ -4,6 +4,10 @@
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
 
+  import CarIcon from "@lucide/svelte/icons/car";
+  import FileTextIcon from "@lucide/svelte/icons/file-text";
+  import UserIcon from "@lucide/svelte/icons/user";
+
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
@@ -11,6 +15,7 @@
   import { Textarea } from "$lib/components/ui/textarea";
 
   import ComboSelect from "$lib/components/combo-select.svelte";
+  import MutationSheetSectionTitle from "$lib/components/mutation-sheet-section-title.svelte";
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
   import type { DriveType, FuelType } from "$lib/bindings";
@@ -305,10 +310,11 @@
     open = false;
   }}
 >
+  <MutationSheetSectionTitle text="Власник" icon={UserIcon} />
+
   <Form.Field {form} name="clientId">
     <Form.Control>
       {#snippet children({ props: formProps })}
-        <Label>Власник {@render requiredHint()}</Label>
         <ComboSelect
           items={combinedQueries.clients.data ?? []}
           bind:value={$formData.clientId}
@@ -337,6 +343,8 @@
     </Form.Control>
     <Form.FieldErrors />
   </Form.Field>
+
+  <MutationSheetSectionTitle text="Автомобіль" icon={CarIcon} />
 
   <Form.Field {form} name="brandId">
     <Form.Control>
@@ -510,10 +518,11 @@
     <Form.FieldErrors />
   </Form.Field>
 
+  <MutationSheetSectionTitle text="Нотатки" icon={FileTextIcon} />
+
   <Form.Field {form} name="notes">
     <Form.Control>
       {#snippet children({ props })}
-        <Label>Нотатки</Label>
         <Textarea
           {...props}
           value={$formData.notes ?? ""}

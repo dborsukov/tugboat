@@ -16,6 +16,7 @@
     onCancel,
     enhanceAction,
     footer,
+    class: className,
     children,
   }: {
     open: boolean;
@@ -27,6 +28,8 @@
     onCancel: () => void;
     enhanceAction: Action<HTMLFormElement>;
     footer?: Snippet;
+    /** Extra classes for the sheet panel, e.g. a wider `sm:max-w-*` cap. */
+    class?: string;
     children: Snippet;
   } = $props();
 </script>
@@ -35,6 +38,7 @@
   <Sheet.Content
     side="right"
     showCloseButton={false}
+    class={className}
     onEscapeKeydown={(e) => e.preventDefault()}
     onInteractOutside={(e) => e.preventDefault()}
   >

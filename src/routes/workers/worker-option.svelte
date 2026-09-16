@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Badge } from "$lib/components/ui/badge";
+
   import type { Worker } from "$lib/bindings";
   import { cn } from "$lib/utils";
 
@@ -25,8 +27,6 @@
     </span>
   {/if}
   {#if !worker.isActive}
-    <span class="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
-      (неактивний)
-    </span>
+    <Badge variant="destructive" class="shrink-0 self-center">неактивний</Badge>
   {/if}
 </div>

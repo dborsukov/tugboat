@@ -22,6 +22,7 @@
   import * as Select from "$lib/components/ui/select/index.js";
   import { Textarea } from "$lib/components/ui/textarea";
 
+  import MutationSheetSectionTitle from "$lib/components/mutation-sheet-section-title.svelte";
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
   import PhoneInput from "$lib/components/phone-input.svelte";
 
@@ -512,24 +513,6 @@
   </span>
 {/snippet}
 
-{#snippet sectionTitle(text: string, Icon?: typeof CopyIcon, hint?: string)}
-  <div
-    class="flex items-center gap-1.5 border-b border-border/70 pb-1 mt-4 first:mt-0"
-  >
-    {#if Icon}
-      <Icon class="size-3.5 text-muted-foreground shrink-0" />
-    {/if}
-    <h3
-      class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-    >
-      {text}
-    </h3>
-  </div>
-  {#if hint}
-    <p class="text-xs text-muted-foreground">{hint}</p>
-  {/if}
-{/snippet}
-
 {#snippet pibRow(
   surnameField: "surname" | "directorSurname" | "contactSurname",
   firstNameField: "firstName" | "directorFirstName" | "contactFirstName",
@@ -670,7 +653,7 @@
   {/if}
 
   {#if $formData.clientType === "company"}
-    {@render sectionTitle("Дані організації", BuildingIcon)}
+    <MutationSheetSectionTitle text="Дані організації" icon={BuildingIcon} />
 
     <Form.Field {form} name="legalName">
       <Form.Control>
@@ -732,7 +715,7 @@
       <Form.FieldErrors />
     </Form.Field>
 
-    {@render sectionTitle("Керівник", UserIcon)}
+    <MutationSheetSectionTitle text="Керівник" icon={UserIcon} />
 
     <div class="rounded-lg border border-border bg-muted/30 p-3">
       {@render pibRow(
@@ -742,7 +725,7 @@
       )}
     </div>
   {:else if $formData.clientType === "fop"}
-    {@render sectionTitle("Дані ФОП", BriefcaseIcon)}
+    <MutationSheetSectionTitle text="Дані ФОП" icon={BriefcaseIcon} />
 
     <Form.Field {form} name="rnokpp">
       <Form.Control>
@@ -792,7 +775,7 @@
   {/if}
 
   {#if $formData.clientType !== "individual"}
-    {@render sectionTitle("Контактна особа", UsersIcon)}
+    <MutationSheetSectionTitle text="Контактна особа" icon={UsersIcon} />
 
     <div class="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
       <Button
@@ -846,7 +829,7 @@
       </Form.Field>
     </div>
 
-    {@render sectionTitle("Реквізити", CreditCardIcon)}
+    <MutationSheetSectionTitle text="Реквізити" icon={CreditCardIcon} />
 
     <div class="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
       <Form.Field {form} name="bankName">
@@ -871,7 +854,7 @@
     </div>
   {/if}
 
-  {@render sectionTitle("Нотатки", FileTextIcon)}
+  <MutationSheetSectionTitle text="Нотатки" icon={FileTextIcon} />
 
   <Form.Field {form} name="notes">
     <Form.Control>

@@ -2,28 +2,34 @@
   import { useQueryClient } from "@tanstack/svelte-query";
   import { toast } from "svelte-sonner";
 
+  import PenLineIcon from "@lucide/svelte/icons/pen-line";
+
   import { Button } from "$lib/components/ui/button";
-  import { Checkbox } from "$lib/components/ui/checkbox";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
   import Spinner from "$lib/components/ui/spinner/spinner.svelte";
   import { Textarea } from "$lib/components/ui/textarea";
+  import * as Tooltip from "$lib/components/ui/tooltip/index.js";
 
   import ComboSelect from "$lib/components/combo-select.svelte";
+  import DateTimePicker from "$lib/components/date-time-picker.svelte";
 
   import {
     commands,
+    type ClientType,
     type DocumentConflictAction,
     type DocumentFormat,
     type DocumentKind,
     type GenerateDocumentOptions,
+    type WorkOrder,
     type WorkOrderDetailsDto,
   } from "$lib/bindings";
   import { settingsState } from "$lib/states/settings.svelte";
   import { unwrap } from "$lib/tools";
 
-  import { workerFullName } from "../../workers/labels";
+  import { createClientDetailsQuery } from "../../clients/queries";
+  import { workerFullName, workerShortName } from "../../workers/labels";
   import { createWorkersQuery } from "../../workers/queries";
   import WorkerOption from "../../workers/worker-option.svelte";
   import { createGenerateDocumentMutation } from "../queries";
@@ -42,10 +48,16 @@
     open: boolean;
   } = $props();
 
+  const MANUAL_TOGGLE_TOOLTIP = "Пропустити та заповнити від руки пізніше";
+
   const queryClient = useQueryClient();
   const generateDocumentMutation = createGenerateDocumentMutation(queryClient);
 
   const workersQuery = createWorkersQuery();
+
+  const customerClientQuery = createClientDetailsQuery(
+    () => workOrderDetails?.workOrder.customerClientId ?? null,
+  );
 
   const isNaryad = $derived(kind === "naryad_zamovlennya");
   const isAkt = $derived(kind === "akt_vykonanykh_robit");
@@ -62,12 +74,31 @@
   let completedAt = $state("");
   let skipLocation = $state(false);
   let odometerOut = $state("");
-  let refusedDefects = $state("");
+  let additionalRecommendations = $state("");
 
   let error = $state<string | null>(null);
 
   let isConflictOpen = $state(false);
   let generating = $state(false);
+
+  const performerWorker = $derived(
+    (workersQuery.data ?? []).find((w) => w.id === performerWorkerId) ?? null,
+  );
+
+  const performerSignatureName = $derived(
+    skipPerformerSignature || !performerWorker
+      ? ""
+      : workerShortName(performerWorker),
+  );
+
+  const customerSignatureName = $derived(
+    skipCustomerSignature
+      ? ""
+      : resolveCustomerSignatureName(
+          customerClientQuery.data?.client ?? workOrderDetails?.client,
+          workOrderDetails?.workOrder,
+        ),
+  );
 
   function pad(n: number): string {
     return String(n).padStart(2, "0");
@@ -83,6 +114,53 @@
     if (!iso) return "";
     const d = new Date(iso);
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  type SignatureSource = {
+    name: string;
+    surname: string | null;
+    firstName: string | null;
+    patronymic: string | null;
+    clientType: ClientType;
+  };
+
+  function joinPib(...parts: (string | null | undefined)[]): string {
+    return parts
+      .map((part) => part?.trim())
+      .filter((part): part is string => !!part)
+      .join(" ");
+  }
+
+  function initialsName(
+    surname: string | null | undefined,
+    firstName: string | null | undefined,
+    patronymic: string | null | undefined,
+  ): string {
+    const initials = [firstName, patronymic]
+      .map((part) => part?.trim().charAt(0))
+      .filter((initial): initial is string => !!initial)
+      .map((initial) => `${initial}.`)
+      .join(" ");
+    return joinPib(surname, initials);
+  }
+
+  // Mirrors: src-tauri/src/documents/model.rs
+  function resolveCustomerSignatureName(
+    client: SignatureSource | undefined,
+    workOrder: WorkOrder | undefined,
+  ): string {
+    if (!client) return "";
+    if (client.clientType === "individual") {
+      return (
+        initialsName(client.surname, client.firstName, client.patronymic) ||
+        client.name
+      );
+    }
+    return initialsName(
+      workOrder?.driverSurname,
+      workOrder?.driverFirstName,
+      workOrder?.driverPatronymic,
+    );
   }
 
   $effect(() => {
@@ -102,7 +180,7 @@
       completedAt = toLocalDateValue(new Date().toISOString());
       skipLocation = false;
       odometerOut = String(wo?.odometerOut ?? wo?.odometerIn ?? 0);
-      refusedDefects = "";
+      additionalRecommendations = "";
     }
   });
 
@@ -147,7 +225,7 @@
       location: location.trim() || null,
       completedAt: completedAt ? new Date(completedAt).toISOString() : null,
       odometerOut: isAkt && Number.isInteger(rawOdometer) ? rawOdometer : null,
-      refusedDefects: refusedDefects.trim() || null,
+      additionalRecommendations: additionalRecommendations.trim() || null,
       skipDate,
       skipLocation: isAkt && skipLocation,
       skipPerformerSignature,
@@ -207,6 +285,31 @@
   }
 </script>
 
+{#snippet manualToggle(options: {
+  pressed: boolean;
+  field: string;
+  onclick: () => void;
+})}
+  <Tooltip.Root>
+    <Tooltip.Trigger>
+      {#snippet child({ props })}
+        <Button
+          {...props}
+          variant={options.pressed ? "default" : "outline"}
+          size="icon"
+          class="shrink-0"
+          aria-pressed={options.pressed}
+          aria-label={`${options.field}: ${MANUAL_TOGGLE_TOOLTIP}`}
+          onclick={options.onclick}
+        >
+          <PenLineIcon />
+        </Button>
+      {/snippet}
+    </Tooltip.Trigger>
+    <Tooltip.Content>{MANUAL_TOGGLE_TOOLTIP}</Tooltip.Content>
+  </Tooltip.Root>
+{/snippet}
+
 <Dialog.Root bind:open>
   <Dialog.Content class="gap-4">
     <Dialog.Header>
@@ -219,108 +322,86 @@
       </Dialog.Description>
     </Dialog.Header>
 
-    <div class="flex min-w-0 flex-col gap-1.5">
-      <Label>Виконавець</Label>
-      <ComboSelect
-        items={workersQuery.data ?? []}
-        bind:value={performerWorkerId}
-        disabled={skipPerformerSignature}
-        getKey={(w) => w.id}
-        getLabel={workerFullName}
-        getSearchValue={(w) => `${workerFullName(w)} ${w.position ?? ""}`}
-        placeholder="Оберіть виконавця..."
-        searchPlaceholder="Пошук працівників..."
-        emptyText="Працівника не знайдено."
-      >
-        {#snippet trigger(selected)}
-          {#if selected}
-            <WorkerOption worker={selected} short />
-          {:else}
-            Оберіть виконавця...
-          {/if}
-        {/snippet}
-        {#snippet item(worker)}
-          <WorkerOption {worker} />
-        {/snippet}
-      </ComboSelect>
-      <div class="flex items-center gap-2">
-        <Checkbox
-          id="doc-skip-performer-signature"
-          checked={skipPerformerSignature}
-          onCheckedChange={(checked) =>
-            (skipPerformerSignature = checked === true)}
-        />
-        <Label for="doc-skip-performer-signature" class="font-normal">
-          Без підпису виконавця (заповнити від руки після друку)
-        </Label>
-      </div>
-      <div class="flex items-center gap-2">
-        <Checkbox
-          id="doc-skip-customer-signature"
-          checked={skipCustomerSignature}
-          onCheckedChange={(checked) =>
-            (skipCustomerSignature = checked === true)}
-        />
-        <Label for="doc-skip-customer-signature" class="font-normal">
-          Без підпису замовника (заповнити від руки після друку)
-        </Label>
+    <div class="flex min-w-0 flex-col gap-4">
+      <div class="flex flex-col gap-1.5">
+        <Label>Виконавець</Label>
+        <ComboSelect
+          items={workersQuery.data ?? []}
+          bind:value={performerWorkerId}
+          disabled={skipPerformerSignature}
+          getKey={(w) => w.id}
+          getLabel={workerFullName}
+          getSearchValue={(w) => `${workerFullName(w)} ${w.position ?? ""}`}
+          placeholder="Оберіть виконавця..."
+          searchPlaceholder="Пошук працівників..."
+          emptyText="Працівника не знайдено."
+        >
+          {#snippet trigger(selected)}
+            {#if selected}
+              <WorkerOption worker={selected} short />
+            {:else}
+              Оберіть виконавця...
+            {/if}
+          {/snippet}
+          {#snippet item(worker)}
+            <WorkerOption {worker} />
+          {/snippet}
+        </ComboSelect>
       </div>
 
       {#if isNaryad}
         <div class="flex flex-col gap-1.5">
           <Label for="doc-received-at">Дата та час прийняття</Label>
-          <Input
+          <DateTimePicker
             id="doc-received-at"
-            type="datetime-local"
             bind:value={receivedAt}
+            withTime
+            placeholder="Оберіть дату та час"
           />
         </div>
         <div class="flex flex-col gap-1.5">
           <Label for="doc-planned-at">Орієнтовний термін виконання</Label>
-          <Input
+          <DateTimePicker
             id="doc-planned-at"
-            type="datetime-local"
             bind:value={plannedCompletionAt}
+            withTime
+            placeholder="Оберіть дату та час"
           />
         </div>
       {:else}
         <div class="flex flex-col gap-1.5">
           <Label for="doc-location">Місце складання акту</Label>
-          <Input
-            id="doc-location"
-            bind:value={location}
-            disabled={skipLocation}
-            placeholder="Наприклад: м. Київ"
-          />
-        </div>
-        <div class="flex items-center gap-2">
-          <Checkbox
-            id="doc-skip-location"
-            checked={skipLocation}
-            onCheckedChange={(checked) => (skipLocation = checked === true)}
-          />
-          <Label for="doc-skip-location" class="font-normal">
-            Без місця складання (заповнити від руки після друку)
-          </Label>
+          <div class="flex items-start gap-2">
+            <Textarea
+              id="doc-location"
+              bind:value={location}
+              disabled={skipLocation}
+              rows={2}
+              class="min-h-8 flex-1"
+              placeholder="Наприклад: м. Київ"
+            />
+            {@render manualToggle({
+              pressed: skipLocation,
+              field: "Місце складання акту",
+              onclick: () => (skipLocation = !skipLocation),
+            })}
+          </div>
         </div>
         <div class="flex flex-col gap-1.5">
           <Label for="doc-completed-at">Дата складання акту</Label>
-          <Input
-            id="doc-completed-at"
-            type="date"
-            bind:value={completedAt}
-            disabled={skipDate}
-          />
-        </div>
-        <div class="flex items-center gap-2">
-          <Checkbox
-            id="doc-skip-date"
-            checked={skipDate}
-            onCheckedChange={(checked) => (skipDate = checked === true)}
-          />
-          <Label for="doc-skip-date" class="font-normal">
-            Без дати (заповнити від руки після друку)
-          </Label>
+          <div class="flex items-center gap-2">
+            <DateTimePicker
+              id="doc-completed-at"
+              bind:value={completedAt}
+              disabled={skipDate}
+              class="flex-1"
+            />
+            {@render manualToggle({
+              pressed: skipDate,
+              field: "Дата складання акту",
+              onclick: () => (skipDate = !skipDate),
+            })}
+          </div>
         </div>
         <div class="flex flex-col gap-1.5">
           <Label for="doc-odometer-out">Пробіг при видачі, км</Label>
@@ -332,17 +413,49 @@
           />
         </div>
         <div class="flex flex-col gap-1.5">
-          <Label for="doc-refused">
-            Дефекти або рекомендації, від усунення яких замовник відмовився
-          </Label>
+          <Label for="doc-additional-recommendations"
+            >Додаткові рекомендації</Label
+          >
           <Textarea
-            id="doc-refused"
-            bind:value={refusedDefects}
+            id="doc-additional-recommendations"
+            bind:value={additionalRecommendations}
             rows={3}
             placeholder="Залиште порожнім, якщо таких немає..."
           />
         </div>
       {/if}
+
+      <div class="flex flex-col gap-1.5">
+        <Label>Ініціали підписантів</Label>
+        <div
+          class="flex flex-col divide-y divide-border rounded-md border border-border"
+        >
+          <div class="flex items-center gap-3 px-3 py-2.5">
+            <span class="min-w-0 flex-1">
+              Виконавець{performerSignatureName
+                ? ` — ${performerSignatureName}`
+                : ""}
+            </span>
+            {@render manualToggle({
+              pressed: skipPerformerSignature,
+              field: "Виконавець",
+              onclick: () => (skipPerformerSignature = !skipPerformerSignature),
+            })}
+          </div>
+          <div class="flex items-center gap-3 px-3 py-2.5">
+            <span class="min-w-0 flex-1">
+              Замовник{customerSignatureName
+                ? ` — ${customerSignatureName}`
+                : ""}
+            </span>
+            {@render manualToggle({
+              pressed: skipCustomerSignature,
+              field: "Замовник",
+              onclick: () => (skipCustomerSignature = !skipCustomerSignature),
+            })}
+          </div>
+        </div>
+      </div>
 
       {#if error}
         <p class="text-sm text-destructive">{error}</p>

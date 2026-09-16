@@ -389,7 +389,7 @@ export type GenerateDocumentOptions = {
 	location: string | null,
 	completedAt: string | null,
 	odometerOut: number | null,
-	refusedDefects: string | null,
+	additionalRecommendations: string | null,
 	skipDate?: boolean,
 	skipLocation?: boolean,
 	skipPerformerSignature?: boolean,

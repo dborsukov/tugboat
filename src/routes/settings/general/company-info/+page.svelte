@@ -24,6 +24,7 @@
   import Spinner from "$lib/components/ui/spinner/spinner.svelte";
   import { Textarea } from "$lib/components/ui/textarea";
 
+  import MutationSheetSectionTitle from "$lib/components/mutation-sheet-section-title.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import type { CompanyInfo, CompanyKind } from "$lib/bindings";
@@ -233,19 +234,6 @@
   });
 </script>
 
-{#snippet sectionTitle(text: string, Icon?: typeof CheckIcon)}
-  <div class="flex items-center gap-1.5 border-b border-border/70 pb-1">
-    {#if Icon}
-      <Icon class="size-3.5 text-muted-foreground shrink-0" />
-    {/if}
-    <h3
-      class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-    >
-      {text}
-    </h3>
-  </div>
-{/snippet}
-
 {#snippet inputField(
   field: TextField,
   label: string,
@@ -383,7 +371,11 @@
           {/if}
         </div>
 
-        {@render sectionTitle("Основні дані", MapPinIcon)}
+        <MutationSheetSectionTitle
+          text="Основні дані"
+          icon={MapPinIcon}
+          class="mt-0"
+        />
 
         {@render inputField("name", "Назва бізнесу", "Автосервіс Плюс")}
 
@@ -414,7 +406,11 @@
         </Form.Field>
 
         {#if $formData.kind === "company"}
-          {@render sectionTitle("Дані організації", BuildingIcon)}
+          <MutationSheetSectionTitle
+            text="Дані організації"
+            icon={BuildingIcon}
+            class="mt-0"
+          />
 
           {@render inputField(
             "legalName",
@@ -428,7 +424,11 @@
             "Адреса реєстрації організації...",
           )}
 
-          {@render sectionTitle("Керівник", UserIcon)}
+          <MutationSheetSectionTitle
+            text="Керівник"
+            icon={UserIcon}
+            class="mt-0"
+          />
 
           {@render pibRow(
             "directorSurname",
@@ -436,7 +436,11 @@
             "directorPatronymic",
           )}
         {:else}
-          {@render sectionTitle("Дані ФОП", BriefcaseIcon)}
+          <MutationSheetSectionTitle
+            text="Дані ФОП"
+            icon={BriefcaseIcon}
+            class="mt-0"
+          />
 
           {@render pibRow("surname", "firstName", "patronymic")}
 
@@ -448,7 +452,11 @@
           )}
         {/if}
 
-        {@render sectionTitle("Банківські реквізити", CreditCardIcon)}
+        <MutationSheetSectionTitle
+          text="Банківські реквізити"
+          icon={CreditCardIcon}
+          class="mt-0"
+        />
 
         {@render inputField("bankName", "Назва банку")}
         {@render inputField("iban", "IBAN", "UA...")}

@@ -67,7 +67,7 @@ pub struct GenerateDocumentOptions {
     pub location: Option<String>,
     pub completed_at: Option<DateTime<Utc>>,
     pub odometer_out: Option<i32>,
-    pub refused_defects: Option<String>,
+    pub additional_recommendations: Option<String>,
     #[serde(default)]
     pub skip_date: bool,
     #[serde(default)]
@@ -184,7 +184,7 @@ pub struct DocumentData {
     pub received_at: Option<String>,
     pub planned_completion_at: Option<String>,
     pub completed_at: Option<String>,
-    pub refused_defects: Option<String>,
+    pub additional_recommendations: Option<String>,
     pub labor: DocTable,
     pub parts: DocTable,
     pub totals: DocTotals,
@@ -694,7 +694,7 @@ pub fn build_document_data(
         received_at: None,
         planned_completion_at: None,
         completed_at: None,
-        refused_defects: trim(&options.refused_defects),
+        additional_recommendations: trim(&options.additional_recommendations),
         labor,
         parts,
         totals,

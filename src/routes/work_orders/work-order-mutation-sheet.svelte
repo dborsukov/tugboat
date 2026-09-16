@@ -8,7 +8,14 @@
 
   import { goto } from "$app/navigation";
 
+  import CarIcon from "@lucide/svelte/icons/car";
+  import ClipboardListIcon from "@lucide/svelte/icons/clipboard-list";
+  import CreditCardIcon from "@lucide/svelte/icons/credit-card";
+  import FileTextIcon from "@lucide/svelte/icons/file-text";
+  import IdCardIcon from "@lucide/svelte/icons/id-card";
   import LockIcon from "@lucide/svelte/icons/lock";
+  import UsersIcon from "@lucide/svelte/icons/users";
+  import WrenchIcon from "@lucide/svelte/icons/wrench";
 
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
   import { Button } from "$lib/components/ui/button";
@@ -20,6 +27,7 @@
 
   import ComboSelect from "$lib/components/combo-select.svelte";
   import CurrencyInput from "$lib/components/currency-input.svelte";
+  import MutationSheetSectionTitle from "$lib/components/mutation-sheet-section-title.svelte";
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
   import PhoneInput from "$lib/components/phone-input.svelte";
 
@@ -86,13 +94,14 @@
   let workOrderDetailsQuery = createWorkOrderDetailsQuery(() => workOrderId);
   let workOrderDetails = $derived(workOrderDetailsQuery.data);
 
+  const ownerClient = $derived(
+    isEdit
+      ? (workOrderDetails?.client ?? null)
+      : (carDetailsQuery.data?.client ?? null),
+  );
+
   const driverFieldsEnabled = $derived(
-    (isEdit
-      ? workOrderDetails?.client.clientType
-      : carDetailsQuery.data?.client.clientType) === "fop" ||
-      (isEdit
-        ? workOrderDetails?.client.clientType
-        : carDetailsQuery.data?.client.clientType) === "company",
+    ownerClient?.clientType === "fop" || ownerClient?.clientType === "company",
   );
 
   const businessIsNotVatPayer = $derived(
@@ -188,7 +197,7 @@
         .number({ error: "Неправильний пробіг" })
         .nonnegative("Неправильний пробіг")
         .nullable()
-        .default(null),
+        .default(0),
       driverSurname: z.string().default(""),
       driverFirstName: z.string().default(""),
       driverPatronymic: z.string().default(""),
@@ -444,10 +453,83 @@
   {/if}
 
   <fieldset disabled={isLocked} class="contents">
+    <MutationSheetSectionTitle text="Виконавець" icon={WrenchIcon} />
+
+    <Form.Field {form} name="workerId">
+      <Form.Control>
+        {#snippet children({ props: formProps })}
+          <ComboSelect
+            items={workersQuery.data ?? []}
+            bind:value={$formData.workerId}
+            clearable
+            getKey={(w) => w.id}
+            getLabel={workerFullName}
+            getSearchValue={(w) => `${workerFullName(w)} ${w.position ?? ""}`}
+            placeholder="Оберіть виконавця..."
+            searchPlaceholder="Пошук працівників..."
+            emptyText="Працівника не знайдено."
+            triggerClass={cn($formData.workerId != null && "pl-2")}
+            {formProps}
+          >
+            {#snippet trigger(selected)}
+              {#if selected}
+                <WorkerOption worker={selected} short />
+              {:else}
+                Оберіть виконавця...
+              {/if}
+            {/snippet}
+            {#snippet item(worker)}
+              <WorkerOption {worker} />
+            {/snippet}
+          </ComboSelect>
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
+
+    <MutationSheetSectionTitle text="Опис" icon={ClipboardListIcon} />
+
+    <Form.Field {form} name="description">
+      <Form.Control>
+        {#snippet children({ props })}
+          <Textarea
+            {...props}
+            value={$formData.description ?? ""}
+            oninput={(e) => {
+              $formData.description = e.currentTarget.value;
+            }}
+            placeholder="Короткий опис звернення: тип роботи, попередня діагностика, скарги клієнта тощо..."
+            rows={2}
+          />
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
+
+    <MutationSheetSectionTitle text="Автомобіль" icon={CarIcon} />
+
+    <Form.Field {form} name="conditionReport">
+      <Form.Control>
+        {#snippet children({ props })}
+          <Label>Огляд на дефекти</Label>
+          <Textarea
+            {...props}
+            value={$formData.conditionReport ?? ""}
+            oninput={(e) => {
+              $formData.conditionReport = e.currentTarget.value;
+            }}
+            placeholder="Опис зовнішнього стану кузова на момент прийняття: наявні пошкодження, подряпини, вм'ятини, тощо..."
+            rows={2}
+          />
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
+
     <Form.Field {form} name="odometerIn">
       <Form.Control>
         {#snippet children({ props })}
-          <Label>Одометр(пробіг) {@render requiredHint()}</Label>
+          <Label>Пробіг (на момент прийняття) {@render requiredHint()}</Label>
           <div class="flex gap-2 items-baseline">
             <Input
               type="number"
@@ -466,7 +548,7 @@
     <Form.Field {form} name="odometerOut">
       <Form.Control>
         {#snippet children({ props })}
-          <Label>Одометр(пробіг) при видачі</Label>
+          <Label>Пробіг (на момент видачі)</Label>
           <div class="flex gap-2 items-baseline">
             <Input
               type="number"
@@ -482,86 +564,172 @@
       <Form.FieldErrors />
     </Form.Field>
 
-    <Form.Field {form} name="description">
+    <MutationSheetSectionTitle text="Сторони" icon={UsersIcon} />
+
+    <div class="flex flex-col gap-3">
+      <Label>Власник</Label>
+      {#if ownerClient}
+        <ClientBadge name={ownerClient.name} iconSize="size-5" />
+      {:else}
+        <span class="text-sm text-muted-foreground">Невідомий власник</span>
+      {/if}
+    </div>
+
+    <Form.Field {form} name="customerClientId">
       <Form.Control>
-        {#snippet children({ props })}
-          <Label>Опис</Label>
-          <Textarea
-            {...props}
-            value={$formData.description ?? ""}
-            oninput={(e) => {
-              $formData.description = e.currentTarget.value;
-            }}
-            placeholder="Короткий опис звернення: тип роботи, попередня діагностика, скарги клієнта тощо..."
-            rows={2}
-          />
+        {#snippet children({ props: formProps })}
+          <Label>Замовник</Label>
+          <div
+            class={cn(
+              "flex items-center gap-2",
+              !$formData.ownerIsCustomer && "pb-1",
+            )}
+          >
+            <Checkbox
+              id="ownerIsCustomer"
+              checked={$formData.ownerIsCustomer}
+              onCheckedChange={(checked) => {
+                $formData.ownerIsCustomer = checked === true;
+                if ($formData.ownerIsCustomer) {
+                  $formData.customerClientId = null;
+                }
+              }}
+            />
+            <Label for="ownerIsCustomer" class="font-normal">
+              Власник є замовником
+            </Label>
+          </div>
+          {#if !$formData.ownerIsCustomer}
+            <ComboSelect
+              items={clientsQuery.data ?? []}
+              bind:value={$formData.customerClientId}
+              clearable
+              getKey={(c) => c.id}
+              getLabel={(c) => c.name}
+              getSearchValue={(c) => c.name}
+              placeholder="Оберіть замовника..."
+              searchPlaceholder="Пошук клієнтів..."
+              emptyText="Клієнта не знайдено."
+              triggerClass={cn($formData.customerClientId != null && "pl-2")}
+              {formProps}
+            >
+              {#snippet trigger(selected)}
+                {#if selected}
+                  <ClientBadge name={selected.name} iconSize="size-5" />
+                {:else}
+                  Оберіть замовника...
+                {/if}
+              {/snippet}
+              {#snippet item(client)}
+                <ClientBadge name={client.name} />
+              {/snippet}
+            </ComboSelect>
+          {/if}
         {/snippet}
       </Form.Control>
       <Form.FieldErrors />
     </Form.Field>
 
-    <Form.Field {form} name="conditionReport">
+    <Form.Field {form} name="payerClientId">
       <Form.Control>
-        {#snippet children({ props })}
-          <Label>Огляд автомобіля при прийнятті</Label>
-          <Textarea
-            {...props}
-            value={$formData.conditionReport ?? ""}
-            oninput={(e) => {
-              $formData.conditionReport = e.currentTarget.value;
-            }}
-            placeholder="Опис зовнішнього стану кузова: наявні пошкодження, подряпини, вм'ятини..."
-            rows={2}
-          />
+        {#snippet children({ props: formProps })}
+          <Label>Платник</Label>
+          <div
+            class={cn(
+              "flex items-center gap-2",
+              !$formData.ownerIsPayer && "pb-1",
+            )}
+          >
+            <Checkbox
+              id="ownerIsPayer"
+              checked={$formData.ownerIsPayer}
+              onCheckedChange={(checked) => {
+                $formData.ownerIsPayer = checked === true;
+                if ($formData.ownerIsPayer) {
+                  $formData.payerClientId = null;
+                }
+              }}
+            />
+            <Label for="ownerIsPayer" class="font-normal">
+              Власник є платником
+            </Label>
+          </div>
+          {#if !$formData.ownerIsPayer}
+            <ComboSelect
+              items={clientsQuery.data ?? []}
+              bind:value={$formData.payerClientId}
+              clearable
+              getKey={(c) => c.id}
+              getLabel={(c) => c.name}
+              getSearchValue={(c) => c.name}
+              placeholder="Оберіть платника..."
+              searchPlaceholder="Пошук клієнтів..."
+              emptyText="Клієнта не знайдено."
+              triggerClass={cn($formData.payerClientId != null && "pl-2")}
+              {formProps}
+            >
+              {#snippet trigger(selected)}
+                {#if selected}
+                  <ClientBadge name={selected.name} iconSize="size-5" />
+                {:else}
+                  Оберіть платника...
+                {/if}
+              {/snippet}
+              {#snippet item(client)}
+                <ClientBadge name={client.name} />
+              {/snippet}
+            </ComboSelect>
+          {/if}
         {/snippet}
       </Form.Control>
       <Form.FieldErrors />
     </Form.Field>
 
     {#if driverFieldsEnabled}
-      <div class="flex flex-col gap-2">
-        <Label>Водій (ПІБ)</Label>
-        <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <Form.Field {form} name="driverSurname">
-            <Form.Control>
-              {#snippet children({ props })}
-                <Label>Прізвище</Label>
-                <Input {...props} bind:value={$formData.driverSurname} />
-              {/snippet}
-            </Form.Control>
-            <Form.FieldErrors />
-          </Form.Field>
-          <Form.Field {form} name="driverFirstName">
-            <Form.Control>
-              {#snippet children({ props })}
-                <Label>Ім'я</Label>
-                <Input {...props} bind:value={$formData.driverFirstName} />
-              {/snippet}
-            </Form.Control>
-            <Form.FieldErrors />
-          </Form.Field>
-          <Form.Field {form} name="driverPatronymic">
-            <Form.Control>
-              {#snippet children({ props })}
-                <Label>По-батькові</Label>
-                <Input {...props} bind:value={$formData.driverPatronymic} />
-              {/snippet}
-            </Form.Control>
-            <Form.FieldErrors />
-          </Form.Field>
-        </div>
+      <MutationSheetSectionTitle text="Водій / представник" icon={IdCardIcon} />
+
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <Form.Field {form} name="driverSurname">
+          <Form.Control>
+            {#snippet children({ props })}
+              <Label>Прізвище</Label>
+              <Input {...props} bind:value={$formData.driverSurname} />
+            {/snippet}
+          </Form.Control>
+          <Form.FieldErrors />
+        </Form.Field>
+        <Form.Field {form} name="driverFirstName">
+          <Form.Control>
+            {#snippet children({ props })}
+              <Label>Ім'я</Label>
+              <Input {...props} bind:value={$formData.driverFirstName} />
+            {/snippet}
+          </Form.Control>
+          <Form.FieldErrors />
+        </Form.Field>
+        <Form.Field {form} name="driverPatronymic">
+          <Form.Control>
+            {#snippet children({ props })}
+              <Label>По-батькові</Label>
+              <Input {...props} bind:value={$formData.driverPatronymic} />
+            {/snippet}
+          </Form.Control>
+          <Form.FieldErrors />
+        </Form.Field>
       </div>
 
       <Form.Field {form} name="driverPhone">
         <Form.Control>
           {#snippet children({ props })}
-            <Label>Телефон водія</Label>
+            <Label>Телефон</Label>
             <PhoneInput {...props} bind:value={$formData.driverPhone} />
           {/snippet}
         </Form.Control>
         <Form.FieldErrors />
       </Form.Field>
     {/if}
+
+    <MutationSheetSectionTitle text="Оплата" icon={CreditCardIcon} />
 
     <Form.Field {form} name="rate">
       <Form.Control>
@@ -604,143 +772,6 @@
       <Form.FieldErrors />
     </Form.Field>
 
-    <Form.Field {form} name="customerClientId">
-      <Form.Control>
-        {#snippet children({ props: formProps })}
-          <div class="flex items-center gap-2 pb-1.5">
-            <Checkbox
-              id="ownerIsCustomer"
-              checked={$formData.ownerIsCustomer}
-              onCheckedChange={(checked) => {
-                $formData.ownerIsCustomer = checked === true;
-                if ($formData.ownerIsCustomer) {
-                  $formData.customerClientId = null;
-                }
-              }}
-            />
-            <Label for="ownerIsCustomer" class="font-normal">
-              Власник є замовником
-            </Label>
-          </div>
-          <ComboSelect
-            items={clientsQuery.data ?? []}
-            bind:value={$formData.customerClientId}
-            disabled={$formData.ownerIsCustomer}
-            clearable
-            getKey={(c) => c.id}
-            getLabel={(c) => c.name}
-            getSearchValue={(c) => c.name}
-            placeholder="Оберіть замовника..."
-            searchPlaceholder="Пошук клієнтів..."
-            emptyText="Клієнта не знайдено."
-            triggerClass={cn(
-              !$formData.ownerIsCustomer &&
-                $formData.customerClientId != null &&
-                "pl-2",
-            )}
-            {formProps}
-          >
-            {#snippet trigger(selected)}
-              {#if selected}
-                <ClientBadge name={selected.name} iconSize="size-5" />
-              {:else}
-                Оберіть замовника...
-              {/if}
-            {/snippet}
-            {#snippet item(client)}
-              <ClientBadge name={client.name} />
-            {/snippet}
-          </ComboSelect>
-        {/snippet}
-      </Form.Control>
-      <Form.FieldErrors />
-    </Form.Field>
-
-    <Form.Field {form} name="payerClientId">
-      <Form.Control>
-        {#snippet children({ props: formProps })}
-          <div class="flex items-center gap-2 pb-1.5">
-            <Checkbox
-              id="ownerIsPayer"
-              checked={$formData.ownerIsPayer}
-              onCheckedChange={(checked) => {
-                $formData.ownerIsPayer = checked === true;
-                if ($formData.ownerIsPayer) {
-                  $formData.payerClientId = null;
-                }
-              }}
-            />
-            <Label for="ownerIsPayer" class="font-normal">
-              Власник є платником
-            </Label>
-          </div>
-          <ComboSelect
-            items={clientsQuery.data ?? []}
-            bind:value={$formData.payerClientId}
-            disabled={$formData.ownerIsPayer}
-            clearable
-            getKey={(c) => c.id}
-            getLabel={(c) => c.name}
-            getSearchValue={(c) => c.name}
-            placeholder="Оберіть платника..."
-            searchPlaceholder="Пошук клієнтів..."
-            emptyText="Клієнта не знайдено."
-            triggerClass={cn(
-              !$formData.ownerIsPayer &&
-                $formData.payerClientId != null &&
-                "pl-2",
-            )}
-            {formProps}
-          >
-            {#snippet trigger(selected)}
-              {#if selected}
-                <ClientBadge name={selected.name} iconSize="size-5" />
-              {:else}
-                Оберіть платника...
-              {/if}
-            {/snippet}
-            {#snippet item(client)}
-              <ClientBadge name={client.name} />
-            {/snippet}
-          </ComboSelect>
-        {/snippet}
-      </Form.Control>
-      <Form.FieldErrors />
-    </Form.Field>
-
-    <Form.Field {form} name="workerId">
-      <Form.Control>
-        {#snippet children({ props: formProps })}
-          <Label class="pb-1.5">Виконавець</Label>
-          <ComboSelect
-            items={workersQuery.data ?? []}
-            bind:value={$formData.workerId}
-            clearable
-            getKey={(w) => w.id}
-            getLabel={workerFullName}
-            getSearchValue={(w) => `${workerFullName(w)} ${w.position ?? ""}`}
-            placeholder="Оберіть виконавця..."
-            searchPlaceholder="Пошук працівників..."
-            emptyText="Працівника не знайдено."
-            triggerClass={cn($formData.workerId != null && "pl-2")}
-            {formProps}
-          >
-            {#snippet trigger(selected)}
-              {#if selected}
-                <WorkerOption worker={selected} short />
-              {:else}
-                Оберіть виконавця...
-              {/if}
-            {/snippet}
-            {#snippet item(worker)}
-              <WorkerOption {worker} />
-            {/snippet}
-          </ComboSelect>
-        {/snippet}
-      </Form.Control>
-      <Form.FieldErrors />
-    </Form.Field>
-
     <Form.Field {form} name="discountValue">
       <Form.Control>
         {#snippet children({ props })}
@@ -777,7 +808,7 @@
                 Ціни вже включають ПДВ
               </Label>
             </div>
-            <div class="flex gap-2 items-baseline pt-1.5" {...props}>
+            <div class="flex gap-2 items-baseline pt-1" {...props}>
               <Input
                 bind:value={$formData.vatRate}
                 type="text"
@@ -827,10 +858,11 @@
       {/if}
     </Form.Field>
 
+    <MutationSheetSectionTitle text="Нотатки" icon={FileTextIcon} />
+
     <Form.Field {form} name="notes">
       <Form.Control>
         {#snippet children({ props })}
-          <Label>Нотатки</Label>
           <Textarea
             {...props}
             value={$formData.notes ?? ""}

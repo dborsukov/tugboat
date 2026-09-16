@@ -1038,13 +1038,8 @@ fn damages_block_markup(data: &DocumentData) -> String {
     )
 }
 
-/// General recommendations and the defects whose repair the customer refused
-/// (acceptance act). Rendered only when the field is filled in.
-fn refused_defects_markup(text: &str) -> String {
-    ruled_text_block_markup(
-        "Загальні рекомендації, та дефекти, від усунення яких замовник відмовився:",
-        text,
-    )
+fn additional_recommendations_markup(text: &str) -> String {
+    ruled_text_block_markup("Додаткові рекомендації:", text)
 }
 
 // ---------------------------------------------------------------------------
@@ -1225,14 +1220,14 @@ fn build_markup(data: &DocumentData) -> String {
             out.push_str(&old_parts_clause_markup());
         }
         DocumentKind::AktVykonanykhRobit => {
-            if let Some(refused) = data
-                .refused_defects
+            if let Some(recommendations) = data
+                .additional_recommendations
                 .as_deref()
                 .map(str::trim)
                 .filter(|s| !s.is_empty())
             {
                 out.push_str("#v(0.8em)\n");
-                out.push_str(&refused_defects_markup(refused));
+                out.push_str(&additional_recommendations_markup(recommendations));
             }
         }
     }
