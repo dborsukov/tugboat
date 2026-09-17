@@ -511,7 +511,7 @@
     <Form.Field {form} name="conditionReport">
       <Form.Control>
         {#snippet children({ props })}
-          <Label>Огляд на дефекти</Label>
+          <Label>Огляд при прийнятті</Label>
           <Textarea
             {...props}
             value={$formData.conditionReport ?? ""}

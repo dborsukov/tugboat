@@ -2,27 +2,16 @@
   import { createQueries, useQueryClient } from "@tanstack/svelte-query";
   import Big from "big.js";
 
-  import { goto } from "$app/navigation";
-
-  import ArchiveIcon from "@lucide/svelte/icons/archive";
-  import ArchiveRestoreIcon from "@lucide/svelte/icons/archive-restore";
   import CarFrontIcon from "@lucide/svelte/icons/car-front";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
-  import ChevronRight from "@lucide/svelte/icons/chevron-right";
-  import Info from "@lucide/svelte/icons/info";
-  import LockIcon from "@lucide/svelte/icons/lock";
-  import LockOpenIcon from "@lucide/svelte/icons/lock-open";
   import QuoteIcon from "@lucide/svelte/icons/message-square-quote";
-  import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
   import StickyNoteIcon from "@lucide/svelte/icons/sticky-note";
-  import UserRoundIcon from "@lucide/svelte/icons/user-round";
 
   import Button from "$lib/components/ui/button/button.svelte";
   import * as Command from "$lib/components/ui/command/index.js";
   import * as Popover from "$lib/components/ui/popover/index.js";
   import { Skeleton } from "$lib/components/ui/skeleton";
 
-  import CarLogoLoader from "$lib/components/car-logo-loader.svelte";
   import CurrencyDisplay from "$lib/components/currency-display.svelte";
   import DataTableBulkActions from "$lib/components/data-table/data-table-bulk-actions.svelte";
   import DataTable from "$lib/components/data-table/data-table.svelte";
@@ -31,7 +20,6 @@
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
-  import PhoneDisplay from "$lib/components/phone-display.svelte";
 
   import type {
     DiscountType,
@@ -46,10 +34,9 @@
   import { commands } from "$lib/bindings";
   import { privacyState } from "$lib/states/privacy.svelte";
   import { TableActionState } from "$lib/states/table-actions.svelte";
-  import { pluralizeUk, prettifyIsoDateString, unwrap } from "$lib/tools";
-  import { cn } from "$lib/utils";
+  import { pluralizeUk, unwrap } from "$lib/tools";
 
-  import ClientAvatar from "../../clients/client-avatar.svelte";
+  import { clientsQueryOptions } from "../../clients/queries";
   import { servicesQueryOptions } from "../../services/queries";
   import {
     createCreateLaborItemMutation,
@@ -57,19 +44,15 @@
     createDeleteLaborItemsMutation,
     createDeletePartItemMutation,
     createDeletePartItemsMutation,
-    createRestoreWorkOrderMutation,
     createUpdateLaborItemsDiscountMutation,
     createUpdatePartItemsDiscountMutation,
     createUpdatePartItemsStatusMutation,
     workOrderDetailsQueryOptions,
   } from "../queries";
-  import StatusSelector from "../work-order-status-selector.svelte";
-  import WorkOrderTotalsPopover from "../work-order-totals-popover.svelte";
   import BulkDiscountDialog from "./bulk-discount-dialog.svelte";
   import BulkDiscountMenuItem from "./bulk-discount-menu-item.svelte";
   import DocumentGenerateDialog from "./document-generate-dialog.svelte";
   import DocumentsSection from "./documents-section.svelte";
-  import DropdownMenu from "./dropdown-menu.svelte";
   import {
     columns as laborColumns,
     type LaborTableMeta,
@@ -78,6 +61,7 @@
   import PartBulkStatusSubmenu from "./part-bulk-status-submenu.svelte";
   import { columns as partsColumns, type PartsTableMeta } from "./part-columns";
   import WorkOrderPartsItemMutationSheet from "./part-item-mutation-sheet.svelte";
+  import WorkOrderHeader from "./work-order-header.svelte";
 
   let { params } = $props();
 
@@ -107,23 +91,21 @@
     createUpdateLaborItemsDiscountMutation(queryClient);
   const updatePartItemsDiscountMutation =
     createUpdatePartItemsDiscountMutation(queryClient);
-  const restoreWorkOrderMutation = createRestoreWorkOrderMutation(queryClient);
 
   const combinedQueries = createQueries(() => ({
     queries: [
       workOrderDetailsQueryOptions(params.workorderId),
       servicesQueryOptions(),
+      clientsQueryOptions(),
     ],
     combine: (results) => {
       return {
         workOrderDetails: results[0],
         services: results[1],
+        clients: results[2],
 
-        isReady: results.every((r) => r.isSuccess),
-        isLoading: results.some((r) => r.isPending),
         isError: results.some((r) => r.isError),
         firstError: results.find((r) => r.isError)?.error,
-
         refetchAll: () => {
           results.forEach((r) => r.refetch());
         },
@@ -132,24 +114,19 @@
   }));
 
   let services = $derived(combinedQueries.services.data);
+  let clients = $derived(combinedQueries.clients.data);
   let workOrderDetails = $derived(combinedQueries.workOrderDetails.data);
 
-  const driverName = $derived(
-    [
-      workOrderDetails?.workOrder?.driverSurname,
-      workOrderDetails?.workOrder?.driverFirstName,
-      workOrderDetails?.workOrder?.driverPatronymic,
-    ]
-      .filter((part) => part && part.trim() !== "")
-      .join(" "),
+  const orderIsPending = $derived(
+    combinedQueries.workOrderDetails.isPending ||
+      combinedQueries.services.isPending,
+  );
+  const orderIsError = $derived(
+    combinedQueries.workOrderDetails.isError ||
+      combinedQueries.services.isError,
   );
 
   const isArchived = $derived(workOrderDetails?.workOrder?.archivedAt != null);
-  const isPaid = $derived(workOrderDetails?.workOrder?.status === "Paid");
-  const isCompleted = $derived(
-    workOrderDetails?.workOrder?.status === "Completed",
-  );
-  const isTerminalStatus = $derived(isPaid || isCompleted);
 
   let isLocked = $state(true);
   let previousStatus: WorkOrderStatus | undefined;
@@ -159,6 +136,14 @@
 
   let hasPendingParts = $derived(
     Big(workOrderDetails?.totals?.partsPendingTotal ?? "0").gt(0),
+  );
+
+  const hasNotes = $derived(
+    Boolean(
+      workOrderDetails?.workOrder?.description ||
+      workOrderDetails?.workOrder?.conditionReport ||
+      (!privacyState.hideNotes && workOrderDetails?.workOrder?.notes),
+    ),
   );
 
   $effect(() => {
@@ -180,20 +165,6 @@
   function isTerminal(status: WorkOrderStatus): boolean {
     return status === "Paid" || status === "Completed";
   }
-
-  let [datetime_label, datetime_iso_string] = $derived.by(() => {
-    if (!combinedQueries.isReady || !workOrderDetails) return ["", ""];
-
-    if (workOrderDetails.workOrder.paidAt) {
-      return ["Сплачено", workOrderDetails.workOrder.paidAt];
-    } else if (workOrderDetails.workOrder.completedAt) {
-      return ["Завершено", workOrderDetails.workOrder.completedAt];
-    } else if (workOrderDetails.workOrder.startedAt) {
-      return ["Почато", workOrderDetails.workOrder.startedAt];
-    } else {
-      return ["Створено", workOrderDetails.workOrder.createdAt];
-    }
-  });
 
   let partsTableActions = new TableActionState<number>();
   let laborTableActions = new TableActionState<number>();
@@ -438,117 +409,37 @@
       // Error toast is shown by the mutation layer.
     }
   }
-
-  function handleRestore() {
-    restoreWorkOrderMutation.mutate(params.workorderId);
-  }
-
-  function carSecondaryLine(wod: typeof workOrderDetails) {
-    return [wod?.carDto?.car?.licensePlate, wod?.carDto?.car?.year]
-      .filter(Boolean)
-      .join(" · ");
-  }
 </script>
 
+{#snippet noteCard(label: string, Icon: typeof QuoteIcon, value: string)}
+  <div
+    class="flex min-h-15 items-start gap-3 rounded border border-border bg-card px-3 py-2.5"
+  >
+    <span
+      class="flex size-9 shrink-0 items-center justify-center rounded border border-border bg-muted/40 text-muted-foreground"
+    >
+      <Icon class="size-4.5" />
+    </span>
+    <div class="flex min-w-0 flex-col gap-1">
+      <span class="text-xs text-muted-foreground">{label}</span>
+      <p
+        class="text-sm wrap-break-word italic text-foreground/90 whitespace-pre-wrap"
+      >
+        {value}
+      </p>
+    </div>
+  </div>
+{/snippet}
+
 <PageLayout contentWidthClass="max-w-fit">
-  {#if combinedQueries.isError}
+  {#if orderIsError}
     <FetchErrorDisplay
       message={combinedQueries.firstError?.message}
       onRetry={combinedQueries.refetchAll}
       class="mt-10"
     />
-  {:else if combinedQueries.isLoading}
-    <div class="mt-4 border border-border rounded bg-card">
-      <!-- Info bar: id / date / odometer / rate -->
-      <div class="h-15 flex flex-row items-center border-b border-border">
-        <!-- Order ID -->
-        <div
-          class="p-4 flex flex-col justify-start items-start gap-1.5 min-w-30"
-        >
-          <Skeleton class="h-3.5 w-24" />
-          <Skeleton class="h-5 w-16" />
-        </div>
-
-        <div class="block h-8/12 w-px bg-border"></div>
-
-        <!-- Date -->
-        <div
-          class="p-4 flex flex-col justify-start items-start gap-1.5 min-w-40"
-        >
-          <div class="flex items-center gap-1">
-            <Skeleton class="h-3.5 w-16" />
-            <Skeleton class="size-3.5 rounded-full" />
-          </div>
-          <Skeleton class="h-5 w-32" />
-        </div>
-
-        <div class="block h-8/12 w-px bg-border"></div>
-
-        <!-- Odometer -->
-        <div
-          class="p-4 flex flex-col justify-start items-start gap-1.5 min-w-30"
-        >
-          <Skeleton class="h-3.5 w-12" />
-          <Skeleton class="h-5 w-24" />
-        </div>
-
-        <div class="block h-8/12 w-px bg-border"></div>
-
-        <!-- Rate -->
-        <div
-          class="p-4 flex flex-col justify-start items-start gap-1.5 min-w-30"
-        >
-          <Skeleton class="h-3.5 w-14" />
-          <Skeleton class="h-5 w-20" />
-        </div>
-
-        <!-- Actions -->
-        <div class="flex items-center gap-2 ml-auto mr-2">
-          <Skeleton class="h-9 w-24 rounded-md" />
-          <!-- Totals popover -->
-          <Skeleton class="h-9 w-32 rounded-md" />
-          <!-- Status selector -->
-          <Skeleton class="h-9 w-9 rounded-md shrink-0" />
-          <!-- Dropdown menu -->
-        </div>
-      </div>
-
-      <!-- Car / client navigation cards -->
-      <div class="flex flex-row divide-x divide-border border-b border-border">
-        <div class="flex-1 flex items-center gap-2 p-2 pl-4 h-11">
-          <Skeleton class="size-6 rounded-full shrink-0" />
-          <Skeleton class="h-5 w-48" />
-          <Skeleton class="h-4 w-24 ml-auto" />
-          <Skeleton class="size-4 shrink-0 rounded-sm" />
-        </div>
-        <div class="flex-1 flex items-center gap-2 p-2 h-11">
-          <Skeleton class="size-6 rounded-full shrink-0" />
-          <Skeleton class="h-5 w-40" />
-          <Skeleton class="h-4 w-32 ml-auto" />
-          <Skeleton class="size-4 shrink-0 rounded-sm" />
-        </div>
-      </div>
-
-      <!-- Description / Notes (stacked, matching the real conditional layout) -->
-      <div
-        class="flex flex-col divide-y divide-border rounded-b overflow-hidden"
-      >
-        <div class="flex flex-col items-start gap-1.5 px-4 py-2 bg-muted/40">
-          <div class="flex items-center gap-2">
-            <Skeleton class="size-4 rounded-sm" />
-            <Skeleton class="h-4 w-12" />
-          </div>
-          <Skeleton class="h-4 w-full max-w-md" />
-        </div>
-        <div class="flex flex-col items-start gap-1.5 px-4 py-2 bg-muted/40">
-          <div class="flex items-center gap-2">
-            <Skeleton class="size-4 rounded-sm" />
-            <Skeleton class="h-4 w-16" />
-          </div>
-          <Skeleton class="h-4 w-full max-w-md" />
-        </div>
-      </div>
-    </div>
+  {:else if orderIsPending}
+    <WorkOrderHeader isLoading onGenerate={openGenerate} />
 
     <div class="mt-4 border border-border rounded bg-card">
       <!-- Services (labor) section -->
@@ -625,351 +516,41 @@
       class="mt-10"
     />
   {:else}
-    <div class="mt-4 border border-border rounded bg-card">
-      {#if workOrderDetails?.workOrder?.type === "Warranty"}
-        <div
-          class={cn(
-            "flex items-center justify-between gap-2 px-4 py-2 border-b border-border bg-amber-50 dark:bg-amber-500/10 text-sm",
-            !isArchived && "rounded-t",
+    <WorkOrderHeader
+      bind:isLocked
+      {isArchived}
+      workOrderDetails={combinedQueries.workOrderDetails.data}
+      clients={clients ?? []}
+      onGenerate={openGenerate}
+    />
+
+    {#if hasNotes}
+      <div
+        class="mt-4 grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-4"
+      >
+        {#if workOrderDetails?.workOrder?.description}
+          {@render noteCard(
+            "Опис",
+            QuoteIcon,
+            workOrderDetails.workOrder.description,
           )}
-        >
-          <span
-            class="flex items-center gap-2 text-amber-800 dark:text-amber-300"
-          >
-            <ShieldCheckIcon class="size-4 shrink-0" />
-            Гарантійний випадок
-            {#if workOrderDetails?.workOrder?.warrantyOf}
-              до {workOrderDetails?.workOrder?.warrantyOf}
-            {/if}
-          </span>
-          {#if workOrderDetails?.workOrder?.warrantyOf}
-            <Button
-              variant="link"
-              class="p-0"
-              onclick={() =>
-                goto(`/work_orders/${workOrderDetails?.workOrder?.warrantyOf}`)}
-            >
-              Відкрити замовлення
-            </Button>
-          {/if}
-        </div>
-      {/if}
-      {#if isArchived}
-        <div
-          class="flex items-center justify-between gap-2 rounded-t px-4 py-2 border-b border-border bg-muted/40 text-sm"
-        >
-          <span class="flex items-center gap-2 text-muted-foreground">
-            <ArchiveIcon class="size-4" />
-            Замовлення архівоване
-            {prettifyIsoDateString(
-              workOrderDetails?.workOrder?.archivedAt ?? "",
-              "datetime",
-            )}
-          </span>
-          <Button
-            variant="link"
-            class="p-0"
-            onclick={handleRestore}
-            disabled={restoreWorkOrderMutation.isPending}
-          >
-            <ArchiveRestoreIcon />
-            Відновити
-          </Button>
-        </div>
-      {/if}
-      {#if isTerminalStatus && !isArchived}
-        <div
-          class="flex items-center justify-between gap-2 rounded-t px-4 py-2 border-b border-border bg-muted/40 text-sm"
-        >
-          <span class="flex items-center gap-2 text-muted-foreground">
-            {#if isLocked}
-              <LockIcon class="size-4" />
-              {#if isPaid}
-                Замовлення оплачено і заблоковано від змін
-              {:else}
-                Замовлення завершено і заблоковано від змін
-              {/if}
-            {:else}
-              <LockOpenIcon class="size-4" />
-              Замовлення тимчасово розблоковано для редагування
-            {/if}
-          </span>
-          <Button
-            variant="link"
-            class="p-0"
-            onclick={() => (isLocked = !isLocked)}
-            aria-label={isLocked
-              ? "Розблокувати замовлення"
-              : "Заблокувати замовлення"}
-            title={isLocked
-              ? "Розблокувати замовлення"
-              : "Заблокувати замовлення"}
-          >
-            {#if isLocked}
-              Розблокувати
-            {:else}
-              Заблокувати
-            {/if}
-          </Button>
-        </div>
-      {/if}
-
-      <div class="h-15 flex flex-row items-center border-b border-border">
-        <div class="p-4 flex flex-col justify-start items-start">
-          <span class="text-sm text-muted-foreground">Наряд-замовлення</span>
-          <p class="text-base font-medium">
-            {workOrderDetails.workOrder?.id}
-          </p>
-        </div>
-
-        <div class="block h-8/12 w-px bg-border"></div>
-
-        <div class="p-4 flex flex-col justify-start items-start">
-          <div class="flex items-center gap-1 text-muted-foreground">
-            <span class="text-sm">{datetime_label}</span>
-            <Popover.Root>
-              <Popover.Trigger class="hover:cursor-pointer">
-                <Info class="size-3.5" />
-              </Popover.Trigger>
-              <Popover.Content class="p-4 w-fit">
-                <div class="flex flex-col gap-2">
-                  <div class="flex gap-2 justify-between">
-                    <p>Створено:</p>
-                    <p>
-                      {workOrderDetails.workOrder.createdAt
-                        ? prettifyIsoDateString(
-                            workOrderDetails.workOrder.createdAt,
-                            "datetime",
-                          )
-                        : "—"}
-                    </p>
-                  </div>
-                  <div class="flex gap-2 justify-between">
-                    <p>Почато:</p>
-                    <p>
-                      {workOrderDetails.workOrder.startedAt
-                        ? prettifyIsoDateString(
-                            workOrderDetails.workOrder.startedAt,
-                            "datetime",
-                          )
-                        : "—"}
-                    </p>
-                  </div>
-                  <div class="flex gap-2 justify-between">
-                    <p>Завершено:</p>
-                    <p>
-                      {workOrderDetails.workOrder.completedAt
-                        ? prettifyIsoDateString(
-                            workOrderDetails.workOrder.completedAt,
-                            "datetime",
-                          )
-                        : "—"}
-                    </p>
-                  </div>
-                  <div class="flex gap-2 justify-between">
-                    <p>Сплачено:</p>
-                    <p>
-                      {workOrderDetails.workOrder.paidAt
-                        ? prettifyIsoDateString(
-                            workOrderDetails.workOrder.paidAt,
-                            "datetime",
-                          )
-                        : "—"}
-                    </p>
-                  </div>
-                </div>
-              </Popover.Content>
-            </Popover.Root>
-          </div>
-          <p class="text-base">
-            {prettifyIsoDateString(datetime_iso_string, "datetime")}
-          </p>
-        </div>
-
-        <div class="block h-8/12 w-px bg-border"></div>
-
-        <div class="p-4 flex flex-col justify-start items-start">
-          <span class="text-sm text-muted-foreground">Пробіг</span>
-          <div class="flex gap-2 text-base">
-            <p>{workOrderDetails?.workOrder?.odometerIn}</p>
-            <p class="text-muted-foreground">км.</p>
-          </div>
-        </div>
-
-        {#if workOrderDetails?.workOrder?.odometerOut != null}
-          <div class="block h-8/12 w-px bg-border"></div>
-
-          <div class="p-4 flex flex-col justify-start items-start">
-            <span class="text-sm text-muted-foreground">Пробіг при видачі</span>
-            <div class="flex gap-2 text-base">
-              <p>{workOrderDetails?.workOrder?.odometerOut}</p>
-              <p class="text-muted-foreground">км.</p>
-            </div>
-          </div>
         {/if}
-
-        <div class="block h-8/12 w-px bg-border"></div>
-
-        <div class="p-4 flex flex-col justify-start items-start">
-          <span class="text-sm text-muted-foreground">Тариф</span>
-          <CurrencyDisplay
-            amount={workOrderDetails?.workOrder.rate}
-            suffix="грн./год."
-            suffix_muted
-          />
-        </div>
-
-        <div class="flex items-center ml-auto mr-2 text-base">
-          <WorkOrderTotalsPopover {workOrderDetails} class="mr-2" />
-          <StatusSelector
-            workOrder={workOrderDetails?.workOrder}
-            partItems={workOrderDetails?.partItems ?? []}
-            isLocked={isReadOnly}
-          />
-          <DropdownMenu
-            workOrderId={workOrderDetails.workOrder?.id ?? ""}
-            type={workOrderDetails?.workOrder?.type}
-            odometerIn={workOrderDetails?.workOrder?.odometerIn ?? 0}
-            {isLocked}
-            {isArchived}
-            onGenerate={openGenerate}
-          />
-        </div>
+        {#if workOrderDetails?.workOrder?.conditionReport}
+          {@render noteCard(
+            "Огляд при прийнятті",
+            CarFrontIcon,
+            workOrderDetails.workOrder.conditionReport,
+          )}
+        {/if}
+        {#if !privacyState.hideNotes && workOrderDetails?.workOrder?.notes}
+          {@render noteCard(
+            "Нотатки",
+            StickyNoteIcon,
+            workOrderDetails.workOrder.notes,
+          )}
+        {/if}
       </div>
-
-      <div class="flex flex-row divide-x divide-border">
-        <div class="flex-1">
-          <Button
-            variant="ghost"
-            class="w-full h-auto gap-2 items-center rounded-none p-2 pl-4 text-base font-normal"
-            onclick={async () => {
-              await goto(`/cars/${workOrderDetails?.carDto?.car?.id}`);
-            }}
-          >
-            <CarLogoLoader
-              slug={workOrderDetails?.carDto?.brand?.iconSlug}
-              class="size-6"
-            />
-            <p class="text-base font-medium">
-              {workOrderDetails?.carDto?.brand?.name}
-              {workOrderDetails?.carDto?.car?.model}
-            </p>
-            <p class="ml-auto text-muted-foreground">
-              {carSecondaryLine(workOrderDetails)}
-            </p>
-            <ChevronRight class="size-4 text-muted-foreground" />
-          </Button>
-        </div>
-        <div class="flex-1">
-          <Button
-            variant="ghost"
-            class="w-full h-auto gap-2 items-center rounded-none p-2 text-base font-normal"
-            onclick={async () => {
-              await goto(`/clients/${workOrderDetails?.client?.id}`);
-            }}
-          >
-            <ClientAvatar
-              name={workOrderDetails?.client?.name}
-              class="size-6"
-            />
-            <p class="text-base font-medium">
-              {workOrderDetails?.client?.name}
-            </p>
-            <PhoneDisplay
-              value={workOrderDetails?.client?.clientType !== "individual"
-                ? (workOrderDetails?.clientDetails?.contactPhone ??
-                  workOrderDetails?.client?.phone)
-                : workOrderDetails?.client?.phone}
-              class="ml-auto select-none! text-muted-foreground"
-            />
-            <ChevronRight class="size-4 text-muted-foreground" />
-          </Button>
-        </div>
-      </div>
-
-      {#if workOrderDetails?.workOrder?.description || workOrderDetails?.workOrder?.conditionReport || driverName || workOrderDetails?.workOrder?.driverPhone || (!privacyState.hideNotes && workOrderDetails?.workOrder?.notes)}
-        <div
-          class="flex flex-col divide-y divide-border rounded-b overflow-hidden border-t border-border"
-        >
-          {#if workOrderDetails?.workOrder?.description}
-            <div
-              class="flex-1 flex flex-col items-start gap-1 px-4 py-2 bg-muted/40"
-            >
-              <span
-                class="flex items-center justify-center gap-2 text-base text-muted-foreground"
-              >
-                <QuoteIcon class="size-4" />
-                <span>Опис</span>
-              </span>
-              <p
-                class="text-base italic text-foreground/90 whitespace-pre-wrap"
-              >
-                {workOrderDetails.workOrder.description}
-              </p>
-            </div>
-          {/if}
-          {#if workOrderDetails?.workOrder?.conditionReport}
-            <div
-              class="flex-1 flex flex-col items-start gap-1 px-4 py-2 bg-muted/40"
-            >
-              <span
-                class="flex items-center justify-center gap-2 text-base text-muted-foreground"
-              >
-                <CarFrontIcon class="size-4" />
-                <span>Огляд автомобіля при прийнятті</span>
-              </span>
-              <p
-                class="text-base italic text-foreground/90 whitespace-pre-wrap"
-              >
-                {workOrderDetails.workOrder.conditionReport}
-              </p>
-            </div>
-          {/if}
-          {#if driverName || workOrderDetails?.workOrder?.driverPhone}
-            <div
-              class="flex-1 flex flex-col items-start gap-1 px-4 py-2 bg-muted/40"
-            >
-              <span
-                class="flex items-center justify-center gap-2 text-base text-muted-foreground"
-              >
-                <UserRoundIcon class="size-4" />
-                <span>Водій</span>
-              </span>
-              <p
-                class="text-base italic text-foreground/90 whitespace-pre-wrap"
-              >
-                {#if driverName}
-                  {driverName}
-                {/if}
-                {#if driverName && workOrderDetails.workOrder.driverPhone}
-                  {" — "}
-                {/if}
-                {#if workOrderDetails.workOrder.driverPhone}
-                  {workOrderDetails.workOrder.driverPhone}
-                {/if}
-              </p>
-            </div>
-          {/if}
-          {#if !privacyState.hideNotes && workOrderDetails?.workOrder?.notes}
-            <div
-              class="flex-1 flex flex-col items-start gap-1 px-4 py-2 bg-muted/40"
-            >
-              <span
-                class="flex items-center justify-center gap-2 text-base text-muted-foreground"
-              >
-                <StickyNoteIcon class="size-4" />
-                <span>Нотатки</span>
-              </span>
-              <p
-                class="text-base italic text-foreground/90 whitespace-pre-wrap"
-              >
-                {workOrderDetails.workOrder.notes}
-              </p>
-            </div>
-          {/if}
-        </div>
-      {/if}
-    </div>
+    {/if}
 
     <div class="mt-4 border border-border rounded bg-card">
       <div class="p-4">

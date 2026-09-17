@@ -39,7 +39,7 @@
     workOrderId,
     type = "Regular",
     odometerIn = 0,
-    isLocked = false,
+    isLocked = $bindable(false),
     isArchived = false,
     onGenerate,
   }: {
