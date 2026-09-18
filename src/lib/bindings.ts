@@ -535,6 +535,7 @@ export type PreviewWorkOrderQuote = {
 export type RateVariants = {
 	name: string,
 	value: string,
+	isDefault?: boolean,
 };
 
 export type Service = {

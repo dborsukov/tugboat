@@ -190,6 +190,11 @@ fn validate_rate_variants(variants: &[RateVariants]) -> Result<(), AppError> {
             ));
         }
     }
+    if variants.iter().filter(|v| v.is_default).count() > 1 {
+        return Err(AppError::validation(
+            "only one rate variant can be the default",
+        ));
+    }
     Ok(())
 }
 

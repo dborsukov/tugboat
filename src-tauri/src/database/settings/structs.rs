@@ -70,6 +70,8 @@ pub enum ThemeMode {
 pub struct RateVariants {
     pub name: String,
     pub value: Decimal,
+    #[serde(default)]
+    pub is_default: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]

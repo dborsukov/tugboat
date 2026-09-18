@@ -12,6 +12,7 @@
   import { Input } from "$lib/components/ui/input";
   import * as Item from "$lib/components/ui/item/index.js";
   import { Label } from "$lib/components/ui/label";
+  import * as RadioGroup from "$lib/components/ui/radio-group/index.js";
 
   import PageLayout from "$lib/components/page-layout.svelte";
 
@@ -34,23 +35,41 @@
   const updateRateVariantsMutation =
     createUpdateRateVariantsMutation(queryClient);
 
+  function persistVariants(items: RateVariants[]) {
+    if (!draft) return;
+    draft.rateVariants = items;
+    updateRateVariantsMutation.mutate(items);
+  }
+
   const itemEditor = createItemEditor<RateVariants>({
     items: () => draft?.rateVariants ?? [],
-    makeEmpty: () => ({ name: "", value: "0.00" }),
+    makeEmpty: () => ({ name: "", value: "0.00", isDefault: false }),
     validate: (entry, others) => {
       const { nameError, valueError } = validateRateVariantEntry(entry, others);
       return { name: nameError, value: valueError };
     },
-    commit: (items) => {
-      if (!draft) return;
-      draft.rateVariants = items;
-      updateRateVariantsMutation.mutate(items);
-    },
+    commit: persistVariants,
     transform: (entry) => ({
       ...entry,
       value: normalizeRateVariantValue(entry.value),
     }),
   });
+
+  // ---------- Default rate ----------
+
+  const defaultIndex = $derived(
+    draft?.rateVariants.findIndex((variant) => variant.isDefault) ?? -1,
+  );
+
+  function setDefault(index: number) {
+    if (index === defaultIndex) return;
+    persistVariants(
+      (draft?.rateVariants ?? []).map((variant, i) => ({
+        ...variant,
+        isDefault: i === index,
+      })),
+    );
+  }
 </script>
 
 <PageLayout contentWidthClass={SETTINGS_CONTENT_WIDTH_CLASS}>
@@ -71,6 +90,12 @@
     </Button>
   </div>
 
+  {#if draft && draft.rateVariants.length > 0}
+    <p class="mt-4 px-1 text-sm text-muted-foreground">
+      Позначений тариф застосовується за замовчуванням у нових замовленнях.
+    </p>
+  {/if}
+
   {#if draft}
     <div class="mt-4">
       <div
@@ -82,9 +107,18 @@
             Натисніть "Додати +" щоб додати новий тариф...
           </p>
         {:else}
-          <div class="flex flex-col gap-0 first:mt-3 last:mb-3">
+          <RadioGroup.Root
+            aria-label="Тариф за замовчуванням"
+            value={defaultIndex === -1 ? "" : String(defaultIndex)}
+            onValueChange={(value) => setDefault(Number(value))}
+            class="flex flex-col gap-0 first:mt-3 last:mb-3"
+          >
             {#each draft.rateVariants as variant, i (i)}
               <Item.Root class="py-1 px-4">
+                <RadioGroup.Item
+                  value={String(i)}
+                  aria-label="{variant.name} — {variant.value} грн./год."
+                />
                 <Item.Content>
                   <Item.Title>{variant.name}</Item.Title>
                   <Item.Description>{variant.value} грн./год.</Item.Description>
@@ -112,7 +146,7 @@
                 <Item.Separator />
               {/if}
             {/each}
-          </div>
+          </RadioGroup.Root>
         {/if}
       </div>
 

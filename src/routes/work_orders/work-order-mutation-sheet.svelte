@@ -90,6 +90,9 @@
   const carDetailsQuery = createCarDetailsQuery(() => carId);
 
   const rateVariants = $derived(settingsState.settings?.rateVariants ?? []);
+  const defaultRate = $derived(
+    rateVariants.find((variant) => variant.isDefault) ?? null,
+  );
 
   let workOrderDetailsQuery = createWorkOrderDetailsQuery(() => workOrderId);
   let workOrderDetails = $derived(workOrderDetailsQuery.data);
@@ -413,6 +416,7 @@
           $formData.pricesIncludeVat =
             settingsState.settings?.defaultPricesIncludeVat ?? true;
         }
+        $formData.rate = defaultRate?.value ?? "0";
       }
     }
   });
