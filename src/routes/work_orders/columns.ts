@@ -9,13 +9,18 @@ import type { WorkOrderDetailsDto } from "$lib/bindings";
 import { prettifyIsoDateString } from "$lib/tools";
 
 import CarBadge from "../cars/car-badge.svelte";
-import ClientBadge from "../clients/client-badge.svelte";
+import type { WorkOrderClientColumn } from "./work-order-client-column";
 import { statusWeights } from "./work-order-status";
+import WorkOrderTableClientCell from "./work-order-table-client-cell.svelte";
 import WorkOrderTableIdCell from "./work-order-table-id-cell.svelte";
 import WorkOrderTableStatusCell from "./work-order-table-status-cell.svelte";
 import WorkOrderTableTotalCell from "./work-order-table-total-cell.svelte";
 
-export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
+export type WorkOrderRow = WorkOrderDetailsDto & {
+  clientColumn?: WorkOrderClientColumn;
+};
+
+export const columns: ColumnDef<WorkOrderRow>[] = [
   {
     id: "id",
     accessorFn: (row) => row.workOrder.id,
@@ -37,7 +42,13 @@ export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
   },
   {
     id: "client",
-    accessorFn: (row) => row.client.name,
+    accessorFn: (row) =>
+      [
+        row.clientColumn?.mainName ?? row.client.name,
+        ...(row.clientColumn?.others ?? []).map((line) => line.name),
+      ]
+        .filter((name): name is string => Boolean(name))
+        .join(" "),
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
@@ -46,15 +57,17 @@ export const columns: ColumnDef<WorkOrderDetailsDto>[] = [
         class: "pl-0",
         children: createRawSnippet(() => {
           return {
-            render: () => "<span>Клієнт</span>",
+            render: () => "<span>Замовник</span>",
           };
         }),
       });
     },
     cell: ({ row }) => {
-      return renderComponent(ClientBadge, {
-        name: row.original.client.name,
-        iconSize: "size-6",
+      const { client, clientColumn } = row.original;
+      return renderComponent(WorkOrderTableClientCell, {
+        mainName: clientColumn?.mainName ?? client.name,
+        others: clientColumn?.others ?? [],
+        loading: clientColumn?.loading ?? false,
       });
     },
   },

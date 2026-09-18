@@ -497,6 +497,8 @@ pub async fn fetch_work_order_details_dto_by_client_id(
         FROM work_orders wo
         JOIN cars c ON c.id = wo.car_id
         WHERE c.client_id = $1
+            OR wo.customer_client_id = $1
+            OR wo.payer_client_id = $1
         "#,
     )
     .bind(client_id)

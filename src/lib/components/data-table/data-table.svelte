@@ -74,10 +74,10 @@
   let bodyRef = $state<HTMLTableSectionElement | null>(null);
 
   let measureRafId: number | undefined;
-  // Stability filter: a size is only applied after it was measured twice in a
-  // row, so an exact-fit boundary flip between two adjacent sizes can never
-  // toggle the rendered rows back and forth.
-  let lastCandidatePageSize: number | undefined;
+  // Height of every row rendered so far, keyed by row id. Rows are not always
+  // uniform. Summing per-row heights in row order makes the fit exact for every
+  // row already measured and lets the next measurement correct the rows it had to guess.
+  const rowHeights = new Map<string, number>();
 
   // Fit as many rows as the available viewport space allows. Recomputations
   // are requestAnimationFrame-coalesced and only applied when the computed
@@ -100,63 +100,97 @@
     if (measureRafId !== undefined) cancelAnimationFrame(measureRafId);
     measureRafId = requestAnimationFrame(() => {
       measureRafId = undefined;
-      // <tbody> children are always <tr> elements (HTML invariant). Use the
-      // mean row height, not just the first row, so one tall/short row doesn't
-      // flip the computed size as it moves between slots.
-      const rowChildren = [...body.children].filter(
-        (child): child is HTMLTableRowElement =>
-          child instanceof HTMLTableRowElement,
-      );
-      if (rowChildren.length === 0) return;
-      const rowHeight = body.offsetHeight / rowChildren.length;
-      // Guard against a zero/near-zero height (mount animation, font-load
-      // flash, ...) which would divide to Infinity and set an invalid page
-      // size on the table.
-      if (!Number.isFinite(rowHeight) || rowHeight <= 0) return;
-
-      const scrollContainer = findScrollContainer(wrapper);
-      const wrapperRect = wrapper.getBoundingClientRect();
-      const containerRect = scrollContainer.getBoundingClientRect();
-      // Adding scrollTop keeps the offset correct regardless of the scroll
-      // position (also covers the documentElement fallback, where the page
-      // itself scrolls and the wrapper's viewport offset would drift).
-      const offsetFromContainerTop =
-        wrapperRect.top - containerRect.top + scrollContainer.scrollTop;
-      const availableHeight =
-        scrollContainer.clientHeight -
-        offsetFromContainerTop -
-        measureBelow(wrapper) -
-        SCROLLBAR_RESERVE;
-      if (availableHeight <= thead.offsetHeight) return;
-      const candidate = Math.max(
-        MIN_PAGE_SIZE,
-        Math.floor((availableHeight - thead.offsetHeight) / rowHeight),
-      );
-      if (
-        lastCandidatePageSize !== undefined &&
-        candidate !== lastCandidatePageSize
-      ) {
-        lastCandidatePageSize = candidate;
-        return;
-      }
-      lastCandidatePageSize = candidate;
-      if (candidate !== table.getState().pagination.pageSize) {
-        table.setPageSize(candidate);
-      }
+      measure(wrapper, thead, body);
     });
   }
 
-  // Set up the resize observation once per auto-mode activation: the wrapper
+  function measure(
+    wrapper: HTMLDivElement,
+    thead: HTMLTableSectionElement,
+    body: HTMLTableSectionElement,
+  ) {
+    const pagination = table.getState().pagination;
+    const pageRows = table.getRowModel().rows;
+    // <tbody> children are always <tr> elements (HTML invariant): one per
+    // rendered row, or the single empty-state row when the page is empty.
+    const rowElements = [...body.children].filter(
+      (child): child is HTMLTableRowElement =>
+        child instanceof HTMLTableRowElement,
+    );
+    if (pageRows.length === 0 || rowElements.length === 0) return;
+
+    let tallestRow = 0;
+    for (const [index, element] of rowElements.entries()) {
+      // getBoundingClientRect (fractional) rather than offsetHeight: the latter
+      // rounds every row to an integer, and the accumulated error at an
+      // exact-fit boundary is what makes a "fitting" page overflow by a pixel.
+      const height = element.getBoundingClientRect().height;
+      if (!Number.isFinite(height) || height <= 0) return;
+      tallestRow = Math.max(tallestRow, height);
+      const row = pageRows[index];
+      if (row) rowHeights.set(row.id, height);
+    }
+
+    const scrollContainer = findScrollContainer(wrapper);
+    const wrapperRect = wrapper.getBoundingClientRect();
+    const containerRect = scrollContainer.getBoundingClientRect();
+    // Adding scrollTop keeps the offset correct regardless of the scroll
+    // position (also covers the documentElement fallback, where the page
+    // itself scrolls and the wrapper's viewport offset would drift).
+    const offsetFromContainerTop =
+      wrapperRect.top - containerRect.top + scrollContainer.scrollTop;
+    const room =
+      scrollContainer.clientHeight -
+      offsetFromContainerTop -
+      measureBelow(wrapper, scrollContainer) -
+      SCROLLBAR_RESERVE -
+      thead.offsetHeight;
+    if (room <= 0) return;
+
+    // Walk the rows in render order and keep the largest page size whose rows
+    // fit. Rows that were never rendered (fresh data, a page not visited yet)
+    // are assumed to be as tall as the tallest row measured so far, so growing
+    // the page can never overflow on a guess; the next measurement replaces the
+    // guesses with real heights and either grows further or stops. Because
+    // measured heights are remembered by row id, every step is a fixed point of
+    // the same calculation, which is what keeps this from oscillating.
+    const allRows = table.getPrePaginationRowModel().rows;
+    let candidate = MIN_PAGE_SIZE;
+    for (let size = MIN_PAGE_SIZE; size <= allRows.length; size++) {
+      // Exactly the slice the pagination row model renders for this size.
+      const start = pagination.pageIndex * size;
+      if (start >= allRows.length) break; // would render an empty page
+      const end = Math.min(start + size, allRows.length);
+      // Never grow off the back of a partly filled page: a short last page
+      // always "fits", which would pull the page count below the current page
+      // index and leave the table on an empty page.
+      if (end - start < size && size > pagination.pageSize) break;
+      let height = 0;
+      for (let index = start; index < end; index++) {
+        height += rowHeights.get(allRows[index].id) ?? tallestRow;
+      }
+      if (height > room) break;
+      candidate = size;
+    }
+
+    if (candidate !== pagination.pageSize) table.setPageSize(candidate);
+  }
+
+  // Set up the resize observation once per auto-mode activation: the body (its
+  // height changes whenever rows are added, removed or grow taller — a row
+  // gaining a second line does not necessarily resize the wrapper), the wrapper
   // (its height changes with content), the scroll container (window resizes),
   // the root column (so a footer/selection bar growing above/below the wrapper
   // re-triggers a measure), plus a window resize listener as a fallback.
   $effect(() => {
     if (!autoPageSize || !showPagination || !browser) return;
     const wrapper = wrapperRef;
-    if (!wrapper) return;
+    const body = bodyRef;
+    if (!wrapper || !body) return;
 
     const scrollContainer = findScrollContainer(wrapper);
     const resizeObserver = new ResizeObserver(scheduleMeasure);
+    resizeObserver.observe(body);
     resizeObserver.observe(wrapper);
     resizeObserver.observe(scrollContainer);
     if (wrapper.parentElement instanceof HTMLElement) {
@@ -174,10 +208,15 @@
   // Re-measure whenever the underlying rows change (data load, search, sort).
   // Key off the pre-pagination filtered count, not the paginated slice, so a
   // change from e.g. 137 to 40 rows (both above pageSize) still re-measures.
+  // A new data array can also mean the rows themselves changed shape (a client
+  // name resolving into a second line), so the measured heights are dropped:
+  // stale heights would silently mis-fit every page that is not on screen.
   // Kept separate from the ResizeObserver lifecycle so it doesn't churn it.
   $effect(() => {
     if (!autoPageSize || !showPagination || !browser) return;
     table.getFilteredRowModel().rows.length;
+    table.options.data;
+    rowHeights.clear();
     scheduleMeasure();
   });
 

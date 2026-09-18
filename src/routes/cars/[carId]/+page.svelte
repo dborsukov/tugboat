@@ -28,12 +28,13 @@
 
   import { prettifyIsoDateString } from "$lib/tools";
 
-  import { invalidateClients } from "../../clients/queries";
-  import { columns } from "../../work_orders/columns";
+  import { createClientsQuery, invalidateClients } from "../../clients/queries";
+  import { columns, type WorkOrderRow } from "../../work_orders/columns";
   import {
     invalidateWorkOrderLists,
     workOrderDetailsListByCarIdQueryOptions,
   } from "../../work_orders/queries";
+  import { buildWorkOrderClientColumn } from "../../work_orders/work-order-client-column";
   import WorkOrderMutationSheet from "../../work_orders/work-order-mutation-sheet.svelte";
   import { driveTypeLabels, fuelTypeLabels } from "../enum-labels";
   import { carDetailsQueryOptions, createRestoreCarMutation } from "../queries";
@@ -73,9 +74,29 @@
     combinedQueries.workOrderDetailsDtoList.data ?? [],
   );
 
+  const clientsQuery = createClientsQuery();
+  const clientsById = $derived(
+    new Map((clientsQuery.data ?? []).map((client) => [client.id, client])),
+  );
+
+  function clientName(clientId: number) {
+    return clientsById.get(clientId)?.name ?? null;
+  }
+
+  let tableRows = $derived.by<WorkOrderRow[]>(() =>
+    workOrderListItems.map((details) => ({
+      ...details,
+      clientColumn: buildWorkOrderClientColumn(
+        details,
+        clientName,
+        !clientsQuery.isPending,
+      ),
+    })),
+  );
+
   let table = buildTable({
     get data() {
-      return workOrderListItems;
+      return tableRows;
     },
     get columns() {
       return columns;
@@ -83,7 +104,7 @@
     disableFiltering: true,
     disablePagination: true,
     initialSorting: [{ id: "createdAt", desc: true }],
-    hiddenColumns: ["client", "car_id"],
+    hiddenColumns: ["car_id"],
   });
 
   function handleRestore() {

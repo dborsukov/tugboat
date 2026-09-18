@@ -28,13 +28,40 @@ export function findScrollContainer(el: HTMLElement): HTMLElement {
   return document.documentElement;
 }
 
-/** Total offsetHeight of the siblings that follow `el` (e.g. a pagination bar). */
-export function measureBelow(el: HTMLElement): number {
+/**
+ * Vertical space that stays below `el` inside `scrollContainer`: the height of
+ * its following siblings (e.g. a pagination bar) plus the bottom padding of
+ * every ancestor up to and including the scroll container.
+ *
+ * Rows fitted into the room this measurement leaves free end exactly where the
+ * scroll container stops scrolling. Ancestor padding is the part that is easy
+ * to forget: the page layout pads its content at the bottom (so a card never
+ * touches the window edge), and without it counted here the fitted content
+ * would overflow by exactly that padding and grow a scrollbar.
+ */
+export function measureBelow(
+  el: HTMLElement,
+  scrollContainer: HTMLElement,
+): number {
   let total = 0;
-  let sibling = el.nextElementSibling;
-  while (sibling) {
-    if (sibling instanceof HTMLElement) total += sibling.offsetHeight;
-    sibling = sibling.nextElementSibling;
+  let node: HTMLElement | null = el;
+  while (node) {
+    for (
+      let sibling = node.nextElementSibling;
+      sibling;
+      sibling = sibling.nextElementSibling
+    ) {
+      if (sibling instanceof HTMLElement) total += sibling.offsetHeight;
+    }
+    // Annotated on purpose: inferring this would be circular through the
+    // `node = ancestor` assignment below.
+    const ancestor: HTMLElement | null = node.parentElement;
+    if (!ancestor) break;
+    // getComputedStyle resolves percentage padding to a used pixel value,
+    // which Element.style.paddingBottom does not.
+    total += Number.parseFloat(getComputedStyle(ancestor).paddingBottom) || 0;
+    if (ancestor === scrollContainer) break;
+    node = ancestor;
   }
   return total;
 }
@@ -159,13 +186,14 @@ export class UseAutoPageSize {
     // Adding scrollTop keeps the offset correct regardless of scroll position.
     const offsetFromContainerTop =
       containerRect.top - scrollRect.top + scrollContainer.scrollTop;
-    // Reserve the space taken by siblings below the container (e.g. the
-    // pagination bar that follows the list in the same column) plus a
-    // scrollbar reserve so the fitted content never overflows by a hair.
+    // Reserve the space taken by everything below the container inside the
+    // scroll container (the pagination bar that follows the list in the same
+    // column, page padding) plus a scrollbar reserve so the fitted content
+    // never overflows by a hair.
     const availableHeight =
       scrollContainer.clientHeight -
       offsetFromContainerTop -
-      measureBelow(container) -
+      measureBelow(container, scrollContainer) -
       SCROLLBAR_RESERVE;
     if (availableHeight <= 0) return;
     // A filler element (e.g. an empty state) is not a row, never measure against it.

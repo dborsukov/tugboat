@@ -14,8 +14,10 @@
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
-  import { columns } from "./columns";
+  import { createClientsQuery } from "../clients/queries";
+  import { columns, type WorkOrderRow } from "./columns";
   import { createWorkOrderDetailsDtoListQuery } from "./queries";
+  import { buildWorkOrderClientColumn } from "./work-order-client-column";
   import { workOrderStatusFilterOptions } from "./work-order-status";
 
   let inputValue: string = $state("");
@@ -23,6 +25,11 @@
   let searchInputEl = $state<HTMLInputElement | null>(null);
 
   let workOrderDetailsDtoListQuery = createWorkOrderDetailsDtoListQuery();
+  const clientsQuery = createClientsQuery();
+
+  const clientsById = $derived(
+    new Map((clientsQuery.data ?? []).map((client) => [client.id, client])),
+  );
 
   let visibleWorkOrderDetailsDtoList = $derived.by(() => {
     const list = workOrderDetailsDtoListQuery.data ?? [];
@@ -30,6 +37,21 @@
       ? list.filter((wo) => wo.workOrder.archivedAt != null)
       : list.filter((wo) => wo.workOrder.archivedAt == null);
   });
+
+  function clientName(clientId: number) {
+    return clientsById.get(clientId)?.name ?? null;
+  }
+
+  let tableRows = $derived.by<WorkOrderRow[]>(() =>
+    visibleWorkOrderDetailsDtoList.map((details) => ({
+      ...details,
+      clientColumn: buildWorkOrderClientColumn(
+        details,
+        clientName,
+        !clientsQuery.isPending,
+      ),
+    })),
+  );
 
   const archivedWorkOrdersCount = $derived(
     (workOrderDetailsDtoListQuery.data ?? []).filter(
@@ -44,7 +66,7 @@
 
   let table = buildTable({
     get data() {
-      return visibleWorkOrderDetailsDtoList;
+      return tableRows;
     },
     get columns() {
       return columns;

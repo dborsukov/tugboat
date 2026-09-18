@@ -39,7 +39,14 @@
   {/if}
 
   <div class="flex-1 w-full overflow-auto scrollbar-gutter-both">
-    <div class={cn("max-w-7xl mx-auto", contentWidthClass)}>
+    <!-- `pb-4` is what keeps the last card/table clear of the window edge once
+         the page is scrolled all the way down. It is part of the content (not
+         of the scroll container) on purpose: the auto page size hooks measure
+         the space below their rows inside the scroll container, so content
+         fitted to the viewport leaves this padding visible instead of
+         overflowing by it. Override it through `contentWidthClass`
+         (`pb-0`/`pb-6`) — tailwind-merge keeps the last value. -->
+    <div class={cn("max-w-7xl mx-auto pb-4", contentWidthClass)}>
       {#if children}
         {@render children()}
       {/if}
