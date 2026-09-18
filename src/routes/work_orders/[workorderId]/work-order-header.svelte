@@ -37,6 +37,7 @@
   import { cn } from "$lib/utils";
 
   import { workerShortName } from "../../workers/labels";
+  import { paymentMethodInstrumentalLabel } from "../payment-method";
   import { createRestoreWorkOrderMutation } from "../queries";
   import StatusSelector from "../work-order-status-selector.svelte";
   import WorkOrderTotalsPopover from "../work-order-totals-popover.svelte";
@@ -126,15 +127,38 @@
       "",
   );
 
+  /**
+   * How the order was paid, appended to the date so the header reads
+   * "Сплачено 10 вересня 2026 р. о 17:12 · Карткою". Gated on `paidAt` rather
+   * than on the status because `paidAt` is what makes the line say "Сплачено";
+   * orders paid before the method was recorded simply keep the bare date.
+   */
+  const paymentMethodSuffix = $derived(
+    workOrder?.paidAt && workOrder.paymentMethod
+      ? ` · ${paymentMethodInstrumentalLabel(workOrder.paymentMethod)}`
+      : "",
+  );
+
+  /**
+   * Milestones in the order they happen. `suffix` is rendered right after the
+   * formatted date; only the paid row carries one (the method that was used),
+   * the rest keep an empty one so every row has the same shape.
+   */
   const timeline = $derived(
     [
-      { label: "Створено", value: workOrder?.createdAt },
-      { label: "Почато", value: workOrder?.startedAt },
-      { label: "Завершено", value: workOrder?.completedAt },
-      { label: "Сплачено", value: workOrder?.paidAt },
+      { label: "Створено", value: workOrder?.createdAt, suffix: "" },
+      { label: "Почато", value: workOrder?.startedAt, suffix: "" },
+      { label: "Завершено", value: workOrder?.completedAt, suffix: "" },
+      {
+        label: "Сплачено",
+        value: workOrder?.paidAt,
+        suffix: paymentMethodSuffix,
+      },
     ].map((entry) => ({
       label: entry.label,
-      value: entry.value ? prettifyIsoDateString(entry.value, "datetime") : "—",
+      value: entry.value
+        ? `${prettifyIsoDateString(entry.value, "datetime")}${entry.suffix}`
+        : "—",
     })),
   );
 
@@ -196,7 +220,7 @@
 
   const stickyBarClass = $derived(
     cn(
-      "mt-4 sticky top-0 z-20 rounded-t border border-b bg-card @container",
+      "mt-4 sticky top-0 z-20 rounded-t border border-b bg-card",
       isStuck ? "border-b-border shadow-sm" : "border-b-transparent",
       className,
     ),
@@ -307,15 +331,14 @@
       <Skeleton class="ml-auto h-5 w-24" />
     </div>
     <div class="px-4 py-4">
-      <div
-        class="grid gap-x-6 gap-y-3 @min-[46rem]:grid-cols-[max-content_1fr_max-content]"
-      >
-        <div class="flex flex-col gap-2">
+      <!-- Mirrors the identity row below, wrapping included, so the skeleton
+           does not jump when the order arrives. -->
+      <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div class="flex min-w-0 flex-col gap-2">
           <Skeleton class="h-7 w-48" />
           <Skeleton class="h-4 w-40" />
         </div>
-        <div class="hidden @min-[46rem]:block"></div>
-        <div class="flex flex-wrap items-center gap-2 @min-[46rem]:justify-end">
+        <div class="flex flex-wrap items-center gap-2">
           <Skeleton class="h-9 w-32 rounded-md" />
           <Skeleton class="h-9 w-32 rounded-md" />
           <Skeleton class="h-9 w-9 shrink-0 rounded-md" />
@@ -453,10 +476,16 @@
     {/if}
 
     <div class="px-4 py-4">
-      <div
-        class="grid gap-x-6 gap-y-3 @min-[46rem]:grid-cols-[max-content_1fr_max-content]"
-      >
-        <div class="flex flex-col gap-1">
+      <!-- Wrapping flex row rather than a container-query grid: the identity
+           block and the actions share a line only while they actually fit.
+           A breakpoint cannot get this right — the date line grows with the
+           payment method, and the width the query measures is the card, which
+           the page can hand a different width than the window shows. Flex
+           wrapping needs no threshold and can never push the actions off the
+           card. `justify-between` keeps the actions on the right when they fit
+           and puts them at the left edge (fully visible) when they wrap. -->
+      <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <div class="flex min-w-0 flex-col gap-1">
           <h1 class="text-2xl font-semibold tracking-tight whitespace-nowrap">
             {workOrder.id}
           </h1>
@@ -474,7 +503,7 @@
                     >{prettifyIsoDateString(
                       datetimeIsoString,
                       "datetime",
-                    )}</span
+                    )}{paymentMethodSuffix}</span
                   >
                   <ChevronDownIcon
                     class="size-4 transition-transform group-aria-expanded/button:rotate-180"
@@ -483,21 +512,25 @@
               {/snippet}
             </Popover.Trigger>
             <Popover.Content class="p-4 w-fit">
-              <div class="flex flex-col gap-2">
+              <!-- Two real columns rather than a row per milestone with the
+                   value pushed to the right edge: the dates have different
+                   lengths, so right-aligning each row left every value starting
+                   at its own x. The value column is max-content too, which
+                   keeps the dates left-aligned on one vertical line while the
+                   popover still shrinks to its widest row. -->
+              <div
+                class="grid grid-cols-[max-content_max-content] gap-x-6 gap-y-2"
+              >
                 {#each timeline as entry (entry.label)}
-                  <div class="flex gap-2 justify-between">
-                    <p>{entry.label}:</p>
-                    <p>{entry.value}</p>
-                  </div>
+                  <p>{entry.label}:</p>
+                  <p>{entry.value}</p>
                 {/each}
               </div>
             </Popover.Content>
           </Popover.Root>
         </div>
 
-        <div class="hidden @min-[46rem]:block"></div>
-
-        <div class="flex flex-wrap items-center gap-2 @min-[46rem]:justify-end">
+        <div class="flex flex-wrap items-center gap-2">
           <StatusSelector
             {workOrder}
             partItems={workOrderDetails?.partItems ?? []}

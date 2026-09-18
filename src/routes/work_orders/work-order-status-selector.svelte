@@ -21,6 +21,7 @@
   import { cn } from "$lib/utils";
 
   import { partStatusStylesRecord } from "./[workorderId]/part-status";
+  import { paymentMethodLabels } from "./payment-method";
   import {
     createUpdatePartItemMutation,
     createUpdateWorkOrderMutation,
@@ -124,13 +125,6 @@
         value: prettifyIsoDateString(value as string, "datetime"),
       }));
   });
-
-  const paymentMethodLabels: Record<PaymentMethod, string> = {
-    Cash: "Готівка",
-    Card: "Картка",
-    BankTransfer: "Безготівковий (рахунок)",
-    CardTransfer: "Переказ на картку",
-  };
 
   async function handleSave() {
     if (!canSave || workOrder === undefined) return;
