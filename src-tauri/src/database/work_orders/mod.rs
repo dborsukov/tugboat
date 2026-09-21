@@ -164,7 +164,8 @@ async fn fetch_labor_items_by_work_order_ids(
             labor_hours,
             discount_type,
             discount_value,
-            is_free
+            is_free,
+            position
         FROM labor_items
         WHERE work_order_id IN ("#,
     );
@@ -172,7 +173,7 @@ async fn fetch_labor_items_by_work_order_ids(
     for id in work_order_ids {
         separated.push_bind(*id);
     }
-    qb.push(")");
+    qb.push(") ORDER BY work_order_id, position, id");
 
     let items: Vec<LaborItem> = qb.build_query_as().fetch_all(&state.db_pool).await?;
 
@@ -208,7 +209,8 @@ async fn fetch_part_items_by_work_order_ids(
             markup,
             discount_type,
             discount_value,
-            is_free
+            is_free,
+            position
         FROM part_items
         WHERE work_order_id IN ("#,
     );
@@ -216,7 +218,7 @@ async fn fetch_part_items_by_work_order_ids(
     for id in work_order_ids {
         separated.push_bind(*id);
     }
-    qb.push(")");
+    qb.push(") ORDER BY work_order_id, position, id");
 
     let items: Vec<PartItem> = qb.build_query_as().fetch_all(&state.db_pool).await?;
 
@@ -1158,7 +1160,8 @@ pub async fn fetch_labor_items_list(
             labor_hours,
             discount_type,
             discount_value,
-            is_free
+            is_free,
+            position
         FROM labor_items
         "#,
     )
@@ -1186,7 +1189,8 @@ pub async fn fetch_labor_item_by_id(
             labor_hours,
             discount_type,
             discount_value,
-            is_free
+            is_free,
+            position
         FROM labor_items
         WHERE id = $1
         "#,
@@ -1219,9 +1223,15 @@ pub async fn create_labor_item(
             labor_hours,
             discount_type,
             discount_value,
-            is_free
+            is_free,
+            position
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+            (SELECT COALESCE(MAX(position), -1) + 1
+             FROM labor_items
+             WHERE work_order_id = $2)
+        )
         RETURNING
             id,
             service_id,
@@ -1233,7 +1243,8 @@ pub async fn create_labor_item(
             labor_hours,
             discount_type,
             discount_value,
-            is_free
+            is_free,
+            position
         "#,
     )
     .bind(payload.service_id)
@@ -1288,7 +1299,8 @@ pub async fn update_labor_item(
             labor_hours,
             discount_type,
             discount_value,
-            is_free
+            is_free,
+            position
         "#,
     )
     .bind(id)
@@ -1367,7 +1379,8 @@ pub async fn fetch_part_items_list(state: State<'_, crate::AppState>) -> AppResu
             markup,
             discount_type,
             discount_value,
-            is_free
+            is_free,
+            position
         FROM part_items
         "#,
     )
@@ -1396,7 +1409,8 @@ pub async fn fetch_part_item_by_id(
             markup,
             discount_type,
             discount_value,
-            is_free
+            is_free,
+            position
         FROM part_items
         WHERE id = $1
         "#,
@@ -1430,9 +1444,15 @@ pub async fn create_part_item(
             markup,
             discount_type,
             discount_value,
-            is_free
+            is_free,
+            position
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
+            (SELECT COALESCE(MAX(position), -1) + 1
+             FROM part_items
+             WHERE work_order_id = $1)
+        )
         RETURNING
             id,
             work_order_id,
@@ -1445,7 +1465,8 @@ pub async fn create_part_item(
             markup,
             discount_type,
             discount_value,
-            is_free
+            is_free,
+            position
         "#,
     )
     .bind(payload.work_order_id)
@@ -1503,7 +1524,8 @@ pub async fn update_part_item(
             markup,
             discount_type,
             discount_value,
-            is_free
+            is_free,
+            position
         "#,
     )
     .bind(id)
@@ -1612,6 +1634,8 @@ pub async fn preview_labor_item(
         discount_type: payload.discount_type,
         discount_value: payload.discount_value,
         is_free: payload.is_free,
+        // Quotes never touch the database, so the order is irrelevant here.
+        position: 0,
     };
 
     let totals = pricing::calculate_labor_item_totals(
@@ -1685,6 +1709,8 @@ pub async fn preview_part_item(
         discount_type: payload.discount_type,
         discount_value: payload.discount_value,
         is_free: payload.is_free,
+        // Quotes never touch the database, so the order is irrelevant here.
+        position: 0,
     };
 
     let totals = pricing::calculate_part_item_totals(
@@ -1953,4 +1979,69 @@ pub async fn update_part_items_discount(
     }
     tx.commit().await?;
     Ok(())
+}
+
+/// Rewrites the item order of one work order. The submitted list has to be a
+/// permutation of the items the work order currently has, so a client that went
+/// stale (a row was added or deleted meanwhile) is rejected instead of silently
+/// reshuffling whatever still exists.
+async fn reorder_items(
+    state: &State<'_, crate::AppState>,
+    table: ItemTable,
+    work_order_id: &str,
+    ordered_ids: &[i32],
+) -> AppResult<()> {
+    let table_name = table.table_name();
+    let mut tx = begin_immediate(&state.db_pool).await?;
+
+    ensure_work_order_active(&mut *tx, work_order_id).await?;
+
+    let mut current: Vec<i32> = sqlx::query_scalar(&format!(
+        "SELECT id FROM {table_name} WHERE work_order_id = $1"
+    ))
+    .bind(work_order_id)
+    .fetch_all(&mut *tx)
+    .await?;
+
+    let mut submitted = ordered_ids.to_vec();
+    current.sort_unstable();
+    submitted.sort_unstable();
+    if current != submitted {
+        return Err(AppError::validation(
+            "Порядок позицій застарів. Оновіть сторінку та спробуйте ще раз.",
+        ));
+    }
+
+    for (index, id) in ordered_ids.iter().enumerate() {
+        sqlx::query(&format!(
+            "UPDATE {table_name} SET position = $2 WHERE id = $1"
+        ))
+        .bind(id)
+        .bind(index as i32)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn reorder_labor_items(
+    state: State<'_, crate::AppState>,
+    work_order_id: String,
+    ordered_ids: Vec<i32>,
+) -> AppResult<()> {
+    reorder_items(&state, ItemTable::Labor, &work_order_id, &ordered_ids).await
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn reorder_part_items(
+    state: State<'_, crate::AppState>,
+    work_order_id: String,
+    ordered_ids: Vec<i32>,
+) -> AppResult<()> {
+    reorder_items(&state, ItemTable::Part, &work_order_id, &ordered_ids).await
 }

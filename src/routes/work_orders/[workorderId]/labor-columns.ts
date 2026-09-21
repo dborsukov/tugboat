@@ -5,6 +5,7 @@ import { renderComponent, renderSnippet } from "$lib/components/ui/data-table";
 
 import CurrencyDisplay from "$lib/components/currency-display.svelte";
 import DataTableOptionalCell from "$lib/components/data-table-optional-cell.svelte";
+import DataTableDragHandleCell from "$lib/components/data-table/data-table-drag-handle-cell.svelte";
 import DataTableSelectCheckbox from "$lib/components/data-table/data-table-select-checkbox.svelte";
 
 import type { LaborItemDto } from "$lib/bindings";
@@ -17,9 +18,20 @@ import TableDiscountedWarningCell from "./table-discounted-warning-cell.svelte";
 export interface LaborTableMeta {
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
+  onMoveUp: (id: number) => void;
+  onMoveDown: (id: number) => void;
 }
 
 export const columns: ColumnDef<LaborItemDto>[] = [
+  {
+    id: "drag",
+    header: "",
+    cell: ({ row }) => {
+      return renderComponent(DataTableDragHandleCell, {
+        label: row.original.name,
+      });
+    },
+  },
   {
     id: "select",
     header: ({ table }) => {
@@ -182,6 +194,10 @@ export const columns: ColumnDef<LaborItemDto>[] = [
         id: row.original.id,
         onEdit: (id: number) => meta?.onEdit?.(id),
         onDelete: (id: number) => meta?.onDelete?.(id),
+        onMoveUp: (id: number) => meta?.onMoveUp?.(id),
+        onMoveDown: (id: number) => meta?.onMoveDown?.(id),
+        canMoveUp: row.index > 0,
+        canMoveDown: row.index < table.getRowModel().rows.length - 1,
       });
     },
   },

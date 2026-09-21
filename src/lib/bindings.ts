@@ -73,6 +73,7 @@ export const commands = {
 	createLaborItem: (payload: CreateLaborItemPayload) => typedError<LaborItem, AppError>(__TAURI_INVOKE("create_labor_item", { payload })),
 	updateLaborItem: (id: number, payload: UpdateLaborItemPayload) => typedError<LaborItem, AppError>(__TAURI_INVOKE("update_labor_item", { id, payload })),
 	updateLaborItemsDiscount: (ids: number[], discountType: DiscountType, discountValue: string) => typedError<null, AppError>(__TAURI_INVOKE("update_labor_items_discount", { ids, discountType, discountValue })),
+	reorderLaborItems: (workOrderId: string, orderedIds: number[]) => typedError<null, AppError>(__TAURI_INVOKE("reorder_labor_items", { workOrderId, orderedIds })),
 	deleteLaborItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_labor_item", { id })),
 	deleteLaborItems: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("delete_labor_items", { ids })),
 	fetchPartItemById: (id: number) => typedError<PartItem, AppError>(__TAURI_INVOKE("fetch_part_item_by_id", { id })),
@@ -81,6 +82,7 @@ export const commands = {
 	updatePartItem: (id: number, payload: UpdatePartItemPayload) => typedError<PartItem, AppError>(__TAURI_INVOKE("update_part_item", { id, payload })),
 	updatePartItemsStatus: (ids: number[], status: PartStatus) => typedError<null, AppError>(__TAURI_INVOKE("update_part_items_status", { ids, status })),
 	updatePartItemsDiscount: (ids: number[], discountType: DiscountType, discountValue: string) => typedError<null, AppError>(__TAURI_INVOKE("update_part_items_discount", { ids, discountType, discountValue })),
+	reorderPartItems: (workOrderId: string, orderedIds: number[]) => typedError<null, AppError>(__TAURI_INVOKE("reorder_part_items", { workOrderId, orderedIds })),
 	deletePartItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_part_item", { id })),
 	deletePartItems: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("delete_part_items", { ids })),
 	previewLaborItem: (payload: PreviewLaborItemPayload) => typedError<PreviewLaborItemQuote, AppError>(__TAURI_INVOKE("preview_labor_item", { payload })),
@@ -410,6 +412,7 @@ export type LaborItem = {
 	discountType: DiscountType,
 	discountValue: string,
 	isFree: boolean,
+	position: number,
 };
 
 export type LaborItemDto = {
@@ -445,6 +448,7 @@ export type PartItem = {
 	discountType: DiscountType,
 	discountValue: string,
 	isFree: boolean,
+	position: number,
 };
 
 export type PartItemDto = {

@@ -325,6 +325,28 @@ export function createUpdateLaborItemsDiscountMutation(
   );
 }
 
+export function createReorderLaborItemsMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (variables: { workOrderId: string; orderedIds: number[] }) =>
+        unwrap(
+          commands.reorderLaborItems(
+            variables.workOrderId,
+            variables.orderedIds,
+          ),
+        ),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: (error) => {
+        showMutationErrorToast(error);
+        invalidateWorkOrderLists(queryClient);
+      },
+    }),
+    () => queryClient,
+  );
+}
+
 export function partItemByIdQueryOptions(id: number | null) {
   return {
     enabled: id != null,
@@ -437,6 +459,28 @@ export function createUpdatePartItemsDiscountMutation(
         invalidateWorkOrderLists(queryClient);
       },
       onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createReorderPartItemsMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (variables: { workOrderId: string; orderedIds: number[] }) =>
+        unwrap(
+          commands.reorderPartItems(
+            variables.workOrderId,
+            variables.orderedIds,
+          ),
+        ),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: (error) => {
+        showMutationErrorToast(error);
+        invalidateWorkOrderLists(queryClient);
+      },
     }),
     () => queryClient,
   );

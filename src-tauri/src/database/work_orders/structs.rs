@@ -221,6 +221,7 @@ pub struct LaborItem {
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
     pub is_free: bool,
+    pub position: i32,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for LaborItem {
@@ -237,6 +238,7 @@ impl<'r> FromRow<'r, SqliteRow> for LaborItem {
             discount_type: row.try_get("discount_type")?,
             discount_value: decimal_column(row, "discount_value")?,
             is_free: row.try_get("is_free")?,
+            position: row.try_get("position")?,
         })
     }
 }
@@ -288,6 +290,7 @@ pub struct PartItem {
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
     pub is_free: bool,
+    pub position: i32,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for PartItem {
@@ -305,6 +308,7 @@ impl<'r> FromRow<'r, SqliteRow> for PartItem {
             discount_type: row.try_get("discount_type")?,
             discount_value: decimal_column(row, "discount_value")?,
             is_free: row.try_get("is_free")?,
+            position: row.try_get("position")?,
         })
     }
 }

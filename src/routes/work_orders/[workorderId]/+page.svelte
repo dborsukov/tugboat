@@ -14,6 +14,7 @@
 
   import CurrencyDisplay from "$lib/components/currency-display.svelte";
   import DataTableBulkActions from "$lib/components/data-table/data-table-bulk-actions.svelte";
+  import type { RowReorderOptions } from "$lib/components/data-table/data-table-reorder";
   import DataTable from "$lib/components/data-table/data-table.svelte";
   import { buildTable } from "$lib/components/data-table/table-builder.svelte";
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
@@ -29,9 +30,11 @@
     PartItemDto,
     PartStatus,
     Service,
+    WorkOrderDetailsDto,
     WorkOrderStatus,
   } from "$lib/bindings";
   import { commands } from "$lib/bindings";
+  import { keys } from "$lib/query-keys";
   import { privacyState } from "$lib/states/privacy.svelte";
   import { TableActionState } from "$lib/states/table-actions.svelte";
   import { pluralizeUk, unwrap } from "$lib/tools";
@@ -44,6 +47,8 @@
     createDeleteLaborItemsMutation,
     createDeletePartItemMutation,
     createDeletePartItemsMutation,
+    createReorderLaborItemsMutation,
+    createReorderPartItemsMutation,
     createUpdateLaborItemsDiscountMutation,
     createUpdatePartItemsDiscountMutation,
     createUpdatePartItemsStatusMutation,
@@ -53,6 +58,7 @@
   import BulkDiscountMenuItem from "./bulk-discount-menu-item.svelte";
   import DocumentGenerateDialog from "./document-generate-dialog.svelte";
   import DocumentsSection from "./documents-section.svelte";
+  import { applyItemOrder, isSameOrder, moveItemById } from "./item-order";
   import {
     columns as laborColumns,
     type LaborTableMeta,
@@ -91,6 +97,9 @@
     createUpdateLaborItemsDiscountMutation(queryClient);
   const updatePartItemsDiscountMutation =
     createUpdatePartItemsDiscountMutation(queryClient);
+  const reorderLaborItemsMutation =
+    createReorderLaborItemsMutation(queryClient);
+  const reorderPartItemsMutation = createReorderPartItemsMutation(queryClient);
 
   const combinedQueries = createQueries(() => ({
     queries: [
@@ -185,7 +194,9 @@
     },
     get columns() {
       const columns = isReadOnly
-        ? partsColumns.filter((c) => c.id !== "actions" && c.id !== "select")
+        ? partsColumns.filter(
+            (c) => c.id !== "actions" && c.id !== "select" && c.id !== "drag",
+          )
         : partsColumns;
       if (privacyState.hidePricing) {
         return columns.filter((c) => {
@@ -199,6 +210,8 @@
       return {
         onEdit: partsTableActions.openEdit,
         onDelete: partsTableActions.openDelete,
+        onMoveUp: (id: number) => movePartItem(id, -1),
+        onMoveDown: (id: number) => movePartItem(id, 1),
       } satisfies PartsTableMeta;
     },
     getRowId: (row) => String(row.id),
@@ -213,13 +226,17 @@
     },
     get columns() {
       return isReadOnly
-        ? laborColumns.filter((c) => c.id !== "actions" && c.id !== "select")
+        ? laborColumns.filter(
+            (c) => c.id !== "actions" && c.id !== "select" && c.id !== "drag",
+          )
         : laborColumns;
     },
     get meta() {
       return {
         onEdit: laborTableActions.openEdit,
         onDelete: laborTableActions.openDelete,
+        onMoveUp: (id: number) => moveLaborItem(id, -1),
+        onMoveDown: (id: number) => moveLaborItem(id, 1),
       } satisfies LaborTableMeta;
     },
     getRowId: (row) => String(row.id),
@@ -234,6 +251,130 @@
 
   const selectedPartIds = $derived(
     partsTable.getFilteredSelectedRowModel().rows.map((row) => row.original.id),
+  );
+
+  // ---------------------------------------------------------------------------
+  // Item order
+  // ---------------------------------------------------------------------------
+
+  const ORDER_TRANSITION_MS = 180;
+
+  const laborItemIds = $derived(
+    (workOrderDetails?.laborItems ?? []).map((item) => item.id),
+  );
+  const partItemIds = $derived(
+    (workOrderDetails?.partItems ?? []).map((item) => item.id),
+  );
+
+  let laborDragStartOrder: number[] | null = null;
+  let partDragStartOrder: number[] | null = null;
+
+  function setLaborItemsOrder(orderedIds: number[]) {
+    queryClient.setQueryData<WorkOrderDetailsDto>(
+      keys.workOrders.detail(params.workorderId),
+      (current) =>
+        current
+          ? {
+              ...current,
+              laborItems: applyItemOrder(current.laborItems, orderedIds),
+            }
+          : current,
+    );
+  }
+
+  function setPartItemsOrder(orderedIds: number[]) {
+    queryClient.setQueryData<WorkOrderDetailsDto>(
+      keys.workOrders.detail(params.workorderId),
+      (current) =>
+        current
+          ? {
+              ...current,
+              partItems: applyItemOrder(current.partItems, orderedIds),
+            }
+          : current,
+    );
+  }
+
+  function persistLaborOrder(orderedIds: number[]) {
+    reorderLaborItemsMutation.mutate({
+      workOrderId: params.workorderId,
+      orderedIds,
+    });
+  }
+
+  function persistPartOrder(orderedIds: number[]) {
+    reorderPartItemsMutation.mutate({
+      workOrderId: params.workorderId,
+      orderedIds,
+    });
+  }
+
+  function moveLaborItem(id: number, delta: number) {
+    const items = workOrderDetails?.laborItems ?? [];
+    const next = moveItemById(items, id, delta);
+    if (next === items) return;
+    const orderedIds = next.map((item) => item.id);
+    setLaborItemsOrder(orderedIds);
+    persistLaborOrder(orderedIds);
+  }
+
+  function movePartItem(id: number, delta: number) {
+    const items = workOrderDetails?.partItems ?? [];
+    const next = moveItemById(items, id, delta);
+    if (next === items) return;
+    const orderedIds = next.map((item) => item.id);
+    setPartItemsOrder(orderedIds);
+    persistPartOrder(orderedIds);
+  }
+
+  const toItemIds = (rowIds: string[]) => rowIds.map(Number);
+
+  const laborRowReorder = $derived(
+    isReadOnly
+      ? undefined
+      : ({
+          type: "work-order-labor-items",
+          transition: { duration: ORDER_TRANSITION_MS },
+          onStart: () => {
+            laborDragStartOrder = [...laborItemIds];
+          },
+          onMove: (rowIds: string[]) => setLaborItemsOrder(toItemIds(rowIds)),
+          onCommit: () => {
+            const startOrder = laborDragStartOrder;
+            laborDragStartOrder = null;
+            // Dropped where it started: the backend already has this order.
+            if (startOrder && isSameOrder(startOrder, laborItemIds)) return;
+            persistLaborOrder(laborItemIds);
+          },
+          onCancel: () => {
+            if (laborDragStartOrder) setLaborItemsOrder(laborDragStartOrder);
+            laborDragStartOrder = null;
+          },
+        } satisfies RowReorderOptions),
+  );
+
+  const partRowReorder = $derived(
+    isReadOnly
+      ? undefined
+      : ({
+          type: "work-order-part-items",
+          transition: { duration: ORDER_TRANSITION_MS },
+          onStart: () => {
+            partDragStartOrder = [...partItemIds];
+          },
+          onMove: (rowIds: string[]) => setPartItemsOrder(toItemIds(rowIds)),
+          onCommit: () => {
+            const startOrder = partDragStartOrder;
+            partDragStartOrder = null;
+            // Dropped where it started: the backend already has this order.
+            if (startOrder && isSameOrder(startOrder, partItemIds)) return;
+            persistPartOrder(partItemIds);
+          },
+          onCancel: () => {
+            if (partDragStartOrder) setPartItemsOrder(partDragStartOrder);
+            partDragStartOrder = null;
+          },
+        } satisfies RowReorderOptions),
   );
 
   async function createCreateLaborItemFromService(service: Service) {
@@ -610,8 +751,14 @@
           table={laborTable}
           emptyMessage="Сервісів не знайдено..."
           class="mt-4"
-          headerClasses={{ name: "w-full", select: "w-10 p-0" }}
+          rowReorder={laborRowReorder}
+          headerClasses={{
+            name: "w-full",
+            drag: "w-8 p-0",
+            select: "w-10 p-0",
+          }}
           cellClasses={{
+            drag: "p-0",
             actions: "p-0",
             discountedPrice: "p-0",
             sum: "p-0",
@@ -669,8 +816,14 @@
           table={partsTable}
           emptyMessage="Запчастин не знайдено..."
           class="mt-4"
-          headerClasses={{ name: "w-full", select: "w-10 p-0" }}
+          rowReorder={partRowReorder}
+          headerClasses={{
+            name: "w-full",
+            drag: "w-8 p-0",
+            select: "w-10 p-0",
+          }}
           cellClasses={{
+            drag: "p-0",
             status: "p-0",
             actions: "p-0",
             discountedPrice: "p-0",

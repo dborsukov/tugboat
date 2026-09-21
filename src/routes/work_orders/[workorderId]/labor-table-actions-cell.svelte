@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ArrowDownIcon from "@lucide/svelte/icons/arrow-down";
+  import ArrowUpIcon from "@lucide/svelte/icons/arrow-up";
   import EllipsisIcon from "@lucide/svelte/icons/ellipsis";
   import EditIcon from "@lucide/svelte/icons/square-pen";
   import TrashIcon from "@lucide/svelte/icons/trash";
@@ -10,10 +12,18 @@
     id,
     onEdit,
     onDelete,
+    onMoveUp,
+    onMoveDown,
+    canMoveUp = false,
+    canMoveDown = false,
   }: {
     id: number;
     onEdit: (id: number) => void;
     onDelete: (id: number) => void;
+    onMoveUp: (id: number) => void;
+    onMoveDown: (id: number) => void;
+    canMoveUp?: boolean;
+    canMoveDown?: boolean;
   } = $props();
 </script>
 
@@ -31,6 +41,17 @@
         <EditIcon />
         Редагувати
       </DropdownMenu.Item>
+      <DropdownMenu.Separator />
+      <DropdownMenu.Label>Перемістити</DropdownMenu.Label>
+      <DropdownMenu.Item disabled={!canMoveUp} onclick={() => onMoveUp(id)}>
+        <ArrowUpIcon />
+        Вгору
+      </DropdownMenu.Item>
+      <DropdownMenu.Item disabled={!canMoveDown} onclick={() => onMoveDown(id)}>
+        <ArrowDownIcon />
+        Вниз
+      </DropdownMenu.Item>
+      <DropdownMenu.Separator />
       <DropdownMenu.Item variant="destructive" onclick={() => onDelete(id)}>
         <TrashIcon />
         Видалити
