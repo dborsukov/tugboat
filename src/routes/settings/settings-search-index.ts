@@ -96,6 +96,14 @@ export const settingsSearchIndex: SettingsSearchItem[] = [
     hint: "Замовлення",
   },
   {
+    id: "settings-car-brands-entry",
+    route: "/settings/cars",
+    label: "Марки автомобілів",
+    keywords:
+      "марка марки автомобіль авто бренд brand виробник власна марка довідник",
+    hint: "Автомобілі",
+  },
+  {
     id: "settings-vin-templates-entry",
     route: "/settings/cars",
     label: "Шаблони пошуку VIN-кодів",

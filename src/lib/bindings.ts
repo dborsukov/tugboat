@@ -16,6 +16,13 @@ export const commands = {
 	restoreCar: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("restore_car", { id })),
 	fetchCarDeleteImpact: (id: number) => typedError<CarDeleteImpact, AppError>(__TAURI_INVOKE("fetch_car_delete_impact", { id })),
 	fetchCarBrands: () => typedError<CarBrand[], AppError>(__TAURI_INVOKE("fetch_car_brands")),
+	fetchCustomCarBrands: () => typedError<CarBrand[], AppError>(__TAURI_INVOKE("fetch_custom_car_brands")),
+	createCarBrand: (name: string) => typedError<CarBrand, AppError>(__TAURI_INVOKE("create_car_brand", { name })),
+	updateCarBrand: (id: number, name: string) => typedError<CarBrand, AppError>(__TAURI_INVOKE("update_car_brand", { id, name })),
+	archiveCarBrand: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("archive_car_brand", { id })),
+	restoreCarBrand: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("restore_car_brand", { id })),
+	/**  Curated catalog list first, in catalog order, then custom names in the database. */
+	fetchCarModels: (brandId: number) => typedError<string[], AppError>(__TAURI_INVOKE("fetch_car_models", { brandId })),
 	fetchClientsCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_clients_count")),
 	fetchClientsList: () => typedError<ClientListItem[], AppError>(__TAURI_INVOKE("fetch_clients_list")),
 	fetchClientDetailsDto: (id: number) => typedError<ClientDetailsDto, AppError>(__TAURI_INVOKE("fetch_client_details_dto", { id })),
@@ -161,8 +168,11 @@ export type Car = {
 
 export type CarBrand = {
 	id: number,
+	slug: string,
 	name: string,
 	iconSlug: string,
+	isCustom: boolean,
+	archivedAt: string | null,
 };
 
 export type CarDeleteImpact = {

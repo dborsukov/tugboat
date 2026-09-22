@@ -167,7 +167,7 @@ export function createRestoreCarMutation(queryClient: QueryClient) {
 
 export function carBrandsQueryOptions() {
   return {
-    queryKey: keys.carBrand,
+    queryKey: keys.carBrand.list(),
     queryFn: () => unwrap(commands.fetchCarBrands()),
   };
 }
@@ -176,6 +176,99 @@ export function createCarBrandsQuery() {
   return createQuery<CarBrand[]>(() => carBrandsQueryOptions());
 }
 
+export function customCarBrandsQueryOptions() {
+  return {
+    queryKey: keys.carBrand.custom(),
+    queryFn: () => unwrap(commands.fetchCustomCarBrands()),
+  };
+}
+
+export function createCustomCarBrandsQuery() {
+  return createQuery<CarBrand[]>(() => customCarBrandsQueryOptions());
+}
+
+export function carModelsQueryOptions(brandId: number) {
+  return {
+    enabled: brandId > 0,
+    queryKey: keys.carModel.list(brandId),
+    queryFn: () => unwrap(commands.fetchCarModels(brandId)),
+  };
+}
+
+export function createCarModelsQuery(getBrandId: () => number) {
+  return createQuery<string[]>(() => carModelsQueryOptions(getBrandId()));
+}
+
+export function createCreateCarBrandMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: async (name: string) => unwrap(commands.createCarBrand(name)),
+      onSuccess: (brand) => {
+        invalidateCarBrands(queryClient);
+        toast.success(`Марку «${brand.name}» додано`, {
+          position: "bottom-left",
+        });
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createUpdateCarBrandMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: async (variables: { id: number; name: string }) =>
+        unwrap(commands.updateCarBrand(variables.id, variables.name)),
+      onSuccess: () => {
+        invalidateCarBrands(queryClient);
+        toast.success("Марку перейменовано", { position: "bottom-left" });
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createArchiveCarBrandMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (id: number) => unwrap(commands.archiveCarBrand(id)),
+      onSuccess: () => {
+        invalidateCarBrands(queryClient);
+        toast.success("Марку архівовано", { position: "bottom-left" });
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createRestoreCarBrandMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (id: number) => unwrap(commands.restoreCarBrand(id)),
+      onSuccess: () => {
+        invalidateCarBrands(queryClient);
+        toast.success("Марку відновлено", { position: "bottom-left" });
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function invalidateCarBrands(queryClient: QueryClient) {
+  queryClient.invalidateQueries({ queryKey: keys.carBrand.all });
+  queryClient.invalidateQueries({ queryKey: keys.cars.all });
+  queryClient.invalidateQueries({ queryKey: keys.carModel.all });
+  // Client details carry their cars, and those carry the brand name.
+  queryClient.invalidateQueries({ queryKey: keys.clients.all });
+  queryClient.invalidateQueries({ queryKey: keys.workOrders.all });
+}
+
 export function invalidateCars(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: keys.cars.all });
+  // Model suggestions are the names already used on cars, so they move with them.
+  queryClient.invalidateQueries({ queryKey: keys.carModel.all });
 }

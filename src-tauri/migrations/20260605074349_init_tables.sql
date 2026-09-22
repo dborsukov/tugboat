@@ -40,17 +40,15 @@ CREATE TABLE client_details (
 );
 
 CREATE TABLE car_brands (
-    id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL UNIQUE,
-    icon_slug TEXT NOT NULL
-);
-
-CREATE TABLE car_model_suggestions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    brand_id INTEGER NOT NULL,
-    model_name TEXT NOT NULL,
-    FOREIGN KEY (brand_id) REFERENCES car_brands (id) ON DELETE CASCADE,
-    UNIQUE (brand_id, model_name)
+    -- unique natural key all brands are matched on
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    -- trimmed lowercase name for duplicate detection
+    name_key TEXT NOT NULL UNIQUE,
+    icon_slug TEXT NOT NULL DEFAULT '',
+    is_custom INTEGER NOT NULL DEFAULT 0,
+    archived_at TEXT
 );
 
 CREATE TABLE cars (
@@ -217,6 +215,8 @@ VALUES
 CREATE INDEX idx_cars_client_id ON cars (client_id);
 
 CREATE INDEX idx_cars_brand_id ON cars (brand_id);
+
+CREATE INDEX idx_car_brands_archived_at ON car_brands (archived_at);
 
 CREATE UNIQUE INDEX idx_clients_phone_active ON clients (phone)
 WHERE

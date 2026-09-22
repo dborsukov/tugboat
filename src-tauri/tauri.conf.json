@@ -10,7 +10,8 @@
         "decorations": false,
         "shadow": true,
         "backgroundColor": "#fbfaf7",
-        "visible": false
+        "visible": false,
+        "create": false
       },
       {
         "label": "splashscreen",

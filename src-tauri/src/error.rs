@@ -51,6 +51,10 @@ impl AppError {
         Self::Generic("Автомобіль архівований. Спочатку відновіть його з архіву.".to_string())
     }
 
+    pub(crate) fn brand_not_found() -> Self {
+        Self::NotFound("Марку автомобіля з таким ID не знайдено в базі даних".to_string())
+    }
+
     pub(crate) fn service_not_found() -> Self {
         Self::NotFound("Сервіса з таким ID не знайдено в базі даних".to_string())
     }

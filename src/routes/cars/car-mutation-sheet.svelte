@@ -17,6 +17,7 @@
   import ComboSelect from "$lib/components/combo-select.svelte";
   import MutationSheetSectionTitle from "$lib/components/mutation-sheet-section-title.svelte";
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
+  import SuggestInput from "$lib/components/suggest-input.svelte";
 
   import type { DriveType, FuelType } from "$lib/bindings";
   import { cn } from "$lib/utils";
@@ -27,6 +28,8 @@
   import {
     carBrandsQueryOptions,
     carsListQueryOptions,
+    createCarModelsQuery,
+    createCreateCarBrandMutation,
     createCreateCarMutation,
     createUpdateCarMutation,
   } from "./queries";
@@ -48,6 +51,7 @@
 
   const createCarMutation = createCreateCarMutation(queryClient);
   const updateCarMutation = createUpdateCarMutation(queryClient);
+  const createCarBrandMutation = createCreateCarBrandMutation(queryClient);
 
   const combinedQueries = createQueries(() => ({
     queries: [
@@ -105,7 +109,7 @@
 
     brandId: z
       .number({ error: "Обов'язкове поле" })
-      .min(0, { error: "Обов'язкове поле" })
+      .positive({ error: "Обов'язкове поле" })
       .default(-1),
 
     model: z.string().min(1, { error: "Обов'язкове поле" }),
@@ -254,6 +258,17 @@
 
   const { form: formData, enhance, submitting } = form;
 
+  const carModelsQuery = createCarModelsQuery(() => $formData.brandId);
+
+  async function handleCreateBrand(name: string) {
+    const brand = await createCarBrandMutation
+      .mutateAsync(name)
+      .catch(() => null);
+
+    if (!brand) return;
+    $formData.brandId = brand.id;
+  }
+
   const licensePlateLooksNonStandard = $derived(
     $formData.licensePlate != null &&
       $formData.licensePlate.length > 0 &&
@@ -359,6 +374,8 @@
           searchPlaceholder="Пошук марки..."
           emptyText="Марку не знайдено."
           contentClass="w-48 p-0"
+          onCreate={handleCreateBrand}
+          creating={createCarBrandMutation.isPending}
           {formProps}
         />
       {/snippet}
@@ -370,7 +387,12 @@
     <Form.Control>
       {#snippet children({ props })}
         <Label>Модель {@render requiredHint()}</Label>
-        <Input {...props} bind:value={$formData.model} />
+        <SuggestInput
+          {...props}
+          items={carModelsQuery.data ?? []}
+          bind:value={$formData.model}
+          placeholder="напр. Camry"
+        />
       {/snippet}
     </Form.Control>
     <Form.FieldErrors />

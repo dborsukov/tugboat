@@ -9,12 +9,19 @@
 
   import { pluralizeUk } from "$lib/tools";
 
+  import { createCustomCarBrandsQuery } from "../../cars/queries";
   import {
     getSettingsContext,
     SETTINGS_CONTENT_WIDTH_CLASS,
   } from "../settings-context";
 
   const { draft } = getSettingsContext();
+
+  // ---------- Custom car brands (managed on a separate page) ----------
+
+  const customBrandsQuery = createCustomCarBrandsQuery();
+
+  const customBrandsCount = $derived(customBrandsQuery.data?.length ?? 0);
 
   // ---------- VIN lookup templates (managed on a separate page) ----------
 
@@ -29,6 +36,36 @@
 
 <PageLayout contentWidthClass={SETTINGS_CONTENT_WIDTH_CLASS}>
   <div class="mt-4 border border-border rounded bg-card">
+    <Item.Root
+      id="settings-car-brands-entry"
+      role="button"
+      tabindex={0}
+      class="hover:cursor-pointer hover:bg-muted/40 focus-visible:bg-muted/40"
+      onclick={() => goto("/settings/cars/car-brands")}
+      onkeydown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          goto("/settings/cars/car-brands");
+        }
+      }}
+    >
+      <Item.Content>
+        <Item.Title>Марки автомобілів</Item.Title>
+        <Item.Description
+          >Додайте власні марки яких бракує у вбудованому довіднику</Item.Description
+        >
+      </Item.Content>
+      <Item.Actions>
+        <div class="flex items-center gap-3">
+          <p class="text-sm text-muted-foreground whitespace-nowrap">
+            {customBrandsCount}
+            {pluralizeUk(customBrandsCount, ["марка", "марки", "марок"])}
+          </p>
+          <ChevronRightIcon class="size-4 shrink-0 text-muted-foreground" />
+        </div>
+      </Item.Actions>
+    </Item.Root>
+
     <Item.Root
       id="settings-vin-templates-entry"
       role="button"

@@ -18,7 +18,15 @@ export const keys = {
     deleteImpact: (id: number) =>
       [...keys.cars.all, "delete-impact", id] as const,
   },
-  carBrand: ["carBrand"] as const,
+  carBrand: {
+    all: ["carBrand"] as const,
+    list: () => [...keys.carBrand.all, "list"] as const,
+    custom: () => [...keys.carBrand.all, "custom"] as const,
+  },
+  carModel: {
+    all: ["carModel"] as const,
+    list: (brandId: number) => [...keys.carModel.all, "list", brandId] as const,
+  },
   workOrders: {
     all: ["work-orders"] as const,
     list: () => [...keys.workOrders.all, "list"] as const,

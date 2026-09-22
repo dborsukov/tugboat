@@ -26,6 +26,7 @@
   import PageLayout from "$lib/components/page-layout.svelte";
   import PhoneDisplay from "$lib/components/phone-display.svelte";
 
+  import { isUnknownBrand } from "$lib/brands";
   import { prettifyIsoDateString } from "$lib/tools";
 
   import CarMutationSheet from "../../cars/car-mutation-sheet.svelte";
@@ -465,12 +466,17 @@
                   onclick={async () => await goto(`/cars/${cli.car?.id}`)}
                 >
                   <div class="flex w-full items-center gap-1">
-                    <LogoLoader slug={cli.brand.iconSlug} class="size-5 mr-2" />
+                    <LogoLoader
+                      slug={cli.brand.iconSlug}
+                      name={cli.brand.name}
+                      class="size-5 mr-2"
+                    />
                     <p
                       class="truncate text-base font-medium text-left flex-1 min-w-0"
                     >
-                      {cli.brand?.id != 0 ? cli.brand?.name + " " : ""}{cli.car
-                        ?.model}
+                      {isUnknownBrand(cli.brand)
+                        ? ""
+                        : cli.brand?.name + " "}{cli.car?.model}
                     </p>
                     {#if cli.car?.archivedAt}
                       <ArchivedBadge date={cli.car.archivedAt} />

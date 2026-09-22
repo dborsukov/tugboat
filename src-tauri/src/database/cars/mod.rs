@@ -1,10 +1,12 @@
+pub mod brands;
 pub mod dtos;
+pub mod models;
 pub mod structs;
 
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, QueryBuilder, Sqlite};
+use sqlx::{Executor, Pool, QueryBuilder, Sqlite};
 use structs::*;
 use tauri::State;
 
@@ -90,22 +92,32 @@ pub async fn fetch_cars_list_by_client_id(
     build_car_dtos(state.clone(), cars).await
 }
 
-pub async fn build_car_dtos(
+pub(crate) async fn build_car_dtos(
     state: State<'_, crate::AppState>,
     cars: Vec<Car>,
 ) -> AppResult<Vec<CarDto>> {
-    let brands: Vec<CarBrand> = fetch_car_brands(state).await?;
+    build_car_dtos_with(&state.db_pool, cars).await
+}
+
+pub(crate) async fn build_car_dtos_with(
+    pool: &Pool<Sqlite>,
+    cars: Vec<Car>,
+) -> AppResult<Vec<CarDto>> {
+    let brands: Vec<CarBrand> = brands::fetch_all_brands(pool).await?;
 
     let brands_by_id: HashMap<i64, CarBrand> =
         brands.into_iter().map(|brand| (brand.id, brand)).collect();
 
+    let fallback = brands::unknown_brand(&brands_by_id);
+
     let car_dtos: Vec<CarDto> = cars
         .into_iter()
-        .filter_map(|car| {
-            brands_by_id
+        .map(|car| {
+            let brand = brands_by_id
                 .get(&car.brand_id)
                 .cloned()
-                .map(|brand| CarDto { car, brand })
+                .unwrap_or_else(|| fallback.clone());
+            CarDto { car, brand }
         })
         .collect();
 
@@ -182,48 +194,9 @@ pub async fn fetch_car_by_id(state: State<'_, crate::AppState>, id: i32) -> AppR
     .fetch_one(&state.db_pool)
     .await?;
 
-    let brand = fetch_car_brand_by_id(state, car.brand_id as i32).await?;
+    let brand = brands::fetch_brand_by_id(&state.db_pool, car.brand_id).await?;
 
     Ok(CarDto { car, brand })
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn fetch_car_brands(state: State<'_, crate::AppState>) -> AppResult<Vec<CarBrand>> {
-    let car_brands: Vec<CarBrand> = sqlx::query_as(
-        r#"
-        SELECT
-            id,
-            name,
-            icon_slug
-        FROM car_brands
-        "#,
-    )
-    .fetch_all(&state.db_pool)
-    .await?;
-    Ok(car_brands)
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn fetch_car_brand_by_id(
-    state: State<'_, crate::AppState>,
-    id: i32,
-) -> AppResult<CarBrand> {
-    let car_brand: CarBrand = sqlx::query_as(
-        r#"
-        SELECT
-            id,
-            name,
-            icon_slug
-        FROM car_brands
-        WHERE id = $1
-        "#,
-    )
-    .bind(id)
-    .fetch_one(&state.db_pool)
-    .await?;
-    Ok(car_brand)
 }
 
 pub(crate) async fn fetch_cars_by_ids(
@@ -268,15 +241,10 @@ pub(crate) async fn fetch_cars_by_ids(
         }
     }
 
-    let mut qb = QueryBuilder::new(
-        r#"
-        SELECT
-            id,
-            name,
-            icon_slug
-        FROM car_brands
-        WHERE id IN ("#,
-    );
+    let mut qb = QueryBuilder::new(format!(
+        "SELECT {} FROM car_brands WHERE id IN (",
+        brands::BRAND_COLUMNS
+    ));
     let mut separated = qb.separated(", ");
     for id in &brand_ids {
         separated.push_bind(id);
@@ -286,13 +254,16 @@ pub(crate) async fn fetch_cars_by_ids(
     let brands_by_id: HashMap<i64, CarBrand> =
         brands.into_iter().map(|brand| (brand.id, brand)).collect();
 
+    let fallback = brands::unknown_brand(&brands_by_id);
+
     Ok(cars
         .into_iter()
-        .filter_map(|car| {
-            brands_by_id
+        .map(|car| {
+            let brand = brands_by_id
                 .get(&car.brand_id)
                 .cloned()
-                .map(|brand| (car.id, CarDto { car, brand }))
+                .unwrap_or_else(|| fallback.clone());
+            (car.id, CarDto { car, brand })
         })
         .collect())
 }

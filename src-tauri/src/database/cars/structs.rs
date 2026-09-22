@@ -90,6 +90,9 @@ pub struct UpdateCarPayload {
 pub struct CarBrand {
     #[specta(type = specta_typescript::Number)]
     pub id: i64,
+    pub slug: String,
     pub name: String,
     pub icon_slug: String,
+    pub is_custom: bool,
+    pub archived_at: Option<DateTime<Utc>>,
 }

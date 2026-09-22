@@ -1,9 +1,18 @@
 <script lang="ts">
+  import { getAvatarColor, getInitials } from "$lib/avatar";
   import { cn } from "$lib/utils";
 
   import Spinner from "./ui/spinner/spinner.svelte";
 
-  let { slug, class: className }: { slug: string; class?: string } = $props();
+  let {
+    slug,
+    name = "",
+    class: className,
+  }: { slug: string; name?: string; class?: string } = $props();
+
+  const hasIcon = $derived(slug.trim().length > 0);
+  const initials = $derived(getInitials(name));
+  const colors = $derived(getAvatarColor(name));
 
   let imageSrc = $state("");
   let notFound = $state(false);
@@ -22,6 +31,11 @@
     isLoading = true;
     notFound = false;
     imageSrc = "";
+
+    if (!hasIcon) {
+      isLoading = false;
+      return;
+    }
 
     const targetSrc = `/car_brand_logos/${slug}.png`;
 
@@ -69,8 +83,20 @@
   });
 </script>
 
-<div class={cn("aspect-square overflow-hidden h-full", className)}>
-  {#if notFound}
+<div class={cn("aspect-square overflow-hidden h-full @container", className)}>
+  {#if !hasIcon}
+    <div
+      class={cn(
+        // Circle, matching the avatar primitive the client badges use.
+        "flex items-center justify-center w-full h-full rounded-full font-semibold select-none",
+        colors.bg,
+        colors.text,
+      )}
+      title={name}
+    >
+      <span class="text-[45cqw] leading-none">{initials}</span>
+    </div>
+  {:else if notFound}
     <div
       class="flex items-center justify-center w-full h-full text-xl font-bold"
     >
@@ -83,7 +109,7 @@
   {:else}
     <img
       src={imageSrc}
-      alt={slug}
+      alt={name || slug}
       class="logo-img max-w-full max-h-full object-contain! aspect-square"
     />
   {/if}

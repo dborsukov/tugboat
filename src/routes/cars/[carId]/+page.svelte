@@ -26,6 +26,7 @@
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
+  import { isUnknownBrand } from "$lib/brands";
   import { prettifyIsoDateString } from "$lib/tools";
 
   import { createClientsQuery, invalidateClients } from "../../clients/queries";
@@ -238,13 +239,17 @@
       <div class="p-4 border-b border-border">
         <div class="flex flex-row items-center gap-4">
           <div class="h-16">
-            <LogoLoader slug={carDetails?.carDto?.brand?.iconSlug} />
+            <LogoLoader
+              slug={carDetails?.carDto?.brand?.iconSlug ?? ""}
+              name={carDetails?.carDto?.brand?.name}
+            />
           </div>
           <div class="flex flex-col gap-1.5">
             <p class="text-xl font-semibold">
-              {carDetails.carDto?.brand?.id != 0
-                ? carDetails.carDto?.brand?.name + " "
-                : ""}{carDetails?.carDto?.car?.model}
+              {isUnknownBrand(carDetails?.carDto?.brand)
+                ? ""
+                : carDetails?.carDto?.brand?.name + " "}{carDetails?.carDto?.car
+                ?.model}
             </p>
             <div class="flex flex-row items-center">
               <UserIcon class="size-4 mr-2 text-muted-foreground" />

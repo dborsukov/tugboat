@@ -262,7 +262,8 @@
             >
               <div class="flex w-full items-center gap-3.5">
                 <CarLogoLoader
-                  slug={cli.carDto?.brand?.iconSlug}
+                  slug={cli.carDto?.brand?.iconSlug ?? ""}
+                  name={cli.carDto?.brand?.name}
                   class="h-12"
                 />
                 <div class="flex-1 min-w-0 text-left flex flex-col gap-0.5">

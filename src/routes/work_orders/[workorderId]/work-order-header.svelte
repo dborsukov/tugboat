@@ -591,7 +591,11 @@
           await goto(`/cars/${carDto?.car?.id}`);
         }}
       >
-        <CarLogoLoader slug={carDto?.brand?.iconSlug ?? ""} class="size-8" />
+        <CarLogoLoader
+          slug={carDto?.brand?.iconSlug ?? ""}
+          name={carDto?.brand?.name}
+          class="size-8"
+        />
         <span class="flex min-w-0 flex-col items-start">
           <span class="truncate text-sm font-medium">
             {carDto?.brand?.name}

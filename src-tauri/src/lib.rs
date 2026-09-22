@@ -4,7 +4,8 @@ use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
     Pool, Sqlite,
 };
-use tauri::Manager;
+use tauri::{AppHandle, Manager, WebviewWindowBuilder};
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 use tauri_specta::{collect_commands, Builder};
 
@@ -13,7 +14,7 @@ pub mod documents;
 pub mod error;
 pub mod utils;
 
-use crate::error::AppError;
+use crate::error::{AppError, AppResult};
 
 #[derive(Debug)]
 pub struct AppState {
@@ -35,7 +36,13 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         database::cars::archive_car,
         database::cars::restore_car,
         database::cars::fetch_car_delete_impact,
-        database::cars::fetch_car_brands,
+        database::cars::brands::fetch_car_brands,
+        database::cars::brands::fetch_custom_car_brands,
+        database::cars::brands::create_car_brand,
+        database::cars::brands::update_car_brand,
+        database::cars::brands::archive_car_brand,
+        database::cars::brands::restore_car_brand,
+        database::cars::models::fetch_car_models,
         database::clients::fetch_clients_count,
         database::clients::fetch_clients_list,
         database::clients::fetch_client_details_dto,
@@ -122,7 +129,6 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
 pub fn run() {
     let specta_builder = specta_builder();
 
-    // gen only in dev
     #[cfg(debug_assertions)]
     specta_builder
         .export(
@@ -138,57 +144,8 @@ pub fn run() {
         .setup(move |app| {
             specta_builder.mount_events(app);
 
-            // Safety net for the splash screen: the main window starts hidden
-            // and the frontend reveals it once the app is painted. If the
-            // frontend never signals readiness, force the
-            // reveal so the app can't stay stuck behind the splash.
-            {
-                let handle = app.handle().clone();
-                std::thread::spawn(move || {
-                    std::thread::sleep(Duration::from_secs(15));
-                    let handle_for_closure = handle.clone();
-                    let _ = handle.run_on_main_thread(move || {
-                        if let Some(splash) = handle_for_closure.get_webview_window("splashscreen")
-                        {
-                            let _ = splash.close();
-                        }
-                        if let Some(main) = handle_for_closure.get_webview_window("main") {
-                            let _ = main.show();
-                        }
-                    });
-                });
-            }
-
             let app_dir = app.path().app_data_dir().unwrap();
             fs::create_dir_all(&app_dir).unwrap();
-
-            let db_path = app_dir.join("main.db");
-            let options = SqliteConnectOptions::new()
-                .filename(db_path)
-                .create_if_missing(true)
-                .journal_mode(SqliteJournalMode::Wal)
-                .synchronous(SqliteSynchronous::Normal)
-                .foreign_keys(true)
-                .busy_timeout(Duration::from_secs(5));
-            let db_pool = tauri::async_runtime::block_on(async {
-                let pool = SqlitePoolOptions::new()
-                    .max_connections(5)
-                    .acquire_timeout(Duration::from_secs(5))
-                    .connect_with(options)
-                    .await
-                    .map_err(|e| {
-                        AppError::Migration(format!("Не вдалося підключитися до бази даних: {e}"))
-                    })?;
-                sqlx::migrate!("./migrations")
-                    .run(&pool)
-                    .await
-                    .map_err(|e| {
-                        AppError::Migration(format!(
-                            "Не вдалося застосувати міграції бази даних: {e}"
-                        ))
-                    })?;
-                Ok::<_, AppError>(pool)
-            })?;
 
             let log_level = if cfg!(debug_assertions) {
                 log::LevelFilter::Debug
@@ -208,22 +165,103 @@ pub fn run() {
                     .build(),
             )?;
 
-            app.manage(AppState {
-                data_dir: app_dir,
-                db_pool,
-                version: env!("CARGO_PKG_VERSION"),
+            // Nothing slow may run on this thread. The splash screen window
+            // already exists at this point, but it can only paint once setup returns.
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(error) = start(&handle, app_dir).await {
+                    log::error!("Не вдалося запустити застосунок: {error}");
+                    handle
+                        .dialog()
+                        .message(error.to_string())
+                        .title("Папай CRM — помилка запуску")
+                        .blocking_show();
+                    handle.exit(1);
+                }
             });
 
-            // Make sure the documents folder (configured or default) exists.
-            {
-                let appstate = app.state::<AppState>();
-                let _ = tauri::async_runtime::block_on(documents::resolve_documents_dir(&appstate));
-            }
-
-            let appstate = app.state::<AppState>();
-            print!("{:#?}", appstate);
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// Runs slow startup code while splashscreen is shown, then opens the main window.
+async fn start(handle: &AppHandle, app_dir: PathBuf) -> AppResult<()> {
+    let db_path = app_dir.join("main.db");
+    let options = SqliteConnectOptions::new()
+        .filename(db_path)
+        .create_if_missing(true)
+        .journal_mode(SqliteJournalMode::Wal)
+        .synchronous(SqliteSynchronous::Normal)
+        .foreign_keys(true)
+        .busy_timeout(Duration::from_secs(5));
+
+    let db_pool = SqlitePoolOptions::new()
+        .max_connections(5)
+        .acquire_timeout(Duration::from_secs(5))
+        .connect_with(options)
+        .await
+        .map_err(|e| AppError::Migration(format!("Не вдалося підключитися до бази даних: {e}")))?;
+
+    sqlx::migrate!("./migrations")
+        .run(&db_pool)
+        .await
+        .map_err(|e| {
+            AppError::Migration(format!("Не вдалося застосувати міграції бази даних: {e}"))
+        })?;
+
+    database::cars::brands::sync_catalog(&db_pool).await?;
+
+    handle.manage(AppState {
+        data_dir: app_dir,
+        db_pool,
+        version: env!("CARGO_PKG_VERSION"),
+    });
+
+    let appstate = handle.state::<AppState>();
+    print!("{:#?}", appstate);
+
+    open_main_window(handle)?;
+
+    if let Err(error) = documents::resolve_documents_dir(&appstate).await {
+        log::warn!("Не вдалося підготувати теку документів: {error}");
+    }
+
+    Ok(())
+}
+
+/// Creates the main window arms the splash screen's safety net.
+fn open_main_window(handle: &AppHandle) -> AppResult<()> {
+    let config = handle
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|window| window.label == "main")
+        .cloned()
+        .ok_or_else(|| AppError::Generic("У конфігурації немає головного вікна".to_string()))?;
+
+    WebviewWindowBuilder::from_config(handle, &config)
+        .and_then(|builder| builder.build())
+        .map_err(|e| AppError::Generic(format!("Не вдалося створити головне вікно: {e}")))?;
+
+    // Safety net for the splash screen: the main window starts hidden and the
+    // frontend reveals it once the app is painted. If the frontend never signals
+    // readiness, force the reveal so the app can't stay stuck behind the splash.
+    let handle = handle.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_secs(15));
+        let handle_for_closure = handle.clone();
+        let _ = handle.run_on_main_thread(move || {
+            if let Some(splash) = handle_for_closure.get_webview_window("splashscreen") {
+                let _ = splash.close();
+            }
+            if let Some(main) = handle_for_closure.get_webview_window("main") {
+                let _ = main.show();
+            }
+        });
+    });
+
+    Ok(())
 }
