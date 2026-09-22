@@ -82,6 +82,15 @@ CREATE TABLE services (
     archived_at TEXT
 );
 
+CREATE TABLE workers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    first_name TEXT NOT NULL,
+    surname TEXT NOT NULL,
+    patronymic TEXT,
+    position TEXT,
+    is_active INTEGER NOT NULL DEFAULT 1
+);
+
 CREATE TABLE work_orders (
     id TEXT PRIMARY KEY,
     car_id INTEGER NOT NULL,
@@ -112,6 +121,7 @@ CREATE TABLE work_orders (
     paid_at TEXT,
     payment_method TEXT,
     archived_at TEXT,
+    worker_id INTEGER REFERENCES workers (id) ON DELETE SET NULL,
     FOREIGN KEY (car_id) REFERENCES cars (id) ON DELETE CASCADE,
     FOREIGN KEY (warranty_of) REFERENCES work_orders (id) ON DELETE SET NULL
 );
@@ -128,6 +138,7 @@ CREATE TABLE labor_items (
     discount_type TEXT NOT NULL,
     discount_value TEXT NOT NULL DEFAULT "0",
     is_free INTEGER NOT NULL DEFAULT 0,
+    position INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE,
     FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE SET NULL
 );
@@ -145,6 +156,7 @@ CREATE TABLE part_items (
     discount_type TEXT NOT NULL,
     discount_value TEXT NOT NULL DEFAULT "0",
     is_free INTEGER NOT NULL DEFAULT 0,
+    position INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE
 );
 
@@ -152,6 +164,55 @@ CREATE TABLE work_order_sequences (
     year_month TEXT PRIMARY KEY, -- 'YYYYMM'
     counter INTEGER NOT NULL DEFAULT 0
 );
+
+CREATE TABLE app_settings (
+    id INTEGER PRIMARY KEY NOT NULL DEFAULT 1 CHECK (id = 1),
+    theme TEXT NOT NULL DEFAULT 'system',
+    ui_scale REAL NOT NULL DEFAULT 1.0,
+    default_markup TEXT NOT NULL DEFAULT '0',
+    default_vat_rate TEXT NOT NULL DEFAULT '0',
+    default_prices_include_vat INTEGER NOT NULL DEFAULT 1,
+    rate_variants TEXT NOT NULL DEFAULT '[]',
+    vin_lookup_templates TEXT NOT NULL DEFAULT '[]',
+    license_plate_lookup_templates TEXT NOT NULL DEFAULT '[]',
+    timezone TEXT NOT NULL DEFAULT 'Europe/Kiev',
+    default_phone_country_code TEXT NOT NULL DEFAULT 'UA',
+    company_info TEXT,
+    documents_dir TEXT
+);
+
+INSERT
+OR IGNORE INTO app_settings (
+    id,
+    theme,
+    ui_scale,
+    default_markup,
+    default_vat_rate,
+    default_prices_include_vat,
+    rate_variants,
+    vin_lookup_templates,
+    license_plate_lookup_templates,
+    timezone,
+    default_phone_country_code,
+    company_info,
+    documents_dir
+)
+VALUES
+    (
+        1,
+        'system',
+        1.0,
+        '0',
+        1,
+        '0',
+        '[]',
+        '[]',
+        '[]',
+        'Europe/Kiev',
+        'UA',
+        '',
+        ''
+    );
 
 CREATE INDEX idx_cars_client_id ON cars (client_id);
 
@@ -192,10 +253,18 @@ CREATE INDEX idx_work_orders_archived_at ON work_orders (archived_at);
 
 CREATE INDEX idx_services_archived_at ON services (archived_at);
 
+CREATE INDEX idx_workers_is_active ON workers (is_active);
+
 CREATE INDEX idx_work_orders_car_id ON work_orders (car_id);
+
+CREATE INDEX idx_work_orders_worker_id ON work_orders (worker_id);
 
 CREATE INDEX idx_labor_items_service_id ON labor_items (service_id);
 
 CREATE INDEX idx_labor_items_work_order_id ON labor_items (work_order_id);
 
+CREATE INDEX idx_labor_items_work_order_position ON labor_items (work_order_id, position);
+
 CREATE INDEX idx_part_items_work_order_id ON part_items (work_order_id);
+
+CREATE INDEX idx_part_items_work_order_position ON part_items (work_order_id, position);
