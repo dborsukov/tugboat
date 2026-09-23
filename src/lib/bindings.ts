@@ -22,7 +22,7 @@ export const commands = {
 	archiveCarBrand: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("archive_car_brand", { id })),
 	restoreCarBrand: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("restore_car_brand", { id })),
 	/**  Curated catalog list first, in catalog order, then custom names in the database. */
-	fetchCarModels: (brandId: number) => typedError<string[], AppError>(__TAURI_INVOKE("fetch_car_models", { brandId })),
+	fetchCarModels: (brandId: number) => typedError<CarModelSuggestion[], AppError>(__TAURI_INVOKE("fetch_car_models", { brandId })),
 	fetchClientsCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_clients_count")),
 	fetchClientsList: () => typedError<ClientListItem[], AppError>(__TAURI_INVOKE("fetch_clients_list")),
 	fetchClientDetailsDto: (id: number) => typedError<ClientDetailsDto, AppError>(__TAURI_INVOKE("fetch_client_details_dto", { id })),
@@ -173,6 +173,8 @@ export type CarBrand = {
 	iconSlug: string,
 	isCustom: boolean,
 	archivedAt: string | null,
+	/**  Not a column, suplementary data from bundled car_brands catalog. */
+	aliases?: string[],
 };
 
 export type CarDeleteImpact = {
@@ -189,6 +191,11 @@ export type CarDetailsDto = {
 export type CarDto = {
 	car: Car,
 	brand: CarBrand,
+};
+
+export type CarModelSuggestion = {
+	name: string,
+	aliases: string[],
 };
 
 export type Client = {

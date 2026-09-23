@@ -9,7 +9,8 @@
     "dev": "vite dev",
     "prepare": "svelte-kit sync && cargo sort --version || cargo install cargo-sort && pre-commit install",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "validate:catalog": "node scripts/validate-car-brands.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",

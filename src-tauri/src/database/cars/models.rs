@@ -1,26 +1,19 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::OnceLock,
-};
+use std::collections::{HashMap, HashSet};
 
+use serde::Serialize;
 use tauri::State;
 
 use crate::{database::cars::brands, error::AppResult};
 
-fn catalog_models() -> &'static HashMap<String, Vec<String>> {
-    static CATALOG_MODELS: OnceLock<HashMap<String, Vec<String>>> = OnceLock::new();
+#[derive(Debug, Clone, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct CarModelSuggestion {
+    pub name: String,
+    pub aliases: Vec<String>,
+}
 
-    CATALOG_MODELS.get_or_init(|| match brands::catalog() {
-        Ok(brands) => brands
-            .into_iter()
-            .filter(|brand| !brand.models.is_empty())
-            .map(|brand| (brand.slug, brand.models))
-            .collect(),
-        Err(error) => {
-            log::error!("Каталог моделей: не вдалося прочитати каталог марок: {error}");
-            HashMap::new()
-        }
-    })
+fn suggestion(name: String, aliases: Vec<String>) -> CarModelSuggestion {
+    CarModelSuggestion { name, aliases }
 }
 
 /// Curated catalog list first, in catalog order, then custom names in the database.
@@ -29,19 +22,19 @@ fn catalog_models() -> &'static HashMap<String, Vec<String>> {
 pub async fn fetch_car_models(
     state: State<'_, crate::AppState>,
     brand_id: i32,
-) -> AppResult<Vec<String>> {
+) -> AppResult<Vec<CarModelSuggestion>> {
     let slug: Option<String> = sqlx::query_scalar("SELECT slug FROM car_brands WHERE id = $1")
         .bind(brand_id)
         .fetch_optional(&state.db_pool)
         .await?;
 
     let mut seen: HashSet<String> = HashSet::new();
-    let mut suggestions: Vec<String> = Vec::new();
+    let mut suggestions: Vec<CarModelSuggestion> = Vec::new();
 
-    if let Some(models) = slug.as_deref().and_then(|slug| catalog_models().get(slug)) {
-        for name in models {
-            if seen.insert(brands::name_key(name)) {
-                suggestions.push(name.clone());
+    if let Some(entry) = slug.as_deref().and_then(brands::catalog_entry) {
+        for model in &entry.models {
+            if seen.insert(brands::name_key(&model.name)) {
+                suggestions.push(suggestion(model.name.clone(), model.aliases.clone()));
             }
         }
     }
@@ -75,7 +68,11 @@ pub async fn fetch_car_models(
         .collect();
 
     typed.sort_by(|a, b| b.2.cmp(&a.2).then_with(|| a.0.cmp(&b.0)));
-    suggestions.extend(typed.into_iter().map(|(_, name, _)| name));
+    suggestions.extend(
+        typed
+            .into_iter()
+            .map(|(_, name, _)| suggestion(name, Vec::new())),
+    );
 
     Ok(suggestions)
 }

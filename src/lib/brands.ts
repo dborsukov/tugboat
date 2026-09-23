@@ -7,3 +7,10 @@ export function isUnknownBrand(
 ): boolean {
   return brand?.slug === UNKNOWN_BRAND_SLUG;
 }
+
+// Text the brand picker matches against (name + aliases)
+export function brandSearchValue(
+  brand: Pick<CarBrand, "name" | "aliases">,
+): string {
+  return [brand.name, ...(brand.aliases ?? [])].join(" ");
+}

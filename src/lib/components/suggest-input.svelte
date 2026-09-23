@@ -17,6 +17,7 @@
     placeholder = "",
     disabled = false,
     maxItems = 50,
+    getSearchValue,
     formProps = {},
     class: className,
   }: {
@@ -27,6 +28,8 @@
     disabled?: boolean;
     /** Guards against a pathological list; the list is scrollable, not infinite. */
     maxItems?: number;
+    /** Extra words an entry should match on */
+    getSearchValue?: (item: string) => string;
     formProps?: Record<string, unknown>;
     class?: string;
   } = $props();
@@ -41,6 +44,10 @@
 
   let query = $derived(value.trim());
 
+  function searchText(item: string) {
+    return getSearchValue?.(item) ?? item;
+  }
+
   // One word is enough to match an entry, and the best matching word decides
   // how high it ranks, so "octavia a7" and "golf 7" still find their model:
   // words the catalog does not carry refine the list instead of emptying it.
@@ -48,7 +55,7 @@
     let best: RankingInfo | null = null;
 
     for (const word of words) {
-      const rank = rankItem(item, word);
+      const rank = rankItem(searchText(item), word);
       if (!rank.passed) continue;
       if (best === null || rank.rank > best.rank) best = rank;
     }
@@ -87,9 +94,10 @@
   // against "Cruiser" rather than against "Land Cruiser".
   function closestDistance(item: string, word: string) {
     const target = word.toLowerCase();
-    let best = editDistance(item.toLowerCase(), target);
+    const text = searchText(item).toLowerCase();
+    let best = editDistance(text, target);
 
-    for (const token of item.toLowerCase().split(/\s+/)) {
+    for (const token of text.split(/\s+/)) {
       best = Math.min(best, editDistance(token, target));
     }
 

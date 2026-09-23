@@ -95,4 +95,8 @@ pub struct CarBrand {
     pub icon_slug: String,
     pub is_custom: bool,
     pub archived_at: Option<DateTime<Utc>>,
+    /// Not a column, suplementary data from bundled car_brands catalog.
+    #[sqlx(skip)]
+    #[serde(default)]
+    pub aliases: Vec<String>,
 }

@@ -1,4 +1,7 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::OnceLock,
+};
 
 use serde::Deserialize;
 use sqlx::{Executor, Pool, Sqlite};
@@ -18,12 +21,68 @@ pub(crate) const BRAND_COLUMNS: &str = "id, slug, name, icon_slug, is_custom, ar
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct CatalogModel {
+    pub(crate) name: String,
+    #[serde(default)]
+    pub(crate) aliases: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct CatalogBrand {
     pub(crate) slug: String,
     pub(crate) name: String,
-    pub(crate) icon_slug: String,
+    /// Logo file name, only declared when it differs from the slug.
     #[serde(default)]
-    pub(crate) models: Vec<String>,
+    pub(crate) icon_slug: Option<String>,
+    #[serde(default)]
+    pub(crate) aliases: Vec<String>,
+    #[serde(default)]
+    pub(crate) models: Vec<CatalogModel>,
+}
+
+pub(crate) struct CatalogEntry {
+    pub(crate) aliases: Vec<String>,
+    pub(crate) models: Vec<CatalogModel>,
+}
+
+fn catalog_index() -> &'static HashMap<String, CatalogEntry> {
+    static INDEX: OnceLock<HashMap<String, CatalogEntry>> = OnceLock::new();
+
+    INDEX.get_or_init(|| match catalog() {
+        Ok(brands) => brands
+            .into_iter()
+            .map(|brand| {
+                (
+                    brand.slug,
+                    CatalogEntry {
+                        aliases: brand.aliases,
+                        models: brand.models,
+                    },
+                )
+            })
+            .collect(),
+        Err(error) => {
+            log::error!("Каталог марок: не вдалося прочитати каталог: {error}");
+            HashMap::new()
+        }
+    })
+}
+
+pub(crate) fn catalog_entry(slug: &str) -> Option<&'static CatalogEntry> {
+    catalog_index().get(slug)
+}
+
+fn attach_aliases(brands: &mut [CarBrand]) {
+    for brand in brands.iter_mut() {
+        if brand.is_custom {
+            continue;
+        }
+
+        if let Some(entry) = catalog_entry(&brand.slug) {
+            brand.aliases = entry.aliases.clone();
+        }
+    }
 }
 
 pub(crate) fn catalog() -> AppResult<Vec<CatalogBrand>> {
@@ -63,6 +122,8 @@ pub(crate) async fn sync_catalog(pool: &Pool<Sqlite>) -> AppResult<()> {
             }
         }
 
+        let icon_slug = brand.icon_slug.as_deref().unwrap_or(&brand.slug);
+
         // A single bad row must not keep the app from starting, so failures are
         // logged and skipped rather than propagated (SQLite rolls back only the
         // failing statement, the transaction stays usable).
@@ -80,7 +141,7 @@ pub(crate) async fn sync_catalog(pool: &Pool<Sqlite>) -> AppResult<()> {
         .bind(&brand.slug)
         .bind(&brand.name)
         .bind(&key)
-        .bind(&brand.icon_slug)
+        .bind(icon_slug)
         .execute(&mut *tx)
         .await;
 
@@ -123,7 +184,9 @@ pub(crate) async fn fetch_picker_brands(pool: &Pool<Sqlite>) -> AppResult<Vec<Ca
          WHERE archived_at IS NULL \
          ORDER BY id"
     );
-    Ok(sqlx::query_as(&sql).fetch_all(pool).await?)
+    let mut brands: Vec<CarBrand> = sqlx::query_as(&sql).fetch_all(pool).await?;
+    attach_aliases(&mut brands);
+    Ok(brands)
 }
 
 #[tauri::command]
@@ -145,16 +208,20 @@ pub(crate) async fn fetch_custom_brands(pool: &Pool<Sqlite>) -> AppResult<Vec<Ca
 
 pub(crate) async fn fetch_all_brands(pool: &Pool<Sqlite>) -> AppResult<Vec<CarBrand>> {
     let sql = format!("SELECT {BRAND_COLUMNS} FROM car_brands ORDER BY id");
-    Ok(sqlx::query_as(&sql).fetch_all(pool).await?)
+    let mut brands: Vec<CarBrand> = sqlx::query_as(&sql).fetch_all(pool).await?;
+    attach_aliases(&mut brands);
+    Ok(brands)
 }
 
 pub(crate) async fn fetch_brand_by_id(pool: &Pool<Sqlite>, id: i64) -> AppResult<CarBrand> {
     let sql = format!("SELECT {BRAND_COLUMNS} FROM car_brands WHERE id = $1");
-    sqlx::query_as(&sql)
+    let mut brand: CarBrand = sqlx::query_as(&sql)
         .bind(id)
         .fetch_optional(pool)
         .await?
-        .ok_or_else(AppError::brand_not_found)
+        .ok_or_else(AppError::brand_not_found)?;
+    attach_aliases(std::slice::from_mut(&mut brand));
+    Ok(brand)
 }
 
 #[tauri::command]
@@ -200,6 +267,7 @@ pub(crate) fn unknown_brand(brands: &HashMap<i64, CarBrand>) -> CarBrand {
             icon_slug: UNKNOWN_BRAND_SLUG.to_string(),
             is_custom: false,
             archived_at: None,
+            aliases: Vec::new(),
         })
 }
 

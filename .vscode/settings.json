@@ -5,6 +5,12 @@
     "editor.defaultFormatter": "svelte.svelte-vscode"
   },
   "prettier.documentSelectors": ["**/*.svelte"],
+  "json.schemas": [
+    {
+      "fileMatch": ["/src-tauri/data/car_brands.json"],
+      "url": "./src-tauri/data/car_brands.schema.json"
+    }
+  ],
   "svelte.enable-ts-plugin": true,
   "[sql]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"

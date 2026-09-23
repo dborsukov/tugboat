@@ -11,6 +11,7 @@ import {
   type CarDeleteImpact,
   type CarDetailsDto,
   type CarDto,
+  type CarModelSuggestion,
   type CreateCarPayload,
   type UpdateCarPayload,
 } from "$lib/bindings";
@@ -196,7 +197,9 @@ export function carModelsQueryOptions(brandId: number) {
 }
 
 export function createCarModelsQuery(getBrandId: () => number) {
-  return createQuery<string[]>(() => carModelsQueryOptions(getBrandId()));
+  return createQuery<CarModelSuggestion[]>(() =>
+    carModelsQueryOptions(getBrandId()),
+  );
 }
 
 export function createCreateCarBrandMutation(queryClient: QueryClient) {

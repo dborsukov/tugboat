@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "array",
+  "minItems": 1,
+  "contains": {
+    "type": "object",
+    "required": ["slug"],
+    "properties": {
+      "slug": {
+        "const": "unknown-brand"
+      }
+    }
+  },
+  "items": {
+    "$ref": "#/definitions/brand"
+  },
+  "definitions": {
+    "brand": {
+      "title": "Brand",
+      "description": "Holds slug, name, aliases and models.",
+      "type": "object",
+      "required": ["slug", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "slug": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "description": "Brand ID, must be unique and use characters safe for filenames to resolve brand icons."
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60,
+          "pattern": "^\\S(?:[\\s\\S]*\\S)?$",
+          "description": "Primary brand name. Used by the UI and documents."
+        },
+        "iconSlug": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Optional, use only if icon filename must be different from a `slug`."
+        },
+        "aliases": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Alternative spellings for the brand. Used only in search.",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S(?:[\\s\\S]*\\S)?$",
+            "description": "One spelling, without surrounding whitespace."
+          }
+        },
+        "models": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Brand model list used for suggestions",
+          "items": {
+            "$ref": "#/definitions/model"
+          }
+        }
+      }
+    },
+    "model": {
+      "title": "Model",
+      "description": "Brand model used for suggestions.",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^\\S(?:[\\s\\S]*\\S)?$",
+          "description": "Primary model name. Used by the UI and documents."
+        },
+        "aliases": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "description": "Alternative spellings for the model. Used only in search.",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\S(?:[\\s\\S]*\\S)?$",
+            "description": "One spelling, without surrounding whitespace."
+          }
+        }
+      }
+    }
+  }
+}

@@ -20,6 +20,7 @@
   import SuggestInput from "$lib/components/suggest-input.svelte";
 
   import type { DriveType, FuelType } from "$lib/bindings";
+  import { brandSearchValue } from "$lib/brands";
   import { cn } from "$lib/utils";
 
   import ClientBadge from "../clients/client-badge.svelte";
@@ -260,6 +261,16 @@
 
   const carModelsQuery = createCarModelsQuery(() => $formData.brandId);
 
+  // The catalog carries the model spellings to match on; the entry itself stays
+  // the value that gets stored.
+  const modelSuggestions = $derived(carModelsQuery.data ?? []);
+  const modelItems = $derived(modelSuggestions.map((s) => s.name));
+  const modelSearchValues = $derived(
+    new Map(
+      modelSuggestions.map((s) => [s.name, [s.name, ...s.aliases].join(" ")]),
+    ),
+  );
+
   async function handleCreateBrand(name: string) {
     const brand = await createCarBrandMutation
       .mutateAsync(name)
@@ -370,6 +381,7 @@
           bind:value={$formData.brandId}
           getKey={(b) => b.id}
           getLabel={(b) => b.name}
+          getSearchValue={brandSearchValue}
           placeholder="Оберіть марку авто..."
           searchPlaceholder="Пошук марки..."
           emptyText="Марку не знайдено."
@@ -389,7 +401,8 @@
         <Label>Модель {@render requiredHint()}</Label>
         <SuggestInput
           {...props}
-          items={carModelsQuery.data ?? []}
+          items={modelItems}
+          getSearchValue={(name) => modelSearchValues.get(name) ?? name}
           bind:value={$formData.model}
           placeholder="напр. Camry"
         />
