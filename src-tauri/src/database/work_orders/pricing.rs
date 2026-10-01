@@ -1,8 +1,8 @@
 use rust_decimal::Decimal;
 
-use super::structs::{DiscountType, LaborItem, PartItem, PartStatus};
+use super::structs::{DiscountType, LaborItem, PartItem, PartStatus, WorkOrder};
 use crate::database::work_orders::{
-    dtos::{LaborItemTotals, PartItemTotals, WorkOrderTotals},
+    dtos::{LaborItemDto, LaborItemTotals, PartItemDto, PartItemTotals, WorkOrderTotals},
     structs::{LaborCostType, LaborPriceType},
 };
 
@@ -172,6 +172,54 @@ pub fn calculate_vat(
         (vat_base, vat_amount, (total + vat_amount).round_dp(2))
     };
     (vat_base, vat_amount, total_with_vat)
+}
+
+/// Rolls already priced line items up into the totals of a whole order.
+///
+/// This is the single place where item level totals become order level ones:
+/// the order detail view and the analytics dashboard both go through it, so a
+/// figure on the dashboard can never disagree with the same figure on the order screen.
+pub fn calculate_order_totals(
+    work_order: &WorkOrder,
+    labor_items: &[LaborItemDto],
+    part_items: &[PartItemDto],
+) -> WorkOrderTotals {
+    let billed_labor = || {
+        labor_items
+            .iter()
+            .filter(|dto| labor_is_billed(dto.item.is_free))
+    };
+    let billed_parts = || {
+        part_items
+            .iter()
+            .filter(|dto| part_is_billed(dto.item.status, dto.item.is_free))
+    };
+
+    let labor_total: Decimal = billed_labor().map(|dto| dto.totals.total).sum();
+    let labor_cost: Decimal = billed_labor().map(|dto| dto.totals.cost).sum();
+    let labor_discount: Decimal = billed_labor().map(|dto| dto.totals.discount).sum();
+    let parts_total: Decimal = billed_parts().map(|dto| dto.totals.total).sum();
+    let parts_cost: Decimal = billed_parts().map(|dto| dto.totals.cost).sum();
+    let parts_discount: Decimal = billed_parts().map(|dto| dto.totals.discount).sum();
+    let parts_pending_total: Decimal = part_items
+        .iter()
+        .filter(|dto| part_is_pending(dto.item.status, dto.item.is_free))
+        .map(|dto| dto.totals.total)
+        .sum();
+
+    calculate_work_order_totals(
+        labor_total,
+        labor_cost,
+        parts_total,
+        parts_cost,
+        parts_pending_total,
+        labor_discount,
+        parts_discount,
+        work_order.discount_type,
+        work_order.discount_value,
+        work_order.vat_rate,
+        work_order.prices_include_vat,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]

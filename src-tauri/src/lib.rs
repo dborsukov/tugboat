@@ -82,6 +82,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         database::settings::update_timezone,
         database::settings::update_default_phone_country_code,
         database::settings::update_company_info,
+        database::settings::update_dashboard_layout,
         database::work_orders::fetch_work_order_details_dto,
         database::work_orders::fetch_work_order_details_dto_by_car_id,
         database::work_orders::fetch_work_order_details_dto_by_client_id,
@@ -121,8 +122,36 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         documents::generate_document,
         documents::pick_documents_folder,
         documents::update_documents_dir,
+        database::analytics::fetch_order_months,
+        database::analytics::fetch_outstanding_balance,
+        database::analytics::fetch_in_progress_balance,
+        database::analytics::fetch_revenue_summary,
+        database::analytics::fetch_vat_due,
+        database::analytics::fetch_top_services,
+        database::analytics::fetch_client_mix,
+        database::analytics::fetch_client_mix_list,
+        database::analytics::fetch_gross_margin,
+        database::analytics::fetch_margin_services,
         utils::get_app_version
     ])
+}
+
+#[cfg(debug_assertions)]
+fn export_bindings(specta_builder: &tauri_specta::Builder<tauri::Wry>) {
+    let target = std::path::Path::new("../src/lib/bindings.ts");
+    let staging = target.with_extension("ts.staging");
+
+    if let Err(error) = specta_builder.export(specta_typescript::Typescript::default(), &staging) {
+        // Print since log plugin is not initialized yet
+        eprintln!("Не вдалося згенерувати bindings: {error}");
+        return;
+    }
+
+    // The file is swapped in rather than written in place. `export` truncates first
+    // which caused weird issues with Vite HMR watcher reading incomplete file in dev.
+    if let Err(error) = fs::rename(&staging, target) {
+        eprintln!("Не вдалося замінити src/lib/bindings.ts: {error}");
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -130,12 +159,7 @@ pub fn run() {
     let specta_builder = specta_builder();
 
     #[cfg(debug_assertions)]
-    specta_builder
-        .export(
-            specta_typescript::Typescript::default(),
-            "../src/lib/bindings.ts",
-        )
-        .unwrap();
+    export_bindings(&specta_builder);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())

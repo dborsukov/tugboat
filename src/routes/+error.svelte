@@ -50,7 +50,7 @@
 
     <Button
       variant="link"
-      onclick={() => goto("/")}
+      onclick={() => goto("/home")}
       class="hover:cursor-pointer">Повернутись на головну</Button
     >
   </div>

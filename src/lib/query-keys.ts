@@ -63,5 +63,12 @@ export const keys = {
     all: ["settings"] as const,
     documentsDirInfo: ["settings", "documents-dir-info"] as const,
   },
+  dashboard: {
+    all: ["dashboard"] as const,
+    module: (id: string, period?: unknown) =>
+      period === undefined
+        ? ([...keys.dashboard.all, id] as const)
+        : ([...keys.dashboard.all, id, period] as const),
+  },
   version: ["version"] as const,
 };

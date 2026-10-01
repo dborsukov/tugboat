@@ -1,6 +1,6 @@
 pub mod structs;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use rust_decimal::Decimal;
 use sqlx::types::Json;
@@ -42,7 +42,8 @@ pub(crate) async fn fetch_settings_from_pool(
             timezone,
             default_phone_country_code,
             company_info,
-            documents_dir
+            documents_dir,
+            dashboard_layout
         FROM app_settings
         WHERE id = 1
         "#,
@@ -460,4 +461,53 @@ fn company_info_is_complete(info: &CompanyInfo) -> bool {
                 && bank_details_ok(info)
         }
     }
+}
+
+const DASHBOARD_MODULE_ID_MAX_LEN: usize = 64;
+const DASHBOARD_MODULES_MAX: usize = 64;
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_dashboard_layout(
+    dashboard_layout: DashboardLayout,
+    state: State<'_, crate::AppState>,
+) -> AppResult<DashboardLayout> {
+    let layout = validate_dashboard_layout(dashboard_layout)?;
+
+    let saved: Json<DashboardLayout> = sqlx::query_scalar(
+        "UPDATE app_settings SET dashboard_layout = $1 WHERE id = 1 RETURNING dashboard_layout",
+    )
+    .bind(Json(&layout))
+    .fetch_one(&state.db_pool)
+    .await?;
+    Ok(saved.0)
+}
+
+fn validate_dashboard_layout(layout: DashboardLayout) -> Result<DashboardLayout, AppError> {
+    let field = "modules";
+    let placements = layout.modules;
+
+    if placements.len() > DASHBOARD_MODULES_MAX {
+        return Err(AppError::validation(format!(
+            "too many dashboard modules in {field}"
+        )));
+    }
+
+    let mut modules = HashMap::with_capacity(placements.len());
+    for (id, placement) in placements {
+        let id = id.trim();
+        if id.is_empty() {
+            return Err(AppError::validation(format!(
+                "dashboard module id in {field} is required"
+            )));
+        }
+        if id.chars().count() > DASHBOARD_MODULE_ID_MAX_LEN {
+            return Err(AppError::validation(format!(
+                "dashboard module id in {field} is too long"
+            )));
+        }
+        modules.insert(id.to_string(), placement);
+    }
+
+    Ok(DashboardLayout { modules })
 }

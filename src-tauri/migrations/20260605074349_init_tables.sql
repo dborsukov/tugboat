@@ -176,7 +176,8 @@ CREATE TABLE app_settings (
     timezone TEXT NOT NULL DEFAULT 'Europe/Kiev',
     default_phone_country_code TEXT NOT NULL DEFAULT 'UA',
     company_info TEXT,
-    documents_dir TEXT
+    documents_dir TEXT,
+    dashboard_layout TEXT NOT NULL DEFAULT '{}'
 );
 
 INSERT
@@ -193,7 +194,8 @@ OR IGNORE INTO app_settings (
     timezone,
     default_phone_country_code,
     company_info,
-    documents_dir
+    documents_dir,
+    dashboard_layout
 )
 VALUES
     (
@@ -209,7 +211,8 @@ VALUES
         'Europe/Kiev',
         'UA',
         '',
-        ''
+        '',
+        '{}'
     );
 
 CREATE INDEX idx_cars_client_id ON cars (client_id);

@@ -51,7 +51,7 @@
   const top_level_menu = $derived([
     {
       title: "Головна",
-      url: "/",
+      url: "/home",
       icon: HomeIcon,
       badge: null,
     },

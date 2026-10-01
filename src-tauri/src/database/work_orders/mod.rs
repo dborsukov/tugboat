@@ -143,7 +143,40 @@ pub async fn fetch_work_orders_list(
     Ok(work_orders)
 }
 
-async fn fetch_labor_items_by_work_order_ids(
+pub(crate) const WORK_ORDER_COLUMNS: &str = r#"
+            id,
+            car_id,
+            payer_client_id,
+            customer_client_id,
+            worker_id,
+            odometer_in,
+            odometer_out,
+            driver_surname,
+            driver_first_name,
+            driver_patronymic,
+            driver_phone,
+            description,
+            notes,
+            condition_report,
+            status,
+            type,
+            warranty_of,
+            rate,
+            labor_cost_type,
+            labor_cost_value,
+            discount_type,
+            discount_value,
+            vat_rate,
+            prices_include_vat,
+            created_at,
+            archived_at,
+            started_at,
+            completed_at,
+            paid_at,
+            payment_method
+"#;
+
+pub(crate) async fn fetch_labor_items_by_work_order_ids(
     state: &State<'_, crate::AppState>,
     work_order_ids: &[&str],
 ) -> AppResult<HashMap<String, Vec<LaborItem>>> {
@@ -187,7 +220,7 @@ async fn fetch_labor_items_by_work_order_ids(
     Ok(by_order)
 }
 
-async fn fetch_part_items_by_work_order_ids(
+pub(crate) async fn fetch_part_items_by_work_order_ids(
     state: &State<'_, crate::AppState>,
     work_order_ids: &[&str],
 ) -> AppResult<HashMap<String, Vec<PartItem>>> {
@@ -322,55 +355,8 @@ async fn build_work_order_details_dtos(
         // Only billed items count: labor unless marked free, parts only when
         // installed and not marked free. Parts staged for installation form
         // the pending balance, returned parts never count.
-        let labor_sum: Decimal = labor_item_dtos
-            .iter()
-            .filter(|dto| pricing::labor_is_billed(dto.item.is_free))
-            .map(|dto| dto.totals.total)
-            .sum();
-        let labor_cost_sum: Decimal = labor_item_dtos
-            .iter()
-            .filter(|dto| pricing::labor_is_billed(dto.item.is_free))
-            .map(|dto| dto.totals.cost)
-            .sum();
-        let labor_discount_sum: Decimal = labor_item_dtos
-            .iter()
-            .filter(|dto| pricing::labor_is_billed(dto.item.is_free))
-            .map(|dto| dto.totals.discount)
-            .sum();
-        let parts_sum: Decimal = part_item_dtos
-            .iter()
-            .filter(|dto| pricing::part_is_billed(dto.item.status, dto.item.is_free))
-            .map(|dto| dto.totals.total)
-            .sum();
-        let parts_cost_sum: Decimal = part_item_dtos
-            .iter()
-            .filter(|dto| pricing::part_is_billed(dto.item.status, dto.item.is_free))
-            .map(|dto| dto.totals.cost)
-            .sum();
-        let parts_discount_sum: Decimal = part_item_dtos
-            .iter()
-            .filter(|dto| pricing::part_is_billed(dto.item.status, dto.item.is_free))
-            .map(|dto| dto.totals.discount)
-            .sum();
-        let parts_pending_sum: Decimal = part_item_dtos
-            .iter()
-            .filter(|dto| pricing::part_is_pending(dto.item.status, dto.item.is_free))
-            .map(|dto| dto.totals.total)
-            .sum();
-
-        let totals = pricing::calculate_work_order_totals(
-            labor_sum,
-            labor_cost_sum,
-            parts_sum,
-            parts_cost_sum,
-            parts_pending_sum,
-            labor_discount_sum,
-            parts_discount_sum,
-            work_order.discount_type,
-            work_order.discount_value,
-            work_order.vat_rate,
-            work_order.prices_include_vat,
-        );
+        let totals =
+            pricing::calculate_order_totals(&work_order, &labor_item_dtos, &part_item_dtos);
 
         details_list.push(WorkOrderDetailsDto {
             work_order,

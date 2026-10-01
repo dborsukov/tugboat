@@ -50,7 +50,7 @@ export const commands = {
 	updateWorker: (id: number, payload: UpdateWorkerPayload) => typedError<Worker, AppError>(__TAURI_INVOKE("update_worker", { id, payload })),
 	deleteWorker: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_worker", { id })),
 	deleteWorkers: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("delete_workers", { ids })),
-	fetchSettings: () => typedError<AppSettings, AppError>(__TAURI_INVOKE("fetch_settings")),
+	fetchSettings: () => typedError<AppSettings_Serialize, AppError>(__TAURI_INVOKE("fetch_settings")),
 	updateTheme: (theme: ThemeMode) => typedError<ThemeMode, AppError>(__TAURI_INVOKE("update_theme", { theme })),
 	updateUiScale: (uiScale: number | null) => typedError<number | null, AppError>(__TAURI_INVOKE("update_ui_scale", { uiScale })),
 	updateDefaultMarkup: (defaultMarkup: string) => typedError<string, AppError>(__TAURI_INVOKE("update_default_markup", { defaultMarkup })),
@@ -62,6 +62,7 @@ export const commands = {
 	updateTimezone: (timezone: string) => typedError<string, AppError>(__TAURI_INVOKE("update_timezone", { timezone })),
 	updateDefaultPhoneCountryCode: (defaultPhoneCountryCode: string) => typedError<string, AppError>(__TAURI_INVOKE("update_default_phone_country_code", { defaultPhoneCountryCode })),
 	updateCompanyInfo: (companyInfo: CompanyInfo) => typedError<CompanyInfo, AppError>(__TAURI_INVOKE("update_company_info", { companyInfo })),
+	updateDashboardLayout: (dashboardLayout: DashboardLayout_Deserialize) => typedError<DashboardLayout_Serialize, AppError>(__TAURI_INVOKE("update_dashboard_layout", { dashboardLayout })),
 	fetchWorkOrderDetailsDto: (id: string) => typedError<WorkOrderDetailsDto, AppError>(__TAURI_INVOKE("fetch_work_order_details_dto", { id })),
 	fetchWorkOrderDetailsDtoByCarId: (carId: number) => typedError<WorkOrderDetailsDto[], AppError>(__TAURI_INVOKE("fetch_work_order_details_dto_by_car_id", { carId })),
 	fetchWorkOrderDetailsDtoByClientId: (clientId: number) => typedError<WorkOrderDetailsDto[], AppError>(__TAURI_INVOKE("fetch_work_order_details_dto_by_client_id", { clientId })),
@@ -110,10 +111,43 @@ export const commands = {
 	 *  old folder still has documents, its contents are moved into the new one.
 	 */
 	updateDocumentsDir: (path: string, moveDocuments: boolean) => typedError<string, AppError>(__TAURI_INVOKE("update_documents_dir", { path, moveDocuments })),
+	fetchOrderMonths: (utcOffsetMinutes: number) => typedError<OrderMonth[], AppError>(__TAURI_INVOKE("fetch_order_months", { utcOffsetMinutes })),
+	fetchOutstandingBalance: () => typedError<OutstandingBalance, AppError>(__TAURI_INVOKE("fetch_outstanding_balance")),
+	fetchInProgressBalance: () => typedError<InProgressBalance, AppError>(__TAURI_INVOKE("fetch_in_progress_balance")),
+	fetchRevenueSummary: (period: AnalyticsPeriod) => typedError<RevenueSummary, AppError>(__TAURI_INVOKE("fetch_revenue_summary", { period })),
+	fetchVatDue: (period: AnalyticsPeriod) => typedError<VatDue, AppError>(__TAURI_INVOKE("fetch_vat_due", { period })),
+	/**  What each service of `range` was billed and how often, biggest earner first. */
+	fetchTopServices: (period: AnalyticsPeriod) => typedError<TopServicesReport, AppError>(__TAURI_INVOKE("fetch_top_services", { period })),
+	fetchClientMix: (period: AnalyticsPeriod) => typedError<ClientMix, AppError>(__TAURI_INVOKE("fetch_client_mix", { period })),
+	/**
+	 *  The clients behind the period's mix, biggest spender first.
+	 * 
+	 *  The orders are the ones paid for in the month — the set the revenue tile counts — so
+	 *  the list, the counts above it and the money tiles all speak of the same visits.
+	 * 
+	 *  An order is credited to whoever placed it — the client on the order, falling back to
+	 *  the car's owner — the same rule the counts are worked out by, so a client can never
+	 *  appear in the list without being counted above it.
+	 * 
+	 *  Visits and what was spent are the period's own: the tile lists who paid *this month*,
+	 *  so a row says what that client settled in it rather than what they have ever done.
+	 */
+	fetchClientMixList: (period: AnalyticsPeriod) => typedError<ClientMixList, AppError>(__TAURI_INVOKE("fetch_client_mix_list", { period })),
+	fetchGrossMargin: (period: AnalyticsPeriod, options: MarginOptions) => typedError<MarginSummary, AppError>(__TAURI_INVOKE("fetch_gross_margin", { period, options })),
+	/**  What each billed line of `range` earned and what it cost, biggest contribution first. */
+	fetchMarginServices: (period: AnalyticsPeriod, options: MarginOptions) => typedError<MarginService[], AppError>(__TAURI_INVOKE("fetch_margin_services", { period, options })),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
 };
 
 /* Types */
+/**  Every window a dashboard module may need, resolved once by the frontend in the configured timezone */
+export type AnalyticsPeriod = {
+	month: DateRange,
+	previousMonth: DateRange,
+	week: DateRange,
+	previousWeek: DateRange,
+};
+
 export type AppError = 
 /**  Generic application error. */
 { type: "generic"; message: string } | 
@@ -134,7 +168,9 @@ export type AppError =
 /**  A foreign key constraint was violated. */
 { type: "foreignKeyViolation"; message: string };
 
-export type AppSettings = {
+export type AppSettings = AppSettings_Serialize | AppSettings_Deserialize;
+
+export type AppSettings_Deserialize = {
 	theme: ThemeMode,
 	uiScale: number,
 	defaultMarkup: string,
@@ -147,6 +183,23 @@ export type AppSettings = {
 	defaultPhoneCountryCode: string,
 	companyInfo: CompanyInfo | null,
 	documentsDir: string | null,
+	dashboardLayout: DashboardLayout_Deserialize,
+};
+
+export type AppSettings_Serialize = {
+	theme: ThemeMode,
+	uiScale: number,
+	defaultMarkup: string,
+	defaultVatRate: string,
+	defaultPricesIncludeVat: boolean,
+	rateVariants: RateVariants[],
+	vinLookupTemplates: VinLookupTemplates[],
+	licensePlateLookupTemplates: LicensePlateLookupTemplates[],
+	timezone: string,
+	defaultPhoneCountryCode: string,
+	companyInfo: CompanyInfo | null,
+	documentsDir: string | null,
+	dashboardLayout: DashboardLayout_Serialize,
 };
 
 export type Car = {
@@ -263,6 +316,37 @@ export type ClientListItem = {
 	rnokpp: string | null,
 	edrpou: string | null,
 	iban: string | null,
+};
+
+/**  New versus returning clients over a period. */
+export type ClientMix = {
+	newClients: number,
+	returningClients: number,
+	totalClients: number,
+	previousTotalClients: number,
+};
+
+/**  One client of the period, as a tile lists them. */
+export type ClientMixEntry = {
+	id: number,
+	/**  Name as it reads in a list */
+	name: string,
+	/**  The car they came in first, make and model. */
+	car: string,
+	/**  Number of additional cars they brought this month. */
+	otherCars: number,
+	/**  Orders the client placed in the period. */
+	visits: number,
+	/**  What those orders earned, total client spending this month, net of VAT. */
+	spent: string,
+	/**  Whether the period holds their very first order. */
+	isNew: boolean,
+};
+
+/**  The clients behind a period's mix, biggest spender first. */
+export type ClientMixList = {
+	averageCheck: string,
+	clients: ClientMixEntry[],
 };
 
 /**  Discriminated payload */
@@ -382,6 +466,52 @@ export type CreateWorkerPayload = {
 	isActive: boolean,
 };
 
+export type DashboardLayout = DashboardLayout_Serialize | DashboardLayout_Deserialize;
+
+export type DashboardLayout_Deserialize = {
+	modules?: { [key in string]: DashboardModuleLayout_Deserialize },
+};
+
+export type DashboardLayout_Serialize = {
+	modules: { [key in string]: DashboardModuleLayout_Serialize },
+};
+
+/**  Module height counted in base rows */
+export type DashboardModuleHeight = "one" | "two" | "three";
+
+export type DashboardModuleLayout = DashboardModuleLayout_Serialize | DashboardModuleLayout_Deserialize;
+
+export type DashboardModuleLayout_Deserialize = {
+	hidden?: boolean | null,
+	width?: DashboardModuleSize | null,
+	height?: DashboardModuleHeight | null,
+	position?: DashboardPosition | null,
+	settings?: unknown | null,
+};
+
+export type DashboardModuleLayout_Serialize = {
+	hidden?: boolean | null,
+	width?: DashboardModuleSize | null,
+	height?: DashboardModuleHeight | null,
+	position?: DashboardPosition | null,
+	settings?: unknown | null,
+};
+
+/**  Module width as a fraction of the row it is drawn in */
+export type DashboardModuleSize = "sixth" | "third" | "half" | "twoThirds" | "full";
+
+/**  Module position in the grid */
+export type DashboardPosition = {
+	col: number,
+	row: number,
+};
+
+/**  A half open time window: `from` is inclusive, `to` is exclusive */
+export type DateRange = {
+	from: string,
+	to: string,
+};
+
 export type DiscountType = "None" | "Fixed" | "Percentage";
 
 export type DocumentConflictAction = "replace" | "rename";
@@ -413,6 +543,18 @@ export type GenerateDocumentOptions = {
 	skipLocation?: boolean,
 	skipPerformerSignature?: boolean,
 	skipCustomerSignature?: boolean,
+};
+
+/**
+ *  Work still under way, valued at what it is expected to bill.
+ * 
+ *  The counterpart of [`OutstandingBalance`]: that one is money waiting to come in
+ *  for work that is finished, this is money tied up in work that is not. The two
+ *  count different orders, so no order is in both.
+ */
+export type InProgressBalance = {
+	total: string,
+	orderCount: number,
 };
 
 export type LaborCostType = "Hourly" | "Percentage";
@@ -450,6 +592,55 @@ export type LaborPriceType = "Hourly" | "Fixed";
 export type LicensePlateLookupTemplates = {
 	label: string,
 	urlTemplate: string,
+};
+
+export type MarginOptions = {
+	includeLaborCost: boolean,
+};
+
+/**  What one service contributed to the period's gross income. */
+export type MarginService = {
+	name: string,
+	revenue: string,
+	cost: string,
+	income: string,
+	marginPercent: number,
+};
+
+/**  Gross margin and gross income over a period, excluding VAT. */
+export type MarginSummary = {
+	/**  Billed revenue excluding VAT. */
+	revenue: string,
+	/**  Cost of the billed items: parts always, labor unless disabled by options. */
+	cost: string,
+	income: string,
+	marginPercent: number,
+	/**  Previous period, so the tile can tell "no data" from a real 0%. */
+	previousRevenue: string,
+	previousIncome: string,
+	previousMarginPercent: number,
+	orderCount: number,
+	periodOrderCount: number,
+};
+
+/**
+ *  A month the shop was paid in, in the shop's own timezone.
+ * 
+ *  Months are what the dashboard can be pointed at, and a month is worth pointing at
+ *  when money changed hands in it: an order taken in one month and settled in another
+ *  belongs to the month it was settled in, the way every money tile counts it.
+ */
+export type OrderMonth = {
+	year: number,
+	month: number,
+	/**  Orders paid in that month. */
+	orderCount: number,
+};
+
+/**  Finished work that has not been paid for. */
+export type OutstandingBalance = {
+	total: string,
+	orderCount: number,
 };
 
 export type PartItem = {
@@ -559,6 +750,34 @@ export type RateVariants = {
 	isDefault?: boolean,
 };
 
+/**  What the orders of one period earned, net of VAT. */
+export type RevenueBucket = {
+	total: string,
+	orderCount: number,
+};
+
+/**  What a month's revenue was earned on. */
+export type RevenueSplit = {
+	labor: string,
+	parts: string,
+};
+
+export type RevenueSummary = {
+	month: RevenueBucket,
+	previousMonth: RevenueBucket,
+	week: RevenueBucket,
+	previousWeek: RevenueBucket,
+	/**
+	 *  Running revenue of the month, net of VAT: what was earned through the end of each
+	 *  day, first day first, so the last entry is `month.total`. A day the shop took no
+	 *  money on repeats the day before, and the days after the last one are left out.
+	 */
+	monthByDay: string[],
+	previousMonthByDay: string[],
+	/**  Revenue split by labor and parts. */
+	monthSplit: RevenueSplit,
+};
+
 export type Service = {
 	id: number,
 	code: string | null,
@@ -570,6 +789,29 @@ export type Service = {
 };
 
 export type ThemeMode = "light" | "dark" | "system";
+
+/**
+ *  One service of the period, as a top-services tile draws it.
+ *  A service is the name on a line: the same name billed twice in the month is one row.
+ */
+export type TopServiceRow = {
+	name: string,
+	/**  Times it was billed in the period. */
+	count: number,
+	/**  What it earned the shop over the period, net of VAT. */
+	revenue: string,
+	/**  That revenue per time it was billed. */
+	averagePrice: string,
+	/**  How many more or fewer times it was billed than the month before. */
+	change: number | null,
+};
+
+/**  The period's services, and the two wholes their shares can be shares of. */
+export type TopServicesReport = {
+	totalRevenue: string,
+	servicesRevenue: string,
+	services: TopServiceRow[],
+};
 
 export type UpdateCarPayload = {
 	clientId: number,
@@ -653,6 +895,12 @@ export type UpdateWorkerPayload = {
 	patronymic: string | null,
 	position: string | null,
 	isActive: boolean,
+};
+
+/**  VAT owed from all orders this month. */
+export type VatDue = {
+	amount: string,
+	orderCount: number,
 };
 
 export type VinLookupTemplates = {

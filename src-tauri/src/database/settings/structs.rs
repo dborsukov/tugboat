@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use rust_decimal::Decimal;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use sqlx::{sqlite::SqliteRow, types::Json, FromRow, Row};
 
 use crate::database::utils::decimal_column;
@@ -20,12 +22,20 @@ pub struct AppSettings {
     pub default_phone_country_code: String,
     pub company_info: Option<CompanyInfo>,
     pub documents_dir: Option<String>,
+    pub dashboard_layout: DashboardLayout,
 }
 
 pub(crate) fn decode_company_info(raw: Option<String>) -> Option<CompanyInfo> {
     match raw.as_deref() {
         None | Some("") => None,
         Some(text) => serde_json::from_str(text).ok(),
+    }
+}
+
+pub(crate) fn decode_dashboard_layout(raw: Option<String>) -> DashboardLayout {
+    match raw.as_deref() {
+        None | Some("") => DashboardLayout::default(),
+        Some(text) => serde_json::from_str(text).unwrap_or_default(),
     }
 }
 
@@ -52,6 +62,7 @@ impl<'r> FromRow<'r, SqliteRow> for AppSettings {
             default_phone_country_code: row.try_get("default_phone_country_code")?,
             company_info: decode_company_info(row.try_get("company_info")?),
             documents_dir: row.try_get("documents_dir")?,
+            dashboard_layout: decode_dashboard_layout(row.try_get("dashboard_layout")?),
         })
     }
 }
@@ -124,4 +135,85 @@ pub struct CompanyInfo {
     /// is filled out properly. Computed by the backend on save.
     #[serde(default)]
     pub is_complete: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DashboardLayout {
+    pub modules: HashMap<String, DashboardModuleLayout>,
+}
+
+/// Reads a field a later build may no longer recognise, treating a value it cannot
+/// make sense of as though it had never been written.
+fn maybe_unknown<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: serde::de::DeserializeOwned,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(serde_json::from_value(value).ok())
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DashboardModuleLayout {
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "maybe_unknown"
+    )]
+    #[specta(type = Option<bool>)]
+    pub hidden: Option<bool>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "maybe_unknown"
+    )]
+    #[specta(type = Option<DashboardModuleSize>)]
+    pub width: Option<DashboardModuleSize>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "maybe_unknown"
+    )]
+    #[specta(type = Option<DashboardModuleHeight>)]
+    pub height: Option<DashboardModuleHeight>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "maybe_unknown"
+    )]
+    #[specta(type = Option<DashboardPosition>)]
+    pub position: Option<DashboardPosition>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[specta(type = Option<specta_typescript::Unknown>)]
+    pub settings: Option<DashboardSettings>,
+}
+
+/// Options module computes with, exactly as the frontend registry declared
+/// them. Opaque on purpose, the backend never reads an option out of storage.
+pub type DashboardSettings = serde_json::Map<String, serde_json::Value>;
+
+/// Module position in the grid
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DashboardPosition {
+    pub col: u8,
+    pub row: u16,
+}
+
+/// Module width as a fraction of the row it is drawn in
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum DashboardModuleSize {
+    Sixth,
+    Third,
+    Half,
+    TwoThirds,
+    Full,
+}
+
+/// Module height counted in base rows
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum DashboardModuleHeight {
+    One,
+    Two,
+    Three,
 }

@@ -488,6 +488,7 @@ export function createReorderPartItemsMutation(queryClient: QueryClient) {
 
 export function invalidateWorkOrderLists(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: keys.workOrders.all });
+  queryClient.invalidateQueries({ queryKey: keys.dashboard.all });
 }
 
 // ---------------------------------------------------------------------------

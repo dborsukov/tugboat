@@ -1,3 +1,4 @@
+pub mod analytics;
 pub mod cars;
 pub mod clients;
 pub mod services;
