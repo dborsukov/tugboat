@@ -750,7 +750,15 @@ fn table_labels(kind: DocumentKind, section: TableSection) -> (&'static str, &'s
 }
 
 /// The rows of one table section: the section heading, the items and the total.
+///
+/// A section without a single item renders nothing at all: no heading, no
+/// placeholder row and no total, so an order without labour (or without parts)
+/// has no empty section with a zero sum.
 fn table_section_rows(kind: DocumentKind, table: &DocTable, section: TableSection) -> String {
+    if table.rows.is_empty() {
+        return String::new();
+    }
+
     let (section_title, total_label) = table_labels(kind, section);
     let mut out = String::new();
 
@@ -760,12 +768,6 @@ fn table_section_rows(kind: DocumentKind, table: &DocTable, section: TableSectio
         esc(section_title)
     ));
 
-    if table.rows.is_empty() {
-        out.push_str(&format!(
-            "  table.cell(colspan: 9, align: center, fill: white)[{}],\n",
-            esc("Немає записів")
-        ));
-    }
     for (i, row) in table.rows.iter().enumerate() {
         let fill = if i % 2 == 0 { "white" } else { CLR_ZEBRA };
         let cells = [
@@ -799,7 +801,14 @@ fn table_section_rows(kind: DocumentKind, table: &DocTable, section: TableSectio
 
 /// The combined services and parts table: one header, shared columns and a total
 /// for each section.
-fn items_table_markup(kind: DocumentKind, labor: &DocTable, parts: &DocTable) -> String {
+///
+/// The table only exists when at least one section has items: a header with no
+/// rows under it says nothing about the order.
+fn items_table_markup(kind: DocumentKind, labor: &DocTable, parts: &DocTable) -> Option<String> {
+    if labor.rows.is_empty() && parts.rows.is_empty() {
+        return None;
+    }
+
     let headers: &[&str; 9] = if kind == DocumentKind::AktVykonanykhRobit {
         &AKT_HEADERS
     } else {
@@ -829,12 +838,13 @@ fn items_table_markup(kind: DocumentKind, labor: &DocTable, parts: &DocTable) ->
     }
     out.push_str("),\n");
 
-    // Section 1: services (labour), section 2: parts.
+    // Section 1: services (labour), section 2: parts. A section without items
+    // adds no rows at all, so the next one follows the header directly.
     out.push_str(&table_section_rows(kind, labor, TableSection::Labor));
     out.push_str(&table_section_rows(kind, parts, TableSection::Parts));
 
     out.push_str(")]\n");
-    out
+    Some(out)
 }
 
 // ---------------------------------------------------------------------------
@@ -1200,11 +1210,14 @@ fn build_markup(data: &DocumentData) -> String {
         out.push_str("#v(0.6em)\n");
     }
 
-    // Services and parts table
-    out.push_str("#set text(size: 8pt)\n");
-    out.push_str(&items_table_markup(data.kind, &data.labor, &data.parts));
-    out.push_str("#v(0.8em)\n");
-    out.push_str("#set text(size: 9.5pt)\n");
+    // Services and parts table: only the sections that have items. An order
+    // without labour and without parts has no table at all.
+    if let Some(items) = items_table_markup(data.kind, &data.labor, &data.parts) {
+        out.push_str("#set text(size: 8pt)\n");
+        out.push_str(&items);
+        out.push_str("#v(0.8em)\n");
+        out.push_str("#set text(size: 9.5pt)\n");
+    }
 
     // Totals and the amount in words.
     out.push_str(&totals_markup(data));
