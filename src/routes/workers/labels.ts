@@ -1,19 +1,10 @@
 import type { Worker } from "$lib/bindings";
+import { joinPib, pibInitials } from "$lib/names";
 
 export function workerFullName(worker: Worker): string {
-  return [worker.surname, worker.firstName, worker.patronymic]
-    .map((part) => part?.trim())
-    .filter((part): part is string => !!part)
-    .join(" ");
+  return joinPib(worker.surname, worker.firstName, worker.patronymic);
 }
 
 export function workerShortName(worker: Worker): string {
-  const initials = [worker.firstName, worker.patronymic]
-    .map((part) => part?.trim().charAt(0))
-    .filter((initial): initial is string => !!initial)
-    .map((initial) => `${initial}.`)
-    .join(" ");
-  return [worker.surname.trim(), initials]
-    .filter((part) => part.length > 0)
-    .join(" ");
+  return pibInitials(worker.surname, worker.firstName, worker.patronymic);
 }

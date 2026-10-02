@@ -25,6 +25,7 @@
     type WorkOrder,
     type WorkOrderDetailsDto,
   } from "$lib/bindings";
+  import { pibInitials } from "$lib/names";
   import { settingsState } from "$lib/states/settings.svelte";
   import { unwrap } from "$lib/tools";
 
@@ -124,26 +125,6 @@
     clientType: ClientType;
   };
 
-  function joinPib(...parts: (string | null | undefined)[]): string {
-    return parts
-      .map((part) => part?.trim())
-      .filter((part): part is string => !!part)
-      .join(" ");
-  }
-
-  function initialsName(
-    surname: string | null | undefined,
-    firstName: string | null | undefined,
-    patronymic: string | null | undefined,
-  ): string {
-    const initials = [firstName, patronymic]
-      .map((part) => part?.trim().charAt(0))
-      .filter((initial): initial is string => !!initial)
-      .map((initial) => `${initial}.`)
-      .join(" ");
-    return joinPib(surname, initials);
-  }
-
   // Mirrors: src-tauri/src/documents/model.rs
   function resolveCustomerSignatureName(
     client: SignatureSource | undefined,
@@ -152,11 +133,11 @@
     if (!client) return "";
     if (client.clientType === "individual") {
       return (
-        initialsName(client.surname, client.firstName, client.patronymic) ||
+        pibInitials(client.surname, client.firstName, client.patronymic) ||
         client.name
       );
     }
-    return initialsName(
+    return pibInitials(
       workOrder?.driverSurname,
       workOrder?.driverFirstName,
       workOrder?.driverPatronymic,

@@ -611,6 +611,7 @@ struct ClientMixOrderRow {
     name: String,
     surname: Option<String>,
     first_name: Option<String>,
+    patronymic: Option<String>,
     client_type: ClientType,
     /// The car itself, so the same model coming in twice is still one car.
     car_id: i64,
@@ -627,6 +628,7 @@ impl ClientMixOrderRow {
         }
 
         let first_name = self.first_name.as_deref().map(str::trim).unwrap_or("");
+        let patronymic = self.patronymic.as_deref().map(str::trim).unwrap_or("");
         let initial = self
             .surname
             .as_deref()
@@ -636,7 +638,8 @@ impl ClientMixOrderRow {
 
         match (first_name.is_empty(), initial) {
             (false, Some(initial)) => format!("{first_name} {initial}"),
-            (false, None) => first_name.to_string(),
+            (false, None) if patronymic.is_empty() => first_name.to_string(),
+            (false, None) => format!("{first_name} {patronymic}"),
             (true, _) => self.name.trim().to_string(),
         }
     }
@@ -681,6 +684,7 @@ pub async fn fetch_client_mix_list(
             c.name AS name,
             c.surname AS surname,
             c.first_name AS first_name,
+            c.patronymic AS patronymic,
             c.client_type AS client_type,
             car.id AS car_id,
             b.name AS brand,

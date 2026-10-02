@@ -307,19 +307,27 @@ fn join_pib(
 }
 
 pub fn pib_initials(surname: &str, first_name: &str, patronymic: &str) -> String {
-    let mut out = surname.trim().to_string();
+    let surname = surname.trim();
+    if surname.is_empty() {
+        return [first_name, patronymic]
+            .iter()
+            .map(|part| part.trim())
+            .filter(|part| !part.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ");
+    }
+
     let initials = [first_name, patronymic]
         .iter()
         .filter_map(|part| part.trim().chars().next().map(|c| format!("{c}.")))
         .collect::<Vec<_>>()
         .join("");
-    if !initials.is_empty() {
-        if !out.is_empty() {
-            out.push(' ');
-        }
-        out.push_str(&initials);
+
+    if initials.is_empty() {
+        surname.to_string()
+    } else {
+        format!("{surname} {initials}")
     }
-    out
 }
 
 pub fn legal_display_name(client: &DocClient) -> String {
