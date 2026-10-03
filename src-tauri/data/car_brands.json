@@ -9,34 +9,848 @@
     "aliases": ["Тойота"],
     "models": [
       {
-        "name": "Corolla"
+        "name": "Avalon"
+      },
+      {
+        "name": "bZ3"
+      },
+      {
+        "name": "bZ7"
       },
       {
         "name": "Camry"
       },
       {
-        "name": "RAV4"
+        "name": "Century Sedan"
       },
       {
-        "name": "Auris"
+        "name": "Levin L"
       },
       {
-        "name": "Yaris"
+        "name": "Crown",
+        "aliases": ["Crown Sedan", "Crown Crossover"]
       },
       {
-        "name": "Avensis"
-      },
-      {
-        "name": "Land Cruiser"
+        "name": "Mirai"
       },
       {
         "name": "Prius"
       },
       {
+        "name": "Vios"
+      },
+      {
+        "name": "Yaris",
+        "aliases": ["Vios/Yaris"]
+      },
+      {
+        "name": "Agya"
+      },
+      {
+        "name": "Wigo",
+        "aliases": ["Agya/Wigo"]
+      },
+      {
+        "name": "Aqua"
+      },
+      {
+        "name": "GR Corolla"
+      },
+      {
+        "name": "Glanza"
+      },
+      {
+        "name": "Starlet",
+        "aliases": ["Glanza/Starlet"]
+      },
+      {
+        "name": "Vitz"
+      },
+      {
+        "name": "Yaris (XP150)",
+        "aliases": ["Yaris"]
+      },
+      {
+        "name": "Yaris (XP210)"
+      },
+      {
+        "name": "GR Yaris"
+      },
+      {
+        "name": "Aygo X"
+      },
+      {
+        "name": "bZ3X"
+      },
+      {
+        "name": "bZ4X"
+      },
+      {
+        "name": "bZ",
+        "aliases": ["bZ/bZ4X"]
+      },
+      {
+        "name": "bZ4X Touring"
+      },
+      {
+        "name": "bZ Woodland",
+        "aliases": ["bZ Woodland/bZ4X Touring"]
+      },
+      {
+        "name": "bZ5"
+      },
+      {
+        "name": "C-HR+"
+      },
+      {
+        "name": "C-HR",
+        "aliases": ["C-HR/C-HR+"]
+      },
+      {
+        "name": "Century SUV"
+      },
+      {
+        "name": "Corolla Cross"
+      },
+      {
+        "name": "Frontlander"
+      },
+      {
+        "name": "Crown Estate"
+      },
+      {
+        "name": "Crown Signia",
+        "aliases": ["Signia/Crown Estate"]
+      },
+      {
+        "name": "Crown Sport"
+      },
+      {
+        "name": "Grand Highlander"
+      },
+      {
+        "name": "Harrier"
+      },
+      {
         "name": "Highlander"
       },
       {
+        "name": "Kluger",
+        "aliases": ["Kluger/Highlander/Crown Kluger"]
+      },
+      {
+        "name": "Crown Kluger"
+      },
+      {
+        "name": "Raize"
+      },
+      {
+        "name": "RAV4"
+      },
+      {
+        "name": "Wildlander"
+      },
+      {
+        "name": "Rush"
+      },
+      {
+        "name": "Urban Cruiser"
+      },
+      {
+        "name": "Urban Cruiser Ebella",
+        "aliases": ["Urban Cruiser/Urban Cruiser Ebella"]
+      },
+      {
+        "name": "Urban Cruiser Hyryder"
+      },
+      {
+        "name": "Urban Cruiser Taisor"
+      },
+      {
+        "name": "Starlet Cross",
+        "aliases": ["Starlet Cross/Urban Cruiser Taisor"]
+      },
+      {
+        "name": "Yaris Cross"
+      },
+      {
+        "name": "4Runner"
+      },
+      {
+        "name": "Fortuner"
+      },
+      {
+        "name": "SW4",
+        "aliases": ["SW4/Fortuner"]
+      },
+      {
+        "name": "Land Cruiser 70",
+        "aliases": ["Land Cruiser (J70)"]
+      },
+      {
+        "name": "Land Cruiser 300",
+        "aliases": ["Land Cruiser"]
+      },
+      {
+        "name": "Land Cruiser Prado"
+      },
+      {
+        "name": "Land Cruiser 250",
+        "aliases": ["250/Land Cruiser Prado"]
+      },
+      {
+        "name": "Land Cruiser FJ"
+      },
+      {
+        "name": "Sequoia"
+      },
+      {
+        "name": "Alphard"
+      },
+      {
+        "name": "Vellfire"
+      },
+      {
+        "name": "Crown Vellfire",
+        "aliases": ["Vellfire/Crown Vellfire"]
+      },
+      {
+        "name": "Avanza"
+      },
+      {
+        "name": "Veloz"
+      },
+      {
+        "name": "Calya"
+      },
+      {
+        "name": "HiAce Commuter"
+      },
+      {
+        "name": "Grandia",
+        "aliases": ["Premio/Grandia/HiAce Commuter"]
+      },
+      {
+        "name": "Premio",
+        "aliases": ["Premio/Allion"]
+      },
+      {
+        "name": "Innova"
+      },
+      {
+        "name": "Noah"
+      },
+      {
+        "name": "Voxy"
+      },
+      {
+        "name": "ProAce Verso"
+      },
+      {
+        "name": "ProAce City Verso"
+      },
+      {
+        "name": "Roomy"
+      },
+      {
+        "name": "Rumion"
+      },
+      {
+        "name": "Sienna"
+      },
+      {
+        "name": "Granvia",
+        "aliases": ["Sienna/Granvia", "Grand HiAce/Granvia"]
+      },
+      {
+        "name": "Sienta"
+      },
+      {
+        "name": "GR86"
+      },
+      {
+        "name": "GR GT"
+      },
+      {
+        "name": "COMS"
+      },
+      {
+        "name": "Copen GR Sport"
+      },
+      {
+        "name": "Pixis Epoch"
+      },
+      {
+        "name": "HiAce"
+      },
+      {
+        "name": "ProAce"
+      },
+      {
+        "name": "ProAce City"
+      },
+      {
+        "name": "ProAce Max"
+      },
+      {
+        "name": "Probox"
+      },
+      {
+        "name": "TownAce"
+      },
+      {
+        "name": "LiteAce",
+        "aliases": ["LiteAce/TownAce"]
+      },
+      {
         "name": "Hilux"
+      },
+      {
+        "name": "Hilux Champ"
+      },
+      {
+        "name": "Stout",
+        "aliases": ["Stout/Rangga/Tamaraw/Hilux Champ"]
+      },
+      {
+        "name": "Rangga"
+      },
+      {
+        "name": "Tamaraw"
+      },
+      {
+        "name": "Tacoma"
+      },
+      {
+        "name": "Tundra"
+      },
+      {
+        "name": "Pixis Truck"
+      },
+      {
+        "name": "Pixis Van"
+      },
+      {
+        "name": "Dyna"
+      },
+      {
+        "name": "Coaster"
+      },
+      {
+        "name": "Sora"
+      },
+      {
+        "name": "JPN Taxi"
+      },
+      {
+        "name": "1000"
+      },
+      {
+        "name": "1600GT"
+      },
+      {
+        "name": "2000GT"
+      },
+      {
+        "name": "AA"
+      },
+      {
+        "name": "AB",
+        "aliases": ["AA/AB"]
+      },
+      {
+        "name": "AC"
+      },
+      {
+        "name": "AE"
+      },
+      {
+        "name": "Allex"
+      },
+      {
+        "name": "Allion"
+      },
+      {
+        "name": "Altezza"
+      },
+      {
+        "name": "Altezza Gita"
+      },
+      {
+        "name": "Aristo"
+      },
+      {
+        "name": "Aurion"
+      },
+      {
+        "name": "Auris"
+      },
+      {
+        "name": "Avensis"
+      },
+      {
+        "name": "Aygo"
+      },
+      {
+        "name": "BA"
+      },
+      {
+        "name": "Bandeirante",
+        "aliases": ["Land Cruiser Bandeirante"]
+      },
+      {
+        "name": "bB"
+      },
+      {
+        "name": "Belta"
+      },
+      {
+        "name": "Blade"
+      },
+      {
+        "name": "Blizzard"
+      },
+      {
+        "name": "Brevis"
+      },
+      {
+        "name": "Briska"
+      },
+      {
+        "name": "C+pod"
+      },
+      {
+        "name": "Caldina"
+      },
+      {
+        "name": "Cami"
+      },
+      {
+        "name": "Camry Coupe"
+      },
+      {
+        "name": "Camry Solara"
+      },
+      {
+        "name": "Solara",
+        "aliases": ["Camry Solara"]
+      },
+      {
+        "name": "Carina"
+      },
+      {
+        "name": "Carina E"
+      },
+      {
+        "name": "Carina ED"
+      },
+      {
+        "name": "Carina FF"
+      },
+      {
+        "name": "Carina Surf"
+      },
+      {
+        "name": "Carina II"
+      },
+      {
+        "name": "Cavalier"
+      },
+      {
+        "name": "Celica Camry"
+      },
+      {
+        "name": "Celica Supra"
+      },
+      {
+        "name": "Celsior"
+      },
+      {
+        "name": "Chaser"
+      },
+      {
+        "name": "Classic"
+      },
+      {
+        "name": "Comfort"
+      },
+      {
+        "name": "Corolla Axio"
+      },
+      {
+        "name": "Corolla Ceres"
+      },
+      {
+        "name": "Corolla Fielder"
+      },
+      {
+        "name": "Corolla II"
+      },
+      {
+        "name": "Corolla Levin"
+      },
+      {
+        "name": "Corolla Rumion",
+        "aliases": ["Rukus"]
+      },
+      {
+        "name": "Corolla Spacio"
+      },
+      {
+        "name": "Corolla SR5"
+      },
+      {
+        "name": "Corolla Verso"
+      },
+      {
+        "name": "Corona"
+      },
+      {
+        "name": "Corona EXiV"
+      },
+      {
+        "name": "Corsa"
+      },
+      {
+        "name": "Cressida"
+      },
+      {
+        "name": "Cresta"
+      },
+      {
+        "name": "Crown Majesta"
+      },
+      {
+        "name": "Curren"
+      },
+      {
+        "name": "DA"
+      },
+      {
+        "name": "Duet"
+      },
+      {
+        "name": "Echo"
+      },
+      {
+        "name": "Platz",
+        "aliases": ["Echo/Platz"]
+      },
+      {
+        "name": "Esquire"
+      },
+      {
+        "name": "Estima"
+      },
+      {
+        "name": "Previa",
+        "aliases": ["Estima/Previa"]
+      },
+      {
+        "name": "Etios"
+      },
+      {
+        "name": "FA"
+      },
+      {
+        "name": "FJ40",
+        "aliases": ["Land Cruiser FJ40"]
+      },
+      {
+        "name": "FJ Cruiser"
+      },
+      {
+        "name": "Gaia"
+      },
+      {
+        "name": "Grand HiAce"
+      },
+      {
+        "name": "Hilux Surf"
+      },
+      {
+        "name": "Ipsum"
+      },
+      {
+        "name": "Picnic",
+        "aliases": ["Ipsum/Picnic/SportVan"]
+      },
+      {
+        "name": "SportVan"
+      },
+      {
+        "name": "iQ"
+      },
+      {
+        "name": "Isis"
+      },
+      {
+        "name": "ist"
+      },
+      {
+        "name": "Kijang"
+      },
+      {
+        "name": "Lexcen"
+      },
+      {
+        "name": "Light Stout",
+        "aliases": ["Stout"]
+      },
+      {
+        "name": "Macho"
+      },
+      {
+        "name": "Mark II"
+      },
+      {
+        "name": "Mark II Blit"
+      },
+      {
+        "name": "Mark II Qualis"
+      },
+      {
+        "name": "Mark X"
+      },
+      {
+        "name": "Mark X ZiO"
+      },
+      {
+        "name": "Massy Dyna"
+      },
+      {
+        "name": "Master"
+      },
+      {
+        "name": "MasterAce"
+      },
+      {
+        "name": "Masterline"
+      },
+      {
+        "name": "Matrix"
+      },
+      {
+        "name": "Mega Cruiser"
+      },
+      {
+        "name": "MiniAce"
+      },
+      {
+        "name": "MR2"
+      },
+      {
+        "name": "MR-S"
+      },
+      {
+        "name": "Nadia"
+      },
+      {
+        "name": "Opa"
+      },
+      {
+        "name": "Origin"
+      },
+      {
+        "name": "Paseo"
+      },
+      {
+        "name": "Cynos",
+        "aliases": ["Paseo/Cynos"]
+      },
+      {
+        "name": "Passo"
+      },
+      {
+        "name": "Passo Sette"
+      },
+      {
+        "name": "Pixis Joy"
+      },
+      {
+        "name": "Pixis Space"
+      },
+      {
+        "name": "Pixis Mega"
+      },
+      {
+        "name": "Porte"
+      },
+      {
+        "name": "Spade",
+        "aliases": ["Porte/Spade"]
+      },
+      {
+        "name": "Prius C"
+      },
+      {
+        "name": "Prius v",
+        "aliases": ["Prius v/+/α"]
+      },
+      {
+        "name": "Progres"
+      },
+      {
+        "name": "Pronard"
+      },
+      {
+        "name": "Publica"
+      },
+      {
+        "name": "QuickDelivery"
+      },
+      {
+        "name": "Ractis"
+      },
+      {
+        "name": "Raum"
+      },
+      {
+        "name": "Regius"
+      },
+      {
+        "name": "RH"
+      },
+      {
+        "name": "SA"
+      },
+      {
+        "name": "Sai"
+      },
+      {
+        "name": "SB"
+      },
+      {
+        "name": "Scepter"
+      },
+      {
+        "name": "SD"
+      },
+      {
+        "name": "Sera"
+      },
+      {
+        "name": "SF"
+      },
+      {
+        "name": "SG"
+      },
+      {
+        "name": "Soarer"
+      },
+      {
+        "name": "Soluna"
+      },
+      {
+        "name": "Sparky"
+      },
+      {
+        "name": "Sports 800"
+      },
+      {
+        "name": "Sprinter"
+      },
+      {
+        "name": "Sprinter Carib"
+      },
+      {
+        "name": "Sprinter Cielo"
+      },
+      {
+        "name": "Sprinter Marino"
+      },
+      {
+        "name": "Sprinter Trueno"
+      },
+      {
+        "name": "Su-Ki"
+      },
+      {
+        "name": "Succeed"
+      },
+      {
+        "name": "SunChaser"
+      },
+      {
+        "name": "T100"
+      },
+      {
+        "name": "Tank"
+      },
+      {
+        "name": "Tarago"
+      },
+      {
+        "name": "Tercel"
+      },
+      {
+        "name": "Tiara"
+      },
+      {
+        "name": "ToyoAce"
+      },
+      {
+        "name": "Type 73"
+      },
+      {
+        "name": "Van"
+      },
+      {
+        "name": "Model F",
+        "aliases": ["Van/Model F/Space Cruiser/Tarago"]
+      },
+      {
+        "name": "Space Cruiser"
+      },
+      {
+        "name": "Venza"
+      },
+      {
+        "name": "Verossa"
+      },
+      {
+        "name": "Verso"
+      },
+      {
+        "name": "Verso-S"
+      },
+      {
+        "name": "Vienta"
+      },
+      {
+        "name": "Vista"
+      },
+      {
+        "name": "Voltz"
+      },
+      {
+        "name": "Windom"
+      },
+      {
+        "name": "WiLL Vi"
+      },
+      {
+        "name": "WiLL VS"
+      },
+      {
+        "name": "WiLL Cypha"
+      },
+      {
+        "name": "Wish"
+      },
+      {
+        "name": "Yaris (DJ/DL)",
+        "aliases": ["Yaris"]
+      },
+      {
+        "name": "Yaris Verso"
+      },
+      {
+        "name": "FunCargo",
+        "aliases": ["Yaris Verso/FunCargo"]
+      },
+      {
+        "name": "Zelas"
       }
     ]
   },
@@ -46,56 +860,965 @@
     "aliases": ["Фольксваген"],
     "models": [
       {
-        "name": "Golf"
+        "name": "ID.4"
       },
       {
-        "name": "Passat"
+        "name": "Amarok"
+      },
+      {
+        "name": "Caravelle"
       },
       {
         "name": "Tiguan"
       },
       {
+        "name": "T-Roc"
+      },
+      {
+        "name": "ID.7"
+      },
+      {
+        "name": "Arteon"
+      },
+      {
+        "name": "ID.3"
+      },
+      {
+        "name": "Crafter"
+      },
+      {
+        "name": "Multivan"
+      },
+      {
+        "name": "California"
+      },
+      {
+        "name": "Tayron"
+      },
+      {
+        "name": "ID.Buzz"
+      },
+      {
+        "name": "T-Cross"
+      },
+      {
+        "name": "Up!"
+      },
+      {
         "name": "Polo"
+      },
+      {
+        "name": "Golf"
+      },
+      {
+        "name": "Jetta",
+        "aliases": ["Bora Variant", "Bora", "Vento"]
+      },
+      {
+        "name": "Passat"
+      },
+      {
+        "name": "Scirocco"
+      },
+      {
+        "name": "Beetle",
+        "aliases": ["New Beetle Cabriolet", "New Beetle"]
       },
       {
         "name": "Touareg"
       },
       {
-        "name": "Jetta"
+        "name": "Touran"
+      },
+      {
+        "name": "Sharan"
       },
       {
         "name": "Caddy"
       },
       {
-        "name": "Transporter"
+        "name": "Transporter",
+        "aliases": ["T5 Shuttle", "Eurovan"]
       },
       {
-        "name": "Touran"
+        "name": "ID.EVERY1"
       },
       {
-        "name": "Arteon"
+        "name": "ID.2all"
+      },
+      {
+        "name": "ID.5"
+      },
+      {
+        "name": "Taigo"
+      },
+      {
+        "name": "CC"
+      },
+      {
+        "name": "SpaceFox"
+      },
+      {
+        "name": "Parati"
+      },
+      {
+        "name": "Magotan"
+      },
+      {
+        "name": "Passat CC"
+      },
+      {
+        "name": "Lavida"
+      },
+      {
+        "name": "Rabbit"
+      },
+      {
+        "name": "Eos"
+      },
+      {
+        "name": "Fox"
+      },
+      {
+        "name": "Phaeton"
+      },
+      {
+        "name": "Gol 3"
+      },
+      {
+        "name": "Lupo"
+      },
+      {
+        "name": "W12"
+      },
+      {
+        "name": "Corrado"
+      },
+      {
+        "name": "Santana"
+      },
+      {
+        "name": "Gol 1"
+      },
+      {
+        "name": "Derby"
+      },
+      {
+        "name": "Brasilia"
+      },
+      {
+        "name": "SP1"
+      },
+      {
+        "name": "Kurierwagen",
+        "aliases": ["Trekker", "Thing", "Safari", "Camat"]
+      },
+      {
+        "name": "K 70"
+      },
+      {
+        "name": "Type 4"
+      },
+      {
+        "name": "Type 3"
+      },
+      {
+        "name": "Karmann Ghia"
+      },
+      {
+        "name": "Grand California"
+      },
+      {
+        "name": "CrossPolo"
+      },
+      {
+        "name": "Cross Up!"
+      },
+      {
+        "name": "CrossTouran"
+      },
+      {
+        "name": "CrossGolf"
       }
     ]
   },
   {
     "slug": "ford",
     "name": "Ford",
-    "aliases": ["Форд"]
+    "aliases": ["Форд"],
+    "models": [
+      {
+        "name": "Edge"
+      },
+      {
+        "name": "Sierra"
+      },
+      {
+        "name": "Crown Victoria"
+      },
+      {
+        "name": "Transit Custom"
+      },
+      {
+        "name": "Capri"
+      },
+      {
+        "name": "Transit Connect"
+      },
+      {
+        "name": "Expedition"
+      },
+      {
+        "name": "Puma Crossover"
+      },
+      {
+        "name": "Bronco Sport"
+      },
+      {
+        "name": "Tourneo Custom"
+      },
+      {
+        "name": "Escape"
+      },
+      {
+        "name": "Pinto"
+      },
+      {
+        "name": "Transit Courier"
+      },
+      {
+        "name": "Explorer"
+      },
+      {
+        "name": "Transit"
+      },
+      {
+        "name": "Bronco"
+      },
+      {
+        "name": "Granada"
+      },
+      {
+        "name": "Tourneo Courier"
+      },
+      {
+        "name": "EcoSport"
+      },
+      {
+        "name": "Probe"
+      },
+      {
+        "name": "Ka"
+      },
+      {
+        "name": "Fiesta"
+      },
+      {
+        "name": "Focus (Europe)"
+      },
+      {
+        "name": "Mondeo"
+      },
+      {
+        "name": "Falcon (Australia)"
+      },
+      {
+        "name": "Mustang"
+      },
+      {
+        "name": "C Max"
+      },
+      {
+        "name": "S Max"
+      },
+      {
+        "name": "Galaxy"
+      },
+      {
+        "name": "Kuga"
+      },
+      {
+        "name": "Ranger"
+      },
+      {
+        "name": "Tourneo Connect"
+      },
+      {
+        "name": "Escort (Europe)"
+      },
+      {
+        "name": "Orion"
+      },
+      {
+        "name": "Maverick"
+      },
+      {
+        "name": "Scorpio"
+      },
+      {
+        "name": "Lotus Cortina"
+      },
+      {
+        "name": "Cortina"
+      },
+      {
+        "name": "Explorer EV"
+      },
+      {
+        "name": "Mustang Mach-E"
+      },
+      {
+        "name": "B MAX"
+      },
+      {
+        "name": "F-150"
+      },
+      {
+        "name": "Figo"
+      },
+      {
+        "name": "Focus 1 USA"
+      },
+      {
+        "name": "Shelby"
+      },
+      {
+        "name": "Mustang GT Concept"
+      },
+      {
+        "name": "GT 40 Concept"
+      },
+      {
+        "name": "Fusion"
+      },
+      {
+        "name": "Taurus IV"
+      },
+      {
+        "name": "Windstar II"
+      },
+      {
+        "name": "Cougar"
+      },
+      {
+        "name": "Puma"
+      },
+      {
+        "name": "Taurus III"
+      },
+      {
+        "name": "GT90"
+      },
+      {
+        "name": "Windstar I"
+      },
+      {
+        "name": "Thunderbird X"
+      },
+      {
+        "name": "RS200"
+      },
+      {
+        "name": "Falcon (South America)"
+      },
+      {
+        "name": "Taunus III"
+      },
+      {
+        "name": "Mustang Bertone Concept"
+      },
+      {
+        "name": "GT 40"
+      },
+      {
+        "name": "Anglia 105E"
+      },
+      {
+        "name": "Anglia E494A"
+      },
+      {
+        "name": "Model T"
+      }
+    ]
   },
   {
     "slug": "honda",
     "name": "Honda",
-    "aliases": ["Хонда"]
+    "aliases": ["Хонда"],
+    "models": [
+      {
+        "name": "CR-X"
+      },
+      {
+        "name": "Prelude"
+      },
+      {
+        "name": "Passport"
+      },
+      {
+        "name": "Jazz"
+      },
+      {
+        "name": "Crosstour"
+      },
+      {
+        "name": "CR-V"
+      },
+      {
+        "name": "Pilot"
+      },
+      {
+        "name": "Accord"
+      },
+      {
+        "name": "Odyssey"
+      },
+      {
+        "name": "Civic"
+      },
+      {
+        "name": "HR-V"
+      },
+      {
+        "name": "ZR-V"
+      },
+      {
+        "name": "e:Ny1"
+      },
+      {
+        "name": "Vezel"
+      },
+      {
+        "name": "e"
+      },
+      {
+        "name": "Insight ZE4"
+      },
+      {
+        "name": "Ridgeline"
+      },
+      {
+        "name": "Fit 3"
+      },
+      {
+        "name": "Brio"
+      },
+      {
+        "name": "CR Z"
+      },
+      {
+        "name": "City V"
+      },
+      {
+        "name": "Civic VIII Coupe (US Market)"
+      },
+      {
+        "name": "Life V"
+      },
+      {
+        "name": "Freed"
+      },
+      {
+        "name": "Elysion"
+      },
+      {
+        "name": "Crossroad"
+      },
+      {
+        "name": "Inspire V"
+      },
+      {
+        "name": "Civic VIII (US Market) 3-door"
+      },
+      {
+        "name": "Fit II"
+      },
+      {
+        "name": "Fit Aria"
+      },
+      {
+        "name": "Legend IV"
+      },
+      {
+        "name": "Airwave"
+      },
+      {
+        "name": "Edix"
+      },
+      {
+        "name": "FR V"
+      },
+      {
+        "name": "Inspire IV"
+      },
+      {
+        "name": "Life IV"
+      },
+      {
+        "name": "Element"
+      },
+      {
+        "name": "Torneo"
+      },
+      {
+        "name": "Lagreat"
+      },
+      {
+        "name": "Stream"
+      },
+      {
+        "name": "Fit I"
+      },
+      {
+        "name": "Saber III"
+      },
+      {
+        "name": "Mobilio"
+      },
+      {
+        "name": "Insight"
+      },
+      {
+        "name": "Avancier"
+      },
+      {
+        "name": "Capa"
+      },
+      {
+        "name": "Z 2nd Gen"
+      },
+      {
+        "name": "S2000"
+      },
+      {
+        "name": "Integra Type R"
+      },
+      {
+        "name": "Life III"
+      },
+      {
+        "name": "Life II"
+      },
+      {
+        "name": "Legend III"
+      },
+      {
+        "name": "Logo"
+      },
+      {
+        "name": "NSX"
+      },
+      {
+        "name": "Shuttle"
+      },
+      {
+        "name": "Ascot Innova"
+      },
+      {
+        "name": "Legend II"
+      },
+      {
+        "name": "Legend Coupe II"
+      },
+      {
+        "name": "Concerto"
+      },
+      {
+        "name": "Legend Coupe I"
+      },
+      {
+        "name": "Integra I"
+      },
+      {
+        "name": "Legend I"
+      },
+      {
+        "name": "City II"
+      },
+      {
+        "name": "CRX Mk1"
+      },
+      {
+        "name": "Ballade Sports CR-X"
+      },
+      {
+        "name": "City I"
+      },
+      {
+        "name": "Quintet"
+      },
+      {
+        "name": "Ballade"
+      },
+      {
+        "name": "Quint"
+      },
+      {
+        "name": "145 Coupe"
+      },
+      {
+        "name": "145"
+      },
+      {
+        "name": "Life I"
+      },
+      {
+        "name": "1300 Coupe"
+      },
+      {
+        "name": "Z 1st Gen"
+      },
+      {
+        "name": "N600"
+      },
+      {
+        "name": "1300 Sedan"
+      },
+      {
+        "name": "S800"
+      },
+      {
+        "name": "S500"
+      }
+    ]
   },
   {
     "slug": "chevrolet",
     "name": "Chevrolet",
-    "aliases": ["Шевроле"]
+    "aliases": ["Шевроле"],
+    "models": [
+      {
+        "name": "Astro"
+      },
+      {
+        "name": "Trax"
+      },
+      {
+        "name": "Biscayne"
+      },
+      {
+        "name": "Townsman"
+      },
+      {
+        "name": "Equinox"
+      },
+      {
+        "name": "Suburban"
+      },
+      {
+        "name": "Caprice"
+      },
+      {
+        "name": "Traverse"
+      },
+      {
+        "name": "Bel Air"
+      },
+      {
+        "name": "Tahoe"
+      },
+      {
+        "name": "El Camino"
+      },
+      {
+        "name": "Nubira"
+      },
+      {
+        "name": "Cavalier"
+      },
+      {
+        "name": "Matiz"
+      },
+      {
+        "name": "Camaro"
+      },
+      {
+        "name": "Lumina"
+      },
+      {
+        "name": "Aveo"
+      },
+      {
+        "name": "Corvette"
+      },
+      {
+        "name": "Monte Carlo"
+      },
+      {
+        "name": "Malibu"
+      },
+      {
+        "name": "Blazer"
+      },
+      {
+        "name": "Impala"
+      },
+      {
+        "name": "Equinox EV"
+      },
+      {
+        "name": "Blazer EV"
+      },
+      {
+        "name": "Silverado 1500 Double Cab"
+      },
+      {
+        "name": "Silverado 1500 Regular Cab"
+      },
+      {
+        "name": "Silverado 1500 Crew Cab"
+      },
+      {
+        "name": "Prisma"
+      },
+      {
+        "name": "Classic"
+      },
+      {
+        "name": "Volt"
+      },
+      {
+        "name": "Celta"
+      },
+      {
+        "name": "Orlando"
+      },
+      {
+        "name": "Cruze"
+      },
+      {
+        "name": "Lacetti"
+      },
+      {
+        "name": "Spark"
+      },
+      {
+        "name": "HHR"
+      },
+      {
+        "name": "Captiva"
+      },
+      {
+        "name": "Epica"
+      },
+      {
+        "name": "Tacuma"
+      },
+      {
+        "name": "Kalos"
+      },
+      {
+        "name": "Evanda"
+      },
+      {
+        "name": "Cobalt"
+      },
+      {
+        "name": "SSR"
+      },
+      {
+        "name": "Alero"
+      },
+      {
+        "name": "Trailblazer"
+      },
+      {
+        "name": "Trans Sport"
+      },
+      {
+        "name": "Geo Storm"
+      },
+      {
+        "name": "Corsica"
+      },
+      {
+        "name": "Beretta"
+      },
+      {
+        "name": "Citation"
+      },
+      {
+        "name": "Corvair"
+      }
+    ]
   },
   {
     "slug": "nissan",
     "name": "Nissan",
-    "aliases": ["Ніссан"]
+    "aliases": ["Ніссан"],
+    "models": [
+      {
+        "name": "Roox"
+      },
+      {
+        "name": "Rogue"
+      },
+      {
+        "name": "Townstar"
+      },
+      {
+        "name": "Pulsar"
+      },
+      {
+        "name": "Primastar"
+      },
+      {
+        "name": "Leaf"
+      },
+      {
+        "name": "Kicks"
+      },
+      {
+        "name": "Rogue Sport"
+      },
+      {
+        "name": "Interstar"
+      },
+      {
+        "name": "Moco"
+      },
+      {
+        "name": "Micra"
+      },
+      {
+        "name": "Note"
+      },
+      {
+        "name": "Juke"
+      },
+      {
+        "name": "Qashqai"
+      },
+      {
+        "name": "X Trail"
+      },
+      {
+        "name": "Murano"
+      },
+      {
+        "name": "Pathfinder"
+      },
+      {
+        "name": "Z series",
+        "aliases": ["Z series / Fairlady Z", "Fairlady Z"]
+      },
+      {
+        "name": "Fairlady Z",
+        "aliases": ["Z series / Fairlady Z", "Z series"]
+      },
+      {
+        "name": "Teana"
+      },
+      {
+        "name": "200SX",
+        "aliases": ["200SX / Silvia", "Silvia"]
+      },
+      {
+        "name": "Silvia",
+        "aliases": ["200SX / Silvia", "200SX"]
+      },
+      {
+        "name": "Skyline"
+      },
+      {
+        "name": "Patrol"
+      },
+      {
+        "name": "Terrano"
+      },
+      {
+        "name": "Sunny"
+      },
+      {
+        "name": "Almera"
+      },
+      {
+        "name": "Primera"
+      },
+      {
+        "name": "Maxima"
+      },
+      {
+        "name": "Prairie"
+      },
+      {
+        "name": "Bluebird"
+      },
+      {
+        "name": "Laurel"
+      },
+      {
+        "name": "Armada Y63"
+      },
+      {
+        "name": "Ariya"
+      },
+      {
+        "name": "Versa"
+      },
+      {
+        "name": "NV300"
+      },
+      {
+        "name": "Navara (NP300)"
+      },
+      {
+        "name": "GT R"
+      },
+      {
+        "name": "Evalia",
+        "aliases": ["Evalia / NV200", "NV200"]
+      },
+      {
+        "name": "NV200",
+        "aliases": ["Evalia / NV200", "Evalia"]
+      },
+      {
+        "name": "Cube"
+      },
+      {
+        "name": "Pixo"
+      },
+      {
+        "name": "Tiida"
+      },
+      {
+        "name": "Altima L32"
+      },
+      {
+        "name": "Pino"
+      },
+      {
+        "name": "Otti"
+      },
+      {
+        "name": "Navara D40"
+      },
+      {
+        "name": "Fuga"
+      },
+      {
+        "name": "Almera Tino"
+      },
+      {
+        "name": "Avenir W11"
+      },
+      {
+        "name": "Stagea M35"
+      },
+      {
+        "name": "Lucino"
+      },
+      {
+        "name": "Serena"
+      },
+      {
+        "name": "100 NX"
+      },
+      {
+        "name": "Cherry N12"
+      }
+    ]
   },
   {
     "slug": "hyundai",
@@ -128,13 +1851,241 @@
       },
       {
         "name": "Creta"
+      },
+      {
+        "name": "Inster"
+      },
+      {
+        "name": "Bayon"
+      },
+      {
+        "name": "Matrix"
+      },
+      {
+        "name": "Kona"
+      },
+      {
+        "name": "i10"
+      },
+      {
+        "name": "Ioniq 6"
+      },
+      {
+        "name": "Equus"
+      },
+      {
+        "name": "Scoupe"
+      },
+      {
+        "name": "Ioniq"
+      },
+      {
+        "name": "Coupé"
+      },
+      {
+        "name": "Pony"
+      },
+      {
+        "name": "i40"
+      },
+      {
+        "name": "Lantra"
+      },
+      {
+        "name": "i20"
+      },
+      {
+        "name": "ix20"
+      },
+      {
+        "name": "H350"
+      },
+      {
+        "name": "Ioniq 5"
+      },
+      {
+        "name": "Ioniq 9"
+      },
+      {
+        "name": "Staria"
+      },
+      {
+        "name": "Palisade"
+      },
+      {
+        "name": "Nexo"
+      },
+      {
+        "name": "Grand Santa Fe"
+      },
+      {
+        "name": "ix55"
+      },
+      {
+        "name": "Eon"
+      },
+      {
+        "name": "Genesis Coupe"
+      },
+      {
+        "name": "Veloster"
+      },
+      {
+        "name": "Solaris"
+      },
+      {
+        "name": "i800"
+      },
+      {
+        "name": "Grandeur IV"
+      },
+      {
+        "name": "Veracruz"
+      },
+      {
+        "name": "Atos"
+      },
+      {
+        "name": "Trajet"
+      },
+      {
+        "name": "Terracan"
+      },
+      {
+        "name": "XG"
+      },
+      {
+        "name": "H 1"
+      },
+      {
+        "name": "Stellar"
       }
     ]
   },
   {
     "slug": "kia",
     "name": "Kia",
-    "aliases": ["Кіа"]
+    "aliases": ["Кіа"],
+    "models": [
+      {
+        "name": "ProCeed"
+      },
+      {
+        "name": "Stonic"
+      },
+      {
+        "name": "EV6"
+      },
+      {
+        "name": "PV5"
+      },
+      {
+        "name": "Niro"
+      },
+      {
+        "name": "EV4"
+      },
+      {
+        "name": "Picanto"
+      },
+      {
+        "name": "Rio"
+      },
+      {
+        "name": "Venga"
+      },
+      {
+        "name": "Ceed"
+      },
+      {
+        "name": "Soul"
+      },
+      {
+        "name": "Optima",
+        "aliases": ["Optima / Magentis", "Magentis"]
+      },
+      {
+        "name": "Magentis",
+        "aliases": ["Optima / Magentis", "Optima"]
+      },
+      {
+        "name": "Sportage"
+      },
+      {
+        "name": "Sorento"
+      },
+      {
+        "name": "Carens"
+      },
+      {
+        "name": "Carnival",
+        "aliases": ["Carnival / Sedona", "Sedona"]
+      },
+      {
+        "name": "Sedona",
+        "aliases": ["Carnival / Sedona", "Carnival"]
+      },
+      {
+        "name": "Sephia",
+        "aliases": ["Sephia / Mentor / Shuma", "Mentor", "Shuma"]
+      },
+      {
+        "name": "Mentor",
+        "aliases": ["Sephia / Mentor / Shuma", "Sephia", "Shuma"]
+      },
+      {
+        "name": "Shuma",
+        "aliases": ["Sephia / Mentor / Shuma", "Sephia", "Mentor"]
+      },
+      {
+        "name": "EV2"
+      },
+      {
+        "name": "EV5"
+      },
+      {
+        "name": "EV3"
+      },
+      {
+        "name": "EV9"
+      },
+      {
+        "name": "K5"
+      },
+      {
+        "name": "Telluride"
+      },
+      {
+        "name": "Seltos"
+      },
+      {
+        "name": "XCeed"
+      },
+      {
+        "name": "Forte"
+      },
+      {
+        "name": "Stinger"
+      },
+      {
+        "name": "Cerato II"
+      },
+      {
+        "name": "Opirus"
+      },
+      {
+        "name": "Joice"
+      },
+      {
+        "name": "Clarus"
+      },
+      {
+        "name": "Elan"
+      },
+      {
+        "name": "Pride"
+      }
+    ]
   },
   {
     "slug": "mercedesbenz",
@@ -170,6 +2121,154 @@
       },
       {
         "name": "Vito"
+      },
+      {
+        "name": "EQV"
+      },
+      {
+        "name": "T-Class"
+      },
+      {
+        "name": "GLE Coupé"
+      },
+      {
+        "name": "EQS"
+      },
+      {
+        "name": "Citan"
+      },
+      {
+        "name": "EQA"
+      },
+      {
+        "name": "GLS"
+      },
+      {
+        "name": "AMG GT"
+      },
+      {
+        "name": "CLE-Class"
+      },
+      {
+        "name": "GLE-Class"
+      },
+      {
+        "name": "EQS SUV"
+      },
+      {
+        "name": "GLC Coupé"
+      },
+      {
+        "name": "EQB"
+      },
+      {
+        "name": "GLB"
+      },
+      {
+        "name": "AMG GT 4-door"
+      },
+      {
+        "name": "B-Class"
+      },
+      {
+        "name": "CLA"
+      },
+      {
+        "name": "CLS-Class"
+      },
+      {
+        "name": "SLK"
+      },
+      {
+        "name": "SL-Class"
+      },
+      {
+        "name": "CLK"
+      },
+      {
+        "name": "CL-Class"
+      },
+      {
+        "name": "GLK-Class"
+      },
+      {
+        "name": "M-Class"
+      },
+      {
+        "name": "GL-Class"
+      },
+      {
+        "name": "V-Class",
+        "aliases": ["V-Class / Viano", "Viano"]
+      },
+      {
+        "name": "Viano",
+        "aliases": ["V-Class / Viano", "V-Class"]
+      },
+      {
+        "name": "X294 EQE SUV"
+      },
+      {
+        "name": "EQT (W420)"
+      },
+      {
+        "name": "EQE (V295)"
+      },
+      {
+        "name": "EQC (N293)"
+      },
+      {
+        "name": "X-Class"
+      },
+      {
+        "name": "SLC (R173)"
+      },
+      {
+        "name": "Viano Marco Polo"
+      },
+      {
+        "name": "SLS"
+      },
+      {
+        "name": "R Class (W251)"
+      },
+      {
+        "name": "SLR McLaren"
+      },
+      {
+        "name": "Vaneo"
+      },
+      {
+        "name": "CLK GTR"
+      },
+      {
+        "name": "W201"
+      },
+      {
+        "name": "C107"
+      },
+      {
+        "name": "C 111"
+      },
+      {
+        "name": "W115"
+      },
+      {
+        "name": "W114"
+      },
+      {
+        "name": "W100"
+      },
+      {
+        "name": "W110 Fintail",
+        "aliases": ["W110 Fintail / Heckflosse", "Heckflosse"]
+      },
+      {
+        "name": "Heckflosse",
+        "aliases": ["W110 Fintail / Heckflosse", "W110 Fintail"]
+      },
+      {
+        "name": "W196S"
       }
     ]
   },
@@ -201,88 +2300,1745 @@
       },
       {
         "name": "1 Series"
+      },
+      {
+        "name": "XM"
+      },
+      {
+        "name": "iX"
+      },
+      {
+        "name": "i4"
+      },
+      {
+        "name": "X2"
+      },
+      {
+        "name": "iX3"
+      },
+      {
+        "name": "X7"
+      },
+      {
+        "name": "i5"
+      },
+      {
+        "name": "E3 New-Six"
+      },
+      {
+        "name": "8 series"
+      },
+      {
+        "name": "2 Series"
+      },
+      {
+        "name": "4 Series"
+      },
+      {
+        "name": "6 Series"
+      },
+      {
+        "name": "X4"
+      },
+      {
+        "name": "Z3"
+      },
+      {
+        "name": "Z4"
+      },
+      {
+        "name": "303 Platform"
+      },
+      {
+        "name": "326 Platform"
+      },
+      {
+        "name": "iX2"
+      },
+      {
+        "name": "iX1"
+      },
+      {
+        "name": "i7"
+      },
+      {
+        "name": "i3"
+      },
+      {
+        "name": "Z8"
+      },
+      {
+        "name": "Z1"
+      },
+      {
+        "name": "E26"
+      },
+      {
+        "name": "Type 114"
+      },
+      {
+        "name": "E9"
+      },
+      {
+        "name": "E20"
+      },
+      {
+        "name": "2004"
+      },
+      {
+        "name": "E06"
+      },
+      {
+        "name": "2000"
+      },
+      {
+        "name": "2000 TI Coupe"
+      },
+      {
+        "name": "E10"
+      },
+      {
+        "name": "3000 GT Frua"
+      },
+      {
+        "name": "GT Frua"
+      },
+      {
+        "name": "New Class Coupe"
+      },
+      {
+        "name": "3200 CS Coupe"
+      },
+      {
+        "name": "2600"
+      },
+      {
+        "name": "New Class"
+      },
+      {
+        "name": "700"
+      },
+      {
+        "name": "503"
+      },
+      {
+        "name": "507"
+      },
+      {
+        "name": "502"
+      },
+      {
+        "name": "501"
+      },
+      {
+        "name": "328"
       }
     ]
   },
   {
     "slug": "tesla",
     "name": "Tesla",
-    "aliases": ["Тесла"]
+    "aliases": ["Тесла"],
+    "models": [
+      {
+        "name": "Model 3"
+      },
+      {
+        "name": "Model Y"
+      },
+      {
+        "name": "Model S"
+      },
+      {
+        "name": "Model X"
+      },
+      {
+        "name": "Cybertruck"
+      },
+      {
+        "name": "Roadster"
+      }
+    ]
   },
   {
     "slug": "byd",
     "name": "BYD",
-    "aliases": ["БІД"]
+    "aliases": ["БІД"],
+    "models": [
+      {
+        "name": "Tang (EU-Market)"
+      },
+      {
+        "name": "Atto 2"
+      },
+      {
+        "name": "Dolphin Surf (EQE)"
+      },
+      {
+        "name": "Sealion 7"
+      },
+      {
+        "name": "Seal"
+      },
+      {
+        "name": "Seal U"
+      },
+      {
+        "name": "ETP3"
+      },
+      {
+        "name": "Han"
+      },
+      {
+        "name": "Atto 3"
+      },
+      {
+        "name": "Dolphin"
+      },
+      {
+        "name": "E6"
+      },
+      {
+        "name": "F8 S8"
+      },
+      {
+        "name": "F1"
+      },
+      {
+        "name": "F0"
+      },
+      {
+        "name": "F3"
+      }
+    ]
   },
   {
     "slug": "audi",
     "name": "Audi",
-    "aliases": ["Ауді"]
+    "aliases": ["Ауді"],
+    "models": [
+      {
+        "name": "Cabriolet"
+      },
+      {
+        "name": "Q4"
+      },
+      {
+        "name": "Q2"
+      },
+      {
+        "name": "Q8 e-tron"
+      },
+      {
+        "name": "e-tron GT"
+      },
+      {
+        "name": "A6 e-tron"
+      },
+      {
+        "name": "F103"
+      },
+      {
+        "name": "Q8"
+      },
+      {
+        "name": "Q6"
+      },
+      {
+        "name": "A1"
+      },
+      {
+        "name": "A3"
+      },
+      {
+        "name": "A4"
+      },
+      {
+        "name": "A5"
+      },
+      {
+        "name": "A6"
+      },
+      {
+        "name": "A7"
+      },
+      {
+        "name": "A8"
+      },
+      {
+        "name": "Q3"
+      },
+      {
+        "name": "Q5"
+      },
+      {
+        "name": "Q7"
+      },
+      {
+        "name": "TT"
+      },
+      {
+        "name": "R8"
+      },
+      {
+        "name": "80"
+      },
+      {
+        "name": "90"
+      },
+      {
+        "name": "Coupe"
+      },
+      {
+        "name": "100"
+      },
+      {
+        "name": "200"
+      },
+      {
+        "name": "A2 (8Z)"
+      },
+      {
+        "name": "V8"
+      },
+      {
+        "name": "Quattro"
+      },
+      {
+        "name": "100 Coupe S"
+      }
+    ]
   },
   {
     "slug": "lexus",
     "name": "Lexus",
-    "aliases": ["Лексус"]
+    "aliases": ["Лексус"],
+    "models": [
+      {
+        "name": "LM"
+      },
+      {
+        "name": "IS"
+      },
+      {
+        "name": "SC"
+      },
+      {
+        "name": "ES"
+      },
+      {
+        "name": "RC"
+      },
+      {
+        "name": "LS"
+      },
+      {
+        "name": "LC"
+      },
+      {
+        "name": "GS"
+      },
+      {
+        "name": "RX"
+      },
+      {
+        "name": "CT"
+      },
+      {
+        "name": "NX"
+      },
+      {
+        "name": "TX"
+      },
+      {
+        "name": "LBX"
+      },
+      {
+        "name": "RZ"
+      },
+      {
+        "name": "GX (J250)"
+      },
+      {
+        "name": "UX"
+      },
+      {
+        "name": "HS"
+      },
+      {
+        "name": "LFA"
+      }
+    ]
   },
   {
     "slug": "porsche",
     "name": "Porsche",
-    "aliases": ["Порше"]
+    "aliases": ["Порше"],
+    "models": [
+      {
+        "name": "Panamera"
+      },
+      {
+        "name": "Taycan"
+      },
+      {
+        "name": "Macan"
+      },
+      {
+        "name": "Cayman"
+      },
+      {
+        "name": "Boxster"
+      },
+      {
+        "name": "Cayenne"
+      },
+      {
+        "name": "911"
+      },
+      {
+        "name": "918 Spyder"
+      },
+      {
+        "name": "Carrera GT"
+      },
+      {
+        "name": "968"
+      },
+      {
+        "name": "944 Cabriolet"
+      },
+      {
+        "name": "959"
+      },
+      {
+        "name": "944 Coupe"
+      },
+      {
+        "name": "928"
+      },
+      {
+        "name": "924"
+      },
+      {
+        "name": "914"
+      },
+      {
+        "name": "912"
+      },
+      {
+        "name": "356"
+      }
+    ]
   },
   {
     "slug": "landrover",
     "name": "Land Rover",
-    "aliases": ["Ленд Ровер"]
+    "aliases": ["Ленд Ровер"],
+    "models": [
+      {
+        "name": "Range Rover Velar"
+      },
+      {
+        "name": "Range Rover"
+      },
+      {
+        "name": "Range Rover Sport"
+      },
+      {
+        "name": "Freelander"
+      },
+      {
+        "name": "Discovery Sport"
+      },
+      {
+        "name": "Defender"
+      },
+      {
+        "name": "Evoque"
+      },
+      {
+        "name": "Discovery"
+      },
+      {
+        "name": "88 Series III"
+      },
+      {
+        "name": "109 Series III"
+      }
+    ]
   },
   {
     "slug": "jaguar",
     "name": "Jaguar",
-    "aliases": ["Ягуар"]
+    "aliases": ["Ягуар"],
+    "models": [
+      {
+        "name": "F-Type"
+      },
+      {
+        "name": "E-Type"
+      },
+      {
+        "name": "XE"
+      },
+      {
+        "name": "F-Pace"
+      },
+      {
+        "name": "E-Pace"
+      },
+      {
+        "name": "XK"
+      },
+      {
+        "name": "XF"
+      },
+      {
+        "name": "XJ"
+      },
+      {
+        "name": "I-Pace"
+      },
+      {
+        "name": "X Type Estate"
+      },
+      {
+        "name": "S Type"
+      },
+      {
+        "name": "X Type"
+      },
+      {
+        "name": "XJ220"
+      },
+      {
+        "name": "XJS Convertible"
+      },
+      {
+        "name": "XJS"
+      },
+      {
+        "name": "Daimler DS 420"
+      }
+    ]
   },
   {
     "slug": "volvo",
     "name": "Volvo",
-    "aliases": ["Вольво"]
+    "aliases": ["Вольво"],
+    "models": [
+      {
+        "name": "EX90"
+      },
+      {
+        "name": "XC40"
+      },
+      {
+        "name": "EX60"
+      },
+      {
+        "name": "S40"
+      },
+      {
+        "name": "V40"
+      },
+      {
+        "name": "S60"
+      },
+      {
+        "name": "V60"
+      },
+      {
+        "name": "V70"
+      },
+      {
+        "name": "S80"
+      },
+      {
+        "name": "S90",
+        "aliases": ["S90 / V90", "V90"]
+      },
+      {
+        "name": "V90",
+        "aliases": ["S90 / V90", "S90"]
+      },
+      {
+        "name": "XC60"
+      },
+      {
+        "name": "XC70"
+      },
+      {
+        "name": "XC90"
+      },
+      {
+        "name": "C70"
+      },
+      {
+        "name": "850"
+      },
+      {
+        "name": "120 Amazon"
+      },
+      {
+        "name": "140",
+        "aliases": ["140 / 164", "164"]
+      },
+      {
+        "name": "164",
+        "aliases": ["140 / 164", "140"]
+      },
+      {
+        "name": "200 Series"
+      },
+      {
+        "name": "300 Series"
+      },
+      {
+        "name": "400 Series"
+      },
+      {
+        "name": "700 Series"
+      },
+      {
+        "name": "900 Series"
+      },
+      {
+        "name": "ES90"
+      },
+      {
+        "name": "EC40"
+      },
+      {
+        "name": "EX40"
+      },
+      {
+        "name": "EX30"
+      },
+      {
+        "name": "C40"
+      },
+      {
+        "name": "C30"
+      },
+      {
+        "name": "V50"
+      },
+      {
+        "name": "S70"
+      },
+      {
+        "name": "66"
+      },
+      {
+        "name": "P1800"
+      },
+      {
+        "name": "Laplander"
+      },
+      {
+        "name": "PV 544"
+      },
+      {
+        "name": "PV 444"
+      },
+      {
+        "name": "P1900"
+      },
+      {
+        "name": "PV 801"
+      },
+      {
+        "name": "OV4"
+      }
+    ]
   },
   {
     "slug": "mazda",
     "name": "Mazda",
-    "aliases": ["Мазда"]
+    "aliases": ["Мазда"],
+    "models": [
+      {
+        "name": "323",
+        "aliases": ["323 / Familia", "Familia"]
+      },
+      {
+        "name": "Familia",
+        "aliases": ["323 / Familia", "323"]
+      },
+      {
+        "name": "CX-5"
+      },
+      {
+        "name": "3"
+      },
+      {
+        "name": "RX-8"
+      },
+      {
+        "name": "Laputa"
+      },
+      {
+        "name": "CX-3"
+      },
+      {
+        "name": "2"
+      },
+      {
+        "name": "MX-5",
+        "aliases": ["MX-5 / Miata", "Miata"]
+      },
+      {
+        "name": "Miata",
+        "aliases": ["MX-5 / Miata", "MX-5"]
+      },
+      {
+        "name": "6"
+      },
+      {
+        "name": "CX-6e"
+      },
+      {
+        "name": "MX-30"
+      },
+      {
+        "name": "CX-30"
+      },
+      {
+        "name": "CX-9"
+      },
+      {
+        "name": "BT 50"
+      },
+      {
+        "name": "5 II"
+      },
+      {
+        "name": "CX 7"
+      },
+      {
+        "name": "5"
+      },
+      {
+        "name": "MPV II"
+      },
+      {
+        "name": "Premacy"
+      },
+      {
+        "name": "Tribute I"
+      },
+      {
+        "name": "Demio"
+      },
+      {
+        "name": "626 V"
+      },
+      {
+        "name": "121 III"
+      },
+      {
+        "name": "MPV I"
+      },
+      {
+        "name": "Xedos 9"
+      },
+      {
+        "name": "626 IV"
+      },
+      {
+        "name": "Xedos 6"
+      },
+      {
+        "name": "RX 7 FD"
+      },
+      {
+        "name": "121 II"
+      },
+      {
+        "name": "MX 6 II"
+      },
+      {
+        "name": "MX-3"
+      },
+      {
+        "name": "RX 7 FC Cabriolet"
+      },
+      {
+        "name": "121 I"
+      },
+      {
+        "name": "626 III Coupe"
+      },
+      {
+        "name": "626 III"
+      },
+      {
+        "name": "929 III"
+      },
+      {
+        "name": "RX 7 FC"
+      },
+      {
+        "name": "626 II Coupe"
+      },
+      {
+        "name": "626 II"
+      },
+      {
+        "name": "929 II"
+      },
+      {
+        "name": "RX 7 FB2"
+      },
+      {
+        "name": "626 I HardTop"
+      },
+      {
+        "name": "121 (Cosmo AP/RX 5)"
+      },
+      {
+        "name": "626 I"
+      }
+    ]
   },
   {
     "slug": "subaru",
     "name": "Subaru",
-    "aliases": ["Субару"]
+    "aliases": ["Субару"],
+    "models": [
+      {
+        "name": "Rex",
+        "aliases": ["Rex / M80", "M80"]
+      },
+      {
+        "name": "M80",
+        "aliases": ["Rex / M80", "Rex"]
+      },
+      {
+        "name": "Levorg"
+      },
+      {
+        "name": "BRZ"
+      },
+      {
+        "name": "Outback"
+      },
+      {
+        "name": "Legacy"
+      },
+      {
+        "name": "Impreza"
+      },
+      {
+        "name": "Crosstrek",
+        "aliases": ["Crosstrek / XV", "XV"]
+      },
+      {
+        "name": "XV",
+        "aliases": ["Crosstrek / XV", "Crosstrek"]
+      },
+      {
+        "name": "Justy"
+      },
+      {
+        "name": "Forester"
+      },
+      {
+        "name": "WRX (VB)"
+      },
+      {
+        "name": "Trezia"
+      },
+      {
+        "name": "Tribeca"
+      },
+      {
+        "name": "R1"
+      },
+      {
+        "name": "SVX"
+      },
+      {
+        "name": "Vivio"
+      },
+      {
+        "name": "XT"
+      },
+      {
+        "name": "Leone"
+      }
+    ]
   },
   {
     "slug": "suzuki",
     "name": "Suzuki",
-    "aliases": ["Сузукі"]
+    "aliases": ["Сузукі"],
+    "models": [
+      {
+        "name": "SX4 S-Cross"
+      },
+      {
+        "name": "Swace"
+      },
+      {
+        "name": "Ignis"
+      },
+      {
+        "name": "Escudo"
+      },
+      {
+        "name": "Vitara"
+      },
+      {
+        "name": "Alto Lapin"
+      },
+      {
+        "name": "Swift"
+      },
+      {
+        "name": "SJ",
+        "aliases": ["SJ / Samurai", "Samurai"]
+      },
+      {
+        "name": "Samurai",
+        "aliases": ["SJ / Samurai", "SJ"]
+      },
+      {
+        "name": "Grand Vitara"
+      },
+      {
+        "name": "Baleno"
+      },
+      {
+        "name": "Alto"
+      },
+      {
+        "name": "eVitara"
+      },
+      {
+        "name": "Across"
+      },
+      {
+        "name": "Jimny"
+      },
+      {
+        "name": "Celerio"
+      },
+      {
+        "name": "Kizashi"
+      },
+      {
+        "name": "Splash"
+      },
+      {
+        "name": "Cervo (HG21S)"
+      },
+      {
+        "name": "Liana"
+      },
+      {
+        "name": "Kei 5-door"
+      },
+      {
+        "name": "Wagon R+ II"
+      },
+      {
+        "name": "Hayabusa"
+      },
+      {
+        "name": "Grand Escudo"
+      },
+      {
+        "name": "Wagon R+ I"
+      },
+      {
+        "name": "Kei 3-door"
+      },
+      {
+        "name": "X 90"
+      },
+      {
+        "name": "Capuccino"
+      },
+      {
+        "name": "Cara Coupe"
+      },
+      {
+        "name": "SJ 410"
+      }
+    ]
   },
   {
     "slug": "renault",
     "name": "Renault",
-    "aliases": ["Рено"]
+    "aliases": ["Рено"],
+    "models": [
+      {
+        "name": "Austral"
+      },
+      {
+        "name": "4"
+      },
+      {
+        "name": "Dauphine"
+      },
+      {
+        "name": "Latitude"
+      },
+      {
+        "name": "Trafic"
+      },
+      {
+        "name": "Arkana"
+      },
+      {
+        "name": "Kadjar"
+      },
+      {
+        "name": "Zoe"
+      },
+      {
+        "name": "Master"
+      },
+      {
+        "name": "Twingo"
+      },
+      {
+        "name": "Clio"
+      },
+      {
+        "name": "Modus"
+      },
+      {
+        "name": "Megane"
+      },
+      {
+        "name": "Scenic"
+      },
+      {
+        "name": "Captur"
+      },
+      {
+        "name": "Koleos"
+      },
+      {
+        "name": "Talisman"
+      },
+      {
+        "name": "Espace"
+      },
+      {
+        "name": "Laguna"
+      },
+      {
+        "name": "Fluence"
+      },
+      {
+        "name": "Kangoo"
+      },
+      {
+        "name": "Vel Satis"
+      },
+      {
+        "name": "Safrane"
+      },
+      {
+        "name": "5"
+      },
+      {
+        "name": "9"
+      },
+      {
+        "name": "11"
+      },
+      {
+        "name": "19"
+      },
+      {
+        "name": "21"
+      },
+      {
+        "name": "25"
+      },
+      {
+        "name": "Rafale"
+      },
+      {
+        "name": "Symbioz"
+      },
+      {
+        "name": "Megane E-Tech"
+      },
+      {
+        "name": "Express Van"
+      },
+      {
+        "name": "Twizy"
+      },
+      {
+        "name": "DeZir"
+      },
+      {
+        "name": "Wind"
+      },
+      {
+        "name": "Altica"
+      },
+      {
+        "name": "Nepta"
+      },
+      {
+        "name": "Ellypse"
+      },
+      {
+        "name": "Avantime"
+      },
+      {
+        "name": "Talisman Concept"
+      },
+      {
+        "name": "Spider"
+      },
+      {
+        "name": "Fuego"
+      },
+      {
+        "name": "Gabbiano"
+      },
+      {
+        "name": "30"
+      },
+      {
+        "name": "Rodeo"
+      },
+      {
+        "name": "20"
+      },
+      {
+        "name": "18"
+      },
+      {
+        "name": "14"
+      },
+      {
+        "name": "16"
+      },
+      {
+        "name": "17"
+      },
+      {
+        "name": "15"
+      },
+      {
+        "name": "12"
+      },
+      {
+        "name": "6"
+      },
+      {
+        "name": "8"
+      },
+      {
+        "name": "Caravelle"
+      },
+      {
+        "name": "Floride"
+      },
+      {
+        "name": "Fregate"
+      },
+      {
+        "name": "Juvaquatre"
+      },
+      {
+        "name": "26.8HP"
+      },
+      {
+        "name": "Eighteen"
+      },
+      {
+        "name": "Nerva Grand Sport"
+      },
+      {
+        "name": "NervaSport"
+      },
+      {
+        "name": "45 hp"
+      },
+      {
+        "name": "Torpedo"
+      },
+      {
+        "name": "40CV"
+      },
+      {
+        "name": "Victoria"
+      },
+      {
+        "name": "Type XA"
+      },
+      {
+        "name": "Voiturette"
+      }
+    ]
   },
   {
     "slug": "peugeot",
     "name": "Peugeot",
-    "aliases": ["Пежо"]
+    "aliases": ["Пежо"],
+    "models": [
+      {
+        "name": "e-Traveller"
+      },
+      {
+        "name": "605"
+      },
+      {
+        "name": "408"
+      },
+      {
+        "name": "Expert"
+      },
+      {
+        "name": "Boxer"
+      },
+      {
+        "name": "Partner"
+      },
+      {
+        "name": "206"
+      },
+      {
+        "name": "308"
+      },
+      {
+        "name": "2008"
+      },
+      {
+        "name": "306"
+      },
+      {
+        "name": "504"
+      },
+      {
+        "name": "3008"
+      },
+      {
+        "name": "207"
+      },
+      {
+        "name": "406"
+      },
+      {
+        "name": "205"
+      },
+      {
+        "name": "307"
+      },
+      {
+        "name": "508"
+      },
+      {
+        "name": "305"
+      },
+      {
+        "name": "5008"
+      },
+      {
+        "name": "208"
+      },
+      {
+        "name": "407"
+      },
+      {
+        "name": "Rifter"
+      },
+      {
+        "name": "108"
+      },
+      {
+        "name": "Ion"
+      },
+      {
+        "name": "Bipper"
+      },
+      {
+        "name": "RCZ"
+      },
+      {
+        "name": "4008"
+      },
+      {
+        "name": "4007"
+      },
+      {
+        "name": "1007"
+      },
+      {
+        "name": "107"
+      },
+      {
+        "name": "607"
+      },
+      {
+        "name": "807"
+      },
+      {
+        "name": "806"
+      },
+      {
+        "name": "106"
+      },
+      {
+        "name": "405"
+      },
+      {
+        "name": "309"
+      },
+      {
+        "name": "505"
+      },
+      {
+        "name": "104"
+      },
+      {
+        "name": "604"
+      },
+      {
+        "name": "304"
+      }
+    ]
   },
   {
     "slug": "citroen",
     "name": "Citroën",
-    "aliases": ["Сітроен"]
+    "aliases": ["Сітроен"],
+    "models": [
+      {
+        "name": "Spacetourer"
+      },
+      {
+        "name": "Jumper"
+      },
+      {
+        "name": "Ami"
+      },
+      {
+        "name": "C3 Aircross"
+      },
+      {
+        "name": "C5 AirCross"
+      },
+      {
+        "name": "Jumpy"
+      },
+      {
+        "name": "C4 X"
+      },
+      {
+        "name": "e-Mehari"
+      },
+      {
+        "name": "C5 X"
+      },
+      {
+        "name": "C3"
+      },
+      {
+        "name": "C5"
+      },
+      {
+        "name": "C-Elysee"
+      },
+      {
+        "name": "C4 SpaceTourer"
+      },
+      {
+        "name": "DS5"
+      },
+      {
+        "name": "C4 Cactus"
+      },
+      {
+        "name": "Xsara"
+      },
+      {
+        "name": "C8"
+      },
+      {
+        "name": "Xantia"
+      },
+      {
+        "name": "C1"
+      },
+      {
+        "name": "Berlingo"
+      },
+      {
+        "name": "C4 Picasso"
+      },
+      {
+        "name": "DS3"
+      },
+      {
+        "name": "C4"
+      },
+      {
+        "name": "XM"
+      },
+      {
+        "name": "DS4"
+      },
+      {
+        "name": "C Crosser"
+      },
+      {
+        "name": "C-Zero"
+      },
+      {
+        "name": "Nemo"
+      },
+      {
+        "name": "C2"
+      },
+      {
+        "name": "Evasion"
+      },
+      {
+        "name": "Saxo"
+      },
+      {
+        "name": "C-15"
+      },
+      {
+        "name": "ZX"
+      },
+      {
+        "name": "AX"
+      },
+      {
+        "name": "Axel"
+      },
+      {
+        "name": "Visa"
+      },
+      {
+        "name": "BX"
+      },
+      {
+        "name": "2CV"
+      },
+      {
+        "name": "GSA"
+      },
+      {
+        "name": "LNA"
+      },
+      {
+        "name": "CX"
+      },
+      {
+        "name": "SM"
+      },
+      {
+        "name": "Dyane"
+      },
+      {
+        "name": "Mehari"
+      },
+      {
+        "name": "C6"
+      }
+    ]
   },
   {
     "slug": "fiat",
     "name": "Fiat",
-    "aliases": ["Фіат"]
+    "aliases": ["Фіат"],
+    "models": [
+      {
+        "name": "Scudo"
+      },
+      {
+        "name": "Topolino"
+      },
+      {
+        "name": "Fiorino"
+      },
+      {
+        "name": "Doblò"
+      },
+      {
+        "name": "Ulysse"
+      },
+      {
+        "name": "Ducato"
+      },
+      {
+        "name": "Talento"
+      },
+      {
+        "name": "Croma"
+      },
+      {
+        "name": "500X"
+      },
+      {
+        "name": "Uno"
+      },
+      {
+        "name": "Panda"
+      },
+      {
+        "name": "500"
+      },
+      {
+        "name": "130"
+      },
+      {
+        "name": "Tempra"
+      },
+      {
+        "name": "124"
+      },
+      {
+        "name": "Stilo"
+      },
+      {
+        "name": "Bravo"
+      },
+      {
+        "name": "Punto"
+      },
+      {
+        "name": "500L"
+      },
+      {
+        "name": "Marea"
+      },
+      {
+        "name": "132"
+      },
+      {
+        "name": "Tipo"
+      },
+      {
+        "name": "127"
+      },
+      {
+        "name": "Grande Panda"
+      },
+      {
+        "name": "600 (FH1/364/365)"
+      },
+      {
+        "name": "Pulse"
+      },
+      {
+        "name": "Fastback"
+      },
+      {
+        "name": "Fullback"
+      },
+      {
+        "name": "Qubo"
+      },
+      {
+        "name": "Freemont"
+      },
+      {
+        "name": "Linea"
+      },
+      {
+        "name": "Sedici"
+      },
+      {
+        "name": "Idea"
+      },
+      {
+        "name": "Strada"
+      },
+      {
+        "name": "Brava"
+      },
+      {
+        "name": "Multipla"
+      },
+      {
+        "name": "Seicento"
+      },
+      {
+        "name": "Palio"
+      },
+      {
+        "name": "Coupe"
+      },
+      {
+        "name": "Barchetta"
+      },
+      {
+        "name": "Cinquecento"
+      },
+      {
+        "name": "Regata"
+      },
+      {
+        "name": "Ritmo"
+      },
+      {
+        "name": "Argenta"
+      },
+      {
+        "name": "Campagnola"
+      },
+      {
+        "name": "126"
+      },
+      {
+        "name": "131"
+      },
+      {
+        "name": "X1/9"
+      },
+      {
+        "name": "128"
+      },
+      {
+        "name": "Dino"
+      },
+      {
+        "name": "500 Topolino"
+      }
+    ]
   },
   {
     "slug": "opel",
     "name": "Opel",
-    "aliases": ["Опель"]
+    "aliases": ["Опель"],
+    "models": [
+      {
+        "name": "Movano"
+      },
+      {
+        "name": "Vivaro"
+      },
+      {
+        "name": "Rekord"
+      },
+      {
+        "name": "Olympia"
+      },
+      {
+        "name": "Grandland"
+      },
+      {
+        "name": "Crossland"
+      },
+      {
+        "name": "Mokka"
+      },
+      {
+        "name": "Adam"
+      },
+      {
+        "name": "Corsa"
+      },
+      {
+        "name": "Astra"
+      },
+      {
+        "name": "Insignia"
+      },
+      {
+        "name": "Meriva"
+      },
+      {
+        "name": "Zafira"
+      },
+      {
+        "name": "Combo"
+      },
+      {
+        "name": "Vectra"
+      },
+      {
+        "name": "Agila"
+      },
+      {
+        "name": "Tigra"
+      },
+      {
+        "name": "Omega"
+      },
+      {
+        "name": "Frontera"
+      },
+      {
+        "name": "Monterey"
+      },
+      {
+        "name": "Kadett"
+      },
+      {
+        "name": "Ascona"
+      },
+      {
+        "name": "Manta"
+      },
+      {
+        "name": "Senator"
+      },
+      {
+        "name": "Monza"
+      },
+      {
+        "name": "Rocks Electric"
+      },
+      {
+        "name": "Karl"
+      },
+      {
+        "name": "Ampera-e"
+      },
+      {
+        "name": "Cascada Cabrio"
+      },
+      {
+        "name": "Antara"
+      },
+      {
+        "name": "GT"
+      },
+      {
+        "name": "Signum"
+      },
+      {
+        "name": "Speedster"
+      },
+      {
+        "name": "Sintra"
+      },
+      {
+        "name": "Calibra"
+      },
+      {
+        "name": "Commodore C"
+      },
+      {
+        "name": "City"
+      },
+      {
+        "name": "Admiral"
+      },
+      {
+        "name": "Olympia A"
+      },
+      {
+        "name": "Kapitan"
+      }
+    ]
   },
   {
     "slug": "skoda",
@@ -318,188 +4074,2134 @@
       },
       {
         "name": "Citigo"
+      },
+      {
+        "name": "Scala"
+      },
+      {
+        "name": "Enyaq"
+      },
+      {
+        "name": "Elroq"
+      },
+      {
+        "name": "Laura"
+      },
+      {
+        "name": "Scout"
+      },
+      {
+        "name": "Pickup"
+      },
+      {
+        "name": "Felicia"
+      },
+      {
+        "name": "Forman"
+      },
+      {
+        "name": "Favorit"
+      },
+      {
+        "name": "130"
+      },
+      {
+        "name": "Rapid 120 R"
+      },
+      {
+        "name": "105"
+      },
+      {
+        "name": "120"
+      },
+      {
+        "name": "UVMV"
+      },
+      {
+        "name": "Winnetou"
+      },
+      {
+        "name": "1202"
+      },
+      {
+        "name": "430"
       }
     ]
   },
   {
     "slug": "seat",
     "name": "SEAT",
-    "aliases": ["Сеат"]
+    "aliases": ["Сеат"],
+    "models": [
+      {
+        "name": "Ateca"
+      },
+      {
+        "name": "Arona"
+      },
+      {
+        "name": "Altea"
+      },
+      {
+        "name": "Toledo"
+      },
+      {
+        "name": "Ibiza"
+      },
+      {
+        "name": "Cordoba"
+      },
+      {
+        "name": "Alhambra"
+      },
+      {
+        "name": "Leon"
+      },
+      {
+        "name": "Exeo"
+      },
+      {
+        "name": "Tarraco"
+      },
+      {
+        "name": "Mii"
+      },
+      {
+        "name": "Arosa"
+      },
+      {
+        "name": "Marbella"
+      },
+      {
+        "name": "Malaga"
+      },
+      {
+        "name": "Fura"
+      },
+      {
+        "name": "Ronda"
+      },
+      {
+        "name": "Panda"
+      },
+      {
+        "name": "131"
+      }
+    ]
   },
   {
     "slug": "mitsubishi",
     "name": "Mitsubishi",
-    "aliases": ["Міцубісі"]
+    "aliases": ["Міцубісі"],
+    "models": [
+      {
+        "name": "ASX"
+      },
+      {
+        "name": "Mirage",
+        "aliases": ["Mirage / Space Star", "Space Star"]
+      },
+      {
+        "name": "Space Star",
+        "aliases": ["Mirage / Space Star", "Mirage"]
+      },
+      {
+        "name": "Eclipse Cross"
+      },
+      {
+        "name": "Lancer"
+      },
+      {
+        "name": "Pajero"
+      },
+      {
+        "name": "L200"
+      },
+      {
+        "name": "Space Runner"
+      },
+      {
+        "name": "Colt"
+      },
+      {
+        "name": "Outlander"
+      },
+      {
+        "name": "Galant"
+      },
+      {
+        "name": "Eclipse"
+      },
+      {
+        "name": "Xpander"
+      },
+      {
+        "name": "i-MiEV"
+      },
+      {
+        "name": "Outlander Sport"
+      },
+      {
+        "name": "Grandis"
+      },
+      {
+        "name": "i"
+      },
+      {
+        "name": "Airtrek"
+      },
+      {
+        "name": "Carisma"
+      },
+      {
+        "name": "Space Gear"
+      },
+      {
+        "name": "FTO"
+      },
+      {
+        "name": "3000GT"
+      },
+      {
+        "name": "Space Wagon II"
+      },
+      {
+        "name": "Sigma"
+      },
+      {
+        "name": "Space Wagon I"
+      },
+      {
+        "name": "Starion"
+      },
+      {
+        "name": "Tredia"
+      },
+      {
+        "name": "Cordia"
+      },
+      {
+        "name": "Sapporo Coupe"
+      },
+      {
+        "name": "Celeste"
+      }
+    ]
   },
   {
     "slug": "dacia",
     "name": "Dacia",
-    "aliases": ["Дакія"]
+    "aliases": ["Дакія"],
+    "models": [
+      {
+        "name": "Jogger"
+      },
+      {
+        "name": "Dokker"
+      },
+      {
+        "name": "Logan MCV"
+      },
+      {
+        "name": "Lodgy"
+      },
+      {
+        "name": "Sandero"
+      },
+      {
+        "name": "Logan"
+      },
+      {
+        "name": "Duster"
+      },
+      {
+        "name": "Bigster"
+      },
+      {
+        "name": "Spring"
+      }
+    ]
   },
   {
     "slug": "jeep",
     "name": "Jeep",
-    "aliases": ["Джип"]
+    "aliases": ["Джип"],
+    "models": [
+      {
+        "name": "Avenger"
+      },
+      {
+        "name": "Renegade"
+      },
+      {
+        "name": "Compass"
+      },
+      {
+        "name": "Wrangler"
+      },
+      {
+        "name": "Grand Cherokee"
+      },
+      {
+        "name": "CJ"
+      },
+      {
+        "name": "Cherokee"
+      },
+      {
+        "name": "Grand Wagoneer L"
+      },
+      {
+        "name": "Gladiator JT"
+      },
+      {
+        "name": "Commander"
+      },
+      {
+        "name": "Willys Concept"
+      },
+      {
+        "name": "Icon"
+      }
+    ]
   },
   {
     "slug": "dodge",
     "name": "Dodge",
-    "aliases": ["Додж"]
+    "aliases": ["Додж"],
+    "models": [
+      {
+        "name": "Viper"
+      },
+      {
+        "name": "Caravan",
+        "aliases": ["Caravan / Grand Caravan", "Grand Caravan"]
+      },
+      {
+        "name": "Grand Caravan",
+        "aliases": ["Caravan / Grand Caravan", "Caravan"]
+      },
+      {
+        "name": "Durango"
+      },
+      {
+        "name": "Challenger"
+      },
+      {
+        "name": "Charger"
+      },
+      {
+        "name": "Hornet"
+      },
+      {
+        "name": "Journey"
+      },
+      {
+        "name": "Nitro"
+      },
+      {
+        "name": "Avenger"
+      },
+      {
+        "name": "Caliber"
+      },
+      {
+        "name": "Hemi"
+      },
+      {
+        "name": "Dart"
+      }
+    ]
   },
   {
     "slug": "ram",
     "name": "RAM",
-    "aliases": ["Рам"]
+    "aliases": ["Рам"],
+    "models": [
+      {
+        "name": "1500"
+      },
+      {
+        "name": "2500"
+      },
+      {
+        "name": "3500"
+      }
+    ]
   },
   {
     "slug": "chrysler",
     "name": "Chrysler",
-    "aliases": ["Крайслер"]
+    "aliases": ["Крайслер"],
+    "models": [
+      {
+        "name": "Sebring"
+      },
+      {
+        "name": "Voyager"
+      },
+      {
+        "name": "Pacifica"
+      },
+      {
+        "name": "Crossfire"
+      },
+      {
+        "name": "200"
+      },
+      {
+        "name": "300"
+      },
+      {
+        "name": "Grand Voyager"
+      },
+      {
+        "name": "PT Cruiser"
+      },
+      {
+        "name": "Neon"
+      },
+      {
+        "name": "300M"
+      },
+      {
+        "name": "LeBaron"
+      },
+      {
+        "name": "Daytona"
+      }
+    ]
   },
   {
     "slug": "cadillac",
     "name": "Cadillac",
-    "aliases": ["Кадилак"]
+    "aliases": ["Кадилак"],
+    "models": [
+      {
+        "name": "CT5"
+      },
+      {
+        "name": "XT4"
+      },
+      {
+        "name": "Escalade"
+      },
+      {
+        "name": "DeVille"
+      },
+      {
+        "name": "SRX"
+      },
+      {
+        "name": "Fleetwood"
+      },
+      {
+        "name": "Eldorado"
+      },
+      {
+        "name": "CTS"
+      },
+      {
+        "name": "ATS"
+      },
+      {
+        "name": "Seville"
+      },
+      {
+        "name": "OPTIQ"
+      },
+      {
+        "name": "VISTIQ"
+      },
+      {
+        "name": "Lyriq"
+      },
+      {
+        "name": "Escalade IQ"
+      },
+      {
+        "name": "Celestiq"
+      },
+      {
+        "name": "CT4"
+      },
+      {
+        "name": "XT5"
+      },
+      {
+        "name": "XT6"
+      },
+      {
+        "name": "CT6"
+      },
+      {
+        "name": "DTS"
+      },
+      {
+        "name": "STS"
+      },
+      {
+        "name": "BLS"
+      },
+      {
+        "name": "XLR"
+      },
+      {
+        "name": "V Sixteen"
+      },
+      {
+        "name": "Cien"
+      },
+      {
+        "name": "Catera"
+      },
+      {
+        "name": "Evoq"
+      },
+      {
+        "name": "Allante"
+      },
+      {
+        "name": "Cimarron"
+      },
+      {
+        "name": "Series 62"
+      },
+      {
+        "name": "Series 70"
+      },
+      {
+        "name": "V16"
+      },
+      {
+        "name": "Type 55"
+      },
+      {
+        "name": "Model G"
+      },
+      {
+        "name": "Model T"
+      },
+      {
+        "name": "Model C"
+      },
+      {
+        "name": "Osceola"
+      },
+      {
+        "name": "Model D"
+      },
+      {
+        "name": "Model B"
+      },
+      {
+        "name": "Model A"
+      }
+    ]
   },
   {
     "slug": "gmc",
     "name": "GMC",
-    "aliases": ["Джи Ем Сі"]
+    "aliases": ["Джи Ем Сі"],
+    "models": [
+      {
+        "name": "Acadia"
+      },
+      {
+        "name": "Hummer EV"
+      },
+      {
+        "name": "Terrain"
+      },
+      {
+        "name": "Yukon"
+      },
+      {
+        "name": "Canyon"
+      },
+      {
+        "name": "Sierra"
+      },
+      {
+        "name": "Savana"
+      }
+    ]
   },
   {
     "slug": "buick",
     "name": "Buick",
-    "aliases": ["Б'юік"]
+    "aliases": ["Б'юік"],
+    "models": [
+      {
+        "name": "Century"
+      },
+      {
+        "name": "Le Sabre"
+      },
+      {
+        "name": "Apollo"
+      },
+      {
+        "name": "Estate Wagon"
+      },
+      {
+        "name": "Super"
+      },
+      {
+        "name": "Encore"
+      },
+      {
+        "name": "Roadmaster"
+      },
+      {
+        "name": "Electra"
+      },
+      {
+        "name": "Limited"
+      },
+      {
+        "name": "Centurion"
+      },
+      {
+        "name": "Invicta"
+      },
+      {
+        "name": "Wildcat"
+      },
+      {
+        "name": "Envision"
+      },
+      {
+        "name": "Special"
+      },
+      {
+        "name": "Enclave"
+      },
+      {
+        "name": "Regal"
+      },
+      {
+        "name": "Envista"
+      },
+      {
+        "name": "Cascada Cabrio"
+      },
+      {
+        "name": "Verano"
+      },
+      {
+        "name": "Excelle"
+      },
+      {
+        "name": "Lucerne"
+      },
+      {
+        "name": "LaCrosse II"
+      },
+      {
+        "name": "LaCrosse I"
+      },
+      {
+        "name": "Velite"
+      },
+      {
+        "name": "Rainier"
+      },
+      {
+        "name": "Rendezvous"
+      },
+      {
+        "name": "Park Avenue I"
+      },
+      {
+        "name": "Riviera"
+      },
+      {
+        "name": "XP 300"
+      }
+    ]
   },
   {
     "slug": "lincoln",
     "name": "Lincoln",
-    "aliases": ["Лінкольн"]
+    "aliases": ["Лінкольн"],
+    "models": [
+      {
+        "name": "Navigator"
+      },
+      {
+        "name": "Aviator"
+      },
+      {
+        "name": "Continental"
+      },
+      {
+        "name": "MKC"
+      },
+      {
+        "name": "MKT"
+      },
+      {
+        "name": "MKZ"
+      },
+      {
+        "name": "MKR"
+      },
+      {
+        "name": "Town Car III"
+      },
+      {
+        "name": "Town Car II"
+      },
+      {
+        "name": "Mark VIII"
+      }
+    ]
   },
   {
     "slug": "infiniti",
     "name": "Infiniti",
-    "aliases": ["Інфініті"]
+    "aliases": ["Інфініті"],
+    "models": [
+      {
+        "name": "Q70"
+      },
+      {
+        "name": "G"
+      },
+      {
+        "name": "Q50"
+      },
+      {
+        "name": "Q60 II"
+      },
+      {
+        "name": "QX30"
+      },
+      {
+        "name": "Q30"
+      },
+      {
+        "name": "QX70"
+      },
+      {
+        "name": "Q60"
+      },
+      {
+        "name": "QX50"
+      },
+      {
+        "name": "FX II"
+      },
+      {
+        "name": "M"
+      },
+      {
+        "name": "EX"
+      },
+      {
+        "name": "QX60"
+      },
+      {
+        "name": "QX65"
+      },
+      {
+        "name": "QX80"
+      },
+      {
+        "name": "QX55"
+      },
+      {
+        "name": "ESQ"
+      },
+      {
+        "name": "EX-Series"
+      },
+      {
+        "name": "FX-Series"
+      },
+      {
+        "name": "JX-Series"
+      },
+      {
+        "name": "QX56"
+      },
+      {
+        "name": "G-Series"
+      },
+      {
+        "name": "M-Series"
+      },
+      {
+        "name": "Q45"
+      },
+      {
+        "name": "QX4"
+      },
+      {
+        "name": "I-Series"
+      },
+      {
+        "name": "J-Series"
+      }
+    ]
   },
   {
     "slug": "acura",
     "name": "Acura",
-    "aliases": ["Акура"]
+    "aliases": ["Акура"],
+    "models": [
+      {
+        "name": "RLX"
+      },
+      {
+        "name": "ZDX"
+      },
+      {
+        "name": "TLX"
+      },
+      {
+        "name": "Integra"
+      },
+      {
+        "name": "EL"
+      },
+      {
+        "name": "NSX"
+      },
+      {
+        "name": "ILX"
+      },
+      {
+        "name": "TSX"
+      },
+      {
+        "name": "TL"
+      },
+      {
+        "name": "RL"
+      },
+      {
+        "name": "RDX"
+      },
+      {
+        "name": "MDX"
+      },
+      {
+        "name": "CL"
+      },
+      {
+        "name": "SLX"
+      },
+      {
+        "name": "Legend"
+      },
+      {
+        "name": "CSX"
+      },
+      {
+        "name": "RSX"
+      },
+      {
+        "name": "Vigor"
+      }
+    ]
   },
   {
     "slug": "genesis",
     "name": "Genesis",
-    "aliases": ["Дженезіс"]
+    "aliases": ["Дженезіс"],
+    "models": [
+      {
+        "name": "GV70"
+      },
+      {
+        "name": "G90"
+      },
+      {
+        "name": "G70"
+      },
+      {
+        "name": "GV80"
+      },
+      {
+        "name": "GV90"
+      },
+      {
+        "name": "GV60"
+      },
+      {
+        "name": "G80"
+      }
+    ]
   },
   {
     "slug": "polestar",
     "name": "Polestar",
-    "aliases": ["Полстар"]
+    "aliases": ["Полстар"],
+    "models": [
+      {
+        "name": "1"
+      },
+      {
+        "name": "2"
+      },
+      {
+        "name": "3"
+      },
+      {
+        "name": "4"
+      },
+      {
+        "name": "5"
+      },
+      {
+        "name": "6"
+      }
+    ]
   },
   {
     "slug": "cupra",
     "name": "CUPRA",
-    "aliases": ["Купра"]
+    "aliases": ["Купра"],
+    "models": [
+      {
+        "name": "Leon"
+      },
+      {
+        "name": "Ateca"
+      },
+      {
+        "name": "Formentor"
+      },
+      {
+        "name": "Terramar"
+      },
+      {
+        "name": "Tavascan"
+      },
+      {
+        "name": "Born"
+      }
+    ]
   },
   {
     "slug": "mini",
     "name": "MINI",
-    "aliases": ["Міні"]
+    "aliases": ["Міні"],
+    "models": [
+      {
+        "name": "Mini"
+      },
+      {
+        "name": "Clubman"
+      },
+      {
+        "name": "Cabrio"
+      },
+      {
+        "name": "Countryman"
+      },
+      {
+        "name": "Aceman"
+      },
+      {
+        "name": "Paceman"
+      },
+      {
+        "name": "Roadster"
+      },
+      {
+        "name": "Coupe"
+      },
+      {
+        "name": "Mini MkIII"
+      },
+      {
+        "name": "ERA"
+      }
+    ]
   },
   {
     "slug": "smart",
     "name": "Smart",
-    "aliases": ["Смарт"]
+    "aliases": ["Смарт"],
+    "models": [
+      {
+        "name": "ForTwo"
+      },
+      {
+        "name": "ForFour"
+      },
+      {
+        "name": "#5"
+      },
+      {
+        "name": "#3"
+      },
+      {
+        "name": "#1"
+      },
+      {
+        "name": "Roadster"
+      },
+      {
+        "name": "Roadster Coupe"
+      }
+    ]
   },
   {
     "slug": "alfaromeo",
     "name": "Alfa Romeo",
-    "aliases": ["Альфа Ромео"]
+    "aliases": ["Альфа Ромео"],
+    "models": [
+      {
+        "name": "Tonale"
+      },
+      {
+        "name": "Stelvio"
+      },
+      {
+        "name": "Junior"
+      },
+      {
+        "name": "Giulia"
+      },
+      {
+        "name": "Giulietta"
+      },
+      {
+        "name": "Spider"
+      },
+      {
+        "name": "156"
+      },
+      {
+        "name": "145",
+        "aliases": ["145 / 146", "146"]
+      },
+      {
+        "name": "146",
+        "aliases": ["145 / 146", "145"]
+      },
+      {
+        "name": "2000"
+      },
+      {
+        "name": "2600"
+      },
+      {
+        "name": "1900"
+      },
+      {
+        "name": "6C"
+      },
+      {
+        "name": "MiTo"
+      },
+      {
+        "name": "4C"
+      },
+      {
+        "name": "Brera"
+      },
+      {
+        "name": "159"
+      },
+      {
+        "name": "8C Competizione"
+      },
+      {
+        "name": "147"
+      },
+      {
+        "name": "GT"
+      },
+      {
+        "name": "GTV"
+      },
+      {
+        "name": "166"
+      },
+      {
+        "name": "155"
+      },
+      {
+        "name": "Zagato"
+      },
+      {
+        "name": "164"
+      },
+      {
+        "name": "33"
+      },
+      {
+        "name": "75"
+      },
+      {
+        "name": "90"
+      },
+      {
+        "name": "Arna"
+      },
+      {
+        "name": "6"
+      },
+      {
+        "name": "Alfetta"
+      },
+      {
+        "name": "Alfasud"
+      },
+      {
+        "name": "Alfetta GTV"
+      },
+      {
+        "name": "GTV6"
+      },
+      {
+        "name": "2300"
+      },
+      {
+        "name": "Sprint"
+      },
+      {
+        "name": "Alfetta GT"
+      },
+      {
+        "name": "Montreal"
+      },
+      {
+        "name": "1750 Berlina"
+      },
+      {
+        "name": "33 Stradale"
+      },
+      {
+        "name": "1750 GTV"
+      },
+      {
+        "name": "1900M"
+      },
+      {
+        "name": "8C"
+      },
+      {
+        "name": "RL"
+      },
+      {
+        "name": "RM"
+      }
+    ]
   },
   {
     "slug": "lancia",
     "name": "Lancia",
-    "aliases": ["Лянча"]
+    "aliases": ["Лянча"],
+    "models": [
+      {
+        "name": "Kappa"
+      },
+      {
+        "name": "Delta"
+      },
+      {
+        "name": "Ypsilon"
+      },
+      {
+        "name": "Thema"
+      },
+      {
+        "name": "Gamma"
+      },
+      {
+        "name": "Beta"
+      },
+      {
+        "name": "Y10"
+      },
+      {
+        "name": "Voyager"
+      },
+      {
+        "name": "Grand Voyager"
+      },
+      {
+        "name": "Musa"
+      },
+      {
+        "name": "Thesis"
+      },
+      {
+        "name": "Phedra"
+      },
+      {
+        "name": "Zeta"
+      },
+      {
+        "name": "Lybra"
+      },
+      {
+        "name": "Dedra"
+      },
+      {
+        "name": "Y"
+      },
+      {
+        "name": "Prisma"
+      },
+      {
+        "name": "Rally 037"
+      },
+      {
+        "name": "Monte Carlo"
+      },
+      {
+        "name": "Trevi"
+      },
+      {
+        "name": "HPE"
+      },
+      {
+        "name": "Stratos"
+      },
+      {
+        "name": "Flavia"
+      },
+      {
+        "name": "Fulvia"
+      },
+      {
+        "name": "Flaminia"
+      },
+      {
+        "name": "Appia"
+      },
+      {
+        "name": "Aurelia"
+      }
+    ]
   },
   {
     "slug": "maserati",
     "name": "Maserati",
-    "aliases": ["Мазераті"]
+    "aliases": ["Мазераті"],
+    "models": [
+      {
+        "name": "400"
+      },
+      {
+        "name": "MC20"
+      },
+      {
+        "name": "GranTurismo"
+      },
+      {
+        "name": "Ghibli"
+      },
+      {
+        "name": "Quattroporte"
+      },
+      {
+        "name": "Levante"
+      },
+      {
+        "name": "GranCabrio"
+      },
+      {
+        "name": "Grecale"
+      },
+      {
+        "name": "Spyder"
+      },
+      {
+        "name": "GranSport"
+      },
+      {
+        "name": "MC12"
+      },
+      {
+        "name": "Coupe"
+      },
+      {
+        "name": "4200 GT"
+      },
+      {
+        "name": "3200 GT"
+      },
+      {
+        "name": "Barchetta"
+      },
+      {
+        "name": "Racing"
+      },
+      {
+        "name": "Shamal"
+      },
+      {
+        "name": "2.24v"
+      },
+      {
+        "name": "Biturbo"
+      },
+      {
+        "name": "Merak"
+      },
+      {
+        "name": "Kyalami"
+      }
+    ]
   },
   {
     "slug": "ferrari",
     "name": "Ferrari",
-    "aliases": ["Феррарі"]
+    "aliases": ["Феррарі"],
+    "models": [
+      {
+        "name": "365 GT GTB GTS GTC \"Daytona\""
+      },
+      {
+        "name": "12Cilindri"
+      },
+      {
+        "name": "Roma"
+      },
+      {
+        "name": "812"
+      },
+      {
+        "name": "208 308 328 / GTB GTS Turbo"
+      },
+      {
+        "name": "SF90"
+      },
+      {
+        "name": "Portofino"
+      },
+      {
+        "name": "Amalfi"
+      },
+      {
+        "name": "F80"
+      },
+      {
+        "name": "Purosangue"
+      },
+      {
+        "name": "F8 Tributo"
+      },
+      {
+        "name": "F8 Spider"
+      },
+      {
+        "name": "GTC4 Lusso"
+      },
+      {
+        "name": "488"
+      },
+      {
+        "name": "La Ferrari"
+      },
+      {
+        "name": "F12 TRS"
+      },
+      {
+        "name": "California T F149M"
+      },
+      {
+        "name": "Sergio"
+      },
+      {
+        "name": "FXX"
+      },
+      {
+        "name": "California"
+      },
+      {
+        "name": "F12 Berlinetta"
+      },
+      {
+        "name": "FF"
+      },
+      {
+        "name": "SA Aperta"
+      },
+      {
+        "name": "458 Italia"
+      },
+      {
+        "name": "599"
+      },
+      {
+        "name": "GG50"
+      },
+      {
+        "name": "575 SuperAmerica"
+      },
+      {
+        "name": "F430"
+      },
+      {
+        "name": "612 Scaglietti"
+      },
+      {
+        "name": "575M Maranello"
+      },
+      {
+        "name": "Enzo"
+      },
+      {
+        "name": "550 Barchetta"
+      },
+      {
+        "name": "360 Spider"
+      },
+      {
+        "name": "360 Modena"
+      },
+      {
+        "name": "550 Maranello"
+      },
+      {
+        "name": "F355 Spider"
+      },
+      {
+        "name": "F50"
+      },
+      {
+        "name": "512"
+      },
+      {
+        "name": "F355"
+      },
+      {
+        "name": "348"
+      },
+      {
+        "name": "456"
+      },
+      {
+        "name": "Testarossa"
+      },
+      {
+        "name": "F40"
+      },
+      {
+        "name": "408"
+      },
+      {
+        "name": "412i"
+      },
+      {
+        "name": "Mondial"
+      },
+      {
+        "name": "288"
+      },
+      {
+        "name": "Pinin"
+      },
+      {
+        "name": "BB"
+      },
+      {
+        "name": "400"
+      },
+      {
+        "name": "512S"
+      },
+      {
+        "name": "Modulo"
+      },
+      {
+        "name": "275"
+      },
+      {
+        "name": "330"
+      },
+      {
+        "name": "400 Super America"
+      },
+      {
+        "name": "Dino"
+      },
+      {
+        "name": "250"
+      },
+      {
+        "name": "410"
+      },
+      {
+        "name": "500"
+      },
+      {
+        "name": "375"
+      },
+      {
+        "name": "166"
+      },
+      {
+        "name": "340"
+      },
+      {
+        "name": "342"
+      },
+      {
+        "name": "225"
+      },
+      {
+        "name": "212"
+      },
+      {
+        "name": "195"
+      },
+      {
+        "name": "125"
+      }
+    ]
   },
   {
     "slug": "lamborghini",
     "name": "Lamborghini",
-    "aliases": ["Ламборгіні"]
+    "aliases": ["Ламборгіні"],
+    "models": [
+      {
+        "name": "Urus"
+      },
+      {
+        "name": "Huracan"
+      },
+      {
+        "name": "Sian"
+      },
+      {
+        "name": "Aventador"
+      },
+      {
+        "name": "Temerario"
+      },
+      {
+        "name": "Revuelto"
+      },
+      {
+        "name": "Veneno"
+      },
+      {
+        "name": "Reventon"
+      },
+      {
+        "name": "Gallardo"
+      },
+      {
+        "name": "Murcielago"
+      },
+      {
+        "name": "Diablo"
+      },
+      {
+        "name": "Countach"
+      },
+      {
+        "name": "LM"
+      },
+      {
+        "name": "Jalpa"
+      },
+      {
+        "name": "Espada"
+      },
+      {
+        "name": "Miura"
+      },
+      {
+        "name": "Urraco"
+      }
+    ]
   },
   {
     "slug": "aston-martin",
     "name": "Aston Martin",
-    "aliases": ["Астон Мартін"]
+    "aliases": ["Астон Мартін"],
+    "models": [
+      {
+        "name": "V8 Vantage"
+      },
+      {
+        "name": "DBS"
+      },
+      {
+        "name": "Virage"
+      },
+      {
+        "name": "Vanquish"
+      },
+      {
+        "name": "V8"
+      },
+      {
+        "name": "Vantage"
+      },
+      {
+        "name": "DB12 Volante"
+      },
+      {
+        "name": "DB12"
+      },
+      {
+        "name": "Valkyrie"
+      },
+      {
+        "name": "DBX"
+      },
+      {
+        "name": "DB11"
+      },
+      {
+        "name": "DB11 Volante"
+      },
+      {
+        "name": "V12 Zagato"
+      },
+      {
+        "name": "Cygnet"
+      },
+      {
+        "name": "One 77"
+      },
+      {
+        "name": "Virage II"
+      },
+      {
+        "name": "Rapide"
+      },
+      {
+        "name": "DB9"
+      },
+      {
+        "name": "DB7 Volante"
+      },
+      {
+        "name": "DB7 Coupe"
+      },
+      {
+        "name": "Lagonda"
+      },
+      {
+        "name": "DB6"
+      },
+      {
+        "name": "DB5"
+      },
+      {
+        "name": "DB4"
+      },
+      {
+        "name": "DB3"
+      },
+      {
+        "name": "15 hp"
+      }
+    ]
   },
   {
     "slug": "bentley",
     "name": "Bentley",
-    "aliases": ["Бентлі"]
+    "aliases": ["Бентлі"],
+    "models": [
+      {
+        "name": "Continental GTC"
+      },
+      {
+        "name": "Bentayga"
+      },
+      {
+        "name": "Flying Spur"
+      },
+      {
+        "name": "Continental GT"
+      },
+      {
+        "name": "Mulsanne II"
+      },
+      {
+        "name": "Brooklands"
+      },
+      {
+        "name": "Azure II"
+      },
+      {
+        "name": "Arnage"
+      },
+      {
+        "name": "Azure"
+      },
+      {
+        "name": "Continental R"
+      },
+      {
+        "name": "Turbo R"
+      },
+      {
+        "name": "Continental"
+      },
+      {
+        "name": "Corniche"
+      },
+      {
+        "name": "8 Litre"
+      },
+      {
+        "name": "Mulsanne"
+      }
+    ]
   },
   {
     "slug": "rolls-royce",
     "name": "Rolls-Royce",
-    "aliases": ["Роллс-Ройс"]
+    "aliases": ["Роллс-Ройс"],
+    "models": [
+      {
+        "name": "Spectre"
+      },
+      {
+        "name": "Ghost"
+      },
+      {
+        "name": "Cullinan"
+      },
+      {
+        "name": "Phantom VIII"
+      },
+      {
+        "name": "Wraith"
+      },
+      {
+        "name": "Dawn"
+      },
+      {
+        "name": "Ghost Series II"
+      },
+      {
+        "name": "Phantom VII"
+      },
+      {
+        "name": "Corniche V"
+      },
+      {
+        "name": "Silver Seraph"
+      },
+      {
+        "name": "Silver Spirit"
+      },
+      {
+        "name": "Silver Spur"
+      },
+      {
+        "name": "Camargue"
+      },
+      {
+        "name": "Corniche"
+      },
+      {
+        "name": "Phantom VI"
+      },
+      {
+        "name": "Silver Shadow"
+      },
+      {
+        "name": "Silver Cloud"
+      }
+    ]
   },
   {
     "slug": "bugatti",
     "name": "Bugatti",
-    "aliases": ["Бугатті"]
+    "aliases": ["Бугатті"],
+    "models": [
+      {
+        "name": "Divo"
+      },
+      {
+        "name": "Chiron"
+      },
+      {
+        "name": "EB 16.4"
+      },
+      {
+        "name": "EB 110"
+      },
+      {
+        "name": "Type 57"
+      },
+      {
+        "name": "Type 49"
+      },
+      {
+        "name": "Type 46"
+      },
+      {
+        "name": "Type 35"
+      }
+    ]
   },
   {
     "slug": "mclaren",
     "name": "McLaren",
-    "aliases": ["Макларен"]
+    "aliases": ["Макларен"],
+    "models": [
+      {
+        "name": "750S"
+      },
+      {
+        "name": "W1"
+      },
+      {
+        "name": "Artura"
+      },
+      {
+        "name": "765LT"
+      },
+      {
+        "name": "GT"
+      },
+      {
+        "name": "620R"
+      },
+      {
+        "name": "Speedtail"
+      },
+      {
+        "name": "600LT"
+      },
+      {
+        "name": "Senna"
+      },
+      {
+        "name": "720S Spider"
+      },
+      {
+        "name": "570GT"
+      },
+      {
+        "name": "675LT Spider"
+      },
+      {
+        "name": "540C"
+      },
+      {
+        "name": "675LT"
+      },
+      {
+        "name": "570S"
+      },
+      {
+        "name": "650S"
+      },
+      {
+        "name": "650S Spider"
+      },
+      {
+        "name": "P1"
+      },
+      {
+        "name": "MP4-12C"
+      },
+      {
+        "name": "F1"
+      },
+      {
+        "name": "M6"
+      }
+    ]
   },
   {
     "slug": "lotus",
     "name": "Lotus",
-    "aliases": ["Лотус"]
+    "aliases": ["Лотус"],
+    "models": [
+      {
+        "name": "Esprit"
+      },
+      {
+        "name": "Emeya"
+      },
+      {
+        "name": "Eletre"
+      },
+      {
+        "name": "Emira"
+      },
+      {
+        "name": "Evija"
+      },
+      {
+        "name": "Elise S3"
+      },
+      {
+        "name": "Exige S3"
+      },
+      {
+        "name": "Evora"
+      },
+      {
+        "name": "Europa II"
+      },
+      {
+        "name": "Exige S2"
+      },
+      {
+        "name": "Elise S2"
+      },
+      {
+        "name": "Exige S1"
+      },
+      {
+        "name": "Elise"
+      },
+      {
+        "name": "Elise S1"
+      },
+      {
+        "name": "Elan M100"
+      },
+      {
+        "name": "Excel"
+      },
+      {
+        "name": "Elite"
+      },
+      {
+        "name": "Elan"
+      },
+      {
+        "name": "Seven"
+      }
+    ]
   },
   {
     "slug": "alpine",
     "name": "Alpine",
-    "aliases": ["Альпін"]
+    "aliases": ["Альпін"],
+    "models": [
+      {
+        "name": "A110"
+      },
+      {
+        "name": "A390"
+      },
+      {
+        "name": "A290"
+      },
+      {
+        "name": "A610"
+      },
+      {
+        "name": "GTA"
+      },
+      {
+        "name": "A310"
+      },
+      {
+        "name": "Cabriolet"
+      },
+      {
+        "name": "Coupe"
+      },
+      {
+        "name": "Berlinette"
+      },
+      {
+        "name": "A106"
+      },
+      {
+        "name": "A108"
+      }
+    ]
   },
   {
     "slug": "mg",
     "name": "MG",
-    "aliases": ["Ем Джі"]
+    "aliases": ["Ем Джі"],
+    "models": [
+      {
+        "name": "ZS (crossover)"
+      },
+      {
+        "name": "HS",
+        "aliases": ["HS/EHS", "EHS"]
+      },
+      {
+        "name": "EHS",
+        "aliases": ["HS/EHS", "HS"]
+      },
+      {
+        "name": "ZS"
+      },
+      {
+        "name": "MGS5 EV"
+      },
+      {
+        "name": "3"
+      },
+      {
+        "name": "Cyberster"
+      },
+      {
+        "name": "4 EV"
+      },
+      {
+        "name": "5 SW EV"
+      },
+      {
+        "name": "Marvel R"
+      },
+      {
+        "name": "ZT"
+      },
+      {
+        "name": "XPower"
+      },
+      {
+        "name": "ZT T"
+      },
+      {
+        "name": "TF"
+      },
+      {
+        "name": "ZR"
+      },
+      {
+        "name": "F"
+      },
+      {
+        "name": "RV8"
+      },
+      {
+        "name": "Montego"
+      },
+      {
+        "name": "Maestro"
+      },
+      {
+        "name": "Metro"
+      },
+      {
+        "name": "B"
+      },
+      {
+        "name": "A"
+      }
+    ]
   },
   {
     "slug": "ds",
     "name": "DS",
-    "aliases": ["Де Ес"]
+    "aliases": ["Де Ес"],
+    "models": [
+      {
+        "name": "DS 7"
+      },
+      {
+        "name": "DS 3"
+      },
+      {
+        "name": "DS 4"
+      },
+      {
+        "name": "N°8"
+      },
+      {
+        "name": "DS 9"
+      },
+      {
+        "name": "DS4 Crossback"
+      }
+    ]
   },
   {
     "slug": "geely",
     "name": "Geely",
-    "aliases": ["Джилі"]
+    "aliases": ["Джилі"],
+    "models": [
+      {
+        "name": "China Dragon"
+      },
+      {
+        "name": "MK"
+      },
+      {
+        "name": "Maple"
+      },
+      {
+        "name": "Uliou"
+      },
+      {
+        "name": "Merrie"
+      },
+      {
+        "name": "Beauty"
+      },
+      {
+        "name": "Haoqing"
+      }
+    ]
   },
   {
     "slug": "chery",
     "name": "Chery",
-    "aliases": ["Чері"]
+    "aliases": ["Чері"],
+    "models": [
+      {
+        "name": "Eastar"
+      },
+      {
+        "name": "V5"
+      },
+      {
+        "name": "QQ"
+      },
+      {
+        "name": "A5"
+      },
+      {
+        "name": "QQ6"
+      },
+      {
+        "name": "A1"
+      }
+    ]
   },
   {
     "slug": "changan",
     "name": "Changan",
-    "aliases": ["Чангань"]
+    "aliases": ["Чангань"],
+    "models": [
+      {
+        "name": "Chana"
+      },
+      {
+        "name": "Alsvin"
+      }
+    ]
   },
   {
     "slug": "great-wall",
     "name": "Great Wall",
-    "aliases": ["Грейт Вол"]
+    "aliases": ["Грейт Вол"],
+    "models": [
+      {
+        "name": "Florid"
+      },
+      {
+        "name": "Hover"
+      },
+      {
+        "name": "Cowry"
+      },
+      {
+        "name": "Peri"
+      }
+    ]
   },
   {
     "slug": "wuling",
@@ -509,17 +6211,77 @@
   {
     "slug": "nio",
     "name": "NIO",
-    "aliases": ["Ніо"]
+    "aliases": ["Ніо"],
+    "models": [
+      {
+        "name": "ET5"
+      },
+      {
+        "name": "Firefly"
+      },
+      {
+        "name": "EL8"
+      },
+      {
+        "name": "EL7"
+      },
+      {
+        "name": "EL6"
+      },
+      {
+        "name": "ET7"
+      }
+    ]
   },
   {
     "slug": "xpeng",
     "name": "XPENG",
-    "aliases": ["Сяопен"]
+    "aliases": ["Сяопен"],
+    "models": [
+      {
+        "name": "G9"
+      },
+      {
+        "name": "G6"
+      },
+      {
+        "name": "P7"
+      }
+    ]
   },
   {
     "slug": "zeekr",
     "name": "Zeekr",
-    "aliases": ["Зікр"]
+    "aliases": ["Зікр"],
+    "models": [
+      {
+        "name": "MIX"
+      },
+      {
+        "name": "7GT"
+      },
+      {
+        "name": "7X"
+      },
+      {
+        "name": "8X"
+      },
+      {
+        "name": "9X"
+      },
+      {
+        "name": "X"
+      },
+      {
+        "name": "001"
+      },
+      {
+        "name": "007"
+      },
+      {
+        "name": "009"
+      }
+    ]
   },
   {
     "slug": "li-auto",
@@ -529,7 +6291,12 @@
   {
     "slug": "xiaomi",
     "name": "Xiaomi",
-    "aliases": ["Сяомі"]
+    "aliases": ["Сяомі"],
+    "models": [
+      {
+        "name": "SU7"
+      }
+    ]
   },
   {
     "slug": "lada",
@@ -577,6 +6344,60 @@
       {
         "name": "Ларгус",
         "aliases": ["Largus"]
+      },
+      {
+        "name": "4x4"
+      },
+      {
+        "name": "112"
+      },
+      {
+        "name": "110"
+      },
+      {
+        "name": "111"
+      },
+      {
+        "name": "Samara Cabriolet"
+      },
+      {
+        "name": "Samara"
+      },
+      {
+        "name": "2107"
+      },
+      {
+        "name": "2105"
+      },
+      {
+        "name": "2102"
+      },
+      {
+        "name": "2104"
+      },
+      {
+        "name": "106"
+      },
+      {
+        "name": "214"
+      },
+      {
+        "name": "Stawra"
+      },
+      {
+        "name": "2120"
+      },
+      {
+        "name": "1500"
+      },
+      {
+        "name": "1600"
+      },
+      {
+        "name": "1200"
+      },
+      {
+        "name": "Riva"
       }
     ]
   },
@@ -602,6 +6423,36 @@
       },
       {
         "name": "Espero"
+      },
+      {
+        "name": "Lacetti"
+      },
+      {
+        "name": "Nubira III"
+      },
+      {
+        "name": "Kalos"
+      },
+      {
+        "name": "Evanda"
+      },
+      {
+        "name": "Nubira SW J200"
+      },
+      {
+        "name": "Nubira SW J190"
+      },
+      {
+        "name": "Nubira SW J150"
+      },
+      {
+        "name": "Tacuma"
+      },
+      {
+        "name": "Nubira II"
+      },
+      {
+        "name": "Nubira I"
       }
     ]
   },
@@ -627,6 +6478,33 @@
       },
       {
         "name": "Tivoli"
+      },
+      {
+        "name": "Torres"
+      },
+      {
+        "name": "Tivoli XLV"
+      },
+      {
+        "name": "Rodius II"
+      },
+      {
+        "name": "Rexton W"
+      },
+      {
+        "name": "Actyon Sports Pick Up"
+      },
+      {
+        "name": "Rexton II"
+      },
+      {
+        "name": "Rodius"
+      },
+      {
+        "name": "Rexton I"
+      },
+      {
+        "name": "Musso Sports Pick Up"
       }
     ]
   },
@@ -657,6 +6535,9 @@
       {
         "name": "Віда",
         "aliases": ["Vida"]
+      },
+      {
+        "name": "966"
       }
     ]
   },
@@ -680,6 +6561,15 @@
       {
         "name": "Волга",
         "aliases": ["Volga"]
+      },
+      {
+        "name": "Chaika"
+      },
+      {
+        "name": "210"
+      },
+      {
+        "name": "69AM"
       }
     ]
   },
@@ -714,17 +6604,103 @@
     "aliases": ["Moskvich", "AZLK", "АЗЛК"],
     "models": [
       {
+        "name": "400"
+      },
+      {
+        "name": "401"
+      },
+      {
+        "name": "420"
+      },
+      {
+        "name": "422"
+      },
+      {
+        "name": "402"
+      },
+      {
+        "name": "407"
+      },
+      {
+        "name": "403"
+      },
+      {
+        "name": "410"
+      },
+      {
+        "name": "411"
+      },
+      {
+        "name": "423"
+      },
+      {
+        "name": "408"
+      },
+      {
         "name": "412"
+      },
+      {
+        "name": "426"
+      },
+      {
+        "name": "427"
+      },
+      {
+        "name": "433"
+      },
+      {
+        "name": "2138"
       },
       {
         "name": "2140"
       },
       {
+        "name": "2136"
+      },
+      {
+        "name": "2733"
+      },
+      {
         "name": "2141"
       },
       {
-        "name": "Святогор",
-        "aliases": ["Svyatogor"]
+        "name": "2335"
+      },
+      {
+        "name": "2901"
+      },
+      {
+        "name": "2142"
+      },
+      {
+        "name": "Святогор"
+      },
+      {
+        "name": "Юрий Долгорукий"
+      },
+      {
+        "name": "Князь Владимир"
+      },
+      {
+        "name": "Иван Калита"
+      },
+      {
+        "name": "Дуэт"
+      },
+      {
+        "name": "3"
+      },
+      {
+        "name": "3е"
+      },
+      {
+        "name": "5"
+      },
+      {
+        "name": "6"
+      },
+      {
+        "name": "8"
       }
     ]
   },
@@ -734,19 +6710,70 @@
     "aliases": ["Хавейл", "Хавал"],
     "models": [
       {
+        "name": "H1"
+      },
+      {
+        "name": "H2"
+      },
+      {
+        "name": "H3"
+      },
+      {
+        "name": "H4"
+      },
+      {
+        "name": "H5"
+      },
+      {
         "name": "H6"
       },
       {
-        "name": "Jolion"
+        "name": "H7"
       },
       {
-        "name": "Dargo"
+        "name": "H8"
+      },
+      {
+        "name": "H9"
+      },
+      {
+        "name": "H10"
+      },
+      {
+        "name": "F5"
       },
       {
         "name": "F7"
       },
       {
-        "name": "H9"
+        "name": "M2"
+      },
+      {
+        "name": "M6"
+      },
+      {
+        "name": "Big Dog"
+      },
+      {
+        "name": "Dargo"
+      },
+      {
+        "name": "Cool Dog"
+      },
+      {
+        "name": "Chitu"
+      },
+      {
+        "name": "Shenshou"
+      },
+      {
+        "name": "Xiaolong"
+      },
+      {
+        "name": "Raptor"
+      },
+      {
+        "name": "Jolion"
       }
     ]
   },
@@ -766,6 +6793,36 @@
       },
       {
         "name": "N-series"
+      },
+      {
+        "name": "iEV7S"
+      },
+      {
+        "name": "J5"
+      },
+      {
+        "name": "J2"
+      },
+      {
+        "name": "J6"
+      },
+      {
+        "name": "J3"
+      },
+      {
+        "name": "J7"
+      },
+      {
+        "name": "JS8 Pro"
+      },
+      {
+        "name": "E30X"
+      },
+      {
+        "name": "T9"
+      },
+      {
+        "name": "T8 Pro"
       }
     ]
   },
@@ -785,6 +6842,51 @@
       },
       {
         "name": "Trooper"
+      },
+      {
+        "name": "D Max 2"
+      },
+      {
+        "name": "Rodeo"
+      },
+      {
+        "name": "Trooper II"
+      },
+      {
+        "name": "Stylus"
+      },
+      {
+        "name": "Impulse"
+      },
+      {
+        "name": "Aska"
+      },
+      {
+        "name": "Trooper I"
+      },
+      {
+        "name": "Piazza"
+      },
+      {
+        "name": "KB 40"
+      },
+      {
+        "name": "Asso di Fiori"
+      },
+      {
+        "name": "117"
+      },
+      {
+        "name": "Florian"
+      },
+      {
+        "name": "Gemini"
+      },
+      {
+        "name": "Bellett"
+      },
+      {
+        "name": "Unicab"
       }
     ]
   },
@@ -807,6 +6909,78 @@
       },
       {
         "name": "Feroza"
+      },
+      {
+        "name": "Terios II"
+      },
+      {
+        "name": "Cuore VII"
+      },
+      {
+        "name": "Trevis"
+      },
+      {
+        "name": "Sirion II"
+      },
+      {
+        "name": "Copen"
+      },
+      {
+        "name": "Cuore VI"
+      },
+      {
+        "name": "YRV"
+      },
+      {
+        "name": "Terios I"
+      },
+      {
+        "name": "Move"
+      },
+      {
+        "name": "Applause"
+      },
+      {
+        "name": "Cuore V (L700)"
+      },
+      {
+        "name": "Grand Move"
+      },
+      {
+        "name": "Cuore IV (L500)"
+      },
+      {
+        "name": "Feroza II"
+      },
+      {
+        "name": "Rocky II"
+      },
+      {
+        "name": "Charade (G200)"
+      },
+      {
+        "name": "Feroza I"
+      },
+      {
+        "name": "Cuore III (L200)"
+      },
+      {
+        "name": "Rocky I"
+      },
+      {
+        "name": "Charade (G100)"
+      },
+      {
+        "name": "Cuore II (L70)"
+      },
+      {
+        "name": "Charade (G11)"
+      },
+      {
+        "name": "Charmant"
+      },
+      {
+        "name": "Cuore I"
       }
     ]
   },
@@ -826,6 +7000,72 @@
       },
       {
         "name": "9000"
+      },
+      {
+        "name": "9-4X"
+      },
+      {
+        "name": "9-3 Sport"
+      },
+      {
+        "name": "9-3X"
+      },
+      {
+        "name": "9-3 Cabrio"
+      },
+      {
+        "name": "Aero X"
+      },
+      {
+        "name": "9-7X"
+      },
+      {
+        "name": "9-3 Sport Estate"
+      },
+      {
+        "name": "9-3 Sport Sedan"
+      },
+      {
+        "name": "9X"
+      },
+      {
+        "name": "9-3 Coupe"
+      },
+      {
+        "name": "9-3 I Cabriolet"
+      },
+      {
+        "name": "9000 CD"
+      },
+      {
+        "name": "9000 CS"
+      },
+      {
+        "name": "900 II Coupe"
+      },
+      {
+        "name": "900 II Cabriolet"
+      },
+      {
+        "name": "900 II"
+      },
+      {
+        "name": "900 Cabrio"
+      },
+      {
+        "name": "90"
+      },
+      {
+        "name": "99"
+      },
+      {
+        "name": "96"
+      },
+      {
+        "name": "Sonett"
+      },
+      {
+        "name": "92"
       }
     ]
   },
@@ -902,6 +7142,24 @@
       },
       {
         "name": "XF"
+      },
+      {
+        "name": "66"
+      },
+      {
+        "name": "33"
+      },
+      {
+        "name": "55"
+      },
+      {
+        "name": "44"
+      },
+      {
+        "name": "750"
+      },
+      {
+        "name": "600"
       }
     ]
   },
@@ -962,6 +7220,66 @@
       },
       {
         "name": "400"
+      },
+      {
+        "name": "CityRover"
+      },
+      {
+        "name": "Streetwise"
+      },
+      {
+        "name": "200 III"
+      },
+      {
+        "name": "400 II"
+      },
+      {
+        "name": "Tourer"
+      },
+      {
+        "name": "100 Cabriolet"
+      },
+      {
+        "name": "100"
+      },
+      {
+        "name": "200 II Coupe"
+      },
+      {
+        "name": "800 (R17) Sedan"
+      },
+      {
+        "name": "Estate"
+      },
+      {
+        "name": "800 Coupe"
+      },
+      {
+        "name": "Mini"
+      },
+      {
+        "name": "200 Cabriolet"
+      },
+      {
+        "name": "200 II 3 door"
+      },
+      {
+        "name": "200 II"
+      },
+      {
+        "name": "400 I"
+      },
+      {
+        "name": "800 Fastback"
+      },
+      {
+        "name": "800 Sedan"
+      },
+      {
+        "name": "200 I"
+      },
+      {
+        "name": "SD1"
       }
     ]
   },
@@ -1003,6 +7321,15 @@
       },
       {
         "name": "DFSK"
+      },
+      {
+        "name": "Forthing 7"
+      },
+      {
+        "name": "Forthing 9"
+      },
+      {
+        "name": "Forthing 5"
       }
     ]
   },
@@ -1022,6 +7349,9 @@
       },
       {
         "name": "U5"
+      },
+      {
+        "name": "BJ"
       }
     ]
   },
@@ -1060,6 +7390,9 @@
       },
       {
         "name": "M2"
+      },
+      {
+        "name": "BS6"
       }
     ]
   },
@@ -1076,7 +7409,15 @@
   {
     "slug": "deepal",
     "name": "Deepal",
-    "aliases": ["Діпал"]
+    "aliases": ["Діпал"],
+    "models": [
+      {
+        "name": "S05"
+      },
+      {
+        "name": "S07"
+      }
+    ]
   },
   {
     "slug": "derways",
@@ -1111,7 +7452,33 @@
   {
     "slug": "jaecoo",
     "name": "Jaecoo",
-    "aliases": ["Джаку"]
+    "aliases": ["Джаку"],
+    "models": [
+      {
+        "name": "8",
+        "aliases": ["8 / J8", "J8"]
+      },
+      {
+        "name": "J8",
+        "aliases": ["8 / J8", "8"]
+      },
+      {
+        "name": "5",
+        "aliases": ["5 / J5", "J5"]
+      },
+      {
+        "name": "J5",
+        "aliases": ["5 / J5", "5"]
+      },
+      {
+        "name": "7",
+        "aliases": ["7 / J7", "J7"]
+      },
+      {
+        "name": "J7",
+        "aliases": ["7 / J7", "7"]
+      }
+    ]
   },
   {
     "slug": "jetour",
@@ -1136,7 +7503,17 @@
   {
     "slug": "omoda",
     "name": "Omoda",
-    "aliases": ["Омода"]
+    "aliases": ["Омода"],
+    "models": [
+      {
+        "name": "5",
+        "aliases": ["5 / C5", "C5"]
+      },
+      {
+        "name": "C5",
+        "aliases": ["5 / C5", "5"]
+      }
+    ]
   },
   {
     "slug": "ravon",
@@ -1166,7 +7543,12 @@
   {
     "slug": "voyah",
     "name": "Voyah",
-    "aliases": ["Воях"]
+    "aliases": ["Воях"],
+    "models": [
+      {
+        "name": "Free"
+      }
+    ]
   },
   {
     "slug": "zotye",
@@ -1221,6 +7603,9 @@
       },
       {
         "name": "C11"
+      },
+      {
+        "name": "B10"
       }
     ]
   },
@@ -1237,6 +7622,9 @@
       },
       {
         "name": "05"
+      },
+      {
+        "name": "08"
       }
     ]
   },
@@ -1253,6 +7641,33 @@
       },
       {
         "name": "Euniq"
+      },
+      {
+        "name": "T60 MAX"
+      },
+      {
+        "name": "eTERRON 9"
+      },
+      {
+        "name": "Deliver 7"
+      },
+      {
+        "name": "eDeliver 7"
+      },
+      {
+        "name": "eDeliver 3"
+      },
+      {
+        "name": "Mifa 9"
+      },
+      {
+        "name": "Euniq 6"
+      },
+      {
+        "name": "Euniq 5"
+      },
+      {
+        "name": "T90"
       }
     ]
   },
@@ -1269,6 +7684,9 @@
       },
       {
         "name": "E-HS9"
+      },
+      {
+        "name": "CA"
       }
     ]
   },
@@ -1317,6 +7735,12 @@
       },
       {
         "name": "Persona"
+      },
+      {
+        "name": "Waja"
+      },
+      {
+        "name": "Satria"
       }
     ]
   },
