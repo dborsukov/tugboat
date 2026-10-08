@@ -38,6 +38,21 @@
             ? "dark"
             : "light";
         } catch {}
+
+        try {
+          const boot = window.__POPEYE_BOOT__ ?? {};
+          const userAgent = navigator.userAgent;
+          const platform =
+            boot.platform ??
+            (userAgent.includes("Mac OS X")
+              ? "macos"
+              : userAgent.includes("Windows")
+                ? "windows"
+                : "linux");
+
+          document.documentElement.dataset.platform = platform;
+          document.documentElement.dataset.uiScale = String(boot.uiScale ?? 1);
+        } catch {}
       })();
     </script>
     %sveltekit.head%

@@ -237,6 +237,14 @@ async fn start(handle: &AppHandle, app_dir: PathBuf) -> AppResult<()> {
 
     database::cars::brands::sync_catalog(&db_pool).await?;
 
+    let ui_scale = match database::settings::fetch_settings_from_pool(&db_pool).await {
+        Ok(settings) => settings.ui_scale,
+        Err(error) => {
+            log::warn!("Не вдалося прочитати масштаб інтерфейсу: {error}");
+            1.0
+        }
+    };
+
     handle.manage(AppState {
         data_dir: app_dir,
         db_pool,
@@ -246,7 +254,7 @@ async fn start(handle: &AppHandle, app_dir: PathBuf) -> AppResult<()> {
     let appstate = handle.state::<AppState>();
     print!("{:#?}", appstate);
 
-    open_main_window(handle)?;
+    open_main_window(handle, ui_scale)?;
 
     if let Err(error) = documents::resolve_documents_dir(&appstate).await {
         log::warn!("Не вдалося підготувати теку документів: {error}");
@@ -256,7 +264,7 @@ async fn start(handle: &AppHandle, app_dir: PathBuf) -> AppResult<()> {
 }
 
 /// Creates the main window arms the splash screen's safety net.
-fn open_main_window(handle: &AppHandle) -> AppResult<()> {
+fn open_main_window(handle: &AppHandle, ui_scale: f64) -> AppResult<()> {
     let config = handle
         .config()
         .app
@@ -266,8 +274,15 @@ fn open_main_window(handle: &AppHandle) -> AppResult<()> {
         .cloned()
         .ok_or_else(|| AppError::Generic("У конфігурації немає головного вікна".to_string()))?;
 
-    WebviewWindowBuilder::from_config(handle, &config)
-        .and_then(|builder| builder.build())
+    let builder = WebviewWindowBuilder::from_config(handle, &config)
+        .map_err(|e| AppError::Generic(format!("Не вдалося створити головне вікно: {e}")))?
+        .initialization_script(boot_script(ui_scale));
+
+    #[cfg(target_os = "macos")]
+    let builder = macos_window_chrome(builder, ui_scale);
+
+    builder
+        .build()
         .map_err(|e| AppError::Generic(format!("Не вдалося створити головне вікно: {e}")))?;
 
     // Safety net for the splash screen: the main window starts hidden and the
@@ -288,4 +303,55 @@ fn open_main_window(handle: &AppHandle) -> AppResult<()> {
     });
 
     Ok(())
+}
+
+/// Height of the app's own title bar, mirroring `--titlebar-height` in `src/app.css` (9 * 0.25rem).
+#[cfg(target_os = "macos")]
+const TITLEBAR_HEIGHT_PX: f64 = 36.0;
+
+/// AppKit lays the 16pt-tall traffic lights out inside the title bar view and
+/// ends up placing their centre this many points below the `y` that wry is
+/// handed, so centring them in the app title bar means asking for `title bar height / 2 - this`.
+#[cfg(target_os = "macos")]
+const TRAFFIC_LIGHT_CENTRE_OFFSET_PT: f64 = 2.0;
+
+/// Leading inset of the close button from the window's left edge.
+#[cfg(target_os = "macos")]
+const TRAFFIC_LIGHT_INSET_X_PT: f64 = 12.0;
+
+/// Injects the values the frontend needs before its first paint.
+/// The window chrome differs per platform (native macOS traffic lights vs. the
+/// app's own buttons — see `src/lib/platform.ts` and `title-bar.svelte`), and
+/// the title bar has to reserve room for the lights using the very same UI
+/// scale they were positioned with, so both are handed over here instead of
+/// being guessed from the user agent or waited for from the settings query.
+fn boot_script(ui_scale: f64) -> String {
+    format!(
+        "window.__POPEYE_BOOT__ = {{ platform: \"{}\", uiScale: {} }};",
+        std::env::consts::OS,
+        ui_scale
+    )
+}
+
+/// Gives the main window the macOS shape: the *native* traffic lights inside the
+/// app's own title bar.
+///
+/// FIXME: the position can only be set here, while the window is created, so
+/// changing the UI scale at runtime leaves the lights where they started until the app is restarted.
+#[cfg(target_os = "macos")]
+fn macos_window_chrome(
+    builder: WebviewWindowBuilder<'_, tauri::Wry, AppHandle>,
+    ui_scale: f64,
+) -> WebviewWindowBuilder<'_, tauri::Wry, AppHandle> {
+    let title_bar_height = TITLEBAR_HEIGHT_PX * ui_scale;
+    let traffic_light_y = (title_bar_height / 2.0 - TRAFFIC_LIGHT_CENTRE_OFFSET_PT).max(0.0);
+
+    builder
+        .decorations(true)
+        .title_bar_style(tauri::TitleBarStyle::Overlay)
+        .hidden_title(true)
+        .traffic_light_position(tauri::LogicalPosition::new(
+            TRAFFIC_LIGHT_INSET_X_PT,
+            traffic_light_y,
+        ))
 }

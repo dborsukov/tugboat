@@ -21,6 +21,7 @@
   import XIcon from "@lucide/svelte/icons/x";
 
   import { type ThemeMode } from "$lib/bindings";
+  import { isMacOS } from "$lib/platform";
   import { navHistory } from "$lib/states/nav-history.svelte";
   import { privacyState } from "$lib/states/privacy.svelte";
   import { settingsState } from "$lib/states/settings.svelte";
@@ -36,6 +37,7 @@
   import { useSidebar } from "./ui/sidebar";
 
   let isMaximized = $state(false);
+  let isFullscreen = $state(false);
   const sidebarContext = useSidebar();
   const appWindow = getCurrentWindow();
 
@@ -43,7 +45,7 @@
   const updateThemeMutation = createUpdateThemeMutation(queryClient);
   const updateUiScaleMutation = createUpdateUiScaleMutation(queryClient);
 
-  const uiScale = $derived(settingsState.settings?.uiScale ?? 1);
+  const uiScale = $derived(settingsState.uiScale);
   const theme = $derived(settingsState.settings?.theme ?? "system");
 
   const MIN_UI_SCALE = 0.5;
@@ -51,10 +53,27 @@
   const UI_SCALE_STEP = 0.1;
   const UI_SCALE_PRESETS = [0.5, 0.75, 0.9, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0];
 
+  /* Room the app title bar leaves for the native macOS traffic lights, which
+   * AppKit paints on top of it (`macos_window_chrome` in `src-tauri/src/lib.rs`):
+   * the three buttons are 14pt wide, sit 20pt apart and start at the inset that
+   * function positions them with, so they span 66pt, plus a gap before the app's own controls. */
+  const TRAFFIC_LIGHTS_WIDTH_PT = 66;
+  const TRAFFIC_LIGHTS_GAP_PT = 10;
+
+  const trafficLightsInset = $derived(
+    (TRAFFIC_LIGHTS_WIDTH_PT + TRAFFIC_LIGHTS_GAP_PT) / uiScale,
+  );
+
+  const titleBarInset = $derived(
+    isMacOS && !isFullscreen ? `${trafficLightsInset}px` : undefined,
+  );
+
   $effect(() => {
     appWindow.isMaximized().then((v) => (isMaximized = v));
+    appWindow.isFullscreen().then((v) => (isFullscreen = v));
     const unlistenPromise = appWindow.onResized(async () => {
       isMaximized = await appWindow.isMaximized();
+      isFullscreen = await appWindow.isFullscreen();
     });
     return () => {
       unlistenPromise.then((unlisten) => unlisten());
@@ -200,8 +219,14 @@
   data-window-controls
   class="pointer-events-auto relative z-titlebar flex h-(--titlebar-height) items-center justify-between border-b border-border bg-sidebar text-sidebar-foreground"
 >
-  <!-- Left: menu, sidebar, navigation -->
-  <div data-tauri-drag-region class="flex items-center gap-0.5 pl-1">
+  <!-- Left: menu, sidebar, navigation. On macOS the native traffic lights are
+       painted above the start of this bar, so the group is pushed past them —
+       and slides to the edge when fullscreen hides the lights. -->
+  <div
+    data-tauri-drag-region
+    class="flex items-center gap-0.5 pl-1 transition-[padding-left] duration-200 ease-out"
+    style:padding-left={titleBarInset}
+  >
     <DropdownMenu.Root>
       <DropdownMenu.Trigger
         class={cn(
@@ -421,34 +446,38 @@
   <!-- Middle: drag space -->
   <div data-tauri-drag-region class="h-full flex-1"></div>
 
-  <!-- Right: window controls -->
-  <div class="flex h-full items-stretch">
-    <button
-      onclick={() => appWindow.minimize()}
-      aria-label="Minimize"
-      class="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-[#aaaaaa]/30 hover:text-foreground"
-    >
-      <MinusIcon class="size-4" />
-    </button>
+  <!-- Right: window controls. macOS uses its own traffic lights in the top left
+       instead (`macos_window_chrome` in `src-tauri/src/lib.rs`), so the app's
+       buttons are only rendered where the window has no native ones. -->
+  {#if !isMacOS}
+    <div class="flex h-full items-stretch">
+      <button
+        onclick={() => appWindow.minimize()}
+        aria-label="Minimize"
+        class="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-[#aaaaaa]/30 hover:text-foreground"
+      >
+        <MinusIcon class="size-4" />
+      </button>
 
-    <button
-      onclick={() => appWindow.toggleMaximize()}
-      aria-label="Maximize"
-      class="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-[#aaaaaa]/30 hover:text-foreground"
-    >
-      {#if isMaximized}
-        <CopyIcon class="size-3.5 rotate-90" />
-      {:else}
-        <SquareIcon class="size-3.5" />
-      {/if}
-    </button>
+      <button
+        onclick={() => appWindow.toggleMaximize()}
+        aria-label="Maximize"
+        class="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-[#aaaaaa]/30 hover:text-foreground"
+      >
+        {#if isMaximized}
+          <CopyIcon class="size-3.5 rotate-90" />
+        {:else}
+          <SquareIcon class="size-3.5" />
+        {/if}
+      </button>
 
-    <button
-      onclick={() => appWindow.close()}
-      aria-label="Close"
-      class="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-[#e81123] hover:text-white"
-    >
-      <XIcon class="h-4 w-4" />
-    </button>
-  </div>
+      <button
+        onclick={() => appWindow.close()}
+        aria-label="Close"
+        class="flex h-full w-11 items-center justify-center text-muted-foreground transition-colors hover:bg-[#e81123] hover:text-white"
+      >
+        <XIcon class="h-4 w-4" />
+      </button>
+    </div>
+  {/if}
 </div>

@@ -75,6 +75,18 @@ export function createSettingsFieldMutation<K extends keyof AppSettings>(
 
 class AppSettingsState {
   settings = $state<AppSettings | null>(null);
+
+  /**
+   * UI scale (webview zoom) currently in effect.
+   *
+   * Until the settings query resolves this falls back to the scale the window
+   * was created with (`data-ui-scale`, injected before the first paint by
+   * `boot_script` in `src-tauri/src/lib.rs`).
+   */
+  get uiScale(): number {
+    const bootScale = Number(document.documentElement.dataset.uiScale);
+    return this.settings?.uiScale ?? (bootScale > 0 ? bootScale : 1);
+  }
 }
 
 export const settingsState = new AppSettingsState();
