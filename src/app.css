@@ -295,9 +295,35 @@ body:has([data-slot="alert-dialog-content"])
 }
 
 @layer base {
+  /* The default border colour and the focus-ring outline colour are declared in
+   * separate rules on purpose — do not merge them back into one `@apply`.
+   *
+   * `@apply outline-ring/50` compiles the opacity-modified colour into a
+   * `@supports (color: color-mix(…))` rule nested inside the style rule.
+   * WebKit before Safari 17.2 (the WKWebView on macOS 13 is frozen at WebKit
+   * 16.x) does not support at-rules nested in a style rule: it keeps the nested
+   * block but throws away every declaration that precedes it, which silently
+   * dropped the `border-color` above it. Every border without an explicit
+   * colour then fell back to the initial `currentColor` and painted in the
+   * near-white foreground instead of the 10% border token — the white borders
+   * seen on macOS.
+   *
+   * Keeping the nested at-rule out of the rule that sets `border-color` fixes
+   * it, and the outline keeps its plain fallback plus the progressive
+   * `color-mix()` upgrade in the flat, non-nested rule below. */
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
+  * {
+    outline-color: var(--ring);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    * {
+      outline-color: color-mix(in oklab, var(--ring) 50%, transparent);
+    }
+  }
+
   body {
     @apply bg-background text-foreground;
   }
