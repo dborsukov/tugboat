@@ -257,11 +257,18 @@
     <script>
       (() => {
         const reveal = () => {
-          requestAnimationFrame(() =>
-            requestAnimationFrame(() => {
-              window.__TAURI__?.window?.getCurrentWindow()?.show?.();
-            }),
-          );
+          let shown = false;
+          const show = () => {
+            if (shown) return;
+            shown = true;
+            window.__TAURI__?.window?.getCurrentWindow()?.show?.();
+          };
+          // Two frames put the first paint up before the window appears, with a
+          // timer as a fallback: a window that has not been shown yet is not
+          // guaranteed to receive animation frames (macOS gives it none), so
+          // waiting for them can mean never appearing at all.
+          requestAnimationFrame(() => requestAnimationFrame(show));
+          setTimeout(show, 50);
         };
         if (document.readyState === "complete") reveal();
         else window.addEventListener("load", reveal);

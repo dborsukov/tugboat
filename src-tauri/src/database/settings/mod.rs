@@ -5,7 +5,7 @@ use std::collections::{HashMap, HashSet};
 use rust_decimal::Decimal;
 use sqlx::types::Json;
 use structs::*;
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::{
     database::utils::decimal_column,
@@ -63,6 +63,7 @@ pub async fn fetch_settings(state: State<'_, crate::AppState>) -> AppResult<AppS
 #[specta::specta]
 pub async fn update_theme(
     theme: ThemeMode,
+    app: tauri::AppHandle,
     state: State<'_, crate::AppState>,
 ) -> AppResult<ThemeMode> {
     let theme: ThemeMode =
@@ -70,6 +71,13 @@ pub async fn update_theme(
             .bind(theme)
             .fetch_one(&state.db_pool)
             .await?;
+
+    // Keep the native window background in step with the theme
+    if let Some(window) = app.get_webview_window("main") {
+        let os_theme = window.theme().unwrap_or(tauri::Theme::Light);
+        let _ = window.set_background_color(Some(crate::background_color(theme, os_theme)));
+    }
+
     Ok(theme)
 }
 

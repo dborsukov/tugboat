@@ -4,7 +4,7 @@ use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
     Pool, Sqlite,
 };
-use tauri::{AppHandle, Manager, WebviewWindowBuilder};
+use tauri::{utils::config::Color, AppHandle, Manager, WebviewWindowBuilder};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 use tauri_specta::{collect_commands, Builder};
@@ -14,7 +14,10 @@ pub mod documents;
 pub mod error;
 pub mod utils;
 
-use crate::error::{AppError, AppResult};
+use crate::{
+    database::settings::structs::ThemeMode,
+    error::{AppError, AppResult},
+};
 
 #[derive(Debug)]
 pub struct AppState {
@@ -210,8 +213,10 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-/// Runs slow startup code while splashscreen is shown, then opens the main window.
+/// Runs slow startup code, then opens the main window.
 async fn start(handle: &AppHandle, app_dir: PathBuf) -> AppResult<()> {
+    open_splash_window(handle)?;
+
     let db_path = app_dir.join("main.db");
     let options = SqliteConnectOptions::new()
         .filename(db_path)
@@ -237,11 +242,11 @@ async fn start(handle: &AppHandle, app_dir: PathBuf) -> AppResult<()> {
 
     database::cars::brands::sync_catalog(&db_pool).await?;
 
-    let ui_scale = match database::settings::fetch_settings_from_pool(&db_pool).await {
-        Ok(settings) => settings.ui_scale,
+    let (ui_scale, theme) = match database::settings::fetch_settings_from_pool(&db_pool).await {
+        Ok(settings) => (settings.ui_scale, settings.theme),
         Err(error) => {
-            log::warn!("Не вдалося прочитати масштаб інтерфейсу: {error}");
-            1.0
+            log::warn!("Не вдалося прочитати налаштування: {error}");
+            (1.0, ThemeMode::System)
         }
     };
 
@@ -254,7 +259,7 @@ async fn start(handle: &AppHandle, app_dir: PathBuf) -> AppResult<()> {
     let appstate = handle.state::<AppState>();
     print!("{:#?}", appstate);
 
-    open_main_window(handle, ui_scale)?;
+    open_main_window(handle, ui_scale, theme)?;
 
     if let Err(error) = documents::resolve_documents_dir(&appstate).await {
         log::warn!("Не вдалося підготувати теку документів: {error}");
@@ -263,16 +268,39 @@ async fn start(handle: &AppHandle, app_dir: PathBuf) -> AppResult<()> {
     Ok(())
 }
 
-/// Creates the main window arms the splash screen's safety net.
-fn open_main_window(handle: &AppHandle, ui_scale: f64) -> AppResult<()> {
-    let config = handle
+/// Looks a window definition up in `tauri.conf.json` by its label.
+fn window_config(handle: &AppHandle, label: &str) -> AppResult<tauri::utils::config::WindowConfig> {
+    handle
         .config()
         .app
         .windows
         .iter()
-        .find(|window| window.label == "main")
+        .find(|window| window.label == label)
         .cloned()
-        .ok_or_else(|| AppError::Generic("У конфігурації немає головного вікна".to_string()))?;
+        .ok_or_else(|| AppError::Generic(format!("У конфігурації немає вікна «{label}»")))
+}
+
+/// Creates the splash screen window on the platforms that use one.
+#[cfg(not(target_os = "macos"))]
+fn open_splash_window(handle: &AppHandle) -> AppResult<()> {
+    let config = window_config(handle, "splashscreen")?;
+
+    WebviewWindowBuilder::from_config(handle, &config)
+        .and_then(|builder| builder.build())
+        .map_err(|e| AppError::Generic(format!("Не вдалося створити вікно заставки: {e}")))?;
+
+    Ok(())
+}
+
+/// macOS shows the main window straight away
+#[cfg(target_os = "macos")]
+fn open_splash_window(_handle: &AppHandle) -> AppResult<()> {
+    Ok(())
+}
+
+/// Creates the main window arms the splash screen's safety net.
+fn open_main_window(handle: &AppHandle, ui_scale: f64, theme: ThemeMode) -> AppResult<()> {
+    let config = window_config(handle, "main")?;
 
     let builder = WebviewWindowBuilder::from_config(handle, &config)
         .map_err(|e| AppError::Generic(format!("Не вдалося створити головне вікно: {e}")))?
@@ -281,9 +309,14 @@ fn open_main_window(handle: &AppHandle, ui_scale: f64) -> AppResult<()> {
     #[cfg(target_os = "macos")]
     let builder = macos_window_chrome(builder, ui_scale);
 
-    builder
+    let window = builder
         .build()
         .map_err(|e| AppError::Generic(format!("Не вдалося створити головне вікно: {e}")))?;
+
+    let os_theme = window.theme().unwrap_or(tauri::Theme::Light);
+    if let Err(error) = window.set_background_color(Some(background_color(theme, os_theme))) {
+        log::warn!("Не вдалося задати колір тла вікна: {error}");
+    }
 
     // Safety net for the splash screen: the main window starts hidden and the
     // frontend reveals it once the app is painted. If the frontend never signals
@@ -303,6 +336,22 @@ fn open_main_window(handle: &AppHandle, ui_scale: f64) -> AppResult<()> {
     });
 
     Ok(())
+}
+
+const BACKGROUND_LIGHT: Color = Color(0xfb, 0xfa, 0xf7, 0xff);
+const BACKGROUND_DARK: Color = Color(0x19, 0x1d, 0x24, 0xff);
+
+/// Resolves the window background for a theme; `System` follows the appearance
+/// the window reports.
+fn background_color(theme: ThemeMode, os_theme: tauri::Theme) -> Color {
+    match theme {
+        ThemeMode::Light => BACKGROUND_LIGHT,
+        ThemeMode::Dark => BACKGROUND_DARK,
+        ThemeMode::System => match os_theme {
+            tauri::Theme::Dark => BACKGROUND_DARK,
+            _ => BACKGROUND_LIGHT,
+        },
+    }
 }
 
 /// Height of the app's own title bar, mirroring `--titlebar-height` in `src/app.css` (9 * 0.25rem).

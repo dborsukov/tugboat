@@ -27,6 +27,7 @@
         "skipTaskbar": true,
         "center": true,
         "visible": false,
+        "create": false,
         "backgroundColor": "#fbfaf700"
       }
     ],

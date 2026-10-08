@@ -25,6 +25,7 @@
   import UiScaleApplier from "$lib/components/ui-scale-applier.svelte";
 
   import { navHistory } from "$lib/states/nav-history.svelte";
+  import { settingsState } from "$lib/states/settings.svelte";
 
   let { children } = $props();
   const queryClient = new QueryClient();
@@ -35,32 +36,70 @@
 
   navHistory.init();
 
-  const splashShownAt = Date.now();
-  const MIN_SPLASH_MS = 600;
+  const bootShownAt = Date.now();
+  const MIN_LOADING_MS = 600;
+  const BOOT_LOADER_TIMEOUT_MS = 5000;
+
+  /** Resolves after `count` animation frames, but never waits longer than 250ms. */
+  function nextFrames(count: number): Promise<void> {
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      const tick = (left: number) =>
+        left <= 0 ? finish() : requestAnimationFrame(() => tick(left - 1));
+      tick(count);
+      setTimeout(finish, 250);
+    });
+  }
+
+  /** Fades out the loading state that `src/app.html` puts in the window. */
+  function removeBootLoader() {
+    const loader = document.getElementById("boot-loader");
+    if (!loader) return;
+    loader.dataset.hidden = "true";
+    setTimeout(() => loader.remove(), 200);
+  }
 
   onMount(() => {
-    if (getCurrentWebviewWindow().label !== "main") return;
-    // Wait two frames, the first paint of the mounted app is guaranteed to be
-    // on screen before we swap windows.
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        const remaining = Math.max(
-          0,
-          MIN_SPLASH_MS - (Date.now() - splashShownAt),
-        );
-        setTimeout(async () => {
-          try {
-            const appWindow = getCurrentWindow();
-            await appWindow.show();
-            await appWindow.setFocus();
-            await (await WebviewWindow.getByLabel("splashscreen"))?.close();
-          } catch {
-            // Skip. App still works if the hand-off fails.
-          }
-        }, remaining);
-      }),
-    );
+    const appWindow = getCurrentWebviewWindow();
+
+    if (appWindow.label !== "main") {
+      removeBootLoader();
+      return;
+    }
+
+    const deadline = Date.now() + BOOT_LOADER_TIMEOUT_MS;
+    const waitForSettings = () => {
+      if (settingsState.settings !== null || Date.now() > deadline) {
+        void startHandOff();
+        return;
+      }
+      setTimeout(waitForSettings, 50);
+    };
+    waitForSettings();
   });
+
+  async function startHandOff() {
+    const remaining = Math.max(0, MIN_LOADING_MS - (Date.now() - bootShownAt));
+    if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
+
+    removeBootLoader();
+
+    await nextFrames(2);
+
+    try {
+      const appWindow = getCurrentWindow();
+      await appWindow.show();
+      await appWindow.setFocus();
+      await (await WebviewWindow.getByLabel("splashscreen"))?.close();
+    } catch {
+      // Skip. App still works if the hand-off fails.
+    }
+  }
 </script>
 
 <QueryClientProvider client={queryClient}>
