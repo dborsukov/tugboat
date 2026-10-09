@@ -13,6 +13,7 @@ pub mod database;
 pub mod documents;
 pub mod error;
 pub mod utils;
+pub mod window_geometry;
 
 use crate::{
     database::settings::structs::ThemeMode,
@@ -135,7 +136,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         database::analytics::fetch_client_mix_list,
         database::analytics::fetch_gross_margin,
         database::analytics::fetch_margin_services,
-        utils::get_app_version
+        utils::get_app_version,
+        window_geometry::reveal_window
     ])
 }
 
@@ -209,8 +211,14 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        // Window position is written on each move, this is a sanity check
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|handle, event| {
+            if let tauri::RunEvent::Exit = event {
+                window_geometry::save_geometry(handle);
+            }
+        });
 }
 
 /// Runs slow startup code, then opens the main window.
@@ -318,19 +326,21 @@ fn open_main_window(handle: &AppHandle, ui_scale: f64, theme: ThemeMode) -> AppR
         log::warn!("Не вдалося задати колір тла вікна: {error}");
     }
 
+    // Remember this window's size and position from now on
+    window_geometry::track_window(&window);
+
     // Safety net for the splash screen: the main window starts hidden and the
     // frontend reveals it once the app is painted. If the frontend never signals
     // readiness, force the reveal so the app can't stay stuck behind the splash.
+    // The reveal also restores the saved window geometry, so it goes through the
+    // same path the frontend uses.
     let handle = handle.clone();
     std::thread::spawn(move || {
         std::thread::sleep(Duration::from_secs(15));
         let handle_for_closure = handle.clone();
         let _ = handle.run_on_main_thread(move || {
-            if let Some(splash) = handle_for_closure.get_webview_window("splashscreen") {
-                let _ = splash.close();
-            }
-            if let Some(main) = handle_for_closure.get_webview_window("main") {
-                let _ = main.show();
+            if let Err(error) = window_geometry::reveal_main_window(&handle_for_closure) {
+                log::warn!("Не вдалося показати головне вікно: {error}");
             }
         });
     });

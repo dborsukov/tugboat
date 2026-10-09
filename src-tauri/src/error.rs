@@ -127,4 +127,23 @@ impl From<rust_xlsxwriter::XlsxError> for AppError {
     }
 }
 
+impl From<tauri::Error> for AppError {
+    fn from(error: tauri::Error) -> Self {
+        AppError::Generic(format!("Помилка вікна: {error}"))
+    }
+}
+
+impl From<std::io::Error> for AppError {
+    fn from(error: std::io::Error) -> Self {
+        log::error!("I/O failure: {error}");
+        AppError::Generic(format!("Помилка читання або запису файлу: {error}"))
+    }
+}
+
+impl From<serde_json::Error> for AppError {
+    fn from(error: serde_json::Error) -> Self {
+        AppError::Generic(format!("Помилка обробки JSON: {error}"))
+    }
+}
+
 pub type AppResult<T> = Result<T, AppError>;

@@ -137,6 +137,15 @@ export const commands = {
 	/**  What each billed line of `range` earned and what it cost, biggest contribution first. */
 	fetchMarginServices: (period: AnalyticsPeriod, options: MarginOptions) => typedError<MarginService[], AppError>(__TAURI_INVOKE("fetch_margin_services", { period, options })),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
+	/**
+	 *  Shows the main window, restores its geometry, and drops the splash screen.
+	 * 
+	 *  The frontend calls this once it has painted instead of working the window
+	 *  itself, so that the reveal and the geometry restore cannot drift apart, and so
+	 *  the splash screen is only closed once the main window is really on screen.
+	 *  The 15s fallback in `open_main_window` calls this code as well.
+	 */
+	revealWindow: () => typedError<null, AppError>(__TAURI_INVOKE("reveal_window")),
 };
 
 /* Types */

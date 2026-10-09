@@ -3,11 +3,7 @@
 
   import { QueryClient, QueryClientProvider } from "@tanstack/svelte-query";
   import { SvelteQueryDevtools } from "@tanstack/svelte-query-devtools";
-  import {
-    getCurrentWebviewWindow,
-    WebviewWindow,
-  } from "@tauri-apps/api/webviewWindow";
-  import { getCurrentWindow } from "@tauri-apps/api/window";
+  import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
   import { ModeWatcher } from "mode-watcher";
   import { onMount } from "svelte";
 
@@ -24,6 +20,7 @@
   import TitleBar from "$lib/components/title-bar.svelte";
   import UiScaleApplier from "$lib/components/ui-scale-applier.svelte";
 
+  import { commands } from "$lib/bindings";
   import { navHistory } from "$lib/states/nav-history.svelte";
   import { settingsState } from "$lib/states/settings.svelte";
 
@@ -92,10 +89,10 @@
     await nextFrames(2);
 
     try {
-      const appWindow = getCurrentWindow();
-      await appWindow.show();
-      await appWindow.setFocus();
-      await (await WebviewWindow.getByLabel("splashscreen"))?.close();
+      // Rust shows the window, puts it back where the user left it and closes the
+      // splash screen in one go. The restore has to happen after the window is
+      // visible, so it cannot be done from here directly.
+      await commands.revealWindow();
     } catch {
       // Skip. App still works if the hand-off fails.
     }
