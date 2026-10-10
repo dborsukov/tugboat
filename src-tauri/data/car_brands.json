@@ -9,19 +9,6 @@
     "aliases": ["Тойота"],
     "models": [
       {
-        "name": "AA"
-      },
-      {
-        "name": "AB",
-        "aliases": ["AA/AB"]
-      },
-      {
-        "name": "AC"
-      },
-      {
-        "name": "AE"
-      },
-      {
         "name": "Agya"
       },
       {
@@ -65,9 +52,6 @@
       },
       {
         "name": "Aygo X"
-      },
-      {
-        "name": "BA"
       },
       {
         "name": "Bandeirante",
@@ -2461,6 +2445,40 @@
     ]
   },
   {
+    "slug": "rivian",
+    "name": "Rivian",
+    "aliases": ["Рівіан"],
+    "models": [
+      {
+        "name": "R1T"
+      },
+      {
+        "name": "R1S"
+      },
+      {
+        "name": "R2"
+      },
+      {
+        "name": "R3"
+      },
+      {
+        "name": "R3X"
+      },
+      {
+        "name": "EDV"
+      }
+    ]
+  },
+  {
+    "slug": "nio",
+    "name": "NIO",
+    "aliases": ["Ніо"]
+  },
+  {
+    "slug": "lucid",
+    "name": "Lucid"
+  },
+  {
     "slug": "byd",
     "name": "BYD",
     "aliases": ["БІД"],
@@ -2511,6 +2529,10 @@
         "name": "Tang (EU-Market)"
       }
     ]
+  },
+  {
+    "slug": "fangchengbao",
+    "name": "Fangchengbao"
   },
   {
     "slug": "audi",
@@ -6204,52 +6226,6 @@
     ]
   },
   {
-    "slug": "wuling",
-    "name": "Wuling",
-    "aliases": ["Вулінг"]
-  },
-  {
-    "slug": "nio",
-    "name": "NIO",
-    "aliases": ["Ніо"],
-    "models": [
-      {
-        "name": "EL6"
-      },
-      {
-        "name": "EL7"
-      },
-      {
-        "name": "EL8"
-      },
-      {
-        "name": "ET5"
-      },
-      {
-        "name": "ET7"
-      },
-      {
-        "name": "Firefly"
-      }
-    ]
-  },
-  {
-    "slug": "xpeng",
-    "name": "XPENG",
-    "aliases": ["Сяопен"],
-    "models": [
-      {
-        "name": "G6"
-      },
-      {
-        "name": "G9"
-      },
-      {
-        "name": "P7"
-      }
-    ]
-  },
-  {
     "slug": "zeekr",
     "name": "Zeekr",
     "aliases": ["Зікр"],
@@ -6282,11 +6258,6 @@
         "name": "9X"
       }
     ]
-  },
-  {
-    "slug": "li-auto",
-    "name": "Li Auto",
-    "aliases": ["Лі Авто"]
   },
   {
     "slug": "xiaomi",
@@ -7407,32 +7378,9 @@
     "aliases": ["Bogdan"]
   },
   {
-    "slug": "deepal",
-    "name": "Deepal",
-    "aliases": ["Діпал"],
-    "models": [
-      {
-        "name": "S05"
-      },
-      {
-        "name": "S07"
-      }
-    ]
-  },
-  {
-    "slug": "derways",
-    "name": "Derways",
-    "aliases": ["Дервейс"]
-  },
-  {
     "slug": "exeed",
     "name": "Exeed",
     "aliases": ["Ексід"]
-  },
-  {
-    "slug": "forthing",
-    "name": "Forthing",
-    "aliases": ["Фортінг"]
   },
   {
     "slug": "foton",
@@ -7450,70 +7398,9 @@
     "aliases": ["Izh", "Иж", "Ода", "Oda"]
   },
   {
-    "slug": "jaecoo",
-    "name": "Jaecoo",
-    "aliases": ["Джаку"],
-    "models": [
-      {
-        "name": "J5",
-        "aliases": ["5 / J5", "5"]
-      },
-      {
-        "name": "J7",
-        "aliases": ["7 / J7", "7"]
-      },
-      {
-        "name": "J8",
-        "aliases": ["8 / J8", "8"]
-      },
-      {
-        "name": "5",
-        "aliases": ["5 / J5", "J5"]
-      },
-      {
-        "name": "7",
-        "aliases": ["7 / J7", "J7"]
-      },
-      {
-        "name": "8",
-        "aliases": ["8 / J8", "J8"]
-      }
-    ]
-  },
-  {
-    "slug": "jetour",
-    "name": "Jetour",
-    "aliases": ["Джетур"]
-  },
-  {
-    "slug": "jiangling",
-    "name": "Jiangling",
-    "aliases": ["Джянлінг"]
-  },
-  {
     "slug": "luaz",
     "name": "ЛуАЗ",
     "aliases": ["LuAZ", "Volyn"]
-  },
-  {
-    "slug": "mitsubishi-fuso",
-    "name": "Mitsubishi Fuso",
-    "aliases": ["Фусо"]
-  },
-  {
-    "slug": "omoda",
-    "name": "Omoda",
-    "aliases": ["Омода"],
-    "models": [
-      {
-        "name": "C5",
-        "aliases": ["5 / C5", "5"]
-      },
-      {
-        "name": "5",
-        "aliases": ["5 / C5", "C5"]
-      }
-    ]
   },
   {
     "slug": "ravon",
@@ -7521,203 +7408,14 @@
     "aliases": ["Равон"]
   },
   {
-    "slug": "swm",
-    "name": "SWM",
-    "aliases": ["СВМ"]
-  },
-  {
     "slug": "tagaz",
     "name": "TagAZ",
     "aliases": ["ТагАЗ"]
   },
   {
-    "slug": "traum",
-    "name": "Traum",
-    "aliases": ["Траум"]
-  },
-  {
-    "slug": "vortex",
-    "name": "Vortex",
-    "aliases": ["Вортекс"]
-  },
-  {
-    "slug": "voyah",
-    "name": "Voyah",
-    "aliases": ["Воях"],
-    "models": [
-      {
-        "name": "Free"
-      }
-    ]
-  },
-  {
     "slug": "zotye",
     "name": "Zotye",
     "aliases": ["Зоті"]
-  },
-  {
-    "slug": "tank",
-    "name": "Tank",
-    "aliases": ["Танк"],
-    "models": [
-      {
-        "name": "300"
-      },
-      {
-        "name": "400"
-      },
-      {
-        "name": "500"
-      },
-      {
-        "name": "700"
-      }
-    ]
-  },
-  {
-    "slug": "seres",
-    "name": "Seres",
-    "aliases": ["Сірес"],
-    "models": [
-      {
-        "name": "3"
-      },
-      {
-        "name": "5"
-      },
-      {
-        "name": "7"
-      }
-    ]
-  },
-  {
-    "slug": "leapmotor",
-    "name": "Leapmotor",
-    "aliases": ["Ліпмотор"],
-    "models": [
-      {
-        "name": "B10"
-      },
-      {
-        "name": "C10"
-      },
-      {
-        "name": "C11"
-      },
-      {
-        "name": "T03"
-      }
-    ]
-  },
-  {
-    "slug": "lynk-co",
-    "name": "Lynk & Co",
-    "aliases": ["Лінк енд Ко"],
-    "models": [
-      {
-        "name": "01"
-      },
-      {
-        "name": "02"
-      },
-      {
-        "name": "05"
-      },
-      {
-        "name": "08"
-      }
-    ]
-  },
-  {
-    "slug": "maxus",
-    "name": "Maxus",
-    "aliases": ["Максус"],
-    "models": [
-      {
-        "name": "Deliver 7"
-      },
-      {
-        "name": "Deliver 9"
-      },
-      {
-        "name": "eDeliver 3"
-      },
-      {
-        "name": "eDeliver 7"
-      },
-      {
-        "name": "eTERRON 9"
-      },
-      {
-        "name": "Euniq"
-      },
-      {
-        "name": "Euniq 5"
-      },
-      {
-        "name": "Euniq 6"
-      },
-      {
-        "name": "Mifa 9"
-      },
-      {
-        "name": "T60"
-      },
-      {
-        "name": "T60 MAX"
-      },
-      {
-        "name": "T90"
-      }
-    ]
-  },
-  {
-    "slug": "hongqi",
-    "name": "Hongqi",
-    "aliases": ["Хунці"],
-    "models": [
-      {
-        "name": "CA"
-      },
-      {
-        "name": "E-HS9"
-      },
-      {
-        "name": "H5"
-      },
-      {
-        "name": "HS5"
-      }
-    ]
-  },
-  {
-    "slug": "skywell",
-    "name": "Skywell",
-    "aliases": ["Скайвел"],
-    "models": [
-      {
-        "name": "ET5"
-      },
-      {
-        "name": "HT-i"
-      }
-    ]
-  },
-  {
-    "slug": "sinotruk",
-    "name": "Sinotruk (HOWO)",
-    "aliases": ["Сінотрак"],
-    "models": [
-      {
-        "name": "HOWO"
-      },
-      {
-        "name": "HOWO A7"
-      },
-      {
-        "name": "Sitrak"
-      }
-    ]
   },
   {
     "slug": "proton",

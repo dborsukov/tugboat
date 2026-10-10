@@ -60,10 +60,10 @@ repos:
         pass_filenames: true # DO NOT CHANGE THIS otherwise old migration files might reformat and their hash will change
 
       - id: validate-car-brands
-        name: "validate car_brands.json"
+        name: "validate car brands and logos"
         entry: node scripts/validate-car-brands.mjs
         language: system
-        files: ^src-tauri/data/car_brands(\.schema)?\.json$
+        files: ^(src-tauri/data/car_brands(\.schema)?\.json|static/car_brand_logos/.*)$
         pass_filenames: true
 
       - id: svelte-typecheck

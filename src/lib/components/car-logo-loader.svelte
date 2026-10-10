@@ -107,11 +107,13 @@
       <Spinner />
     </div>
   {:else}
-    <img
-      src={imageSrc}
-      alt={name || slug}
-      class="logo-img max-w-full max-h-full object-contain! aspect-square"
-    />
+    <div class="flex items-center justify-center w-full h-full">
+      <img
+        src={imageSrc}
+        alt={name || slug}
+        class="logo-img max-w-full max-h-full object-contain!"
+      />
+    </div>
   {/if}
 </div>
 

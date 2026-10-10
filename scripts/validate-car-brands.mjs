@@ -11,16 +11,31 @@
  * another name (or is shared with a sibling brand) — writing the slug into it
  * is rejected, so the two can never drift apart.
  *
+ * Every brand must own a `static/car_brand_logos/<slug>.png`, and every file in
+ * that directory must belong to a brand: a logo no brand references is either a
+ * leftover from a removed brand or a typo in the file name, and both mean the
+ * picker shows the `?` placeholder for a brand that looks like it has a logo.
+ *
  * Ids are not part of the catalog: the database assigns them.
  *
  * Runtime is lenient (serde ignores unknown fields, the brand sync logs
  * and skips a bad row instead of failing), so the strict checks live here.
  */
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
 const DEFAULT_FILES = ["src-tauri/data/car_brands.json"];
 const SCHEMA_FILE = "src-tauri/data/car_brands.schema.json";
 const UNKNOWN_BRAND_SLUG = "unknown-brand";
+
+const LOGO_DIR = "static/car_brand_logos";
+const LOGO_EXTENSION = ".png";
+
+/**
+ * The sentinel is what the picker falls back to for an unrecognised make, so it
+ * deliberately renders the "?" placeholder instead of an image. Drop it from
+ * this set to require a logo for it too.
+ */
+const LOGO_EXEMPT_SLUGS = new Set([UNKNOWN_BRAND_SLUG]);
 
 /** Slug and icon slug end up in URLs and file names. */
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -32,10 +47,19 @@ const MAX_NAME_LENGTH = 60;
 const BRAND_FIELDS = new Set(["slug", "name", "iconSlug", "aliases", "models"]);
 const MODEL_FIELDS = new Set(["name", "aliases"]);
 
-const files = process.argv.slice(2).filter((arg) => !arg.startsWith("-"));
-const targets = (files.length > 0 ? files : DEFAULT_FILES).filter(
-  (file) => !file.replace(/\\/g, "/").endsWith("car_brands.schema.json"),
+const args = process.argv.slice(2).filter((arg) => !arg.startsWith("-"));
+
+/** The schema is validated on its own, it is not a catalog. */
+const isSchemaFile = (file) =>
+  file.replace(/\\/g, "/").endsWith("car_brands.schema.json");
+
+// The hook passes every file it matched, which includes logos. Only JSON files
+// are read as catalogs, and when none was named — a logo-only or schema-only
+// change — the bundled catalog is still cross-checked against the logo folder.
+const namedCatalogs = args.filter(
+  (file) => !isSchemaFile(file) && file.endsWith(".json"),
 );
+const targets = namedCatalogs.length > 0 ? namedCatalogs : DEFAULT_FILES;
 
 const problems = [];
 
@@ -250,6 +274,79 @@ function checkCatalog(catalog, file) {
 }
 
 /**
+ * Cross-checks the catalog against the logo directory in both directions.
+ *
+ * `iconSlug` wins over `slug` when present, mirroring `icon_slug` in brands.rs,
+ * and several brands may share one file, so the expectation is built the other
+ * way round: logo stem → the brands that ask for it.
+ *
+ * @param {Map<string, string | undefined>} brands slug → iconSlug
+ */
+function checkLogos(brands) {
+  const wanted = new Map();
+
+  for (const [slug, iconSlug] of brands) {
+    if (LOGO_EXEMPT_SLUGS.has(slug)) continue;
+
+    const stem = iconSlug ?? slug;
+    const owners = wanted.get(stem);
+
+    if (owners === undefined) {
+      wanted.set(stem, [slug]);
+    } else {
+      owners.push(slug);
+    }
+  }
+
+  let entries;
+  try {
+    entries = readdirSync(LOGO_DIR);
+  } catch (error) {
+    fail(LOGO_DIR, `cannot be read: ${error.message}`);
+    return 0;
+  }
+
+  const present = new Set();
+
+  for (const entry of entries) {
+    // Editor and OS droppings are not logos.
+    if (entry.startsWith(".")) continue;
+
+    if (!entry.endsWith(LOGO_EXTENSION)) {
+      fail(
+        `${LOGO_DIR}/${entry}`,
+        `is not a ${LOGO_EXTENSION} file — the loader only requests <slug>${LOGO_EXTENSION}`,
+      );
+      continue;
+    }
+
+    present.add(entry.slice(0, -LOGO_EXTENSION.length));
+  }
+
+  for (const [stem, owners] of wanted) {
+    if (present.has(stem)) continue;
+
+    const needs =
+      owners.length === 1
+        ? `brand ${describe(owners[0])} needs it`
+        : `brands ${owners.map(describe).join(", ")} need it`;
+
+    fail(`${LOGO_DIR}/${stem}${LOGO_EXTENSION}`, `is missing, but ${needs}`);
+  }
+
+  for (const stem of present) {
+    if (wanted.has(stem)) continue;
+
+    fail(
+      `${LOGO_DIR}/${stem}${LOGO_EXTENSION}`,
+      "is not used by any brand in the catalog",
+    );
+  }
+
+  return present.size;
+}
+
+/**
  * The schema only feeds editor hints, but a stale one would underline valid
  * data, so it has to agree with the rules enforced here. It stays optional:
  * delete the file and nothing but the hints goes away.
@@ -326,6 +423,9 @@ let checked = 0;
 let brands = 0;
 let models = 0;
 
+/** slug → iconSlug from every catalog that parsed, for the logo cross-check. */
+const catalogBrands = new Map();
+
 for (const file of targets) {
   let raw;
   try {
@@ -354,6 +454,27 @@ for (const file of targets) {
   models += Array.isArray(catalog)
     ? catalog.reduce((total, brand) => total + (brand?.models?.length ?? 0), 0)
     : 0;
+
+  // checkCatalog already reported any malformed entry, so this only collects
+  // what it could read; the logo check would otherwise be noise on top of it.
+  if (Array.isArray(catalog)) {
+    for (const brand of catalog) {
+      if (typeof brand?.slug !== "string" || catalogBrands.has(brand.slug)) {
+        continue;
+      }
+      catalogBrands.set(
+        brand.slug,
+        typeof brand.iconSlug === "string" ? brand.iconSlug : undefined,
+      );
+    }
+  }
+}
+
+// Skipped when nothing parsed: an empty expectation would report every logo on
+// disk as unused and bury the real error.
+let logos = 0;
+if (catalogBrands.size > 0) {
+  logos = checkLogos(catalogBrands);
 }
 
 if (problems.length > 0) {
@@ -364,5 +485,6 @@ if (problems.length > 0) {
 }
 
 console.log(
-  `✔ car catalog: ${checked} file(s), ${brands} brands, ${models} models — valid`,
+  `✔ car catalog: ${checked} file(s), ${brands} brands, ${models} models, ` +
+    `${logos} logos — valid`,
 );
