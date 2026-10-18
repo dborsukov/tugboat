@@ -8,6 +8,7 @@
     confirmLabel?: string;
     actionVariant?: "default" | "destructive" | "warning";
     onDelete?: (() => void) | null;
+    onOpenChange?: (open: boolean) => void;
   }
 
   let {
@@ -17,10 +18,16 @@
     confirmLabel = "Видалити",
     actionVariant = "destructive",
     onDelete,
+    onOpenChange,
   }: Props = $props();
 </script>
 
-<AlertDialog.Root bind:open>
+<AlertDialog.Root
+  bind:open
+  onOpenChange={(value) => {
+    if (!value) onOpenChange?.(false);
+  }}
+>
   <AlertDialog.Content>
     <AlertDialog.Header>
       <AlertDialog.Title>{title}</AlertDialog.Title>

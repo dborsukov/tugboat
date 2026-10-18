@@ -1,10 +1,7 @@
 <script lang="ts">
-  import TriangleAlertIcon from "@lucide/svelte/icons/triangle-alert";
-
   import { Card, CardContent } from "$lib/components/ui/card";
   import { Skeleton } from "$lib/components/ui/skeleton";
 
-  import { settingsState } from "$lib/states/settings.svelte";
   import { pluralizeUk } from "$lib/tools";
 
   import Money from "../components/money.svelte";
@@ -17,13 +14,9 @@
   let { slot }: DashboardModuleProps = $props();
 
   const orderCount = $derived(query.data?.orderCount ?? 0);
-
-  const vatPayer = $derived(
-    settingsState.settings?.companyInfo?.vatPayer === true,
-  );
 </script>
 
-<Card class="h-full py-4">
+<Card class="h-full py-4" data-module-width={slot.width}>
   {#if query.isPending}
     <CardContent class="flex min-h-0 flex-1 flex-col gap-1">
       <Skeleton class="h-6 w-28" />
@@ -43,24 +36,10 @@
       <div class="text-2xl font-bold tracking-tight">
         <Money amount={query.data?.amount ?? "0"} />
       </div>
-      <p class="text-muted-foreground text-sm">ПДВ до сплати</p>
+      <p class="text-muted-foreground text-sm">ПДВ нараховано</p>
 
       <div class="mt-auto text-sm">
-        {#if !vatPayer}
-          <p
-            class="flex items-start gap-1.5 text-amber-600 dark:text-amber-500"
-            title="Бізнес не позначений платником ПДВ, тож подані замовлення не мають ПДВ. Позначити можна в налаштуваннях, у розділі 'Дані бізнесу'."
-          >
-            <TriangleAlertIcon class="mt-0.5 size-3.5 shrink-0" />
-            <span>
-              {#if slot.width === "sixth"}
-                Не платник ПДВ
-              {:else}
-                Бізнес не позначений платником ПДВ
-              {/if}
-            </span>
-          </p>
-        {:else if orderCount === 0}
+        {#if orderCount === 0}
           <p class="text-muted-foreground/60">Цього місяця ПДВ немає</p>
         {:else}
           <p class="text-muted-foreground">

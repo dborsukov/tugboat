@@ -1,26 +1,39 @@
 <script lang="ts">
-  import { openPath } from "@tauri-apps/plugin-opener";
+  import { useQueryClient } from "@tanstack/svelte-query";
   import { toast } from "svelte-sonner";
 
+  import DownloadIcon from "@lucide/svelte/icons/download";
   import FileSpreadsheetIcon from "@lucide/svelte/icons/file-spreadsheet";
   import FileTextIcon from "@lucide/svelte/icons/file-text";
-  import FolderOpenIcon from "@lucide/svelte/icons/folder-open";
+  import TrashIcon from "@lucide/svelte/icons/trash";
 
   import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
   import { Skeleton } from "$lib/components/ui/skeleton";
 
+  import DeleteDialog from "$lib/components/delete-dialog.svelte";
+
   import type { WorkOrderDocument } from "$lib/bindings";
   import { prettifyIsoDateString } from "$lib/tools";
 
-  import { createWorkOrderDocumentsQuery } from "../queries";
+  import {
+    createDeleteWorkOrderDocumentMutation,
+    createDownloadWorkOrderDocumentMutation,
+    createWorkOrderDocumentsQuery,
+  } from "../queries";
 
   let { workOrderId }: { workOrderId: string } = $props();
 
+  const queryClient = useQueryClient();
+
   const documentsQuery = createWorkOrderDocumentsQuery(() => workOrderId);
+  const downloadMutation = createDownloadWorkOrderDocumentMutation(queryClient);
+  const deleteMutation = createDeleteWorkOrderDocumentMutation(queryClient);
 
   const files = $derived(documentsQuery.data?.files ?? []);
-  const folderPath = $derived(documentsQuery.data?.folderPath);
+
+  /** The document awaiting delete confirmation, if any. */
+  let pendingDelete = $state<WorkOrderDocument | null>(null);
 
   type DocFormat = "pdf" | "xlsx";
 
@@ -43,27 +56,25 @@
     return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`;
   }
 
-  async function openFile(file: WorkOrderDocument) {
-    try {
-      await openPath(file.path);
-    } catch (error) {
-      toast.error("Не вдалося відкрити файл", {
-        description: `${file.name} — ${String(error)}`,
-        position: "bottom-left",
-      });
-    }
+  async function download(file: WorkOrderDocument) {
+    const saved = await downloadMutation
+      .mutateAsync({ workOrderId, fileName: file.name })
+      .catch(() => undefined);
+    // `null` means the save dialog was dismissed, which is not a failure.
+    if (!saved) return;
+    toast.success("Документ збережено", {
+      description: saved,
+      position: "bottom-left",
+    });
   }
 
-  async function openFolder() {
-    if (!folderPath) return;
-    try {
-      await openPath(folderPath);
-    } catch (error) {
-      toast.error("Не вдалося відкрити теку документів", {
-        description: `${folderPath} — ${String(error)}`,
-        position: "bottom-left",
-      });
-    }
+  async function confirmDelete() {
+    const file = pendingDelete;
+    if (!file) return;
+    pendingDelete = null;
+    await deleteMutation
+      .mutateAsync({ workOrderId, fileName: file.name })
+      .catch(() => {});
   }
 </script>
 
@@ -78,15 +89,6 @@
           </span>
         {/if}
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onclick={openFolder}
-        disabled={!folderPath}
-      >
-        <FolderOpenIcon />
-        Відкрити теку
-      </Button>
     </div>
 
     {#if documentsQuery.isPending}
@@ -109,12 +111,7 @@
       >
         {#each files as file (file.path)}
           {@const fileFormat = formatOf(file)}
-          <button
-            type="button"
-            class="flex items-center gap-3 px-4 py-2 text-left hover:bg-muted/40"
-            onclick={() => openFile(file)}
-            title="Відкрити файл"
-          >
+          <div class="flex items-center gap-3 px-4 py-2">
             {#if fileFormat === "xlsx"}
               <FileSpreadsheetIcon
                 class="size-5 shrink-0 text-emerald-600 dark:text-emerald-400"
@@ -138,9 +135,43 @@
             >
               {prettifyIsoDateString(file.modifiedAt, "datetime")}
             </span>
-          </button>
+            <div class="flex shrink-0 items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Зберегти документ"
+                title="Зберегти документ"
+                disabled={downloadMutation.isPending}
+                onclick={() => download(file)}
+              >
+                <DownloadIcon />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Видалити документ"
+                title="Видалити документ"
+                disabled={deleteMutation.isPending}
+                onclick={() => (pendingDelete = file)}
+              >
+                <TrashIcon class="text-muted-foreground" />
+              </Button>
+            </div>
+          </div>
         {/each}
       </div>
     {/if}
   </div>
 </div>
+
+<DeleteDialog
+  open={pendingDelete !== null}
+  onOpenChange={(value) => {
+    if (!value) pendingDelete = null;
+  }}
+  onDelete={confirmDelete}
+  title="Видалити документ"
+  description={pendingDelete
+    ? `Файл «${pendingDelete.name}» буде видалено безповоротно.`
+    : null}
+/>

@@ -14,8 +14,9 @@ use tauri::State;
 use crate::{
     database::{
         cars, clients,
-        settings::structs::decode_company_info,
+        settings::{fetch_settings_from_pool, structs::decode_company_info},
         utils::begin_immediate,
+        vat::{self, structs::VatScheme},
         work_orders::dtos::{LaborItemDto, PartItemDto, WorkOrderDetailsDto},
         workers,
     },
@@ -86,7 +87,11 @@ pub async fn fetch_work_order_by_id(
             started_at,
             completed_at,
             paid_at,
-            payment_method
+            payment_method,
+            tax_invoice_number,
+            tax_invoice_date,
+            exemption_code,
+            vat_scheme
         FROM work_orders
         WHERE id = $1
         "#,
@@ -134,7 +139,11 @@ pub async fn fetch_work_orders_list(
             started_at,
             completed_at,
             paid_at,
-            payment_method
+            payment_method,
+            tax_invoice_number,
+            tax_invoice_date,
+            exemption_code,
+            vat_scheme
         FROM work_orders
         "#,
     )
@@ -173,7 +182,11 @@ pub(crate) const WORK_ORDER_COLUMNS: &str = r#"
             started_at,
             completed_at,
             paid_at,
-            payment_method
+            payment_method,
+            tax_invoice_number,
+            tax_invoice_date,
+            exemption_code,
+            vat_scheme
 "#;
 
 pub(crate) async fn fetch_labor_items_by_work_order_ids(
@@ -198,7 +211,9 @@ pub(crate) async fn fetch_labor_items_by_work_order_ids(
             discount_type,
             discount_value,
             is_free,
-            position
+            position,
+            vat_rate,
+            vat_scheme
         FROM labor_items
         WHERE work_order_id IN ("#,
     );
@@ -243,7 +258,17 @@ pub(crate) async fn fetch_part_items_by_work_order_ids(
             discount_type,
             discount_value,
             is_free,
-            position
+            position,
+            vat_rate,
+            vat_scheme,
+            purchase_vat_rate,
+            purchase_price_includes_vat,
+            purchase_scheme,
+            supplier_name,
+            supplier_code,
+            invoice_number,
+            invoice_date,
+            vat_credited
         FROM part_items
         WHERE work_order_id IN ("#,
     );
@@ -326,6 +351,7 @@ async fn build_work_order_details_dtos(
                     work_order.labor_cost_type,
                     work_order.labor_cost_value,
                     work_order.vat_rate,
+                    work_order.vat_scheme,
                     work_order.prices_include_vat,
                 );
                 LaborItemDto {
@@ -343,6 +369,7 @@ async fn build_work_order_details_dtos(
                 let item_totals = pricing::calculate_part_item_totals(
                     &item,
                     work_order.vat_rate,
+                    work_order.vat_scheme,
                     work_order.prices_include_vat,
                 );
                 PartItemDto {
@@ -431,7 +458,11 @@ pub async fn fetch_work_order_details_dto_by_car_id(
             started_at,
             completed_at,
             paid_at,
-            payment_method
+            payment_method,
+            tax_invoice_number,
+            tax_invoice_date,
+            exemption_code,
+            vat_scheme
         FROM work_orders
         WHERE car_id = $1
         "#,
@@ -496,7 +527,9 @@ pub async fn fetch_work_order_details_dto_by_client_id(
     build_work_order_details_dtos(&state, work_orders).await
 }
 
-async fn is_company_not_vat_payer(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>) -> AppResult<bool> {
+pub(crate) async fn is_company_not_vat_payer(
+    tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+) -> AppResult<bool> {
     let company_info = decode_company_info(
         sqlx::query_scalar::<_, Option<String>>(
             "SELECT company_info FROM app_settings WHERE id = 1",
@@ -607,11 +640,15 @@ pub async fn create_work_order(
         workers::ensure_worker_exists(&mut *tx, worker_id).await?;
     }
 
-    let vat_rate = if is_company_not_vat_payer(&mut tx).await? {
-        Decimal::ZERO
+    let (vat_rate, vat_scheme) = if is_company_not_vat_payer(&mut tx).await? {
+        (Decimal::ZERO, VatScheme::Standard)
     } else {
-        payload.vat_rate
+        vat::validate_rate_and_scheme(payload.vat_rate, payload.vat_scheme)?;
+        (payload.vat_rate, payload.vat_scheme)
     };
+    validate_tax_invoice(&payload.tax_invoice_number, &payload.tax_invoice_date)?;
+    let exemption_code = clean_exemption_code(payload.exemption_code.clone());
+    validate_exemption_code(&exemption_code, vat_scheme)?;
 
     let id = generate_work_order_id(&mut tx).await?;
 
@@ -639,9 +676,13 @@ pub async fn create_work_order(
             prices_include_vat,
             payer_client_id,
             customer_client_id,
-            worker_id
+            worker_id,
+            vat_scheme,
+            tax_invoice_number,
+            tax_invoice_date,
+            exemption_code
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
         RETURNING
             id,
             car_id,
@@ -672,7 +713,11 @@ pub async fn create_work_order(
             started_at,
             completed_at,
             paid_at,
-            payment_method
+            payment_method,
+            tax_invoice_number,
+            tax_invoice_date,
+            exemption_code,
+            vat_scheme
         "#,
     )
     .bind(id)
@@ -697,8 +742,16 @@ pub async fn create_work_order(
     .bind(payload.payer_client_id)
     .bind(payload.customer_client_id)
     .bind(payload.worker_id)
+    .bind(vat_scheme)
+    .bind(payload.tax_invoice_number)
+    .bind(payload.tax_invoice_date)
+    .bind(exemption_code)
     .fetch_one(&mut *tx)
     .await?;
+
+    // An order created directly as supplied (the payload allows it) still has
+    // to leave a VAT record behind.
+    vat::record_supply(state.inner(), &mut tx, &work_order).await?;
 
     tx.commit().await?;
     Ok(work_order)
@@ -747,7 +800,11 @@ pub async fn create_warranty_work_order(
             started_at,
             completed_at,
             paid_at,
-            payment_method
+            payment_method,
+            tax_invoice_number,
+            tax_invoice_date,
+            exemption_code,
+            vat_scheme
         FROM work_orders
         WHERE id = $1
         "#,
@@ -768,10 +825,10 @@ pub async fn create_warranty_work_order(
 
     cars::ensure_car_active(&mut *tx, source.car_id as i32).await?;
 
-    let vat_rate = if is_company_not_vat_payer(&mut tx).await? {
-        Decimal::ZERO
+    let (vat_rate, vat_scheme) = if is_company_not_vat_payer(&mut tx).await? {
+        (Decimal::ZERO, VatScheme::Standard)
     } else {
-        source.vat_rate
+        (source.vat_rate, source.vat_scheme)
     };
 
     let id = generate_work_order_id(&mut tx).await?;
@@ -802,9 +859,10 @@ pub async fn create_warranty_work_order(
             prices_include_vat,
             payer_client_id,
             customer_client_id,
-            worker_id
+            worker_id,
+            vat_scheme
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
         RETURNING
             id,
             car_id,
@@ -835,7 +893,11 @@ pub async fn create_warranty_work_order(
             started_at,
             completed_at,
             paid_at,
-            payment_method
+            payment_method,
+            tax_invoice_number,
+            tax_invoice_date,
+            exemption_code,
+            vat_scheme
         "#,
     )
     .bind(id)
@@ -862,6 +924,7 @@ pub async fn create_warranty_work_order(
     .bind(None::<i32>)
     .bind(None::<i32>)
     .bind(source.worker_id)
+    .bind(vat_scheme)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -877,7 +940,28 @@ pub async fn update_work_order(
 ) -> AppResult<WorkOrder> {
     let mut tx = begin_immediate(&state.db_pool).await?;
 
-    ensure_work_order_active(&mut *tx, &payload.id).await?;
+    let current = fetch_work_order_in_tx(&mut *tx, &payload.id).await?;
+    if current.archived_at.is_some() {
+        return Err(AppError::work_order_archived());
+    }
+
+    let live_vat = vat::live_entry_for_order(&mut *tx, &payload.id).await?;
+    if live_vat.is_some() {
+        let settings = fetch_settings_from_pool(&state.db_pool).await?;
+        let timezone: chrono_tz::Tz = settings
+            .timezone
+            .parse()
+            .unwrap_or(chrono_tz::Tz::Europe__Kiev);
+        if vat_lock_would_break(&current, &payload, timezone) {
+            return Err(AppError::vat_locked());
+        }
+    }
+
+    vat::validate_rate_and_scheme(payload.vat_rate, payload.vat_scheme)?;
+    validate_tax_invoice(&payload.tax_invoice_number, &payload.tax_invoice_date)?;
+    let exemption_code = clean_exemption_code(payload.exemption_code.clone());
+    validate_exemption_code(&exemption_code, payload.vat_scheme)?;
+
     cars::ensure_car_active(&mut *tx, payload.car_id as i32).await?;
     ensure_driver_info_allowed(
         &mut *tx,
@@ -919,7 +1003,11 @@ pub async fn update_work_order(
             driver_patronymic = $23,
             driver_phone = $24,
             customer_client_id = $25,
-            worker_id = $26
+            worker_id = $26,
+            vat_scheme = $27,
+            tax_invoice_number = $28,
+            tax_invoice_date = $29,
+            exemption_code = $30
         WHERE id = $1
         RETURNING
             id,
@@ -951,7 +1039,11 @@ pub async fn update_work_order(
             started_at,
             completed_at,
             paid_at,
-            payment_method
+            payment_method,
+            tax_invoice_number,
+            tax_invoice_date,
+            exemption_code,
+            vat_scheme
         "#,
     )
     .bind(payload.id)
@@ -980,8 +1072,16 @@ pub async fn update_work_order(
     .bind(payload.driver_phone)
     .bind(payload.customer_client_id)
     .bind(payload.worker_id)
+    .bind(payload.vat_scheme)
+    .bind(payload.tax_invoice_number)
+    .bind(payload.tax_invoice_date)
+    .bind(exemption_code)
     .fetch_one(&mut *tx)
     .await?;
+
+    if live_vat.is_none() {
+        vat::record_supply(state.inner(), &mut tx, &work_order).await?;
+    }
 
     tx.commit().await?;
     Ok(work_order)
@@ -990,23 +1090,30 @@ pub async fn update_work_order(
 #[tauri::command]
 #[specta::specta]
 pub async fn delete_work_order(state: State<'_, crate::AppState>, id: String) -> AppResult<()> {
+    let mut tx = begin_immediate(&state.db_pool).await?;
+
     let warranty_claim_count: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM work_orders WHERE warranty_of = $1")
             .bind(&id)
-            .fetch_one(&state.db_pool)
+            .fetch_one(&mut *tx)
             .await?;
     if warranty_claim_count > 0 {
         return Err(AppError::validation(format!(
             "Спочатку видаліть пов'язані гарантійні замовлення ({warranty_claim_count})."
         )));
     }
+
+    vat::ensure_vat_unlocked(&mut *tx, &id).await?;
+
     let result = sqlx::query("DELETE FROM work_orders WHERE id = $1")
         .bind(id)
-        .execute(&state.db_pool)
+        .execute(&mut *tx)
         .await?;
     if result.rows_affected() == 0 {
         return Err(AppError::work_order_not_found());
     }
+
+    tx.commit().await?;
     Ok(())
 }
 
@@ -1088,6 +1195,108 @@ pub async fn restore_work_order(state: State<'_, crate::AppState>, id: String) -
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
+fn validate_part_credit(
+    credited: bool,
+    base_cost: Decimal,
+    quantity: Decimal,
+    rate: Decimal,
+    supplier: &Option<String>,
+    invoice_number: &Option<String>,
+    invoice_date: &Option<String>,
+) -> AppResult<()> {
+    if !credited {
+        return Ok(());
+    }
+    if base_cost <= Decimal::ZERO || quantity <= Decimal::ZERO {
+        return Err(AppError::validation(
+            "Для податкового кредиту вкажіть ціну та кількість, більші за нуль",
+        ));
+    }
+    if rate <= Decimal::ZERO {
+        return Err(AppError::validation(
+            "Для податкового кредиту вкажіть ставку ПДВ закупівлі",
+        ));
+    }
+    if supplier.as_deref().map(str::trim).unwrap_or("").is_empty() {
+        return Err(AppError::validation(
+            "Вкажіть постачальника для податкового кредиту",
+        ));
+    }
+    if invoice_number
+        .as_deref()
+        .map(str::trim)
+        .unwrap_or("")
+        .is_empty()
+    {
+        return Err(AppError::validation("Вкажіть номер податкової накладної"));
+    }
+    let date = invoice_date.as_deref().map(str::trim).unwrap_or("");
+    if chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").is_err() {
+        return Err(AppError::validation("Вкажіть дату податкової накладної"));
+    }
+    Ok(())
+}
+
+fn part_purchase_fields_changed(current: &PartItem, payload: &UpdatePartItemPayload) -> bool {
+    current.base_cost != payload.base_cost
+        || current.quantity != payload.quantity
+        || current.purchase_vat_rate != payload.purchase_vat_rate
+        || current.purchase_price_includes_vat != payload.purchase_price_includes_vat
+        || current.purchase_scheme != payload.purchase_scheme
+        || current.supplier_name != payload.supplier_name
+        || current.supplier_code != payload.supplier_code
+        || current.invoice_number != payload.invoice_number
+        || current.invoice_date != payload.invoice_date
+        || current.vat_credited != payload.vat_credited
+}
+
+fn validate_line_vat(rate: Option<Decimal>, scheme: Option<VatScheme>) -> AppResult<()> {
+    match (rate, scheme) {
+        (Some(rate), Some(scheme)) => vat::validate_rate_and_scheme(rate, scheme),
+        (Some(rate), None) => vat::validate_rate_and_scheme(rate, VatScheme::Standard),
+        (None, Some(scheme)) if !scheme.is_standard() => {
+            Err(AppError::validation("Для пільгової ставки ПДВ вкажіть 0 %"))
+        }
+        _ => Ok(()),
+    }
+}
+
+fn clean_exemption_code(code: Option<String>) -> Option<String> {
+    code.map(|code| code.trim().to_string())
+        .filter(|code| !code.is_empty())
+}
+
+fn validate_exemption_code(code: &Option<String>, scheme: VatScheme) -> AppResult<()> {
+    if code.is_some() && scheme != VatScheme::Exempt {
+        return Err(AppError::validation(
+            "Код пільги вказується лише для звільненої поставки",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_tax_invoice(number: &Option<String>, date: &Option<String>) -> AppResult<()> {
+    let number = number
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    let date = date
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty());
+    match (number, date) {
+        (None, None) => Ok(()),
+        (Some(_), Some(date)) if chrono::NaiveDate::parse_from_str(date, "%Y-%m-%d").is_ok() => {
+            Ok(())
+        }
+        (Some(_), Some(_)) => Err(AppError::validation("Некоректна дата податкової накладної")),
+        _ => Err(AppError::validation(
+            "Вкажіть і номер, і дату податкової накладної",
+        )),
+    }
+}
+
 async fn ensure_work_order_active<'e, E>(executor: E, id: &str) -> AppResult<()>
 where
     E: Executor<'e, Database = Sqlite>,
@@ -1104,6 +1313,53 @@ where
     }
 }
 
+async fn fetch_work_order_in_tx<'e, E>(executor: E, id: &str) -> AppResult<WorkOrder>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    let sql = format!("SELECT {WORK_ORDER_COLUMNS} FROM work_orders WHERE id = $1");
+    sqlx::query_as(&sql)
+        .bind(id)
+        .fetch_optional(executor)
+        .await?
+        .ok_or_else(AppError::work_order_not_found)
+}
+
+fn vat_lock_would_break(
+    current: &WorkOrder,
+    payload: &UpdateWorkOrderPayload,
+    timezone: chrono_tz::Tz,
+) -> bool {
+    if current.rate != payload.rate
+        || current.discount_type != payload.discount_type
+        || current.discount_value != payload.discount_value
+        || current.vat_rate != payload.vat_rate
+        || current.vat_scheme != payload.vat_scheme
+        || current.prices_include_vat != payload.prices_include_vat
+        || current.tax_invoice_number != payload.tax_invoice_number
+        || current.tax_invoice_date != payload.tax_invoice_date
+        || current.exemption_code != payload.exemption_code
+    {
+        return true;
+    }
+
+    if vat::status_is_supplied(current.status) && !vat::status_is_supplied(payload.status) {
+        return true;
+    }
+
+    vat::tax_point_of(
+        current.completed_at,
+        current.paid_at,
+        current.created_at,
+        timezone,
+    ) != vat::tax_point_of(
+        payload.completed_at,
+        payload.paid_at,
+        current.created_at,
+        timezone,
+    )
+}
+
 async fn ensure_item_work_order_active<'e, E>(
     executor: E,
     table: ItemTable,
@@ -1112,19 +1368,31 @@ async fn ensure_item_work_order_active<'e, E>(
 where
     E: Executor<'e, Database = Sqlite>,
 {
-    let archived_at: Option<Option<String>> = sqlx::query_scalar(&format!(
-        "SELECT wo.archived_at FROM {table} li \
-         JOIN work_orders wo ON wo.id = li.work_order_id \
+    // Archive state and VAT lock in one round trip
+    let row: Option<(Option<String>, bool)> = sqlx::query_as(&format!(
+        "SELECT
+             wo.archived_at,
+             EXISTS (
+                 SELECT 1 FROM vat_entries v
+                 WHERE v.direction = 'output'
+                   AND v.source_kind = 'work_order'
+                   AND v.source_id = wo.id
+                   AND v.reverses_id IS NULL
+                   AND v.voided_at IS NULL
+             )
+         FROM {table} li
+         JOIN work_orders wo ON wo.id = li.work_order_id
          WHERE li.id = $1",
         table = table.table_name(),
     ))
     .bind(item_id)
     .fetch_optional(executor)
     .await?;
-    match archived_at {
+    match row {
         None => Err(AppError::item_not_found()),
-        Some(Some(_)) => Err(AppError::work_order_archived()),
-        Some(None) => Ok(()),
+        Some((Some(_), _)) => Err(AppError::work_order_archived()),
+        Some((None, true)) => Err(AppError::vat_locked()),
+        Some((None, false)) => Ok(()),
     }
 }
 
@@ -1147,7 +1415,9 @@ pub async fn fetch_labor_items_list(
             discount_type,
             discount_value,
             is_free,
-            position
+            position,
+            vat_rate,
+            vat_scheme
         FROM labor_items
         "#,
     )
@@ -1176,7 +1446,9 @@ pub async fn fetch_labor_item_by_id(
             discount_type,
             discount_value,
             is_free,
-            position
+            position,
+            vat_rate,
+            vat_scheme
         FROM labor_items
         WHERE id = $1
         "#,
@@ -1196,6 +1468,8 @@ pub async fn create_labor_item(
     let mut tx = begin_immediate(&state.db_pool).await?;
 
     ensure_work_order_active(&mut *tx, &payload.work_order_id).await?;
+    vat::ensure_vat_unlocked(&mut *tx, &payload.work_order_id).await?;
+    validate_line_vat(payload.vat_rate, payload.vat_scheme)?;
 
     let labor_item: LaborItem = sqlx::query_as(
         r#"
@@ -1210,13 +1484,16 @@ pub async fn create_labor_item(
             discount_type,
             discount_value,
             is_free,
-            position
+            position,
+            vat_rate,
+            vat_scheme
         )
         VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
             (SELECT COALESCE(MAX(position), -1) + 1
              FROM labor_items
-             WHERE work_order_id = $2)
+             WHERE work_order_id = $2),
+            $11, $12
         )
         RETURNING
             id,
@@ -1230,7 +1507,9 @@ pub async fn create_labor_item(
             discount_type,
             discount_value,
             is_free,
-            position
+            position,
+            vat_rate,
+            vat_scheme
         "#,
     )
     .bind(payload.service_id)
@@ -1243,6 +1522,8 @@ pub async fn create_labor_item(
     .bind(payload.discount_type)
     .bind(payload.discount_value.to_string())
     .bind(payload.is_free)
+    .bind(payload.vat_rate.map(|rate| rate.to_string()))
+    .bind(payload.vat_scheme)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -1260,6 +1541,7 @@ pub async fn update_labor_item(
     let mut tx = begin_immediate(&state.db_pool).await?;
 
     ensure_item_work_order_active(&mut *tx, ItemTable::Labor, id).await?;
+    validate_line_vat(payload.vat_rate, payload.vat_scheme)?;
 
     let labor_item: LaborItem = sqlx::query_as(
         r#"
@@ -1272,7 +1554,9 @@ pub async fn update_labor_item(
             labor_hours = $7,
             discount_type = $8,
             discount_value = $9,
-            is_free = $10
+            is_free = $10,
+            vat_rate = $11,
+            vat_scheme = $12
         WHERE id = $1
         RETURNING
             id,
@@ -1286,7 +1570,9 @@ pub async fn update_labor_item(
             discount_type,
             discount_value,
             is_free,
-            position
+            position,
+            vat_rate,
+            vat_scheme
         "#,
     )
     .bind(id)
@@ -1299,6 +1585,8 @@ pub async fn update_labor_item(
     .bind(payload.discount_type)
     .bind(payload.discount_value.to_string())
     .bind(payload.is_free)
+    .bind(payload.vat_rate.map(|rate| rate.to_string()))
+    .bind(payload.vat_scheme)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -1366,7 +1654,17 @@ pub async fn fetch_part_items_list(state: State<'_, crate::AppState>) -> AppResu
             discount_type,
             discount_value,
             is_free,
-            position
+            position,
+            vat_rate,
+            vat_scheme,
+            purchase_vat_rate,
+            purchase_price_includes_vat,
+            purchase_scheme,
+            supplier_name,
+            supplier_code,
+            invoice_number,
+            invoice_date,
+            vat_credited
         FROM part_items
         "#,
     )
@@ -1396,7 +1694,17 @@ pub async fn fetch_part_item_by_id(
             discount_type,
             discount_value,
             is_free,
-            position
+            position,
+            vat_rate,
+            vat_scheme,
+            purchase_vat_rate,
+            purchase_price_includes_vat,
+            purchase_scheme,
+            supplier_name,
+            supplier_code,
+            invoice_number,
+            invoice_date,
+            vat_credited
         FROM part_items
         WHERE id = $1
         "#,
@@ -1416,6 +1724,23 @@ pub async fn create_part_item(
     let mut tx = begin_immediate(&state.db_pool).await?;
 
     ensure_work_order_active(&mut *tx, &payload.work_order_id).await?;
+    vat::ensure_vat_unlocked(&mut *tx, &payload.work_order_id).await?;
+    if payload.vat_credited && is_company_not_vat_payer(&mut tx).await? {
+        return Err(AppError::validation(
+            "Бізнес не є платником ПДВ — податковий кредит за запчастиною недоступний.",
+        ));
+    }
+    validate_line_vat(payload.vat_rate, payload.vat_scheme)?;
+    vat::validate_rate_and_scheme(payload.purchase_vat_rate, payload.purchase_scheme)?;
+    validate_part_credit(
+        payload.vat_credited,
+        payload.base_cost,
+        payload.quantity,
+        payload.purchase_vat_rate,
+        &payload.supplier_name,
+        &payload.invoice_number,
+        &payload.invoice_date,
+    )?;
 
     let part_item: PartItem = sqlx::query_as(
         r#"
@@ -1431,13 +1756,24 @@ pub async fn create_part_item(
             discount_type,
             discount_value,
             is_free,
-            position
+            position,
+            vat_rate,
+            vat_scheme,
+            purchase_vat_rate,
+            purchase_price_includes_vat,
+            purchase_scheme,
+            supplier_name,
+            supplier_code,
+            invoice_number,
+            invoice_date,
+            vat_credited
         )
         VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
             (SELECT COALESCE(MAX(position), -1) + 1
              FROM part_items
-             WHERE work_order_id = $1)
+             WHERE work_order_id = $1),
+            $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
         )
         RETURNING
             id,
@@ -1452,7 +1788,17 @@ pub async fn create_part_item(
             discount_type,
             discount_value,
             is_free,
-            position
+            position,
+            vat_rate,
+            vat_scheme,
+            purchase_vat_rate,
+            purchase_price_includes_vat,
+            purchase_scheme,
+            supplier_name,
+            supplier_code,
+            invoice_number,
+            invoice_date,
+            vat_credited
         "#,
     )
     .bind(payload.work_order_id)
@@ -1466,8 +1812,20 @@ pub async fn create_part_item(
     .bind(payload.discount_type)
     .bind(payload.discount_value.to_string())
     .bind(payload.is_free)
+    .bind(payload.vat_rate.map(|rate| rate.to_string()))
+    .bind(payload.vat_scheme)
+    .bind(payload.purchase_vat_rate.to_string())
+    .bind(payload.purchase_price_includes_vat)
+    .bind(payload.purchase_scheme)
+    .bind(payload.supplier_name)
+    .bind(payload.supplier_code)
+    .bind(payload.invoice_number)
+    .bind(payload.invoice_date)
+    .bind(payload.vat_credited)
     .fetch_one(&mut *tx)
     .await?;
+
+    vat::record_part_credit(&mut tx, &part_item).await?;
 
     tx.commit().await?;
     Ok(part_item)
@@ -1483,6 +1841,28 @@ pub async fn update_part_item(
     let mut tx = begin_immediate(&state.db_pool).await?;
 
     ensure_item_work_order_active(&mut *tx, ItemTable::Part, id).await?;
+    validate_line_vat(payload.vat_rate, payload.vat_scheme)?;
+    vat::validate_rate_and_scheme(payload.purchase_vat_rate, payload.purchase_scheme)?;
+    validate_part_credit(
+        payload.vat_credited,
+        payload.base_cost,
+        payload.quantity,
+        payload.purchase_vat_rate,
+        &payload.supplier_name,
+        &payload.invoice_number,
+        &payload.invoice_date,
+    )?;
+
+    let current = fetch_part_item_in_tx(&mut *tx, id).await?;
+    let live_vat = vat::live_entry_for_part(&mut *tx, i64::from(id)).await?;
+    if live_vat.is_some() && part_purchase_fields_changed(&current, &payload) {
+        return Err(AppError::part_vat_locked());
+    }
+    if live_vat.is_none() && payload.vat_credited && is_company_not_vat_payer(&mut tx).await? {
+        return Err(AppError::validation(
+            "Бізнес не є платником ПДВ — податковий кредит за запчастиною недоступний.",
+        ));
+    }
 
     let part_item: PartItem = sqlx::query_as(
         r#"
@@ -1496,7 +1876,17 @@ pub async fn update_part_item(
             markup = $8,
             discount_type = $9,
             discount_value = $10,
-            is_free = $11
+            is_free = $11,
+            vat_rate = $12,
+            vat_scheme = $13,
+            purchase_vat_rate = $14,
+            purchase_price_includes_vat = $15,
+            purchase_scheme = $16,
+            supplier_name = $17,
+            supplier_code = $18,
+            invoice_number = $19,
+            invoice_date = $20,
+            vat_credited = $21
         WHERE id = $1
         RETURNING
             id,
@@ -1511,7 +1901,17 @@ pub async fn update_part_item(
             discount_type,
             discount_value,
             is_free,
-            position
+            position,
+            vat_rate,
+            vat_scheme,
+            purchase_vat_rate,
+            purchase_price_includes_vat,
+            purchase_scheme,
+            supplier_name,
+            supplier_code,
+            invoice_number,
+            invoice_date,
+            vat_credited
         "#,
     )
     .bind(id)
@@ -1525,11 +1925,65 @@ pub async fn update_part_item(
     .bind(payload.discount_type)
     .bind(payload.discount_value.to_string())
     .bind(payload.is_free)
+    .bind(payload.vat_rate.map(|rate| rate.to_string()))
+    .bind(payload.vat_scheme)
+    .bind(payload.purchase_vat_rate.to_string())
+    .bind(payload.purchase_price_includes_vat)
+    .bind(payload.purchase_scheme)
+    .bind(payload.supplier_name)
+    .bind(payload.supplier_code)
+    .bind(payload.invoice_number)
+    .bind(payload.invoice_date)
+    .bind(payload.vat_credited)
     .fetch_one(&mut *tx)
     .await?;
 
+    if live_vat.is_none() {
+        vat::record_part_credit(&mut tx, &part_item).await?;
+    }
+
     tx.commit().await?;
     Ok(part_item)
+}
+
+async fn fetch_part_item_in_tx<'e, E>(executor: E, id: i32) -> AppResult<PartItem>
+where
+    E: Executor<'e, Database = Sqlite>,
+{
+    sqlx::query_as(
+        r#"
+        SELECT
+            id,
+            work_order_id,
+            status,
+            code,
+            name,
+            quantity,
+            unit_type,
+            base_cost,
+            markup,
+            discount_type,
+            discount_value,
+            is_free,
+            position,
+            vat_rate,
+            vat_scheme,
+            purchase_vat_rate,
+            purchase_price_includes_vat,
+            purchase_scheme,
+            supplier_name,
+            supplier_code,
+            invoice_number,
+            invoice_date,
+            vat_credited
+        FROM part_items
+        WHERE id = $1
+        "#,
+    )
+    .bind(id)
+    .fetch_optional(executor)
+    .await?
+    .ok_or_else(AppError::part_item_not_found)
 }
 
 #[tauri::command]
@@ -1538,6 +1992,7 @@ pub async fn delete_part_item(state: State<'_, crate::AppState>, id: i32) -> App
     let mut tx = begin_immediate(&state.db_pool).await?;
 
     ensure_item_work_order_active(&mut *tx, ItemTable::Part, id).await?;
+    vat::ensure_part_vat_unlocked(&mut *tx, i64::from(id)).await?;
 
     let result = sqlx::query("DELETE FROM part_items WHERE id = $1")
         .bind(id)
@@ -1561,6 +2016,7 @@ pub async fn delete_part_items(state: State<'_, crate::AppState>, ids: Vec<i32>)
     let mut tx = begin_immediate(&state.db_pool).await?;
     for id in &ids {
         ensure_item_work_order_active(&mut *tx, ItemTable::Part, *id).await?;
+        vat::ensure_part_vat_unlocked(&mut *tx, i64::from(*id)).await?;
         let result = sqlx::query("DELETE FROM part_items WHERE id = $1")
             .bind(id)
             .execute(&mut *tx)
@@ -1622,6 +2078,8 @@ pub async fn preview_labor_item(
         is_free: payload.is_free,
         // Quotes never touch the database, so the order is irrelevant here.
         position: 0,
+        vat_rate: None,
+        vat_scheme: None,
     };
 
     let totals = pricing::calculate_labor_item_totals(
@@ -1630,6 +2088,7 @@ pub async fn preview_labor_item(
         work_order.labor_cost_type,
         work_order.labor_cost_value,
         work_order.vat_rate,
+        work_order.vat_scheme,
         work_order.prices_include_vat,
     );
 
@@ -1697,11 +2156,22 @@ pub async fn preview_part_item(
         is_free: payload.is_free,
         // Quotes never touch the database, so the order is irrelevant here.
         position: 0,
+        vat_rate: None,
+        vat_scheme: None,
+        purchase_vat_rate: Decimal::ZERO,
+        purchase_price_includes_vat: true,
+        purchase_scheme: VatScheme::Standard,
+        supplier_name: None,
+        supplier_code: None,
+        invoice_number: None,
+        invoice_date: None,
+        vat_credited: false,
     };
 
     let totals = pricing::calculate_part_item_totals(
         &item,
         work_order.vat_rate,
+        work_order.vat_scheme,
         work_order.prices_include_vat,
     );
 
@@ -1728,6 +2198,7 @@ pub struct PreviewWorkOrderPayload {
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
     pub vat_rate: Decimal,
+    pub vat_scheme: VatScheme,
     pub prices_include_vat: bool,
 }
 
@@ -1781,6 +2252,7 @@ pub async fn preview_work_order(
                 payload.labor_cost_type,
                 payload.labor_cost_value,
                 payload.vat_rate,
+                payload.vat_scheme,
                 payload.prices_include_vat,
             );
             LaborItemDto {
@@ -1796,6 +2268,7 @@ pub async fn preview_work_order(
             let item_totals = pricing::calculate_part_item_totals(
                 item,
                 payload.vat_rate,
+                payload.vat_scheme,
                 payload.prices_include_vat,
             );
             PartItemDto {
@@ -1846,6 +2319,46 @@ pub async fn preview_work_order(
         .map(|dto| dto.totals.total)
         .sum();
 
+    let lines: Vec<pricing::PricedLine> = labor_item_dtos
+        .iter()
+        .filter(|dto| pricing::labor_is_billed(dto.item.is_free))
+        .map(|dto| {
+            let (rate, scheme) = pricing::line_vat(
+                dto.item.vat_rate,
+                dto.item.vat_scheme,
+                payload.vat_rate,
+                payload.vat_scheme,
+            );
+            pricing::PricedLine {
+                kind: pricing::LineKind::Labor,
+                total: dto.totals.total,
+                retail: dto.totals.total + dto.totals.discount,
+                rate,
+                scheme,
+            }
+        })
+        .chain(
+            part_item_dtos
+                .iter()
+                .filter(|dto| pricing::part_is_projected_billed(dto.item.status, dto.item.is_free))
+                .map(|dto| {
+                    let (rate, scheme) = pricing::line_vat(
+                        dto.item.vat_rate,
+                        dto.item.vat_scheme,
+                        payload.vat_rate,
+                        payload.vat_scheme,
+                    );
+                    pricing::PricedLine {
+                        kind: pricing::LineKind::Parts,
+                        total: dto.totals.total,
+                        retail: dto.totals.total + dto.totals.discount,
+                        rate,
+                        scheme,
+                    }
+                }),
+        )
+        .collect();
+
     let totals = pricing::calculate_work_order_totals(
         labor_sum,
         labor_cost_sum,
@@ -1856,8 +2369,8 @@ pub async fn preview_work_order(
         parts_discount_sum,
         payload.discount_type,
         payload.discount_value,
-        payload.vat_rate,
         payload.prices_include_vat,
+        &lines,
     );
 
     Ok(PreviewWorkOrderQuote {

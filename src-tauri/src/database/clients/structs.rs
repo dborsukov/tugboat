@@ -2,6 +2,32 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
+pub(crate) fn client_display_name(
+    client_type: ClientType,
+    name: &str,
+    surname: Option<&str>,
+    first_name: Option<&str>,
+    patronymic: Option<&str>,
+) -> String {
+    if client_type != ClientType::Individual {
+        return name.trim().to_string();
+    }
+
+    let first_name = first_name.map(str::trim).unwrap_or("");
+    let patronymic = patronymic.map(str::trim).unwrap_or("");
+    let initial = surname
+        .map(str::trim)
+        .and_then(|surname| surname.chars().next())
+        .map(|letter| format!("{letter}."));
+
+    match (first_name.is_empty(), initial) {
+        (false, Some(initial)) => format!("{first_name} {initial}"),
+        (false, None) if patronymic.is_empty() => first_name.to_string(),
+        (false, None) => format!("{first_name} {patronymic}"),
+        (true, _) => name.trim().to_string(),
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
 #[serde(rename_all = "lowercase")]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]

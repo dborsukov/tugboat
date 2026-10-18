@@ -165,7 +165,7 @@ export const dashboardModules: DashboardModule[] = [
   },
   {
     id: VAT_DUE_ID,
-    title: "ПДВ до сплати",
+    title: "ПДВ нараховано",
     component: VatDue,
     // One row and no taller: a figure, what it is, and the line under it. Ships switched
     // off, because a shop that is not a VAT payer has nothing to read here.

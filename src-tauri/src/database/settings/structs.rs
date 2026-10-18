@@ -21,7 +21,6 @@ pub struct AppSettings {
     pub timezone: String,
     pub default_phone_country_code: String,
     pub company_info: Option<CompanyInfo>,
-    pub documents_dir: Option<String>,
     pub dashboard_layout: DashboardLayout,
 }
 
@@ -61,7 +60,6 @@ impl<'r> FromRow<'r, SqliteRow> for AppSettings {
             timezone: row.try_get("timezone")?,
             default_phone_country_code: row.try_get("default_phone_country_code")?,
             company_info: decode_company_info(row.try_get("company_info")?),
-            documents_dir: row.try_get("documents_dir")?,
             dashboard_layout: decode_dashboard_layout(row.try_get("dashboard_layout")?),
         })
     }

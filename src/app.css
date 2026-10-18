@@ -360,3 +360,28 @@ body:has([data-slot="alert-dialog-content"])
 .settings-target-flash {
   animation: settings-target-flash 1s ease-in-out 2;
 }
+
+@keyframes report-row-flash {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: color-mix(in oklab, var(--primary) 12%, transparent);
+  }
+}
+
+.report-row-flash {
+  animation: report-row-flash 0.6s ease-in-out 3;
+}
+
+/* Modifies default sonner action button styles */
+[data-sonner-toaster] [data-sonner-toast][data-styled] [data-button] {
+  background: transparent;
+  color: var(--primary);
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled] [data-button]:hover {
+  background: transparent;
+  text-decoration: underline;
+}

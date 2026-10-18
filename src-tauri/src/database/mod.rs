@@ -1,8 +1,10 @@
 pub mod analytics;
 pub mod cars;
 pub mod clients;
+pub mod expenses;
 pub mod services;
 pub mod settings;
 pub mod utils;
+pub mod vat;
 pub mod work_orders;
 pub mod workers;

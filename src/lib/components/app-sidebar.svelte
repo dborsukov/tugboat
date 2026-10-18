@@ -6,9 +6,11 @@
   import WorkOrdersIcon from "@lucide/svelte/icons/briefcase-business";
   import CarsIcon from "@lucide/svelte/icons/car";
   import CustomerIcon from "@lucide/svelte/icons/circle-user";
+  import FileSpreadsheetIcon from "@lucide/svelte/icons/file-spreadsheet";
   import HomeIcon from "@lucide/svelte/icons/home";
   import SettingsIcon from "@lucide/svelte/icons/settings";
   import UsersIcon from "@lucide/svelte/icons/users";
+  import WalletIcon from "@lucide/svelte/icons/wallet";
   import WrenchIcon from "@lucide/svelte/icons/wrench";
 
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
@@ -96,6 +98,21 @@
         : null,
     },
   ]);
+
+  const finance_menu = $derived([
+    {
+      title: "Витрати",
+      url: "/expenses",
+      icon: WalletIcon,
+      badge: null,
+    },
+    {
+      title: "Звіти",
+      url: "/reports",
+      icon: FileSpreadsheetIcon,
+      badge: null,
+    },
+  ]);
   const footer_menu = [
     {
       title: "Налаштування",
@@ -163,6 +180,32 @@
       <Sidebar.GroupContent>
         <Sidebar.Menu>
           {#each management_menu as item (item.title)}
+            <Sidebar.MenuItem>
+              <Sidebar.MenuButton
+                isActive={page.url.pathname.startsWith(item.url)}
+              >
+                {#snippet child({ props })}
+                  <a href={item.url} {...props}>
+                    <item.icon />
+                    <span>{item.title}</span>
+                  </a>
+                {/snippet}
+              </Sidebar.MenuButton>
+              <SidebarMenuBadge>{item.badge}</SidebarMenuBadge>
+            </Sidebar.MenuItem>
+          {/each}
+        </Sidebar.Menu>
+      </Sidebar.GroupContent>
+    </Sidebar.Group>
+
+    <Sidebar.Group>
+      <Sidebar.GroupLabel
+        class="group-data-[collapsible=icon]:pointer-events-none"
+        >Фінанси</Sidebar.GroupLabel
+      >
+      <Sidebar.GroupContent>
+        <Sidebar.Menu>
+          {#each finance_menu as item (item.title)}
             <Sidebar.MenuItem>
               <Sidebar.MenuButton
                 isActive={page.url.pathname.startsWith(item.url)}

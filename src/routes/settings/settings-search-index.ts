@@ -118,4 +118,12 @@ export const settingsSearchIndex: SettingsSearchItem[] = [
       "номерний знак номер авто автомобіль пошук перевірка шаблон plate license url template",
     hint: "Автомобілі",
   },
+  {
+    id: "settings-expense-categories-entry",
+    route: "/settings/finance",
+    label: "Категорії витрат",
+    keywords:
+      "витрати категорія категорії витрат фінанси колір кольори паливо оренда зарплата expense category finance",
+    hint: "Фінанси",
+  },
 ];

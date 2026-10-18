@@ -145,28 +145,6 @@ fn write_item_table(
     worksheet.write_number_with_format(*start_row, 8, money_f64(table.total), header)?;
     *start_row += 1;
 
-    if table.show_vat {
-        worksheet.merge_range(
-            *start_row,
-            0,
-            *start_row,
-            7,
-            &format!("ПДВ ({} %)", super::model::format_qty(table.vat_rate)),
-            header,
-        )?;
-        worksheet.write_number_with_format(*start_row, 8, money_f64(table.vat_amount), header)?;
-        *start_row += 1;
-
-        worksheet.merge_range(*start_row, 0, *start_row, 7, "Всього з ПДВ", header)?;
-        worksheet.write_number_with_format(
-            *start_row,
-            8,
-            money_f64(table.total_with_vat),
-            header,
-        )?;
-        *start_row += 1;
-    }
-
     Ok(())
 }
 
@@ -327,10 +305,13 @@ pub fn render(data: &DocumentData) -> AppResult<Vec<u8>> {
         totals.push(("Всього зі знижкою".to_string(), money_f64(t.grand_total)));
     }
     if t.show_vat {
-        totals.push((
-            format!("ПДВ ({} %)", super::model::format_qty(t.vat_rate)),
-            money_f64(t.vat_amount),
-        ));
+        for bucket in &t.vat_buckets {
+            let label = super::model::vat_bucket_label(bucket);
+            if t.prices_include_vat {
+                totals.push((format!("Без ПДВ ({label})"), money_f64(bucket.base)));
+            }
+            totals.push((format!("ПДВ ({label})"), money_f64(bucket.amount)));
+        }
     }
     totals.push(("До сплати".to_string(), money_f64(t.total_with_vat)));
 

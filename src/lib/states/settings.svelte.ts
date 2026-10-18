@@ -87,6 +87,11 @@ class AppSettingsState {
     const bootScale = Number(document.documentElement.dataset.uiScale);
     return this.settings?.uiScale ?? (bootScale > 0 ? bootScale : 1);
   }
+
+  /* Whether the business profile is explicitly marked as a VAT payer. */
+  get isVatPayer(): boolean {
+    return this.settings?.companyInfo?.vatPayer === true;
+  }
 }
 
 export const settingsState = new AppSettingsState();

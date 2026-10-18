@@ -21,6 +21,7 @@
     type LayoutEntry,
     type ModuleSettings,
   } from "../dashboard-layout";
+  import { VAT_DUE_ID } from "../module-ids";
   import { createDashboardLayoutMutation } from "../queries";
 
   const queryClient = useQueryClient();
@@ -92,7 +93,7 @@
     </Sheet.Header>
 
     <div class="flex flex-col gap-1 overflow-y-auto p-6">
-      {#each entries as entry (entry.id)}
+      {#each entries.filter((entry) => entry.module.id !== VAT_DUE_ID || settingsState.isVatPayer) as entry (entry.id)}
         <div class="flex items-center gap-1 px-2 py-2">
           <label
             for={switchID(entry.id)}

@@ -12,6 +12,7 @@ name = "popeyecrm_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
+blake3 = "1.8.7"
 chrono = { version = "0.4.45", features = ["serde"] }
 chrono-tz = "0.10"
 dirs = "6.0.0"

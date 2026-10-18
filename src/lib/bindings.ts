@@ -43,6 +43,22 @@ export const commands = {
 	archiveServices: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("archive_services", { ids })),
 	restoreService: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("restore_service", { id })),
 	restoreServices: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("restore_services", { ids })),
+	fetchExpensesCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_expenses_count")),
+	fetchExpensesList: () => typedError<Expense[], AppError>(__TAURI_INVOKE("fetch_expenses_list")),
+	fetchExpenseById: (id: number) => typedError<Expense, AppError>(__TAURI_INVOKE("fetch_expense_by_id", { id })),
+	createExpense: (payload: CreateExpensePayload) => typedError<Expense, AppError>(__TAURI_INVOKE("create_expense", { payload })),
+	updateExpense: (id: number, payload: UpdateExpensePayload) => typedError<Expense, AppError>(__TAURI_INVOKE("update_expense", { id, payload })),
+	deleteExpense: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_expense", { id })),
+	deleteExpenses: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("delete_expenses", { ids })),
+	archiveExpense: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("archive_expense", { id })),
+	archiveExpenses: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("archive_expenses", { ids })),
+	restoreExpense: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("restore_expense", { id })),
+	restoreExpenses: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("restore_expenses", { ids })),
+	fetchExpenseCategories: () => typedError<ExpenseCategory[], AppError>(__TAURI_INVOKE("fetch_expense_categories")),
+	createExpenseCategory: (payload: CreateExpenseCategoryPayload) => typedError<ExpenseCategory, AppError>(__TAURI_INVOKE("create_expense_category", { payload })),
+	updateExpenseCategory: (id: number, payload: UpdateExpenseCategoryPayload) => typedError<ExpenseCategory, AppError>(__TAURI_INVOKE("update_expense_category", { id, payload })),
+	archiveExpenseCategory: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("archive_expense_category", { id })),
+	restoreExpenseCategory: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("restore_expense_category", { id })),
 	fetchWorkersCount: () => typedError<number, AppError>(__TAURI_INVOKE("fetch_workers_count")),
 	fetchWorkersList: () => typedError<Worker[], AppError>(__TAURI_INVOKE("fetch_workers_list")),
 	fetchWorkerById: (id: number) => typedError<Worker, AppError>(__TAURI_INVOKE("fetch_worker_by_id", { id })),
@@ -97,20 +113,26 @@ export const commands = {
 	previewPartItem: (payload: PreviewPartItemPayload) => typedError<PreviewPartItemQuote, AppError>(__TAURI_INVOKE("preview_part_item", { payload })),
 	previewWorkOrder: (payload: PreviewWorkOrderPayload) => typedError<PreviewWorkOrderQuote, AppError>(__TAURI_INVOKE("preview_work_order", { payload })),
 	fetchWorkOrderDocuments: (workOrderId: string) => typedError<WorkOrderDocuments, AppError>(__TAURI_INVOKE("fetch_work_order_documents", { workOrderId })),
-	fetchDocumentsDirInfo: () => typedError<DocumentsDirInfo, AppError>(__TAURI_INVOKE("fetch_documents_dir_info")),
+	downloadWorkOrderDocument: (workOrderId: string, fileName: string) => typedError<string | null, AppError>(__TAURI_INVOKE("download_work_order_document", { workOrderId, fileName })),
+	deleteWorkOrderDocument: (workOrderId: string, fileName: string) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order_document", { workOrderId, fileName })),
 	/**
 	 *  Returns `Some(target path)` when a file with the default document name
 	 *  already exists, `None` otherwise. Used to show the replace/rename dialog.
 	 */
 	documentTargetPath: (workOrderId: string, kind: DocumentKind, format: DocumentFormat) => typedError<string | null, AppError>(__TAURI_INVOKE("document_target_path", { workOrderId, kind, format })),
 	generateDocument: (workOrderId: string, kind: DocumentKind, format: DocumentFormat, options: GenerateDocumentOptions, conflict: DocumentConflictAction) => typedError<WorkOrderDocument, AppError>(__TAURI_INVOKE("generate_document", { workOrderId, kind, format, options, conflict })),
-	/**  Opens the OS folder picker. Runs on the main thread (sync command). */
-	pickDocumentsFolder: () => __TAURI_INVOKE<string | null>("pick_documents_folder"),
 	/**
-	 *  Saves the documents folder setting. When `move_documents` is true and the
-	 *  old folder still has documents, its contents are moved into the new one.
+	 *  Creates a report of `kind` for `range` and records it.
+	 *  The file is new every time, so a previous version of the same period is never touched.
 	 */
-	updateDocumentsDir: (path: string, moveDocuments: boolean) => typedError<string, AppError>(__TAURI_INVOKE("update_documents_dir", { path, moveDocuments })),
+	generateReport: (reportType: ReportKind, periodStart: string, periodEnd: string) => typedError<GenerateReportOutcome, AppError>(__TAURI_INVOKE("generate_report", { reportType, periodStart, periodEnd })),
+	fetchReports: () => typedError<Report[], AppError>(__TAURI_INVOKE("fetch_reports")),
+	/**
+	 *  Copies a report out of the reports folder to user selected location,
+	 *  keeping the original generated file in its original folder.
+	 */
+	downloadReport: (id: number, fileName: string) => typedError<string | null, AppError>(__TAURI_INVOKE("download_report", { id, fileName })),
+	openReportCopy: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("open_report_copy", { path })),
 	fetchOrderMonths: (utcOffsetMinutes: number) => typedError<OrderMonth[], AppError>(__TAURI_INVOKE("fetch_order_months", { utcOffsetMinutes })),
 	fetchOutstandingBalance: () => typedError<OutstandingBalance, AppError>(__TAURI_INVOKE("fetch_outstanding_balance")),
 	fetchInProgressBalance: () => typedError<InProgressBalance, AppError>(__TAURI_INVOKE("fetch_in_progress_balance")),
@@ -136,6 +158,23 @@ export const commands = {
 	fetchGrossMargin: (period: AnalyticsPeriod, options: MarginOptions) => typedError<MarginSummary, AppError>(__TAURI_INVOKE("fetch_gross_margin", { period, options })),
 	/**  What each billed line of `range` earned and what it cost, biggest contribution first. */
 	fetchMarginServices: (period: AnalyticsPeriod, options: MarginOptions) => typedError<MarginService[], AppError>(__TAURI_INVOKE("fetch_margin_services", { period, options })),
+	fetchWorkOrderVat: (workOrderId: string) => typedError<VatEntry[], AppError>(__TAURI_INVOKE("fetch_work_order_vat", { workOrderId })),
+	/**  Reverses every live VAT entry of an order, leaving the order editable again. */
+	voidWorkOrderVat: (workOrderId: string, creditNoteNumber: string | null, creditNoteDate: string | null) => typedError<VatEntry[], AppError>(__TAURI_INVOKE("void_work_order_vat", { workOrderId, creditNoteNumber, creditNoteDate })),
+	/**  Records the order's VAT again after a reversal, from its current figures. */
+	recordWorkOrderVat: (workOrderId: string) => typedError<VatEntry[], AppError>(__TAURI_INVOKE("record_work_order_vat", { workOrderId })),
+	/**  Every VAT row of an expense. */
+	fetchExpenseVat: (expenseId: number) => typedError<VatEntry[], AppError>(__TAURI_INVOKE("fetch_expense_vat", { expenseId })),
+	/**  Reverses the live credit of an expense and stops claiming it. */
+	voidExpenseVat: (expenseId: number, creditNoteNumber: string | null, creditNoteDate: string | null) => typedError<VatEntry, AppError>(__TAURI_INVOKE("void_expense_vat", { expenseId, creditNoteNumber, creditNoteDate })),
+	/**  Every VAT row of a part purchase. */
+	fetchPartItemVat: (partItemId: number) => typedError<VatEntry[], AppError>(__TAURI_INVOKE("fetch_part_item_vat", { partItemId })),
+	/**  Reverses the live purchase credit of a part and stops claiming it. */
+	voidPartItemVat: (partItemId: number, creditNoteNumber: string | null, creditNoteDate: string | null) => typedError<VatEntry, AppError>(__TAURI_INVOKE("void_part_item_vat", { partItemId, creditNoteNumber, creditNoteDate })),
+	/**  The closed months, newest last. */
+	fetchVatPeriods: () => typedError<VatPeriod[], AppError>(__TAURI_INVOKE("fetch_vat_periods")),
+	closeVatPeriod: (month: string, note: string | null) => typedError<VatPeriod, AppError>(__TAURI_INVOKE("close_vat_period", { month, note })),
+	reopenVatPeriod: (month: string) => typedError<null, AppError>(__TAURI_INVOKE("reopen_vat_period", { month })),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
 	/**
 	 *  Shows the main window, restores its geometry, and drops the splash screen.
@@ -191,7 +230,6 @@ export type AppSettings_Deserialize = {
 	timezone: string,
 	defaultPhoneCountryCode: string,
 	companyInfo: CompanyInfo | null,
-	documentsDir: string | null,
 	dashboardLayout: DashboardLayout_Deserialize,
 };
 
@@ -207,7 +245,6 @@ export type AppSettings_Serialize = {
 	timezone: string,
 	defaultPhoneCountryCode: string,
 	companyInfo: CompanyInfo | null,
-	documentsDir: string | null,
 	dashboardLayout: DashboardLayout_Serialize,
 };
 
@@ -408,6 +445,27 @@ export type CreateCarPayload = {
 	notes: string | null,
 };
 
+export type CreateExpenseCategoryPayload = {
+	name: string,
+	color: ExpenseCategoryColor,
+};
+
+export type CreateExpensePayload = {
+	date: string,
+	amount: string,
+	description: string,
+	categoryId: number | null,
+	paymentMethod: PaymentMethod | null,
+	vatRate: string,
+	priceIncludesVat: boolean,
+	vatScheme: VatScheme,
+	supplierName: string | null,
+	supplierCode: string | null,
+	invoiceNumber: string | null,
+	invoiceDate: string | null,
+	vatCredited: boolean,
+};
+
 export type CreateLaborItemPayload = {
 	workOrderId: string,
 	serviceId: number | null,
@@ -419,6 +477,8 @@ export type CreateLaborItemPayload = {
 	discountType: DiscountType,
 	discountValue: string,
 	isFree: boolean,
+	vatRate: string | null,
+	vatScheme: VatScheme | null,
 };
 
 export type CreatePartItemPayload = {
@@ -433,6 +493,16 @@ export type CreatePartItemPayload = {
 	discountType: DiscountType,
 	discountValue: string,
 	isFree: boolean,
+	vatRate: string | null,
+	vatScheme: VatScheme | null,
+	purchaseVatRate: string,
+	purchasePriceIncludesVat: boolean,
+	purchaseScheme: VatScheme,
+	supplierName: string | null,
+	supplierCode: string | null,
+	invoiceNumber: string | null,
+	invoiceDate: string | null,
+	vatCredited: boolean,
 };
 
 export type CreateServicePayload = {
@@ -465,6 +535,10 @@ export type CreateWorkOrderPayload = {
 	discountValue: string,
 	vatRate: string,
 	pricesIncludeVat: boolean,
+	vatScheme: VatScheme,
+	taxInvoiceNumber: string | null,
+	taxInvoiceDate: string | null,
+	exemptionCode: string | null,
 };
 
 export type CreateWorkerPayload = {
@@ -529,13 +603,43 @@ export type DocumentFormat = "pdf" | "xlsx";
 
 export type DocumentKind = "naryad_zamovlennya" | "akt_vykonanykh_robit";
 
-/**  Info about the effective documents folder, used by the settings page. */
-export type DocumentsDirInfo = {
-	path: string,
-	hasContent: boolean,
+export type DriveType = "FrontWheel" | "RearWheel" | "AllWheel" | "FourWheel";
+
+export type Expense = {
+	id: number,
+	date: string,
+	amount: string,
+	description: string,
+	/**  `None` when the expense has no category, and also when its category row is gone */
+	category: ExpenseCategoryRef | null,
+	paymentMethod: PaymentMethod | null,
+	vatRate: string,
+	priceIncludesVat: boolean,
+	vatScheme: VatScheme,
+	supplierName: string | null,
+	supplierCode: string | null,
+	invoiceNumber: string | null,
+	invoiceDate: string | null,
+	vatCredited: boolean,
+	createdAt: string,
+	archivedAt: string | null,
 };
 
-export type DriveType = "FrontWheel" | "RearWheel" | "AllWheel" | "FourWheel";
+export type ExpenseCategory = {
+	id: number,
+	name: string,
+	color: ExpenseCategoryColor,
+	archivedAt: string | null,
+};
+
+export type ExpenseCategoryColor = "slate" | "red" | "orange" | "amber" | "yellow" | "lime" | "green" | "emerald" | "teal" | "cyan" | "sky" | "blue" | "indigo" | "violet" | "purple" | "fuchsia" | "pink" | "rose" | "brown" | "gray";
+
+/**  The category an expense points at, flattened into the expense row itself. */
+export type ExpenseCategoryRef = {
+	id: number,
+	name: string,
+	color: ExpenseCategoryColor,
+};
 
 export type FuelType = "Gasoline" | "Diesel" | "LpgCng" | "Hybrid" | "Electric";
 
@@ -552,6 +656,20 @@ export type GenerateDocumentOptions = {
 	skipLocation?: boolean,
 	skipPerformerSignature?: boolean,
 	skipCustomerSignature?: boolean,
+};
+
+/**  Generation results */
+export type GenerateReportOutcome = {
+	/**
+	 *  True when a new version was written, false when the newest version
+	 *  already described exactly these records.
+	 */
+	created: boolean,
+	/**
+	 *  The version that holds the period now, the one just written, or the one
+	 *  that was already there.
+	 */
+	report: Report,
 };
 
 /**
@@ -581,6 +699,8 @@ export type LaborItem = {
 	discountValue: string,
 	isFree: boolean,
 	position: number,
+	vatRate: string | null,
+	vatScheme: VatScheme | null,
 };
 
 export type LaborItemDto = {
@@ -666,6 +786,16 @@ export type PartItem = {
 	discountValue: string,
 	isFree: boolean,
 	position: number,
+	vatRate: string | null,
+	vatScheme: VatScheme | null,
+	purchaseVatRate: string,
+	purchasePriceIncludesVat: boolean,
+	purchaseScheme: VatScheme,
+	supplierName: string | null,
+	supplierCode: string | null,
+	invoiceNumber: string | null,
+	invoiceDate: string | null,
+	vatCredited: boolean,
 };
 
 export type PartItemDto = {
@@ -733,6 +863,7 @@ export type PreviewWorkOrderPayload = {
 	discountType: DiscountType,
 	discountValue: string,
 	vatRate: string,
+	vatScheme: VatScheme,
 	pricesIncludeVat: boolean,
 };
 
@@ -758,6 +889,29 @@ export type RateVariants = {
 	value: string,
 	isDefault?: boolean,
 };
+
+/**  A generated report as the list shows it. */
+export type Report = {
+	id: number,
+	reportType: ReportKind,
+	periodStart: string,
+	periodEnd: string,
+	fileName: string,
+	generatedAt: string,
+	/**  Size of the file on disk, or `None` when it is no longer there. */
+	fileSize: number | null,
+	/**
+	 *  True when the sources behind this period have changed since it was made,
+	 *  so the numbers in it no longer describe what is in the database.
+	 */
+	isStale: boolean,
+};
+
+export type ReportKind = 
+/**  Income and expenses over a period. */
+"financial" | 
+/**  Output VAT fixed in the ledger over a period. */
+"vat";
 
 /**  What the orders of one period earned, net of VAT. */
 export type RevenueBucket = {
@@ -836,6 +990,27 @@ export type UpdateCarPayload = {
 	notes: string | null,
 };
 
+export type UpdateExpenseCategoryPayload = {
+	name: string,
+	color: ExpenseCategoryColor,
+};
+
+export type UpdateExpensePayload = {
+	date: string,
+	amount: string,
+	description: string,
+	categoryId: number | null,
+	paymentMethod: PaymentMethod | null,
+	vatRate: string,
+	priceIncludesVat: boolean,
+	vatScheme: VatScheme,
+	supplierName: string | null,
+	supplierCode: string | null,
+	invoiceNumber: string | null,
+	invoiceDate: string | null,
+	vatCredited: boolean,
+};
+
 export type UpdateLaborItemPayload = {
 	serviceId: number | null,
 	code: string | null,
@@ -846,6 +1021,8 @@ export type UpdateLaborItemPayload = {
 	discountType: DiscountType,
 	discountValue: string,
 	isFree: boolean,
+	vatRate: string | null,
+	vatScheme: VatScheme | null,
 };
 
 export type UpdatePartItemPayload = {
@@ -859,6 +1036,16 @@ export type UpdatePartItemPayload = {
 	discountType: DiscountType,
 	discountValue: string,
 	isFree: boolean,
+	vatRate: string | null,
+	vatScheme: VatScheme | null,
+	purchaseVatRate: string,
+	purchasePriceIncludesVat: boolean,
+	purchaseScheme: VatScheme,
+	supplierName: string | null,
+	supplierCode: string | null,
+	invoiceNumber: string | null,
+	invoiceDate: string | null,
+	vatCredited: boolean,
 };
 
 export type UpdateServicePayload = {
@@ -892,6 +1079,10 @@ export type UpdateWorkOrderPayload = {
 	discountValue: string,
 	vatRate: string,
 	pricesIncludeVat: boolean,
+	vatScheme: VatScheme,
+	taxInvoiceNumber: string | null,
+	taxInvoiceDate: string | null,
+	exemptionCode: string | null,
 	startedAt: string | null,
 	completedAt: string | null,
 	paidAt: string | null,
@@ -906,11 +1097,87 @@ export type UpdateWorkerPayload = {
 	isActive: boolean,
 };
 
-/**  VAT owed from all orders this month. */
+/**  One VAT rate and treatment as it appears on an order. */
+export type VatBucket = {
+	rate: string,
+	scheme: VatScheme,
+	/**  Taxable base of this bucket, after the order discount. */
+	base: string,
+	amount: string,
+};
+
+export type VatDirection = 
+/**  VAT the shop charged the customer */
+"output" | 
+/**  VAT the shop paid on its purchases */
+"input";
+
+/**  Output VAT recorded in the ledger this month, by tax point. */
 export type VatDue = {
 	amount: string,
+	/**  Supplies with an entry this month */
 	orderCount: number,
 };
+
+/**
+ *  One fixed VAT amount.
+ * 
+ *  The row is the record, a report reads it and never recomputes the tax from
+ *  the order's current lines. A correction is a second row that reverses this
+ *  one, so the history of a period stays readable.
+ */
+export type VatEntry = {
+	id: number,
+	direction: VatDirection,
+	/**  `YYYY-MM-DD` in the business time zone */
+	taxPoint: string,
+	sourceKind: VatSourceKind,
+	sourceId: string,
+	/**
+	 *  Reference the register prints, the work order number until a real tax
+	 *  invoice number is issued for the supply.
+	 */
+	documentNumber: string | null,
+	documentDate: string | null,
+	/**  The benefit code from the tax-invoice register, for an exempt supply. */
+	exemptionCode: string | null,
+	/**  The counterparty as it was at the tax point. */
+	counterpartyName: string,
+	counterpartyCode: string | null,
+	counterpartyVatPayer: boolean,
+	base: string,
+	rate: string,
+	amount: string,
+	scheme: VatScheme,
+	/**  Set on a reversal row, pointing at the entry it cancels. */
+	reversesId: number | null,
+	/**  Set on the original entry once it has been reversed. */
+	voidedAt: string | null,
+	createdAt: string,
+};
+
+/**  A month whose VAT return has been filed and locked. */
+export type VatPeriod = {
+	/**  `YYYY-MM`. */
+	month: string,
+	filedAt: string,
+	note: string | null,
+};
+
+export type VatScheme = 
+/**  Taxed at the stated rate */
+"standard" | 
+/**  Zero-rated */
+"zero" | 
+/**  Exempt from VAT (ст. 197 ПКУ) */
+"exempt" | 
+/**  Outside VAT (ст. 196 ПКУ) */
+"not_object" | 
+/**  Zero-rated export */
+"export";
+
+/**  What the entry was written from. */
+export type VatSourceKind = "work_order" | "expense" | "part_item";
 
 export type VinLookupTemplates = {
 	label: string,
@@ -951,6 +1218,10 @@ export type WorkOrder = {
 	completedAt: string | null,
 	paidAt: string | null,
 	paymentMethod: PaymentMethod | null,
+	taxInvoiceNumber: string | null,
+	taxInvoiceDate: string | null,
+	exemptionCode: string | null,
+	vatScheme: VatScheme,
 };
 
 export type WorkOrderDeleteImpact = {
@@ -1000,12 +1271,20 @@ export type WorkOrderTotals = {
 	orderDiscount: string,
 	grandTotal: string,
 	/**
+	 *  Work and parts before the order discount, net of VAT.
+	 *  The order discount is the residual between these lines and `vat_base`.
+	 */
+	laborNet: string,
+	partsNet: string,
+	/**
 	 *  Taxable base: total after discounts, excluding VAT.
 	 *  Equals `grand_total` when `prices_include_vat` is false.
 	 */
 	vatBase: string,
 	vatAmount: string,
 	totalWithVat: string,
+	/**  One entry per rate and treatment the order actually contains. */
+	vatBuckets: VatBucket[],
 	belowCost: boolean,
 };
 

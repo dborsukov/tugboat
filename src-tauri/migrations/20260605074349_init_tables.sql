@@ -80,6 +80,33 @@ CREATE TABLE services (
     archived_at TEXT
 );
 
+CREATE TABLE expense_categories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    name_key TEXT NOT NULL,
+    color TEXT NOT NULL DEFAULT 'slate',
+    archived_at TEXT
+);
+
+CREATE TABLE expenses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,
+    amount TEXT NOT NULL,
+    description TEXT NOT NULL,
+    category_id INTEGER REFERENCES expense_categories (id) ON DELETE SET NULL,
+    payment_method TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    archived_at TEXT,
+    vat_rate TEXT NOT NULL DEFAULT '0',
+    price_includes_vat INTEGER NOT NULL DEFAULT 1,
+    vat_scheme TEXT NOT NULL DEFAULT 'standard',
+    supplier_name TEXT,
+    supplier_code TEXT,
+    invoice_number TEXT,
+    invoice_date TEXT,
+    vat_credited INTEGER NOT NULL DEFAULT 0
+);
+
 CREATE TABLE workers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     first_name TEXT NOT NULL,
@@ -111,13 +138,17 @@ CREATE TABLE work_orders (
     labor_cost_value TEXT NOT NULL DEFAULT "0",
     discount_type TEXT NOT NULL,
     discount_value TEXT NOT NULL DEFAULT "0",
-    vat_rate TEXT NOT NULL DEFAULT "0",
-    prices_include_vat INTEGER NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
     started_at TEXT,
     completed_at TEXT,
     paid_at TEXT,
     payment_method TEXT,
+    tax_invoice_number TEXT,
+    tax_invoice_date TEXT,
+    exemption_code TEXT,
+    vat_rate TEXT NOT NULL DEFAULT "0",
+    prices_include_vat INTEGER NOT NULL DEFAULT 1,
+    vat_scheme TEXT NOT NULL DEFAULT 'standard',
     archived_at TEXT,
     worker_id INTEGER REFERENCES workers (id) ON DELETE SET NULL,
     FOREIGN KEY (car_id) REFERENCES cars (id) ON DELETE CASCADE,
@@ -137,6 +168,9 @@ CREATE TABLE labor_items (
     discount_value TEXT NOT NULL DEFAULT "0",
     is_free INTEGER NOT NULL DEFAULT 0,
     position INTEGER NOT NULL DEFAULT 0,
+    -- NULL means the order's rate and treatment.
+    vat_rate TEXT,
+    vat_scheme TEXT,
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE,
     FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE SET NULL
 );
@@ -155,12 +189,80 @@ CREATE TABLE part_items (
     discount_value TEXT NOT NULL DEFAULT "0",
     is_free INTEGER NOT NULL DEFAULT 0,
     position INTEGER NOT NULL DEFAULT 0,
+    -- NULL means the order's rate and treatment.
+    vat_rate TEXT,
+    vat_scheme TEXT,
+    purchase_vat_rate TEXT NOT NULL DEFAULT '0',
+    purchase_price_includes_vat INTEGER NOT NULL DEFAULT 1,
+    purchase_scheme TEXT NOT NULL DEFAULT 'standard',
+    supplier_name TEXT,
+    supplier_code TEXT,
+    invoice_number TEXT,
+    invoice_date TEXT,
+    vat_credited INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE
 );
 
 CREATE TABLE work_order_sequences (
     year_month TEXT PRIMARY KEY, -- 'YYYYMM'
     counter INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE reports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    report_type TEXT NOT NULL CHECK (report_type IN ('financial', 'vat')),
+    period_start TEXT NOT NULL,
+    period_end TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    source_hash TEXT NOT NULL,
+    generated_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+
+CREATE TABLE vat_entries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    direction TEXT NOT NULL DEFAULT 'output' CHECK (direction IN ('output', 'input')),
+    -- The calendar day that decides the VAT period, in the business time zone
+    tax_point TEXT NOT NULL CHECK (length (tax_point) = 10),
+    source_kind TEXT NOT NULL CHECK (
+        source_kind IN ('work_order', 'expense', 'part_item')
+    ),
+    -- Order id, expense id or part id, as text, deliberately not a
+    -- foreign key because the tax record has to outlive the working record
+    source_id TEXT NOT NULL,
+    document_number TEXT,
+    document_date TEXT,
+    -- The benefit code printed on an exempt supply's tax invoice.
+    exemption_code TEXT,
+    -- The counterparty at the tax point, not as the client record reads today
+    counterparty_name TEXT NOT NULL,
+    counterparty_code TEXT,
+    counterparty_vat_payer INTEGER NOT NULL DEFAULT 0,
+    base TEXT NOT NULL,
+    rate TEXT NOT NULL,
+    amount TEXT NOT NULL,
+    scheme TEXT NOT NULL DEFAULT 'standard' CHECK (
+        scheme IN (
+            'standard',
+            'zero',
+            'exempt',
+            'not_object',
+            'export'
+        )
+    ),
+    -- Set on a reversal row only, pointing at what it cancels
+    reverses_id INTEGER,
+    -- Set on the original when it is reversed
+    voided_at TEXT,
+    created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+
+-- A month whose VAT return has been filed. Nothing may be written into it,
+-- corrections belong to the month they are made in.
+CREATE TABLE vat_periods (
+    -- 'YYYY-MM'
+    month TEXT PRIMARY KEY CHECK (length (month) = 7),
+    filed_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    note TEXT
 );
 
 CREATE TABLE app_settings (
@@ -176,7 +278,6 @@ CREATE TABLE app_settings (
     timezone TEXT NOT NULL DEFAULT 'Europe/Kiev',
     default_phone_country_code TEXT NOT NULL DEFAULT 'UA',
     company_info TEXT,
-    documents_dir TEXT,
     dashboard_layout TEXT NOT NULL DEFAULT '{}'
 );
 
@@ -194,7 +295,6 @@ OR IGNORE INTO app_settings (
     timezone,
     default_phone_country_code,
     company_info,
-    documents_dir,
     dashboard_layout
 )
 VALUES
@@ -210,7 +310,6 @@ VALUES
         '[]',
         'Europe/Kiev',
         'UA',
-        '',
         '',
         '{}'
     );
@@ -246,6 +345,18 @@ WHERE
     rnokpp IS NOT NULL
     AND archived_at IS NULL;
 
+CREATE UNIQUE INDEX idx_expense_categories_name_key_active ON expense_categories (name_key)
+WHERE
+    archived_at IS NULL;
+
+CREATE INDEX idx_expense_categories_archived_at ON expense_categories (archived_at);
+
+CREATE INDEX idx_expenses_date ON expenses (date);
+
+CREATE INDEX idx_expenses_archived_at ON expenses (archived_at);
+
+CREATE INDEX idx_expenses_category_id ON expenses (category_id);
+
 CREATE INDEX idx_clients_archived_at ON clients (archived_at);
 
 CREATE INDEX idx_client_details_archived_at ON client_details (archived_at);
@@ -271,3 +382,15 @@ CREATE INDEX idx_labor_items_work_order_position ON labor_items (work_order_id, 
 CREATE INDEX idx_part_items_work_order_id ON part_items (work_order_id);
 
 CREATE INDEX idx_part_items_work_order_position ON part_items (work_order_id, position);
+
+CREATE INDEX idx_reports_type_period ON reports (report_type, period_start, period_end);
+
+CREATE INDEX idx_vat_entries_tax_point ON vat_entries (tax_point);
+
+CREATE INDEX idx_vat_entries_source ON vat_entries (source_kind, source_id);
+
+-- One live entry per supply and VAT bucket
+CREATE UNIQUE INDEX idx_vat_entries_live_source ON vat_entries (direction, source_kind, source_id, rate, scheme)
+WHERE
+    reverses_id IS NULL
+    AND voided_at IS NULL;

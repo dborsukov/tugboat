@@ -10,6 +10,7 @@
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
+  import * as Select from "$lib/components/ui/select/index.js";
 
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
 
@@ -18,6 +19,7 @@
     type DiscountType,
     type LaborPriceType,
     type PreviewLaborItemQuote,
+    type VatScheme,
     type WorkOrderType,
   } from "$lib/bindings";
   import {
@@ -32,7 +34,13 @@
     laborPriceToPayload,
     refineLaborPrice,
   } from "$lib/schemas/zlaborprice";
+  import { settingsState } from "$lib/states/settings.svelte";
   import { unwrap } from "$lib/tools";
+  import {
+    schemeNeedsZeroRate,
+    VAT_SCHEMES,
+    vatSchemeLabels,
+  } from "$lib/vat-scheme";
 
   import DiscountField from "../discount-field.svelte";
   import {
@@ -110,6 +118,26 @@
 
   const fmt = (v: string) => Big(v).toFixed(2);
 
+  const businessIsNotVatPayer = $derived(
+    settingsState.settings?.companyInfo == null ||
+      settingsState.settings.companyInfo.vatPayer === false,
+  );
+
+  const zeroRateStandardWarning = $derived.by(() => {
+    if (
+      businessIsNotVatPayer ||
+      !$formData.vatRate.trim() ||
+      $formData.vatScheme !== "standard"
+    ) {
+      return false;
+    }
+    try {
+      return Big($formData.vatRate.replace(",", ".")).eq(0);
+    } catch {
+      return false;
+    }
+  });
+
   let priceConfirmOpen = $state(false);
   let pendingSubmitData = $state<z.infer<typeof laborItemSchema> | null>(null);
   let pendingQuote = $state<PreviewLaborItemQuote | null>(null);
@@ -127,6 +155,12 @@
       code: z.string().nullable(),
       name: z.string().min(1, { error: "Вкажіть назву" }),
       isFree: z.boolean().default(false),
+      vatRate: z.string().trim().default(""),
+      vatScheme: z
+        .enum<
+          VatScheme[]
+        >(["standard", "zero", "exempt", "not_object", "export"])
+        .default("standard"),
       ...laborPriceFields,
       ...discountFields,
     })
@@ -170,6 +204,11 @@
       data.discountType,
       data.discountValue,
     );
+    const vatRate = data.vatRate.trim().replace(",", ".");
+    const vatPayload = {
+      vatRate: vatRate || null,
+      vatScheme: vatRate ? data.vatScheme : null,
+    };
 
     if (isEdit && laborItem) {
       await updatLaborItemMutation
@@ -181,6 +220,7 @@
             name: data.name,
             ...laborPricePayload,
             ...discountPayload,
+            ...vatPayload,
             isFree: data.isFree,
           },
         })
@@ -194,6 +234,7 @@
           name: data.name,
           ...laborPricePayload,
           ...discountPayload,
+          ...vatPayload,
           isFree: data.isFree,
         })
         .catch(() => {});
@@ -233,6 +274,8 @@
         $formData.code = laborItem.code;
         $formData.name = laborItem.name;
         $formData.isFree = laborItem.isFree;
+        $formData.vatRate = laborItem.vatRate ?? "";
+        $formData.vatScheme = laborItem.vatScheme ?? "standard";
         $formData.laborPriceType = laborItem.priceType;
         $formData.laborPrice = laborPriceFromEntity(laborItem);
         $formData.discountType = laborItem.discountType;
@@ -327,6 +370,58 @@
       </p>
     {/if}
   </Form.Field>
+
+  {#if !businessIsNotVatPayer}
+    <div class="grid gap-2">
+      <Label>ПДВ цієї роботи</Label>
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="flex items-baseline gap-2">
+          <Input
+            bind:value={$formData.vatRate}
+            type="text"
+            inputmode="decimal"
+            class="w-28 text-right"
+            aria-label="Ставка ПДВ для цієї роботи"
+          />
+          <p>%</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <Label for="labor-vat-scheme" class="font-normal">Режим ПДВ</Label>
+          <Select.Root
+            type="single"
+            value={$formData.vatScheme}
+            onValueChange={(value) => {
+              if (!value) return;
+              $formData.vatScheme = value as VatScheme;
+              if (schemeNeedsZeroRate($formData.vatScheme)) {
+                $formData.vatRate = "0";
+              }
+            }}
+          >
+            <Select.Trigger id="labor-vat-scheme" class="w-40">
+              {vatSchemeLabels[$formData.vatScheme]}
+            </Select.Trigger>
+            <Select.Content>
+              {#each VAT_SCHEMES as scheme (scheme)}
+                <Select.Item value={scheme}
+                  >{vatSchemeLabels[scheme]}</Select.Item
+                >
+              {/each}
+            </Select.Content>
+          </Select.Root>
+        </div>
+      </div>
+      <p class="text-xs text-muted-foreground">
+        Порожньо — ставка й режим замовлення.
+      </p>
+      {#if zeroRateStandardWarning}
+        <p class="text-xs text-amber-600 dark:text-amber-500">
+          0 % зі стандартним режимом не потрапить у реєстр ПДВ. Для нульової або
+          пільгової позиції оберіть відповідний режим.
+        </p>
+      {/if}
+    </div>
+  {/if}
 
   <Form.Field {form} name="isFree">
     <Form.Control>

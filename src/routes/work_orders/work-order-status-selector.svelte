@@ -153,6 +153,16 @@
             discountType: part.discountType,
             discountValue: part.discountValue,
             isFree: part.isFree,
+            vatRate: part.vatRate,
+            vatScheme: part.vatScheme,
+            purchaseVatRate: part.purchaseVatRate,
+            purchasePriceIncludesVat: part.purchasePriceIncludesVat,
+            purchaseScheme: part.purchaseScheme,
+            supplierName: part.supplierName,
+            supplierCode: part.supplierCode,
+            invoiceNumber: part.invoiceNumber,
+            invoiceDate: part.invoiceDate,
+            vatCredited: part.vatCredited,
           },
         });
       }

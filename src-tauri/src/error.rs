@@ -71,6 +71,18 @@ impl AppError {
         Self::NotFound("Замовлення з таким ID не знайдено в базі даних".to_string())
     }
 
+    pub(crate) fn expense_not_found() -> Self {
+        Self::NotFound("Витрату з таким ID не знайдено в базі даних".to_string())
+    }
+
+    pub(crate) fn expense_archived() -> Self {
+        Self::Generic("Витрата архівована. Спочатку відновіть її з архіву.".to_string())
+    }
+
+    pub(crate) fn expense_category_not_found() -> Self {
+        Self::NotFound("Категорію витрат з таким ID не знайдено в базі даних".to_string())
+    }
+
     pub(crate) fn work_order_archived() -> Self {
         Self::Generic("Замовлення архівоване. Спочатку відновіть його з архіву.".to_string())
     }
@@ -81,6 +93,34 @@ impl AppError {
 
     pub(crate) fn part_item_not_found() -> Self {
         Self::NotFound("Запчастини з таким ID не знайдено в базі даних".to_string())
+    }
+
+    /// The order's VAT is already on record, so its figures may not be rewritten.
+    pub(crate) fn vat_locked() -> Self {
+        Self::Validation(
+            "ПДВ за цим замовленням уже зафіксовано. Сторнуйте запис ПДВ, щоб змінити ціни, знижки або ставку."
+                .to_string(),
+        )
+    }
+
+    /// The expense's VAT credit is already on record.
+    pub(crate) fn expense_vat_locked() -> Self {
+        Self::Validation(
+            "ПДВ за цією витратою вже зафіксовано. Сторнуйте запис ПДВ, щоб змінити суму, ставку або податкову накладну."
+                .to_string(),
+        )
+    }
+
+    /// A part's purchase VAT is already on record.
+    pub(crate) fn part_vat_locked() -> Self {
+        Self::Validation(
+            "ПДВ за цією запчастиною вже зафіксовано. Сторнуйте запис ПДВ, щоб змінити ціну, кількість або податкову накладну."
+                .to_string(),
+        )
+    }
+
+    pub(crate) fn vat_entry_not_found() -> Self {
+        Self::NotFound("Запису ПДВ не знайдено".to_string())
     }
 }
 

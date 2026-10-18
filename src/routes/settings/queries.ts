@@ -1,24 +1,14 @@
-import {
-  createMutation,
-  createQuery,
-  QueryClient,
-} from "@tanstack/svelte-query";
-import { toast } from "svelte-sonner";
+import { QueryClient } from "@tanstack/svelte-query";
 
 import {
   commands,
   type CompanyInfo,
-  type DocumentsDirInfo,
   type LicensePlateLookupTemplates,
   type RateVariants,
   type ThemeMode,
   type VinLookupTemplates,
 } from "$lib/bindings";
-import { keys } from "$lib/query-keys";
-import {
-  createSettingsFieldMutation,
-  patchSettingsCache,
-} from "$lib/states/settings.svelte";
+import { createSettingsFieldMutation } from "$lib/states/settings.svelte";
 import { unwrap } from "$lib/tools";
 
 export { createSettingsQuery } from "$lib/states/settings.svelte";
@@ -128,44 +118,5 @@ export function createUpdateCompanyInfoMutation(queryClient: QueryClient) {
     "companyInfo",
     (companyInfo: CompanyInfo) =>
       unwrap(commands.updateCompanyInfo(companyInfo)),
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Documents folder
-// ---------------------------------------------------------------------------
-
-export function documentsDirInfoQueryOptions() {
-  return {
-    queryKey: keys.settings.documentsDirInfo,
-    queryFn: () => unwrap(commands.fetchDocumentsDirInfo()),
-  };
-}
-
-export function createDocumentsDirInfoQuery() {
-  return createQuery<DocumentsDirInfo>(() => documentsDirInfoQueryOptions());
-}
-
-export function createUpdateDocumentsDirMutation(queryClient: QueryClient) {
-  return createMutation(
-    () => ({
-      mutationFn: (variables: { path: string; moveDocuments: boolean }) =>
-        unwrap(
-          commands.updateDocumentsDir(variables.path, variables.moveDocuments),
-        ),
-      onSuccess: (saved: string) => {
-        patchSettingsCache(queryClient, "documentsDir", saved);
-        queryClient.invalidateQueries({
-          queryKey: keys.settings.documentsDirInfo,
-        });
-      },
-      onError: (error: Error) => {
-        toast.error("Виникла помилка", {
-          description: error.message,
-          position: "bottom-left",
-        });
-      },
-    }),
-    () => queryClient,
   );
 }

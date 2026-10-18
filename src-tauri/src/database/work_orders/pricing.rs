@@ -1,9 +1,16 @@
+use std::collections::BTreeMap;
+
 use rust_decimal::Decimal;
 
 use super::structs::{DiscountType, LaborItem, PartItem, PartStatus, WorkOrder};
-use crate::database::work_orders::{
-    dtos::{LaborItemDto, LaborItemTotals, PartItemDto, PartItemTotals, WorkOrderTotals},
-    structs::{LaborCostType, LaborPriceType},
+use crate::database::{
+    vat::structs::VatScheme,
+    work_orders::{
+        dtos::{
+            LaborItemDto, LaborItemTotals, PartItemDto, PartItemTotals, VatBucket, WorkOrderTotals,
+        },
+        structs::{LaborCostType, LaborPriceType},
+    },
 };
 
 /// A part counts toward the current order total only once it is actually
@@ -40,12 +47,25 @@ pub fn labor_cost_basis_known(price_type: LaborPriceType, labor_cost_type: Labor
         || matches!(price_type, LaborPriceType::Hourly)
 }
 
+pub fn line_vat(
+    line_rate: Option<Decimal>,
+    line_scheme: Option<VatScheme>,
+    order_rate: Decimal,
+    order_scheme: VatScheme,
+) -> (Decimal, VatScheme) {
+    (
+        line_rate.unwrap_or(order_rate),
+        line_scheme.unwrap_or(order_scheme),
+    )
+}
+
 pub fn calculate_labor_item_totals(
     labor_item: &LaborItem,
     rate: Decimal,
     labor_cost_type: LaborCostType,
     labor_cost: Decimal,
     vat_rate: Decimal,
+    vat_scheme: VatScheme,
     prices_include_vat: bool,
 ) -> LaborItemTotals {
     let price = match labor_item.price_type {
@@ -94,9 +114,17 @@ pub fn calculate_labor_item_totals(
 
     let cost_basis_known = labor_cost_basis_known(labor_item.price_type, labor_cost_type);
 
+    // The line may carry its own rate; the one passed in is the order's default.
+    let (sale_rate, _) = line_vat(
+        labor_item.vat_rate,
+        labor_item.vat_scheme,
+        vat_rate,
+        vat_scheme,
+    );
+
     let below_cost = !labor_item.is_free
         && cost_basis_known
-        && net_kept_amount(total, vat_rate, prices_include_vat) < cost;
+        && net_kept_amount(total, sale_rate, prices_include_vat) < cost;
 
     LaborItemTotals {
         cost,
@@ -111,9 +139,21 @@ pub fn calculate_labor_item_totals(
 pub fn calculate_part_item_totals(
     part_item: &PartItem,
     vat_rate: Decimal,
+    vat_scheme: VatScheme,
     prices_include_vat: bool,
 ) -> PartItemTotals {
-    let cost = (part_item.base_cost * part_item.quantity).round_dp(2);
+    // What the part cost the shop. When its purchase VAT is claimed, the
+    // recoverable part is not a cost, margin compares net revenue to net cost.
+    let unit_cost = if part_item.vat_credited && !part_item.purchase_vat_rate.is_zero() {
+        net_kept_amount(
+            part_item.base_cost,
+            part_item.purchase_vat_rate,
+            part_item.purchase_price_includes_vat,
+        )
+    } else {
+        part_item.base_cost
+    };
+    let cost = (unit_cost * part_item.quantity).round_dp(2);
 
     let retail_price = (part_item.base_cost
         * (Decimal::ONE + part_item.markup / Decimal::ONE_HUNDRED))
@@ -134,8 +174,15 @@ pub fn calculate_part_item_totals(
 
     let discount = (retail_total - total).max(Decimal::ZERO);
 
+    let (sale_rate, _) = line_vat(
+        part_item.vat_rate,
+        part_item.vat_scheme,
+        vat_rate,
+        vat_scheme,
+    );
+
     let below_cost = !part_item.is_free
-        && net_kept_amount(discounted_price, vat_rate, prices_include_vat) < part_item.base_cost;
+        && net_kept_amount(discounted_price, sale_rate, prices_include_vat) < unit_cost;
 
     PartItemTotals {
         cost,
@@ -174,6 +221,136 @@ pub fn calculate_vat(
     (vat_base, vat_amount, total_with_vat)
 }
 
+/// Which table a line came from, so the report can split the revenue by side.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LineKind {
+    Labor,
+    Parts,
+}
+
+/// One billed line as VAT sees it: what it was billed before the order
+/// discount, and the rate and treatment it is billed at.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct PricedLine {
+    pub kind: LineKind,
+    /// The line after its own discount, before the order discount.
+    pub total: Decimal,
+    /// The line before its own discount, used for the revenue split so the
+    /// discount stays a separate line in the report.
+    pub retail: Decimal,
+    pub rate: Decimal,
+    pub scheme: VatScheme,
+}
+
+/// Splits the period's VAT into one bucket per rate and treatment.
+///
+/// The order discount is shared out over the billed lines in proportion to
+/// what each was billed, so every line's taxable base reflects the discount.
+/// VAT is then rounded once per bucket rather than once per order, which keeps
+/// a single-rate order identical to what it was before rates could differ.
+///
+/// Returns the buckets, the totals derived from them, and the work and parts
+/// revenue before the order discount, net of VAT.
+fn allocate_vat(
+    lines: &[PricedLine],
+    subtotal: Decimal,
+    grand_total: Decimal,
+    prices_include_vat: bool,
+) -> (Vec<VatBucket>, Decimal, Decimal, Decimal, Decimal, Decimal) {
+    if lines.is_empty() {
+        return (
+            Vec::new(),
+            Decimal::ZERO,
+            Decimal::ZERO,
+            Decimal::ZERO,
+            Decimal::ZERO,
+            Decimal::ZERO,
+        );
+    }
+
+    // Revenue lines before the order discount, net of VAT. For a single-rate
+    // order this is exactly the old side netting. It is computed even when the
+    // discounted total is zero: a fully discounted order still has lines and a
+    // cost to report.
+    let mut labor_net = Decimal::ZERO;
+    let mut parts_net = Decimal::ZERO;
+    for line in lines {
+        let net = net_kept_amount(line.retail, line.rate, prices_include_vat);
+        match line.kind {
+            LineKind::Labor => labor_net += net,
+            LineKind::Parts => parts_net += net,
+        }
+    }
+
+    if subtotal.is_zero() {
+        return (
+            Vec::new(),
+            Decimal::ZERO,
+            Decimal::ZERO,
+            grand_total,
+            labor_net,
+            parts_net,
+        );
+    }
+
+    // Share the order discount out over the lines. The residual of rounding is
+    // put on the largest line so the allocated amounts add up to the total.
+    let ratio = grand_total / subtotal;
+    let mut allocated: Vec<Decimal> = lines
+        .iter()
+        .map(|line| (line.total * ratio).round_dp(2))
+        .collect();
+    let allocated_sum: Decimal = allocated.iter().sum();
+    let residual = grand_total - allocated_sum;
+    if !residual.is_zero() {
+        if let Some((index, _)) = allocated
+            .iter()
+            .enumerate()
+            .max_by(|(_, left), (_, right)| left.cmp(right))
+        {
+            allocated[index] += residual;
+        }
+    }
+
+    // Sum what each rate and treatment was billed, then round the VAT once for
+    // the bucket.
+    let mut bucket_totals: BTreeMap<(Decimal, VatScheme), Decimal> = BTreeMap::new();
+    for (line, amount) in lines.iter().zip(allocated) {
+        *bucket_totals
+            .entry((line.rate, line.scheme))
+            .or_insert(Decimal::ZERO) += amount;
+    }
+
+    let buckets: Vec<VatBucket> = bucket_totals
+        .into_iter()
+        .map(|((rate, scheme), amount)| {
+            let (base, vat, _) = calculate_vat(amount, rate, prices_include_vat);
+            VatBucket {
+                rate,
+                scheme,
+                base,
+                amount: vat,
+            }
+        })
+        .collect();
+
+    let vat_base: Decimal = buckets.iter().map(|bucket| bucket.base).sum();
+    let vat_amount: Decimal = buckets.iter().map(|bucket| bucket.amount).sum();
+    let total_with_vat: Decimal = buckets
+        .iter()
+        .map(|bucket| bucket.base + bucket.amount)
+        .sum();
+
+    (
+        buckets,
+        vat_base,
+        vat_amount,
+        total_with_vat,
+        labor_net,
+        parts_net,
+    )
+}
+
 /// Rolls already priced line items up into the totals of a whole order.
 ///
 /// This is the single place where item level totals become order level ones:
@@ -207,6 +384,39 @@ pub fn calculate_order_totals(
         .map(|dto| dto.totals.total)
         .sum();
 
+    let lines: Vec<PricedLine> = billed_labor()
+        .map(|dto| {
+            let (rate, scheme) = line_vat(
+                dto.item.vat_rate,
+                dto.item.vat_scheme,
+                work_order.vat_rate,
+                work_order.vat_scheme,
+            );
+            PricedLine {
+                kind: LineKind::Labor,
+                total: dto.totals.total,
+                retail: dto.totals.total + dto.totals.discount,
+                rate,
+                scheme,
+            }
+        })
+        .chain(billed_parts().map(|dto| {
+            let (rate, scheme) = line_vat(
+                dto.item.vat_rate,
+                dto.item.vat_scheme,
+                work_order.vat_rate,
+                work_order.vat_scheme,
+            );
+            PricedLine {
+                kind: LineKind::Parts,
+                total: dto.totals.total,
+                retail: dto.totals.total + dto.totals.discount,
+                rate,
+                scheme,
+            }
+        }))
+        .collect();
+
     calculate_work_order_totals(
         labor_total,
         labor_cost,
@@ -217,13 +427,13 @@ pub fn calculate_order_totals(
         parts_discount,
         work_order.discount_type,
         work_order.discount_value,
-        work_order.vat_rate,
         work_order.prices_include_vat,
+        &lines,
     )
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn calculate_work_order_totals(
+pub(crate) fn calculate_work_order_totals(
     labor_total: Decimal,
     labor_cost: Decimal,
     parts_total: Decimal,
@@ -233,8 +443,8 @@ pub fn calculate_work_order_totals(
     parts_discount: Decimal,
     discount_type: DiscountType,
     discount_value: Decimal,
-    vat_rate: Decimal,
     prices_include_vat: bool,
+    lines: &[PricedLine],
 ) -> WorkOrderTotals {
     let subtotal = labor_total + parts_total;
 
@@ -249,8 +459,8 @@ pub fn calculate_work_order_totals(
 
     let order_discount = (subtotal - grand_total).max(Decimal::ZERO);
 
-    let (vat_base, vat_amount, total_with_vat) =
-        calculate_vat(grand_total, vat_rate, prices_include_vat);
+    let (vat_buckets, vat_base, vat_amount, total_with_vat, labor_net, parts_net) =
+        allocate_vat(lines, subtotal, grand_total, prices_include_vat);
 
     let below_cost = vat_base < labor_cost + parts_cost;
 
@@ -265,9 +475,12 @@ pub fn calculate_work_order_totals(
         parts_discount,
         order_discount,
         grand_total,
+        labor_net,
+        parts_net,
         vat_base,
         vat_amount,
         total_with_vat,
+        vat_buckets,
         below_cost,
     }
 }

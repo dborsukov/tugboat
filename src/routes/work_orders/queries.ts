@@ -21,6 +21,7 @@ import type {
   UpdateLaborItemPayload,
   UpdatePartItemPayload,
   UpdateWorkOrderPayload,
+  VatEntry,
   WorkOrderDeleteImpact,
   WorkOrderDetailsDto,
   WorkOrderDocuments,
@@ -492,6 +493,102 @@ export function invalidateWorkOrderLists(queryClient: QueryClient) {
 }
 
 // ---------------------------------------------------------------------------
+// VAT
+// ---------------------------------------------------------------------------
+
+export function workOrderVatQueryOptions(id: string | null) {
+  return {
+    enabled: id != null,
+    queryKey: keys.workOrders.vat(id!),
+    queryFn: () => unwrap(commands.fetchWorkOrderVat(id!)),
+  };
+}
+
+export function createWorkOrderVatQuery(getId: () => string | null) {
+  return createQuery<VatEntry[]>(() => workOrderVatQueryOptions(getId()));
+}
+
+/** The entry in force: neither a reversal nor a voided original. */
+export function liveVatEntry(entries: VatEntry[] | undefined) {
+  return entries?.find(
+    (entry) => entry.reversesId == null && entry.voidedAt == null,
+  );
+}
+
+export function createVoidWorkOrderVatMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (variables: {
+        id: string;
+        creditNoteNumber: string | null;
+        creditNoteDate: string | null;
+      }) =>
+        unwrap(
+          commands.voidWorkOrderVat(
+            variables.id,
+            variables.creditNoteNumber,
+            variables.creditNoteDate,
+          ),
+        ),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createVoidPartItemVatMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (variables: {
+        id: number;
+        creditNoteNumber: string | null;
+        creditNoteDate: string | null;
+      }) =>
+        unwrap(
+          commands.voidPartItemVat(
+            variables.id,
+            variables.creditNoteNumber,
+            variables.creditNoteDate,
+          ),
+        ),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function partItemVatQueryOptions(id: number | null) {
+  return {
+    enabled: id != null,
+    queryKey: keys.workOrders.vat(`part-${id}`),
+    queryFn: () => unwrap(commands.fetchPartItemVat(id!)),
+  };
+}
+
+export function createPartItemVatQuery(getId: () => number | null) {
+  return createQuery<VatEntry[]>(() => partItemVatQueryOptions(getId()));
+}
+
+export function createRecordWorkOrderVatMutation(queryClient: QueryClient) {
+  return createMutation(
+    () => ({
+      mutationFn: (id: string) => unwrap(commands.recordWorkOrderVat(id)),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Documents
 // ---------------------------------------------------------------------------
 
@@ -530,6 +627,47 @@ export function createGenerateDocumentMutation(queryClient: QueryClient) {
         ),
       onSuccess: () => {
         invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createDownloadWorkOrderDocumentMutation(
+  queryClient: QueryClient,
+) {
+  return createMutation(
+    () => ({
+      mutationFn: (variables: { workOrderId: string; fileName: string }) =>
+        unwrap(
+          commands.downloadWorkOrderDocument(
+            variables.workOrderId,
+            variables.fileName,
+          ),
+        ),
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
+export function createDeleteWorkOrderDocumentMutation(
+  queryClient: QueryClient,
+) {
+  return createMutation(
+    () => ({
+      mutationFn: (variables: { workOrderId: string; fileName: string }) =>
+        unwrap(
+          commands.deleteWorkOrderDocument(
+            variables.workOrderId,
+            variables.fileName,
+          ),
+        ),
+      onSuccess: (_result, variables) => {
+        queryClient.invalidateQueries({
+          queryKey: keys.workOrders.documents(variables.workOrderId),
+        });
       },
       onError: showMutationErrorToast,
     }),

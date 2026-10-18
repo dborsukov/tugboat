@@ -3,6 +3,7 @@
 
   import BriefcaseBusinessIcon from "@lucide/svelte/icons/briefcase-business";
   import CarIcon from "@lucide/svelte/icons/car";
+  import LandmarkIcon from "@lucide/svelte/icons/landmark";
   import PaletteIcon from "@lucide/svelte/icons/palette";
   import SearchIcon from "@lucide/svelte/icons/search";
   import Settings2Icon from "@lucide/svelte/icons/settings-2";
@@ -33,6 +34,11 @@
       title: "Автомобілі",
       url: "/settings/cars",
       icon: CarIcon,
+    },
+    {
+      title: "Фінанси",
+      url: "/settings/finance",
+      icon: LandmarkIcon,
     },
   ]);
 </script>

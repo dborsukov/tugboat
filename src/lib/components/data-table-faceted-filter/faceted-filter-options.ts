@@ -4,4 +4,5 @@ export type FacetedFilterOptions = {
   label: string;
   value: string;
   icon?: Component;
+  dotClass?: string;
 };

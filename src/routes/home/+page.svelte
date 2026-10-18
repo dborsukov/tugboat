@@ -1,7 +1,10 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from "@tanstack/svelte-query";
 
+  import { goto } from "$app/navigation";
+
   import CheckIcon from "@lucide/svelte/icons/check";
+  import FileSpreadsheetIcon from "@lucide/svelte/icons/file-spreadsheet";
   import PencilIcon from "@lucide/svelte/icons/pencil";
   import UndoIcon from "@lucide/svelte/icons/undo-2";
 
@@ -35,6 +38,8 @@
     withWidth,
     type LayoutEntry,
   } from "./dashboard-layout";
+  import { VAT_DUE_ID } from "./module-ids";
+  import { monthKey, monthName } from "./period";
   import { createDashboardLayoutMutation } from "./queries";
   import { dashboardPeriod } from "./state.svelte";
 
@@ -58,11 +63,22 @@
   /** The saved value itself, which a save carries unknown modules through from. */
   const savedLayout = $derived(settingsState.settings?.dashboardLayout);
 
-  const visible = $derived(visibleEntries(entries));
+  const visible = $derived(
+    visibleEntries(entries).filter(
+      (entry) => entry.module.id !== VAT_DUE_ID || settingsState.isVatPayer,
+    ),
+  );
 
   let editing = $state(false);
 
   let confirmResetDialogOpen = $state(false);
+
+  const reportsLabel = $derived.by(() => {
+    const { year, month } = dashboardPeriod.anchor;
+    const name = monthName({ year, month }, dashboardPeriod.timeZone);
+    const sameYear = year === dashboardPeriod.currentAnchor.year;
+    return `Звіти за ${name}${sameYear ? "" : ` ${year}`}`;
+  });
 
   const defaultLayout = $derived(
     isDefaultLayout(settingsState.settings?.dashboardLayout),
@@ -119,6 +135,31 @@
   {#snippet header()}
     <div class="relative h-full">
       <MonthPicker />
+
+      <div class="absolute top-0 left-0 flex h-full items-center">
+        <Tooltip.Root>
+          <Tooltip.Trigger>
+            {#snippet child({ props })}
+              <Button
+                {...props}
+                variant="outline"
+                size="icon-lg"
+                class="lg:w-auto lg:gap-2.5 lg:px-4"
+                aria-label={reportsLabel}
+                onclick={() =>
+                  goto(`/reports?period=${monthKey(dashboardPeriod.anchor)}`)}
+              >
+                <FileSpreadsheetIcon />
+                <span class="hidden whitespace-nowrap lg:inline"
+                  >{reportsLabel}</span
+                >
+              </Button>
+            {/snippet}
+          </Tooltip.Trigger>
+          <Tooltip.Content side="bottom">{reportsLabel}</Tooltip.Content>
+        </Tooltip.Root>
+      </div>
+
       <div class="absolute top-0 right-0 flex h-full items-center gap-2">
         {#if editing}
           <Tooltip.Root>

@@ -90,7 +90,11 @@
               >
                 <CheckIcon class="size-4" />
               </div>
-              {#if option.icon}
+              {#if option.dotClass}
+                <span
+                  class={cn("size-2 shrink-0 rounded-full", option.dotClass)}
+                ></span>
+              {:else if option.icon}
                 {@const Icon = option.icon}
                 <Icon class="text-muted-foreground" />
               {/if}

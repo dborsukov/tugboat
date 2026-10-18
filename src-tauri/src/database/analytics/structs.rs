@@ -54,11 +54,12 @@ pub struct InProgressBalance {
     pub order_count: i32,
 }
 
-/// VAT owed from all orders this month.
+/// Output VAT recorded in the ledger this month, by tax point.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct VatDue {
     pub amount: Decimal,
+    /// Supplies with an entry this month
     pub order_count: i32,
 }
 

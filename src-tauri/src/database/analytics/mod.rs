@@ -17,7 +17,8 @@ use tauri::State;
 
 use crate::{
     database::{
-        clients::structs::ClientType,
+        cars::structs::car_display_name,
+        clients::structs::{client_display_name, ClientType},
         work_orders::{
             self,
             dtos::{LaborItemDto, PartItemDto, WorkOrderTotals},
@@ -73,6 +74,7 @@ async fn priced_orders(
                     order.labor_cost_type,
                     order.labor_cost_value,
                     order.vat_rate,
+                    order.vat_scheme,
                     order.prices_include_vat,
                 ),
             })
@@ -86,6 +88,7 @@ async fn priced_orders(
                 totals: pricing::calculate_part_item_totals(
                     item,
                     order.vat_rate,
+                    order.vat_scheme,
                     order.prices_include_vat,
                 ),
             })
@@ -282,28 +285,53 @@ async fn revenue_bucket(
     Ok(RevenueBucket { total, order_count })
 }
 
-// VAT owed from all orders this month.
+// Output VAT recorded in the ledger for this month, by tax point.
 #[tauri::command]
 #[specta::specta]
 pub async fn fetch_vat_due(
     state: State<'_, crate::AppState>,
     period: AnalyticsPeriod,
 ) -> AppResult<VatDue> {
-    let orders = paid_orders_closed_in(&state, period.month).await?;
-    let totals_by_order = financials_for_orders(&state, &orders).await?;
+    let settings = crate::database::settings::fetch_settings_from_pool(&state.db_pool).await?;
+    let timezone: chrono_tz::Tz = settings
+        .timezone
+        .parse()
+        .unwrap_or(chrono_tz::Tz::Europe__Kiev);
 
-    let mut amount = Decimal::ZERO;
-    let mut order_count = 0;
-    for order in &orders {
-        let Some(totals) = totals_by_order.get(&order.id) else {
-            continue;
-        };
-        if totals.vat_amount.is_zero() {
-            continue;
-        }
-        amount += totals.vat_amount;
-        order_count += 1;
-    }
+    let from = period
+        .month
+        .from
+        .with_timezone(&timezone)
+        .date_naive()
+        .format("%Y-%m-%d")
+        .to_string();
+    let to = period
+        .month
+        .to
+        .with_timezone(&timezone)
+        .date_naive()
+        .format("%Y-%m-%d")
+        .to_string();
+
+    let sql = format!(
+        "SELECT {} FROM vat_entries
+         WHERE direction = 'output' AND tax_point >= $1 AND tax_point < $2
+         ORDER BY tax_point, id",
+        crate::database::vat::VAT_ENTRY_COLUMNS
+    );
+    let entries: Vec<crate::database::vat::structs::VatEntry> = sqlx::query_as(&sql)
+        .bind(from)
+        .bind(to)
+        .fetch_all(&state.db_pool)
+        .await?;
+
+    let amount: Decimal = entries.iter().map(|entry| entry.amount).sum();
+    let order_count = entries
+        .iter()
+        .filter(|entry| entry.reverses_id.is_none())
+        .map(|entry| entry.source_id.as_str())
+        .collect::<HashSet<_>>()
+        .len() as i32;
 
     Ok(VatDue {
         amount,
@@ -623,32 +651,17 @@ struct ClientMixOrderRow {
 
 impl ClientMixOrderRow {
     fn display_name(&self) -> String {
-        if self.client_type != ClientType::Individual {
-            return self.name.trim().to_string();
-        }
-
-        let first_name = self.first_name.as_deref().map(str::trim).unwrap_or("");
-        let patronymic = self.patronymic.as_deref().map(str::trim).unwrap_or("");
-        let initial = self
-            .surname
-            .as_deref()
-            .map(str::trim)
-            .and_then(|surname| surname.chars().next())
-            .map(|letter| format!("{letter}."));
-
-        match (first_name.is_empty(), initial) {
-            (false, Some(initial)) => format!("{first_name} {initial}"),
-            (false, None) if patronymic.is_empty() => first_name.to_string(),
-            (false, None) => format!("{first_name} {patronymic}"),
-            (true, _) => self.name.trim().to_string(),
-        }
+        client_display_name(
+            self.client_type,
+            &self.name,
+            self.surname.as_deref(),
+            self.first_name.as_deref(),
+            self.patronymic.as_deref(),
+        )
     }
 
     fn display_car(&self) -> String {
-        match self.brand.as_deref().map(str::trim) {
-            Some(brand) if !brand.is_empty() => format!("{brand} {}", self.model.trim()),
-            _ => self.model.trim().to_string(),
-        }
+        car_display_name(self.brand.as_deref(), &self.model)
     }
 }
 

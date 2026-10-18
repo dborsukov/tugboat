@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::database::{
     cars::dtos::CarDto,
     clients::structs::{Client, ClientDetails},
+    vat::structs::VatScheme,
     work_orders::structs::{LaborItem, PartItem, WorkOrder},
     workers::structs::Worker,
 };
@@ -36,12 +37,29 @@ pub struct WorkOrderTotals {
     pub parts_discount: Decimal,
     pub order_discount: Decimal,
     pub grand_total: Decimal,
+    /// Work and parts before the order discount, net of VAT.
+    /// The order discount is the residual between these lines and `vat_base`.
+    pub labor_net: Decimal,
+    pub parts_net: Decimal,
     /// Taxable base: total after discounts, excluding VAT.
     /// Equals `grand_total` when `prices_include_vat` is false.
     pub vat_base: Decimal,
     pub vat_amount: Decimal,
     pub total_with_vat: Decimal,
+    /// One entry per rate and treatment the order actually contains.
+    pub vat_buckets: Vec<VatBucket>,
     pub below_cost: bool,
+}
+
+/// One VAT rate and treatment as it appears on an order.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct VatBucket {
+    pub rate: Decimal,
+    pub scheme: VatScheme,
+    /// Taxable base of this bucket, after the order discount.
+    pub base: Decimal,
+    pub amount: Decimal,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]

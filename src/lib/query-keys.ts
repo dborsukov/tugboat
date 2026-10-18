@@ -44,6 +44,7 @@ export const keys = {
       [...keys.workOrders.all, "delete-impact", id] as const,
     documents: (id: string | number) =>
       [...keys.workOrders.all, "documents", id] as const,
+    vat: (id: string | number) => [...keys.workOrders.all, "vat", id] as const,
   },
   services: {
     all: ["services"] as const,
@@ -59,9 +60,24 @@ export const keys = {
     details: () => [...keys.workers.all, "detail"] as const,
     detail: (id: string | number) => [...keys.workers.details(), id] as const,
   },
+  expenses: {
+    all: ["expenses"] as const,
+    list: () => [...keys.expenses.all, "list"] as const,
+    count: () => [...keys.expenses.all, "count"] as const,
+    details: () => [...keys.expenses.all, "detail"] as const,
+    detail: (id: string | number) => [...keys.expenses.details(), id] as const,
+    vat: (id: string | number) => [...keys.expenses.all, "vat", id] as const,
+  },
+  expenseCategories: {
+    all: ["expense-categories"] as const,
+    list: () => [...keys.expenseCategories.all, "list"] as const,
+  },
+  reports: {
+    all: ["reports"] as const,
+    list: () => [...keys.reports.all, "list"] as const,
+  },
   settings: {
     all: ["settings"] as const,
-    documentsDirInfo: ["settings", "documents-dir-info"] as const,
   },
   dashboard: {
     all: ["dashboard"] as const,

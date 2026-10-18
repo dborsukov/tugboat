@@ -36,6 +36,7 @@
   import { commands } from "$lib/bindings";
   import { keys } from "$lib/query-keys";
   import { privacyState } from "$lib/states/privacy.svelte";
+  import { settingsState } from "$lib/states/settings.svelte";
   import { TableActionState } from "$lib/states/table-actions.svelte";
   import { pluralizeUk, unwrap } from "$lib/tools";
 
@@ -52,7 +53,9 @@
     createUpdateLaborItemsDiscountMutation,
     createUpdatePartItemsDiscountMutation,
     createUpdatePartItemsStatusMutation,
+    liveVatEntry,
     workOrderDetailsQueryOptions,
+    workOrderVatQueryOptions,
   } from "../queries";
   import BulkDiscountDialog from "./bulk-discount-dialog.svelte";
   import BulkDiscountMenuItem from "./bulk-discount-menu-item.svelte";
@@ -67,6 +70,7 @@
   import PartBulkStatusSubmenu from "./part-bulk-status-submenu.svelte";
   import { columns as partsColumns, type PartsTableMeta } from "./part-columns";
   import WorkOrderPartsItemMutationSheet from "./part-item-mutation-sheet.svelte";
+  import VatSection from "./vat-section.svelte";
   import WorkOrderHeader from "./work-order-header.svelte";
 
   let { params } = $props();
@@ -106,12 +110,14 @@
       workOrderDetailsQueryOptions(params.workorderId),
       servicesQueryOptions(),
       clientsQueryOptions(),
+      workOrderVatQueryOptions(params.workorderId),
     ],
     combine: (results) => {
       return {
         workOrderDetails: results[0],
         services: results[1],
         clients: results[2],
+        vat: results[3],
 
         isError: results.some((r) => r.isError),
         firstError: results.find((r) => r.isError)?.error,
@@ -125,6 +131,10 @@
   let services = $derived(combinedQueries.services.data);
   let clients = $derived(combinedQueries.clients.data);
   let workOrderDetails = $derived(combinedQueries.workOrderDetails.data);
+  let vatEntries = $derived(combinedQueries.vat.data);
+
+  const liveVat = $derived(liveVatEntry(vatEntries));
+  const hasLiveVat = $derived(Boolean(liveVat));
 
   const orderIsPending = $derived(
     combinedQueries.workOrderDetails.isPending ||
@@ -137,10 +147,18 @@
 
   const isArchived = $derived(workOrderDetails?.workOrder?.archivedAt != null);
 
+  /** The work has been handed over, which is when VAT becomes due. */
+  const statusIsSupplied = $derived(
+    ["ReadyForPickup", "Completed", "Paid"].includes(
+      workOrderDetails?.workOrder?.status ?? "",
+    ),
+  );
+
   let isLocked = $state(true);
   let previousStatus: WorkOrderStatus | undefined;
 
   // Archived orders are read-only regardless of the paid-lock state.
+  const businessIsVatPayer = $derived(settingsState.isVatPayer);
   const isReadOnly = $derived(isLocked || isArchived);
 
   let hasPendingParts = $derived(
@@ -159,8 +177,10 @@
     const currentStatus = workOrderDetails?.workOrder?.status;
     if (currentStatus === undefined) return;
 
+    // A recorded VAT entry freezes the figures just as a terminal status does,
+    // even when the order has not been paid yet: the tax point already happened.
     const currentTerminal =
-      currentStatus === "Paid" || currentStatus === "Completed";
+      currentStatus === "Paid" || currentStatus === "Completed" || hasLiveVat;
 
     if (previousStatus === undefined) {
       isLocked = currentTerminal;
@@ -390,6 +410,8 @@
         discountType: "None",
         discountValue: "0",
         isFree: workOrderDetails?.workOrder?.type === "Warranty",
+        vatRate: null,
+        vatScheme: null,
       },
       {
         onSuccess: () => {
@@ -663,6 +685,16 @@
       workOrderDetails={combinedQueries.workOrderDetails.data}
       clients={clients ?? []}
       onGenerate={openGenerate}
+    />
+
+    <VatSection
+      workOrderId={params.workorderId}
+      entries={vatEntries}
+      isSupplied={statusIsSupplied}
+      expectedVat={workOrderDetails?.totals?.vatAmount ?? "0"}
+      canManage={businessIsVatPayer}
+      onVoided={() => (isLocked = false)}
+      onRecorded={() => (isLocked = true)}
     />
 
     {#if hasNotes}

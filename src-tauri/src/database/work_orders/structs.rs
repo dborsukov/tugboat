@@ -3,7 +3,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::{sqlite::SqliteRow, FromRow, Row};
 
-use crate::database::utils::decimal_column;
+use crate::database::{utils::decimal_column, vat::structs::VatScheme};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
@@ -107,6 +107,10 @@ pub struct WorkOrder {
     pub completed_at: Option<DateTime<Utc>>,
     pub paid_at: Option<DateTime<Utc>>,
     pub payment_method: Option<PaymentMethod>,
+    pub tax_invoice_number: Option<String>,
+    pub tax_invoice_date: Option<String>,
+    pub exemption_code: Option<String>,
+    pub vat_scheme: VatScheme,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for WorkOrder {
@@ -142,6 +146,10 @@ impl<'r> FromRow<'r, SqliteRow> for WorkOrder {
             completed_at: row.try_get("completed_at")?,
             paid_at: row.try_get("paid_at")?,
             payment_method: row.try_get("payment_method")?,
+            tax_invoice_number: row.try_get("tax_invoice_number")?,
+            tax_invoice_date: row.try_get("tax_invoice_date")?,
+            exemption_code: row.try_get("exemption_code")?,
+            vat_scheme: row.try_get("vat_scheme")?,
         })
     }
 }
@@ -171,6 +179,10 @@ pub struct CreateWorkOrderPayload {
     pub discount_value: Decimal,
     pub vat_rate: Decimal,
     pub prices_include_vat: bool,
+    pub vat_scheme: VatScheme,
+    pub tax_invoice_number: Option<String>,
+    pub tax_invoice_date: Option<String>,
+    pub exemption_code: Option<String>,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -199,6 +211,10 @@ pub struct UpdateWorkOrderPayload {
     pub discount_value: Decimal,
     pub vat_rate: Decimal,
     pub prices_include_vat: bool,
+    pub vat_scheme: VatScheme,
+    pub tax_invoice_number: Option<String>,
+    pub tax_invoice_date: Option<String>,
+    pub exemption_code: Option<String>,
     pub started_at: Option<DateTime<Utc>>,
     pub completed_at: Option<DateTime<Utc>>,
     pub paid_at: Option<DateTime<Utc>>,
@@ -222,6 +238,8 @@ pub struct LaborItem {
     pub discount_value: Decimal,
     pub is_free: bool,
     pub position: i32,
+    pub vat_rate: Option<Decimal>,
+    pub vat_scheme: Option<VatScheme>,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for LaborItem {
@@ -239,6 +257,10 @@ impl<'r> FromRow<'r, SqliteRow> for LaborItem {
             discount_value: decimal_column(row, "discount_value")?,
             is_free: row.try_get("is_free")?,
             position: row.try_get("position")?,
+            vat_rate: row
+                .try_get::<Option<String>, _>("vat_rate")?
+                .and_then(|raw| raw.parse().ok()),
+            vat_scheme: row.try_get("vat_scheme")?,
         })
     }
 }
@@ -257,6 +279,8 @@ pub struct CreateLaborItemPayload {
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
     pub is_free: bool,
+    pub vat_rate: Option<Decimal>,
+    pub vat_scheme: Option<VatScheme>,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -272,6 +296,8 @@ pub struct UpdateLaborItemPayload {
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
     pub is_free: bool,
+    pub vat_rate: Option<Decimal>,
+    pub vat_scheme: Option<VatScheme>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -291,6 +317,16 @@ pub struct PartItem {
     pub discount_value: Decimal,
     pub is_free: bool,
     pub position: i32,
+    pub vat_rate: Option<Decimal>,
+    pub vat_scheme: Option<VatScheme>,
+    pub purchase_vat_rate: Decimal,
+    pub purchase_price_includes_vat: bool,
+    pub purchase_scheme: VatScheme,
+    pub supplier_name: Option<String>,
+    pub supplier_code: Option<String>,
+    pub invoice_number: Option<String>,
+    pub invoice_date: Option<String>,
+    pub vat_credited: bool,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for PartItem {
@@ -309,6 +345,21 @@ impl<'r> FromRow<'r, SqliteRow> for PartItem {
             discount_value: decimal_column(row, "discount_value")?,
             is_free: row.try_get("is_free")?,
             position: row.try_get("position")?,
+            vat_rate: row
+                .try_get::<Option<String>, _>("vat_rate")?
+                .and_then(|raw| raw.parse().ok()),
+            vat_scheme: row.try_get("vat_scheme")?,
+            purchase_vat_rate: row
+                .try_get::<String, _>("purchase_vat_rate")?
+                .parse()
+                .unwrap_or(Decimal::ZERO),
+            purchase_price_includes_vat: row.try_get("purchase_price_includes_vat")?,
+            purchase_scheme: row.try_get("purchase_scheme")?,
+            supplier_name: row.try_get("supplier_name")?,
+            supplier_code: row.try_get("supplier_code")?,
+            invoice_number: row.try_get("invoice_number")?,
+            invoice_date: row.try_get("invoice_date")?,
+            vat_credited: row.try_get("vat_credited")?,
         })
     }
 }
@@ -327,6 +378,16 @@ pub struct CreatePartItemPayload {
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
     pub is_free: bool,
+    pub vat_rate: Option<Decimal>,
+    pub vat_scheme: Option<VatScheme>,
+    pub purchase_vat_rate: Decimal,
+    pub purchase_price_includes_vat: bool,
+    pub purchase_scheme: VatScheme,
+    pub supplier_name: Option<String>,
+    pub supplier_code: Option<String>,
+    pub invoice_number: Option<String>,
+    pub invoice_date: Option<String>,
+    pub vat_credited: bool,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -342,4 +403,14 @@ pub struct UpdatePartItemPayload {
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
     pub is_free: bool,
+    pub vat_rate: Option<Decimal>,
+    pub vat_scheme: Option<VatScheme>,
+    pub purchase_vat_rate: Decimal,
+    pub purchase_price_includes_vat: bool,
+    pub purchase_scheme: VatScheme,
+    pub supplier_name: Option<String>,
+    pub supplier_code: Option<String>,
+    pub invoice_number: Option<String>,
+    pub invoice_date: Option<String>,
+    pub vat_credited: bool,
 }

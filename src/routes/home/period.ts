@@ -205,24 +205,25 @@ export function monthFromKey(key: string): CalendarMonth {
   return { year: Number(year), month: Number(month) };
 }
 
+/** "вересень" — the month's name alone, lower case, as the locale writes it. */
+export function monthName(
+  month: CalendarMonth,
+  timeZone?: string | null,
+): string {
+  return new Intl.DateTimeFormat("uk-UA", {
+    month: "long",
+    timeZone: timeZoneOrDefault(timeZone),
+  }).format(
+    zonedMidnight(month.year, month.month, 1, timeZoneOrDefault(timeZone)),
+  );
+}
+
 /** "Вересень 2026" style heading for a month. */
 export function monthLabel(
   month: CalendarMonth,
   timeZone?: string | null,
 ): string {
-  const parts = new Intl.DateTimeFormat("uk-UA", {
-    month: "long",
-    year: "numeric",
-    timeZone: timeZoneOrDefault(timeZone),
-  }).formatToParts(
-    zonedMidnight(month.year, month.month, 1, timeZoneOrDefault(timeZone)),
-  );
-  // Read the parts instead of the formatted string: Ukrainian CLDR renders
-  // "вересень 2026 р." as a whole, and the heading reads better without the
-  // "р." the date formats in the rest of the app carry.
-  const monthName = parts.find((part) => part.type === "month")?.value ?? "";
-  const year = parts.find((part) => part.type === "year")?.value ?? "";
-  const label = `${monthName} ${year}`.trim();
+  const label = `${monthName(month, timeZone)} ${month.year}`.trim();
   return label.charAt(0).toUpperCase() + label.slice(1);
 }
 

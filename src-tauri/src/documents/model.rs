@@ -9,8 +9,8 @@ use crate::{
         clients::structs::{Client, ClientDetails, ClientType},
         settings::structs::{AppSettings, CompanyInfo, CompanyKind},
         work_orders::{
-            dtos::WorkOrderDetailsDto,
-            pricing::{self, calculate_vat, calculate_work_order_totals},
+            dtos::{VatBucket, WorkOrderDetailsDto},
+            pricing::{self, calculate_work_order_totals},
             structs::{DiscountType, LaborPriceType},
         },
         workers::structs::Worker,
@@ -211,10 +211,6 @@ pub struct DocTable {
     pub title: String,
     pub rows: Vec<DocTableRow>,
     pub total: Decimal,
-    pub vat_rate: Decimal,
-    pub vat_amount: Decimal,
-    pub total_with_vat: Decimal,
-    pub show_vat: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -238,11 +234,20 @@ pub struct DocTotals {
     pub order_discount_is_percentage: bool,
     pub order_discount_percent: Decimal,
     pub grand_total: Decimal,
-    pub vat_rate: Decimal,
-    pub vat_amount: Decimal,
+    pub vat_buckets: Vec<VatBucket>,
     pub total_with_vat: Decimal,
     pub show_vat: bool,
     pub prices_include_vat: bool,
+}
+
+/// The label a VAT row carries, e.g. `20 %` or `0 %, експорт`.
+pub fn vat_bucket_label(bucket: &VatBucket) -> String {
+    let rate = format!("{} %", format_qty(bucket.rate));
+    if bucket.scheme.is_standard() {
+        rate
+    } else {
+        format!("{rate}, {}", bucket.scheme.label().to_lowercase())
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -479,12 +484,7 @@ fn bank_lines(iban: Option<&str>, bank: Option<&str>) -> Vec<String> {
     }
 }
 
-fn build_labor_table(
-    details: &WorkOrderDetailsDto,
-    vat_rate: Decimal,
-    prices_include_vat: bool,
-    show_vat: bool,
-) -> DocTable {
+fn build_labor_table(details: &WorkOrderDetailsDto) -> DocTable {
     let mut rows = Vec::new();
     for dto in &details.labor_items {
         if !pricing::labor_is_billed(dto.item.is_free) {
@@ -508,26 +508,15 @@ fn build_labor_table(
     }
 
     let total: Decimal = rows.iter().map(|r| r.sum).sum();
-    let (_, vat_amount, total_with_vat) = calculate_vat(total, vat_rate, prices_include_vat);
 
     DocTable {
         title: "Виконані роботи".to_string(),
         rows,
         total,
-        vat_rate,
-        vat_amount,
-        total_with_vat,
-        show_vat,
     }
 }
 
-fn build_parts_table(
-    details: &WorkOrderDetailsDto,
-    kind: DocumentKind,
-    vat_rate: Decimal,
-    prices_include_vat: bool,
-    show_vat: bool,
-) -> DocTable {
+fn build_parts_table(details: &WorkOrderDetailsDto, kind: DocumentKind) -> DocTable {
     let mut rows = Vec::new();
     for dto in &details.part_items {
         let billed = match kind {
@@ -554,16 +543,11 @@ fn build_parts_table(
     }
 
     let total: Decimal = rows.iter().map(|r| r.sum).sum();
-    let (_, vat_amount, total_with_vat) = calculate_vat(total, vat_rate, prices_include_vat);
 
     DocTable {
         title: "Запчастини та витратні матеріали".to_string(),
         rows,
         total,
-        vat_rate,
-        vat_amount,
-        total_with_vat,
-        show_vat,
     }
 }
 
@@ -583,21 +567,59 @@ pub fn build_document_data(
         .unwrap_or(chrono_tz::Tz::Europe__Kiev);
 
     let vat_payer = settings.company_info.as_ref().is_some_and(|c| c.vat_payer);
-    let show_vat = vat_payer && work_order.vat_rate > Decimal::ZERO;
 
-    let labor = build_labor_table(
-        details,
-        work_order.vat_rate,
-        work_order.prices_include_vat,
-        show_vat,
-    );
-    let parts = build_parts_table(
-        details,
-        kind,
-        work_order.vat_rate,
-        work_order.prices_include_vat,
-        show_vat,
-    );
+    let labor = build_labor_table(details);
+    let parts = build_parts_table(details, kind);
+
+    // The lines the VAT is allocated over, in the same set the printed tables show.
+    let lines: Vec<pricing::PricedLine> = details
+        .labor_items
+        .iter()
+        .filter(|dto| pricing::labor_is_billed(dto.item.is_free))
+        .map(|dto| {
+            let (rate, scheme) = pricing::line_vat(
+                dto.item.vat_rate,
+                dto.item.vat_scheme,
+                work_order.vat_rate,
+                work_order.vat_scheme,
+            );
+            pricing::PricedLine {
+                kind: pricing::LineKind::Labor,
+                total: dto.totals.total,
+                retail: dto.totals.total + dto.totals.discount,
+                rate,
+                scheme,
+            }
+        })
+        .chain(
+            details
+                .part_items
+                .iter()
+                .filter(|dto| match kind {
+                    DocumentKind::NaryadZamovlennya => {
+                        pricing::part_is_projected_billed(dto.item.status, dto.item.is_free)
+                    }
+                    DocumentKind::AktVykonanykhRobit => {
+                        pricing::part_is_billed(dto.item.status, dto.item.is_free)
+                    }
+                })
+                .map(|dto| {
+                    let (rate, scheme) = pricing::line_vat(
+                        dto.item.vat_rate,
+                        dto.item.vat_scheme,
+                        work_order.vat_rate,
+                        work_order.vat_scheme,
+                    );
+                    pricing::PricedLine {
+                        kind: pricing::LineKind::Parts,
+                        total: dto.totals.total,
+                        retail: dto.totals.total + dto.totals.discount,
+                        rate,
+                        scheme,
+                    }
+                }),
+        )
+        .collect();
 
     let order_totals = calculate_work_order_totals(
         labor.total,
@@ -609,9 +631,11 @@ pub fn build_document_data(
         Decimal::ZERO,
         work_order.discount_type,
         work_order.discount_value,
-        work_order.vat_rate,
         work_order.prices_include_vat,
+        &lines,
     );
+
+    let show_vat = vat_payer && !order_totals.vat_buckets.is_empty();
 
     let totals = DocTotals {
         labor_total: labor.total,
@@ -621,8 +645,7 @@ pub fn build_document_data(
         order_discount_is_percentage: work_order.discount_type == DiscountType::Percentage,
         order_discount_percent: work_order.discount_value,
         grand_total: order_totals.grand_total,
-        vat_rate: work_order.vat_rate,
-        vat_amount: order_totals.vat_amount,
+        vat_buckets: order_totals.vat_buckets.clone(),
         total_with_vat: order_totals.total_with_vat,
         show_vat,
         prices_include_vat: work_order.prices_include_vat,

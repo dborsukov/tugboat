@@ -23,10 +23,12 @@
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
+  import * as Select from "$lib/components/ui/select/index.js";
   import { Textarea } from "$lib/components/ui/textarea";
 
   import ComboSelect from "$lib/components/combo-select.svelte";
   import CurrencyInput from "$lib/components/currency-input.svelte";
+  import DateTimePicker from "$lib/components/date-time-picker.svelte";
   import MutationSheetSectionTitle from "$lib/components/mutation-sheet-section-title.svelte";
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
   import PhoneInput from "$lib/components/phone-input.svelte";
@@ -36,6 +38,7 @@
     type DiscountType,
     type LaborCostType,
     type PreviewWorkOrderQuote,
+    type VatScheme,
   } from "$lib/bindings";
   import { zBigString } from "$lib/schemas/zbig";
   import {
@@ -53,6 +56,11 @@
   import { unwrap } from "$lib/tools";
   import type { CreateOrEditProps } from "$lib/types";
   import { cn } from "$lib/utils";
+  import {
+    schemeNeedsZeroRate,
+    VAT_SCHEMES,
+    vatSchemeLabels,
+  } from "$lib/vat-scheme";
 
   import { createCarDetailsQuery } from "../cars/queries";
   import ClientBadge from "../clients/client-badge.svelte";
@@ -111,17 +119,7 @@
     settingsState.settings?.companyInfo == null ||
       settingsState.settings.companyInfo.vatPayer === false,
   );
-  const vatBlocked = $derived(businessIsNotVatPayer && !isEdit);
-  // Existing orders keep their snapshot; warn when it contradicts the
-  // seller's current status instead of silently rewriting history.
-  const vatMismatchWarning = $derived(
-    businessIsNotVatPayer &&
-      isEdit &&
-      workOrderDetails &&
-      workOrderDetails.workOrder.vatRate !== "0"
-      ? workOrderDetails.workOrder.vatRate
-      : null,
-  );
+  const businessIsVatPayer = $derived(!businessIsNotVatPayer);
 
   async function fetchWorkOrderQuote(data: {
     rate: string;
@@ -130,6 +128,7 @@
     discountType: DiscountType;
     discountValue: string;
     vatRate: string;
+    vatScheme: VatScheme;
     pricesIncludeVat: boolean;
   }): Promise<PreviewWorkOrderQuote | null> {
     if (!isEdit || !workOrderId) return null;
@@ -143,6 +142,7 @@
           discountType: data.discountType,
           discountValue: data.discountValue || "0",
           vatRate: data.vatRate || "0",
+          vatScheme: data.vatScheme,
           pricesIncludeVat: data.pricesIncludeVat,
         }),
       );
@@ -164,6 +164,7 @@
       discountType: $formData.discountType as DiscountType,
       discountValue: $formData.discountValue,
       vatRate: $formData.vatRate,
+      vatScheme: $formData.vatScheme as VatScheme,
       pricesIncludeVat: $formData.pricesIncludeVat,
     };
     const seq = ++quoteSeq;
@@ -229,7 +230,25 @@
         min: { value: 0, message: "Ставка ПДВ не може бути від'ємним числом" },
         max: { value: 100, message: "Ставка ПДВ має бути в межах 100%" },
       }).default("20"),
+      vatScheme: z
+        .enum<
+          VatScheme[]
+        >(["standard", "zero", "exempt", "not_object", "export"])
+        .default("standard"),
       pricesIncludeVat: z.boolean().default(true),
+      taxInvoiceNumber: z
+        .string()
+        .trim()
+        .max(60, { error: "Номер не може бути довшим за 60 символів" })
+        .default(""),
+      taxInvoiceDate: z
+        .union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)])
+        .default(""),
+      exemptionCode: z
+        .string()
+        .trim()
+        .max(30, { error: "Код не може бути довшим за 30 символів" })
+        .default(""),
       ...laborCostFields,
       ...discountFields,
     })
@@ -279,6 +298,12 @@
     );
 
     const vatRate = !isEdit && businessIsNotVatPayer ? "0" : data.vatRate;
+    const vatScheme: VatScheme =
+      !isEdit && businessIsNotVatPayer ? "standard" : data.vatScheme;
+    const taxInvoiceNumber = data.taxInvoiceNumber.trim() || null;
+    const taxInvoiceDate = data.taxInvoiceDate || null;
+    const exemptionCode =
+      data.vatScheme === "exempt" ? data.exemptionCode.trim() || null : null;
 
     if (!isEdit && !carId && !workOrderDetails) {
       toast.error("Виникла помилка", {
@@ -307,7 +332,11 @@
               status: workOrderDetails!.workOrder.status,
               rate: data.rate,
               vatRate: data.vatRate,
+              vatScheme,
               pricesIncludeVat: data.pricesIncludeVat,
+              taxInvoiceNumber,
+              taxInvoiceDate,
+              exemptionCode,
               ...laborCostPayload,
               ...discountPayload,
               startedAt: workOrderDetails!.workOrder.startedAt,
@@ -334,7 +363,11 @@
               notes: data.notes?.trim() || null,
               rate: data.rate,
               vatRate,
+              vatScheme,
               pricesIncludeVat: data.pricesIncludeVat,
+              taxInvoiceNumber,
+              taxInvoiceDate,
+              exemptionCode,
               ...laborCostPayload,
               ...discountPayload,
             })
@@ -367,6 +400,16 @@
 
   const { form: formData, enhance, submitting } = form;
 
+  const zeroRateStandardWarning = $derived.by(() => {
+    if ($formData.vatScheme !== "standard") return false;
+    if (!$formData.vatRate.trim()) return false;
+    try {
+      return Big($formData.vatRate.replace(",", ".")).eq(0);
+    } catch {
+      return false;
+    }
+  });
+
   $effect(() => {
     if (open) {
       priceConfirmOpen = false;
@@ -397,8 +440,15 @@
         $formData.notes = workOrderDetails.workOrder.notes;
         $formData.rate = workOrderDetails.workOrder.rate;
         $formData.vatRate = workOrderDetails.workOrder.vatRate;
+        $formData.vatScheme = workOrderDetails.workOrder.vatScheme;
         $formData.pricesIncludeVat =
           workOrderDetails.workOrder.pricesIncludeVat;
+        $formData.taxInvoiceNumber =
+          workOrderDetails.workOrder.taxInvoiceNumber ?? "";
+        $formData.taxInvoiceDate =
+          workOrderDetails.workOrder.taxInvoiceDate ?? "";
+        $formData.exemptionCode =
+          workOrderDetails.workOrder.exemptionCode ?? "";
         $formData.laborCostType = workOrderDetails.workOrder.laborCostType;
         $formData.laborCost = laborCostFromEntity(workOrderDetails.workOrder);
         $formData.discountType = workOrderDetails.workOrder.discountType;
@@ -407,6 +457,10 @@
         );
       } else {
         form.reset();
+        $formData.vatScheme = "standard";
+        $formData.taxInvoiceNumber = "";
+        $formData.taxInvoiceDate = "";
+        $formData.exemptionCode = "";
         if (businessIsNotVatPayer) {
           $formData.vatRate = "0";
           $formData.pricesIncludeVat = true;
@@ -790,17 +844,11 @@
       <Form.FieldErrors />
     </Form.Field>
 
-    <Form.Field {form} name="vatRate">
-      <Form.Control>
-        {#snippet children({ props })}
-          <Label>ПДВ</Label>
-          {#if vatBlocked}
-            <p
-              class="rounded border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
-            >
-              Бізнес не є платником ПДВ, податок не застосовується.
-            </p>
-          {:else}
+    {#if businessIsVatPayer}
+      <Form.Field {form} name="vatRate">
+        <Form.Control>
+          {#snippet children({ props })}
+            <Label>ПДВ</Label>
             <div class="flex items-center gap-2">
               <Checkbox
                 id="pricesIncludeVat"
@@ -821,17 +869,73 @@
               />
               <p>%</p>
             </div>
-            {#if vatMismatchWarning}
+            <div class="flex items-center gap-2 pt-1">
+              <Label for="vatScheme" class="font-normal">Режим ПДВ</Label>
+              <Select.Root
+                type="single"
+                value={$formData.vatScheme}
+                onValueChange={(value) => {
+                  if (!value) return;
+                  $formData.vatScheme = value as VatScheme;
+                  if (schemeNeedsZeroRate($formData.vatScheme)) {
+                    $formData.vatRate = "0";
+                  }
+                }}
+              >
+                <Select.Trigger id="vatScheme" class="w-44">
+                  {vatSchemeLabels[$formData.vatScheme]}
+                </Select.Trigger>
+                <Select.Content>
+                  {#each VAT_SCHEMES as scheme (scheme)}
+                    <Select.Item value={scheme}>
+                      {vatSchemeLabels[scheme]}
+                    </Select.Item>
+                  {/each}
+                </Select.Content>
+              </Select.Root>
+            </div>
+            {#if $formData.vatScheme === "exempt"}
+              <div class="grid gap-1.5 pt-1">
+                <Label for="exemptionCode" class="font-normal">Код пільги</Label
+                >
+                <Input
+                  id="exemptionCode"
+                  bind:value={$formData.exemptionCode}
+                  placeholder="З Довідника податкових пільг"
+                />
+                <p class="text-xs text-muted-foreground">
+                  Потрібен для податкової накладної та декларації зі звільнених
+                  операцій.
+                </p>
+              </div>
+            {/if}
+            <div class="grid grid-cols-1 gap-2 pt-1 sm:grid-cols-2">
+              <div class="grid gap-1.5">
+                <Label for="taxInvoiceNumber" class="font-normal">
+                  Номер податкової накладної
+                </Label>
+                <Input
+                  id="taxInvoiceNumber"
+                  bind:value={$formData.taxInvoiceNumber}
+                  placeholder="ПН-000123"
+                />
+              </div>
+              <div class="grid gap-1.5">
+                <Label class="font-normal">Дата податкової накладної</Label>
+                <DateTimePicker bind:value={$formData.taxInvoiceDate} />
+              </div>
+            </div>
+            {#if zeroRateStandardWarning}
               <p class="text-sm text-amber-600 dark:text-amber-500 mt-1.5">
-                Продавець не є платником ПДВ, але це замовлення має ставку ПДВ{" "}
-                {vatMismatchWarning}%.
+                0 % зі стандартним режимом не потрапить у реєстр ПДВ. Для
+                нульової поставки оберіть «Нульова», «Експорт» або «Звільнена».
               </p>
             {/if}
-          {/if}
-        {/snippet}
-      </Form.Control>
-      <Form.FieldErrors />
-    </Form.Field>
+          {/snippet}
+        </Form.Control>
+        <Form.FieldErrors />
+      </Form.Field>
+    {/if}
 
     <Form.Field {form} name="laborCost">
       <Form.Control>

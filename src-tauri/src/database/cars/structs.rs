@@ -2,6 +2,13 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
+pub(crate) fn car_display_name(brand: Option<&str>, model: &str) -> String {
+    match brand.map(str::trim) {
+        Some(brand) if !brand.is_empty() => format!("{brand} {}", model.trim()),
+        _ => model.trim().to_string(),
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum FuelType {

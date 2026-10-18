@@ -42,7 +42,6 @@ pub(crate) async fn fetch_settings_from_pool(
             timezone,
             default_phone_country_code,
             company_info,
-            documents_dir,
             dashboard_layout
         FROM app_settings
         WHERE id = 1

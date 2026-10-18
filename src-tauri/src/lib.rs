@@ -12,6 +12,7 @@ use tauri_specta::{collect_commands, Builder};
 pub mod database;
 pub mod documents;
 pub mod error;
+pub mod reports;
 pub mod utils;
 pub mod window_geometry;
 
@@ -67,6 +68,22 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         database::services::archive_services,
         database::services::restore_service,
         database::services::restore_services,
+        database::expenses::fetch_expenses_count,
+        database::expenses::fetch_expenses_list,
+        database::expenses::fetch_expense_by_id,
+        database::expenses::create_expense,
+        database::expenses::update_expense,
+        database::expenses::delete_expense,
+        database::expenses::delete_expenses,
+        database::expenses::archive_expense,
+        database::expenses::archive_expenses,
+        database::expenses::restore_expense,
+        database::expenses::restore_expenses,
+        database::expenses::fetch_expense_categories,
+        database::expenses::create_expense_category,
+        database::expenses::update_expense_category,
+        database::expenses::archive_expense_category,
+        database::expenses::restore_expense_category,
         database::workers::fetch_workers_count,
         database::workers::fetch_workers_list,
         database::workers::fetch_worker_by_id,
@@ -121,11 +138,14 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         database::work_orders::preview_part_item,
         database::work_orders::preview_work_order,
         documents::fetch_work_order_documents,
-        documents::fetch_documents_dir_info,
+        documents::download_work_order_document,
+        documents::delete_work_order_document,
         documents::document_target_path,
         documents::generate_document,
-        documents::pick_documents_folder,
-        documents::update_documents_dir,
+        reports::generate_report,
+        reports::fetch_reports,
+        reports::download_report,
+        reports::open_report_copy,
         database::analytics::fetch_order_months,
         database::analytics::fetch_outstanding_balance,
         database::analytics::fetch_in_progress_balance,
@@ -136,6 +156,16 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         database::analytics::fetch_client_mix_list,
         database::analytics::fetch_gross_margin,
         database::analytics::fetch_margin_services,
+        database::vat::fetch_work_order_vat,
+        database::vat::void_work_order_vat,
+        database::vat::record_work_order_vat,
+        database::vat::fetch_expense_vat,
+        database::vat::void_expense_vat,
+        database::vat::fetch_part_item_vat,
+        database::vat::void_part_item_vat,
+        database::vat::fetch_vat_periods,
+        database::vat::close_vat_period,
+        database::vat::reopen_vat_period,
         utils::get_app_version,
         window_geometry::reveal_window
     ])
@@ -269,8 +299,8 @@ async fn start(handle: &AppHandle, app_dir: PathBuf) -> AppResult<()> {
 
     open_main_window(handle, ui_scale, theme)?;
 
-    if let Err(error) = documents::resolve_documents_dir(&appstate).await {
-        log::warn!("Не вдалося підготувати теку документів: {error}");
+    if let Err(error) = documents::invoices_dir(&appstate) {
+        log::warn!("Не вдалося підготувати теку рахунків: {error}");
     }
 
     Ok(())

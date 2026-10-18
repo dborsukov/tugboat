@@ -874,20 +874,28 @@ fn totals_markup(data: &DocumentData) -> String {
         ));
     }
 
-    if data.vat_payer && t.prices_include_vat {
-        rows.push((
-            "Без ПДВ:".to_string(),
-            format!("{} грн.", money(t.grand_total - t.vat_amount)),
-        ));
-        rows.push((
-            format!("ПДВ ({}%):", super::model::format_qty(t.vat_rate)),
-            format!("{} грн.", money(t.vat_amount)),
-        ));
-    } else if data.vat_payer {
-        rows.push((
-            format!("Сума ПДВ ({}%):", super::model::format_qty(t.vat_rate)),
-            format!("{} грн.", money(t.vat_amount)),
-        ));
+    if data.vat_payer {
+        for bucket in &t.vat_buckets {
+            let label = super::model::vat_bucket_label(bucket);
+            if t.prices_include_vat {
+                rows.push((
+                    format!("Без ПДВ ({label}):"),
+                    format!("{} грн.", money(bucket.base)),
+                ));
+                rows.push((
+                    format!("ПДВ ({label}):"),
+                    format!("{} грн.", money(bucket.amount)),
+                ));
+            } else {
+                rows.push((
+                    format!("Сума ПДВ ({label}):"),
+                    format!("{} грн.", money(bucket.amount)),
+                ));
+            }
+        }
+        if t.vat_buckets.is_empty() {
+            rows.push(("Сума ПДВ:".to_string(), "Без ПДВ".to_string()));
+        }
     } else {
         rows.push(("Сума ПДВ:".to_string(), "Без ПДВ".to_string()));
     }

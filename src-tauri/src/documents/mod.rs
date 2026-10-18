@@ -23,19 +23,12 @@ use crate::{
     AppState,
 };
 
-/// The documents folder: the user-configured one, or `[app_dir]/documents`.
-pub(crate) async fn resolve_documents_dir(state: &AppState) -> AppResult<PathBuf> {
-    let saved: Option<String> =
-        sqlx::query_scalar("SELECT documents_dir FROM app_settings WHERE id = 1")
-            .fetch_one(&state.db_pool)
-            .await?;
-    let dir = match saved.as_deref().map(str::trim) {
-        None | Some("") => state.data_dir.join("documents"),
-        Some(path) => PathBuf::from(path),
-    };
+/// The folder generated documents live in, always `[app_dir]/invoices`.
+pub(crate) fn invoices_dir(state: &AppState) -> AppResult<PathBuf> {
+    let dir = state.data_dir.join("invoices");
     fs::create_dir_all(&dir).map_err(|e| {
         AppError::Generic(format!(
-            "Не вдалося створити теку документів {}: {e}",
+            "Не вдалося створити теку рахунків {}: {e}",
             dir.display()
         ))
     })?;
@@ -57,8 +50,40 @@ fn validate_work_order_id(work_order_id: &str) -> AppResult<()> {
     Ok(())
 }
 
+fn validate_document_name(name: &str) -> AppResult<()> {
+    if name.trim().is_empty()
+        || name == "."
+        || name == ".."
+        || name
+            .chars()
+            .any(|c| matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|'))
+    {
+        return Err(AppError::validation("Невірна назва документа"));
+    }
+    Ok(())
+}
+
 fn work_order_documents_dir(documents_dir: &Path, work_order_id: &str) -> PathBuf {
     documents_dir.join(work_order_id)
+}
+
+/// Full path of one generated document, or an error when it is not there.
+fn resolve_document_path(
+    state: &AppState,
+    work_order_id: &str,
+    file_name: &str,
+) -> AppResult<PathBuf> {
+    validate_work_order_id(work_order_id)?;
+    validate_document_name(file_name)?;
+
+    let folder = work_order_documents_dir(&invoices_dir(state)?, work_order_id);
+    let path = folder.join(file_name);
+    if !path.is_file() {
+        return Err(AppError::NotFound(format!(
+            "Документ «{file_name}» не знайдено"
+        )));
+    }
+    Ok(path)
 }
 
 fn document_file_name(kind: DocumentKind, work_order_id: &str, format: DocumentFormat) -> String {
@@ -129,7 +154,7 @@ pub async fn fetch_work_order_documents(
     work_order_id: String,
 ) -> AppResult<WorkOrderDocuments> {
     validate_work_order_id(&work_order_id)?;
-    let documents_dir = resolve_documents_dir(&state).await?;
+    let documents_dir = invoices_dir(&state)?;
     let folder = work_order_documents_dir(&documents_dir, &work_order_id);
 
     // Make sure documents folder is created as soon as work order is opened
@@ -160,27 +185,6 @@ pub async fn fetch_work_order_documents(
     })
 }
 
-/// Info about the effective documents folder, used by the settings page.
-#[derive(Debug, Clone, serde::Serialize, specta::Type)]
-#[serde(rename_all = "camelCase")]
-pub struct DocumentsDirInfo {
-    pub path: String,
-    pub has_content: bool,
-}
-
-#[tauri::command]
-#[specta::specta]
-pub async fn fetch_documents_dir_info(state: State<'_, AppState>) -> AppResult<DocumentsDirInfo> {
-    let dir = resolve_documents_dir(&state).await?;
-    let has_content = fs::read_dir(&dir)
-        .map(|mut entries| entries.next().is_some())
-        .unwrap_or(false);
-    Ok(DocumentsDirInfo {
-        path: dir.to_string_lossy().into_owned(),
-        has_content,
-    })
-}
-
 /// Returns `Some(target path)` when a file with the default document name
 /// already exists, `None` otherwise. Used to show the replace/rename dialog.
 #[tauri::command]
@@ -192,7 +196,7 @@ pub async fn document_target_path(
     format: DocumentFormat,
 ) -> AppResult<Option<String>> {
     validate_work_order_id(&work_order_id)?;
-    let documents_dir = resolve_documents_dir(&state).await?;
+    let documents_dir = invoices_dir(&state)?;
     let target = resolve_document_target_path(&documents_dir, &work_order_id, kind, format);
     Ok(target
         .exists()
@@ -281,7 +285,7 @@ pub async fn generate_document(
         DocumentFormat::Xlsx => xlsx::render(&data)?,
     };
 
-    let documents_dir = resolve_documents_dir(&state).await?;
+    let documents_dir = invoices_dir(&state)?;
     let folder = work_order_documents_dir(&documents_dir, &work_order_id);
     fs::create_dir_all(&folder).map_err(|e| {
         AppError::Generic(format!(
@@ -309,84 +313,74 @@ pub async fn generate_document(
     document_from_path(&path)
 }
 
-/// Opens the OS folder picker. Runs on the main thread (sync command).
 #[tauri::command]
 #[specta::specta]
-pub fn pick_documents_folder(app: tauri::AppHandle) -> Option<String> {
-    use tauri_plugin_dialog::DialogExt;
-    let picked = app.dialog().file().blocking_pick_folder()?;
-    picked
-        .into_path()
-        .ok()
-        .map(|p| p.to_string_lossy().into_owned())
-}
-
-/// Saves the documents folder setting. When `move_documents` is true and the
-/// old folder still has documents, its contents are moved into the new one.
-#[tauri::command]
-#[specta::specta]
-pub async fn update_documents_dir(
+pub async fn download_work_order_document(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
-    path: String,
-    move_documents: bool,
-) -> AppResult<String> {
-    let new_dir = PathBuf::from(path.trim());
-    if new_dir.as_os_str().is_empty() || !new_dir.is_absolute() {
-        return Err(AppError::validation(
-            "Вкажіть правильний абсолютний шлях до теки документів",
-        ));
-    }
+    work_order_id: String,
+    file_name: String,
+) -> AppResult<Option<String>> {
+    let source = resolve_document_path(&state, &work_order_id, &file_name)?;
 
-    let old_dir = resolve_documents_dir(&state).await?;
-    let new_dir = if new_dir == old_dir {
-        old_dir.clone()
-    } else {
-        new_dir
+    let suggested = file_name.clone();
+    let extension = Path::new(&file_name)
+        .extension()
+        .map(|e| e.to_string_lossy().into_owned());
+    let chosen = tauri::async_runtime::spawn_blocking(move || {
+        use tauri_plugin_dialog::DialogExt;
+
+        let mut builder = app
+            .dialog()
+            .file()
+            .set_title("Зберегти документ")
+            .set_file_name(&suggested);
+        if let Some(extension) = extension.as_deref() {
+            let label = extension.to_uppercase();
+            builder = builder.add_filter(&label, &[extension]);
+        }
+
+        builder
+            .blocking_save_file()
+            .and_then(|file| file.into_path().ok())
+    })
+    .await
+    .map_err(|e| AppError::Generic(format!("Не вдалося відкрити вікно збереження: {e}")))?;
+
+    let Some(destination) = chosen else {
+        return Ok(None);
     };
 
-    fs::create_dir_all(&new_dir).map_err(|e| {
+    fs::copy(&source, &destination).map_err(|e| {
         AppError::Generic(format!(
-            "Не вдалося створити теку {}: {e}",
-            new_dir.display()
+            "Не вдалося зберегти файл {}: {e}",
+            destination.display()
         ))
     })?;
 
-    if move_documents && old_dir != new_dir && old_dir.exists() {
-        for entry in fs::read_dir(&old_dir).map_err(|e| {
-            AppError::Generic(format!(
-                "Не вдалося прочитати теку {}: {e}",
-                old_dir.display()
-            ))
-        })? {
-            let entry = entry.map_err(|e| {
-                AppError::Generic(format!(
-                    "Не вдалося прочитати теку {}: {e}",
-                    old_dir.display()
-                ))
-            })?;
-            let source = entry.path();
-            let mut destination = new_dir.join(entry.file_name());
-            if destination.exists() {
-                destination = next_free_path(&destination);
-            }
-            fs::rename(&source, &destination).map_err(|e| {
-                AppError::Generic(format!(
-                    "Не вдалося перенести {} у {}: {e}",
-                    source.display(),
-                    destination.display()
-                ))
-            })?;
-        }
-        // Remove old folder if empty
-        let _ = fs::remove_dir(&old_dir);
-    }
+    log::info!(
+        "Документ {} збережено до {}",
+        source.display(),
+        destination.display()
+    );
 
-    let saved: String = sqlx::query_scalar(
-        "UPDATE app_settings SET documents_dir = $1 WHERE id = 1 RETURNING documents_dir",
-    )
-    .bind(new_dir.to_string_lossy().into_owned())
-    .fetch_one(&state.db_pool)
-    .await?;
+    Ok(Some(destination.to_string_lossy().into_owned()))
+}
 
-    Ok(saved)
+#[tauri::command]
+#[specta::specta]
+pub async fn delete_work_order_document(
+    state: State<'_, AppState>,
+    work_order_id: String,
+    file_name: String,
+) -> AppResult<()> {
+    let path = resolve_document_path(&state, &work_order_id, &file_name)?;
+
+    fs::remove_file(&path).map_err(|e| {
+        AppError::Generic(format!("Не вдалося видалити файл {}: {e}", path.display()))
+    })?;
+
+    log::info!("Документ {} видалено", path.display());
+
+    Ok(())
 }
