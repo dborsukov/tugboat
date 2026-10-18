@@ -287,4 +287,5 @@ export function createRestoreExpenseCategoryMutation(queryClient: QueryClient) {
 
 export function invalidateExpenseCategoryLists(queryClient: QueryClient) {
   queryClient.invalidateQueries({ queryKey: keys.expenseCategories.list() });
+  queryClient.invalidateQueries({ queryKey: keys.dashboard.all });
 }

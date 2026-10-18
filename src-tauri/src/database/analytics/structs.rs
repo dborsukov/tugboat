@@ -2,6 +2,8 @@ use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
+use crate::database::expenses::structs::ExpenseCategoryColor;
+
 /// A half open time window: `from` is inclusive, `to` is exclusive
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
@@ -200,4 +202,51 @@ pub struct MarginService {
     pub income: Decimal,
     #[specta(type = specta_typescript::Number)]
     pub margin_percent: f64,
+}
+
+/// A closed range of calendar days, both ends included, as `YYYY-MM-DD` text.
+/// Expenses are booked on a day rather than at an instant, so a month of them is a
+/// span of days. Orders are counted by the clock instead, which is why the analytics
+/// commands take an [`AnalyticsPeriod`] and only the expenses take this.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct DaySpan {
+    pub from: String,
+    pub to: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ExpenseSummary {
+    /// Everything booked in the month, net of VAT.
+    pub total: Decimal,
+    /// The month before.
+    pub previous_total: Decimal,
+    /// The categories of the month, biggest first.
+    pub categories: Vec<ExpenseCategorySummary>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ExpenseCategorySummary {
+    pub name: String,
+    pub color: ExpenseCategoryColor,
+    /// Everything the month booked in this category, net of VAT.
+    pub amount: Decimal,
+    /// How many expenses the amount is made of.
+    pub count: i32,
+    /// Share of the month's expenses, in percent.
+    #[specta(type = specta_typescript::Number)]
+    pub share: f64,
+    /// The newest expense of the category.
+    pub latest_expense: ExpenseEntrySummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ExpenseEntrySummary {
+    /// The day it was booked on.
+    pub date: String,
+    pub description: String,
+    pub amount: Decimal,
 }

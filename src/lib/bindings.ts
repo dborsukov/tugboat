@@ -173,6 +173,8 @@ export const commands = {
 	fetchVatPeriods: () => typedError<VatPeriod[], AppError>(__TAURI_INVOKE("fetch_vat_periods")),
 	closeVatPeriod: (month: string, note: string | null) => typedError<VatPeriod, AppError>(__TAURI_INVOKE("close_vat_period", { month, note })),
 	reopenVatPeriod: (month: string) => typedError<null, AppError>(__TAURI_INVOKE("reopen_vat_period", { month })),
+	/**  A month of expenses, and the month before it. */
+	fetchExpenseSummary: (month: DaySpan, previousMonth: DaySpan) => typedError<ExpenseSummary, AppError>(__TAURI_INVOKE("fetch_expense_summary", { month, previousMonth })),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
 	/**
 	 *  Shows the main window, restores its geometry, and drops the splash screen.
@@ -593,6 +595,17 @@ export type DateRange = {
 	to: string,
 };
 
+/**
+ *  A closed range of calendar days, both ends included, as `YYYY-MM-DD` text.
+ *  Expenses are booked on a day rather than at an instant, so a month of them is a
+ *  span of days. Orders are counted by the clock instead, which is why the analytics
+ *  commands take an [`AnalyticsPeriod`] and only the expenses take this.
+ */
+export type DaySpan = {
+	from: string,
+	to: string,
+};
+
 export type DiscountType = "None" | "Fixed" | "Percentage";
 
 export type DocumentFormat = "pdf" | "xlsx";
@@ -635,6 +648,35 @@ export type ExpenseCategoryRef = {
 	id: number,
 	name: string,
 	color: ExpenseCategoryColor,
+};
+
+export type ExpenseCategorySummary = {
+	name: string,
+	color: ExpenseCategoryColor,
+	/**  Everything the month booked in this category, net of VAT. */
+	amount: string,
+	/**  How many expenses the amount is made of. */
+	count: number,
+	/**  Share of the month's expenses, in percent. */
+	share: number,
+	/**  The newest expense of the category. */
+	latestExpense: ExpenseEntrySummary,
+};
+
+export type ExpenseEntrySummary = {
+	/**  The day it was booked on. */
+	date: string,
+	description: string,
+	amount: string,
+};
+
+export type ExpenseSummary = {
+	/**  Everything booked in the month, net of VAT. */
+	total: string,
+	/**  The month before. */
+	previousTotal: string,
+	/**  The categories of the month, biggest first. */
+	categories: ExpenseCategorySummary[],
 };
 
 export type FuelType = "Gasoline" | "Diesel" | "LpgCng" | "Hybrid" | "Electric";

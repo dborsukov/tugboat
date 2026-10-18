@@ -55,3 +55,10 @@ export function formatCurrencyNumber(
 export function formatOrders(count: number): string {
   return `${count} ${pluralizeUk(count, ["замовлення", "замовлення", "замовлень"])}`;
 }
+
+/** "16.10" — the day and the month a `YYYY-MM-DD` date is booked on. */
+export function formatDayMonth(date: string): string {
+  const [, month, day] = date.split("-");
+
+  return day && month ? `${day}.${month}` : date;
+}

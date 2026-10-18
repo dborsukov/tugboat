@@ -166,6 +166,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         database::vat::fetch_vat_periods,
         database::vat::close_vat_period,
         database::vat::reopen_vat_period,
+        database::analytics::fetch_expense_summary,
         utils::get_app_version,
         window_geometry::reveal_window
     ])

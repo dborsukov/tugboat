@@ -1,4 +1,4 @@
-import type { AnalyticsPeriod, DateRange } from "$lib/bindings";
+import type { AnalyticsPeriod, DateRange, DaySpan } from "$lib/bindings";
 
 const FALLBACK_TIMEZONE = "Europe/Kiev";
 
@@ -176,6 +176,15 @@ export function previousMonth(month: CalendarMonth): CalendarMonth {
   // A month of zero or less normalizes back into the year before.
   const date = new Date(Date.UTC(month.year, month.month - 2, 1));
   return { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1 };
+}
+
+/** First and last day of a month as `YYYY-MM-DD`. */
+export function monthDays(month: CalendarMonth): DaySpan {
+  const year = month.year;
+  const number = String(month.month).padStart(2, "0");
+  const last = String(daysInMonth(month)).padStart(2, "0");
+
+  return { from: `${year}-${number}-01`, to: `${year}-${number}-${last}` };
 }
 
 export function elapsedDays(

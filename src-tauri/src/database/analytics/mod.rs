@@ -19,6 +19,7 @@ use crate::{
     database::{
         cars::structs::car_display_name,
         clients::structs::{client_display_name, ClientType},
+        expenses::structs::{Expense, ExpenseCategoryColor},
         work_orders::{
             self,
             dtos::{LaborItemDto, PartItemDto, WorkOrderTotals},
@@ -1047,4 +1048,135 @@ pub async fn fetch_margin_services(
     services.truncate(MARGIN_SERVICES_MAX);
 
     Ok(services)
+}
+
+// Expenses
+
+const UNCATEGORIZED: &str = "Без категорії";
+
+async fn expenses_in_days(
+    state: &State<'_, crate::AppState>,
+    days: DaySpan,
+) -> AppResult<Vec<Expense>> {
+    let expenses: Vec<Expense> = sqlx::query_as(&format!(
+        "{} WHERE e.archived_at IS NULL AND e.date >= ? AND e.date <= ?
+         ORDER BY e.date, e.id",
+        crate::database::expenses::EXPENSE_SELECT
+    ))
+    .bind(days.from)
+    .bind(days.to)
+    .fetch_all(&state.db_pool)
+    .await?;
+
+    Ok(expenses)
+}
+
+/// What one expense took off the month, net of VAT.
+fn net_expense(expense: &Expense) -> Decimal {
+    pricing::net_kept_amount(expense.amount, expense.vat_rate, expense.price_includes_vat)
+}
+
+fn share_of(amount: Decimal, whole: Decimal) -> f64 {
+    if whole.is_zero() {
+        return 0.0;
+    }
+
+    ((amount / whole) * Decimal::ONE_HUNDRED)
+        .to_f64()
+        .unwrap_or(0.0)
+}
+
+/// Folds a month's expenses into its total and the categories a tile draws.
+fn fold_expenses(expenses: &[Expense]) -> (Decimal, Vec<ExpenseCategorySummary>) {
+    struct CategoryFigures {
+        color: ExpenseCategoryColor,
+        amount: Decimal,
+        count: i32,
+        latest: ExpenseEntrySummary,
+    }
+
+    let mut total = Decimal::ZERO;
+    let mut by_category: Vec<(Option<i64>, String, CategoryFigures)> = Vec::new();
+
+    for expense in expenses {
+        let amount = net_expense(expense);
+        total += amount;
+
+        let category = expense.category.as_ref();
+        let id = category.map(|category| category.id);
+        let name = category
+            .map(|category| category.name.trim().to_string())
+            .filter(|name| !name.is_empty())
+            .unwrap_or_else(|| UNCATEGORIZED.to_string());
+        let color = category.map(|category| category.color).unwrap_or_default();
+
+        let entry = ExpenseEntrySummary {
+            date: expense.date.clone(),
+            description: expense.description.trim().to_string(),
+            amount,
+        };
+
+        // The expenses arrive oldest first, so the last one is the newest.
+        match by_category.iter().position(|(known, _, _)| *known == id) {
+            Some(index) => {
+                let figures = &mut by_category[index].2;
+                figures.amount += amount;
+                figures.count += 1;
+                figures.latest = entry;
+            }
+            None => by_category.push((
+                id,
+                name,
+                CategoryFigures {
+                    color,
+                    amount,
+                    count: 1,
+                    latest: entry,
+                },
+            )),
+        }
+    }
+
+    let mut categories: Vec<ExpenseCategorySummary> = by_category
+        .into_iter()
+        .map(|(_, name, figures)| ExpenseCategorySummary {
+            name,
+            color: figures.color,
+            amount: figures.amount,
+            count: figures.count,
+            share: share_of(figures.amount, total),
+            latest_expense: figures.latest,
+        })
+        .collect();
+
+    // Biggest first, the name breaks a tie.
+    categories.sort_by(|left, right| {
+        right
+            .amount
+            .cmp(&left.amount)
+            .then_with(|| left.name.cmp(&right.name))
+    });
+
+    (total, categories)
+}
+
+/// A month of expenses, and the month before it.
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_expense_summary(
+    state: State<'_, crate::AppState>,
+    month: DaySpan,
+    previous_month: DaySpan,
+) -> AppResult<ExpenseSummary> {
+    let expenses = expenses_in_days(&state, month).await?;
+    let (total, categories) = fold_expenses(&expenses);
+
+    let previous = expenses_in_days(&state, previous_month).await?;
+    let previous_total = previous.iter().map(net_expense).sum();
+
+    Ok(ExpenseSummary {
+        total,
+        previous_total,
+        categories,
+    })
 }

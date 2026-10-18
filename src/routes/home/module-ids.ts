@@ -10,3 +10,4 @@ export const VAT_DUE_ID = "vat-due";
 export const GROSS_INCOME_ID = "gross-income";
 export const TOP_SERVICES_ID = "top-services";
 export const CLIENT_MIX_ID = "client-mix";
+export const FINANCIAL_RESULT_ID = "financial-result";

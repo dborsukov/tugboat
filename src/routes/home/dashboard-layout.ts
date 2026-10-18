@@ -59,7 +59,7 @@ export function resolveLayout(
       module,
       slot: slotOf(module, stored),
       hidden: stored?.hidden ?? module.hiddenByDefault ?? false,
-      position: stored?.position ?? null,
+      position: stored?.position ?? module.defaultPosition ?? null,
       settings: resolveSettings(module, storedSettings(saved, module.id)),
     };
   });

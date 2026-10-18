@@ -5,6 +5,8 @@ import type {
   ClientMix,
   ClientMixList,
   DashboardLayout,
+  DaySpan,
+  ExpenseSummary,
   InProgressBalance,
   MarginOptions,
   MarginService,
@@ -21,7 +23,7 @@ import { createSettingsFieldMutation } from "$lib/states/settings.svelte";
 import { unwrap } from "$lib/tools";
 
 import { booleanSetting } from "./dashboard-layout";
-import { timeZoneOffsetMinutes } from "./period";
+import { monthDays, previousMonth, timeZoneOffsetMinutes } from "./period";
 import { dashboardPeriod } from "./state.svelte";
 
 const STALE_TIME = 30_000;
@@ -188,6 +190,28 @@ export function createMarginServicesQuery(
     ...marginServicesQueryOptions(currentPeriod(), marginOptions(id)),
     enabled: enabled(),
   }));
+}
+
+function currentExpenseMonths(): { month: DaySpan; previous: DaySpan } {
+  const month = dashboardPeriod.anchor;
+
+  return { month: monthDays(month), previous: monthDays(previousMonth(month)) };
+}
+
+export function expenseSummaryQueryOptions(month: DaySpan, previous: DaySpan) {
+  return moduleOptions(
+    "expense-summary",
+    () => unwrap(commands.fetchExpenseSummary(month, previous)),
+    { month, previous },
+  );
+}
+
+export function createExpenseSummaryQuery() {
+  return createQuery<ExpenseSummary>(() => {
+    const { month, previous } = currentExpenseMonths();
+
+    return expenseSummaryQueryOptions(month, previous);
+  });
 }
 
 export function createDashboardLayoutMutation(queryClient: QueryClient) {

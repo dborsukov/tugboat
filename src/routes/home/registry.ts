@@ -1,9 +1,14 @@
 import type { Component } from "svelte";
 
-import type { DashboardModuleHeight, DashboardModuleSize } from "$lib/bindings";
+import type {
+  DashboardModuleHeight,
+  DashboardModuleSize,
+  DashboardPosition,
+} from "$lib/bindings";
 
 import {
   CLIENT_MIX_ID,
+  FINANCIAL_RESULT_ID,
   GROSS_INCOME_ID,
   IN_PROGRESS_ID,
   OUTSTANDING_ID,
@@ -12,6 +17,7 @@ import {
   VAT_DUE_ID,
 } from "./module-ids";
 import ClientMix from "./modules/client-mix.svelte";
+import FinancialResult from "./modules/financial-result.svelte";
 import GrossIncome from "./modules/gross-income.svelte";
 import InProgress from "./modules/in-progress.svelte";
 import Outstanding from "./modules/outstanding.svelte";
@@ -62,6 +68,11 @@ export type DashboardModule = {
   settings?: readonly DashboardModuleSetting[];
   /** Whether the module ships switched off */
   hiddenByDefault?: boolean;
+  /**
+   * Where the module sits in the arrangement the dashboard ships with.
+   * A module with neither a saved position nor one of these takes the first free cell instead.
+   */
+  defaultPosition?: DashboardPosition;
 };
 
 /** Every combination of the widths and heights a module was laid out for. */
@@ -106,6 +117,7 @@ export const dashboardModules: DashboardModule[] = [
       "half",
       "two",
     ),
+    defaultPosition: { col: 0, row: 0 },
     minWidth: 150,
     settings: [
       {
@@ -129,6 +141,7 @@ export const dashboardModules: DashboardModule[] = [
       "half",
       "two",
     ),
+    defaultPosition: { col: 6, row: 0 },
     minWidth: 150,
     settings: [
       {
@@ -150,6 +163,7 @@ export const dashboardModules: DashboardModule[] = [
       "sixth",
       "one",
     ),
+    defaultPosition: { col: 0, row: 2 },
     minWidth: 120,
   },
   {
@@ -161,6 +175,7 @@ export const dashboardModules: DashboardModule[] = [
       "sixth",
       "one",
     ),
+    defaultPosition: { col: 2, row: 2 },
     minWidth: 120,
   },
   {
@@ -186,9 +201,10 @@ export const dashboardModules: DashboardModule[] = [
         ...sizeSlots(["third"], ["one"]),
         ...sizeSlots(["half", "twoThirds", "full"], ["one", "two", "three"]),
       ],
-      "twoThirds",
-      "three",
+      "half",
+      "two",
     ),
+    defaultPosition: { col: 0, row: 3 },
     minWidth: 256,
     settings: [
       {
@@ -213,10 +229,27 @@ export const dashboardModules: DashboardModule[] = [
           ["one", "two", "three"],
         ),
       ],
-      "third",
-      "two",
+      "sixth",
+      "one",
     ),
-    minWidth: 224,
+    defaultPosition: { col: 4, row: 2 },
+    minWidth: 150,
+  },
+  {
+    id: FINANCIAL_RESULT_ID,
+    title: "Фінансовий результат цього місяця",
+    component: FinancialResult,
+    slots: startingAt(
+      [
+        ...sizeSlots(["sixth", "third"], ["one", "two", "three"]),
+        ...sizeSlots(["half"], ["two", "three"]),
+        ...sizeSlots(["twoThirds", "full"], ["two", "three"]),
+      ],
+      "half",
+      "three",
+    ),
+    defaultPosition: { col: 6, row: 2 },
+    minWidth: 140,
   },
 ];
 
