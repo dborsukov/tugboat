@@ -16,10 +16,7 @@
   import DateTimePicker from "$lib/components/date-time-picker.svelte";
 
   import {
-    commands,
     type ClientType,
-    type DocumentConflictAction,
-    type DocumentFormat,
     type DocumentKind,
     type GenerateDocumentOptions,
     type WorkOrder,
@@ -27,25 +24,28 @@
   } from "$lib/bindings";
   import { pibInitials } from "$lib/names";
   import { settingsState } from "$lib/states/settings.svelte";
-  import { unwrap } from "$lib/tools";
 
   import { createClientDetailsQuery } from "../../clients/queries";
   import { workerFullName, workerShortName } from "../../workers/labels";
   import { createWorkersQuery } from "../../workers/queries";
   import WorkerOption from "../../workers/worker-option.svelte";
-  import { createGenerateDocumentMutation } from "../queries";
+  import {
+    createGenerateDocumentMutation,
+    createOpenWorkOrderDocumentMutation,
+  } from "../queries";
 
   let {
     workOrderId,
     workOrderDetails,
     kind,
-    format,
+    /** Choices of the version the dialog was opened from, if it's an update. */
+    seed = null,
     open = $bindable(false),
   }: {
     workOrderId: string;
     workOrderDetails: WorkOrderDetailsDto | undefined;
     kind: DocumentKind;
-    format: DocumentFormat;
+    seed?: GenerateDocumentOptions | null;
     open: boolean;
   } = $props();
 
@@ -53,6 +53,7 @@
 
   const queryClient = useQueryClient();
   const generateDocumentMutation = createGenerateDocumentMutation(queryClient);
+  const openDocumentMutation = createOpenWorkOrderDocumentMutation(queryClient);
 
   const workersQuery = createWorkersQuery();
 
@@ -79,7 +80,6 @@
 
   let error = $state<string | null>(null);
 
-  let isConflictOpen = $state(false);
   let generating = $state(false);
 
   const performerWorker = $derived(
@@ -147,21 +147,37 @@
   $effect(() => {
     if (open) {
       error = null;
-      isConflictOpen = false;
       generating = false;
 
       const wo = workOrderDetails?.workOrder;
-      performerWorkerId = workOrderDetails?.worker?.id ?? wo?.workerId ?? null;
-      skipPerformerSignature = false;
-      skipCustomerSignature = false;
-      receivedAt = toLocalDateTimeValue(wo?.createdAt);
-      plannedCompletionAt = toLocalDateTimeValue(plannedDefaultIso());
-      skipDate = false;
-      location = settingsState.settings?.companyInfo?.physicalAddress ?? "";
-      completedAt = toLocalDateValue(new Date().toISOString());
-      skipLocation = false;
-      odometerOut = String(wo?.odometerOut ?? wo?.odometerIn ?? 0);
-      additionalRecommendations = "";
+      const previous = seed;
+      performerWorkerId =
+        previous?.performerWorkerId ??
+        workOrderDetails?.worker?.id ??
+        wo?.workerId ??
+        null;
+      skipPerformerSignature = previous?.skipPerformerSignature ?? false;
+      skipCustomerSignature = previous?.skipCustomerSignature ?? false;
+      receivedAt = toLocalDateTimeValue(
+        previous ? previous.receivedAt : wo?.createdAt,
+      );
+      plannedCompletionAt = toLocalDateTimeValue(
+        previous ? previous.plannedCompletionAt : plannedDefaultIso(),
+      );
+      skipDate = previous?.skipDate ?? false;
+      location =
+        previous?.location ??
+        settingsState.settings?.companyInfo?.physicalAddress ??
+        "";
+      completedAt = toLocalDateValue(
+        previous ? previous.completedAt : new Date().toISOString(),
+      );
+      skipLocation = previous?.skipLocation ?? false;
+      odometerOut =
+        previous?.odometerOut != null
+          ? String(previous.odometerOut)
+          : String(wo?.odometerOut ?? wo?.odometerIn ?? 0);
+      additionalRecommendations = previous?.additionalRecommendations ?? "";
     }
   });
 
@@ -214,54 +230,45 @@
     };
   }
 
-  async function submit(conflict: DocumentConflictAction) {
+  async function submit() {
     const validationError = validate();
     if (validationError) {
       error = validationError;
       return;
     }
     error = null;
-    isConflictOpen = false;
     generating = true;
     try {
-      const document = await generateDocumentMutation.mutateAsync({
+      const outcome = await generateDocumentMutation.mutateAsync({
         workOrderId,
         kind,
-        format,
         options: buildOptions(),
-        conflict,
       });
-      toast.success("Документ збережено", {
-        description: document.name,
-        position: "bottom-left",
-      });
+      const description = `${isNaryad ? "Наряд-замовлення" : "Акт виконаних робіт"} ${workOrderId}`;
+      if (outcome.created) {
+        toast.success("Документ створено", {
+          description,
+          position: "bottom-left",
+          action: {
+            label: "Відкрити",
+            onClick: () =>
+              openDocumentMutation.mutate({
+                id: outcome.version.id,
+                format: "pdf",
+              }),
+          },
+        });
+      } else {
+        toast.info("Дані не змінились, документ актуальний", {
+          description,
+          position: "bottom-left",
+        });
+      }
       open = false;
     } catch {
       // Mutation layer shows the error toast.
     } finally {
       generating = false;
-    }
-  }
-
-  async function handleGenerate() {
-    const validationError = validate();
-    if (validationError) {
-      error = validationError;
-      return;
-    }
-    error = null;
-
-    try {
-      const existing = await unwrap(
-        commands.documentTargetPath(workOrderId, kind, format),
-      );
-      if (existing) {
-        isConflictOpen = true;
-        return;
-      }
-      await submit("replace");
-    } catch {
-      // Error toast is shown by the mutation layer on submit failure.
     }
   }
 </script>
@@ -295,11 +302,10 @@
   <Dialog.Content class="gap-4">
     <Dialog.Header>
       <Dialog.Title>
-        {isNaryad ? "Наряд-замовлення" : "Акт виконаних робіт"} —{" "}
-        {format.toUpperCase()}
+        {isNaryad ? "Наряд-замовлення" : "Акт виконаних робіт"}
       </Dialog.Title>
       <Dialog.Description>
-        Вкажіть додаткові дані для документа {workOrderId}.
+        Вкажіть дані для документа {workOrderId}.
       </Dialog.Description>
     </Dialog.Header>
 
@@ -451,33 +457,12 @@
       >
         Відмінити
       </Button>
-      <Button onclick={handleGenerate} disabled={generating}>
+      <Button onclick={submit} disabled={generating}>
         {#if generating}
           <Spinner class="size-4" />
         {/if}
-        Згенерувати
+        Створити
       </Button>
-    </Dialog.Footer>
-  </Dialog.Content>
-</Dialog.Root>
-
-<Dialog.Root bind:open={isConflictOpen}>
-  <Dialog.Content class="sm:max-w-sm">
-    <Dialog.Header>
-      <Dialog.Title>Файл уже існує</Dialog.Title>
-      <Dialog.Description>
-        Документ із таким іменем уже збережено. Замінити наявний файл або
-        зберегти поруч під новим іменем?
-      </Dialog.Description>
-    </Dialog.Header>
-    <Dialog.Footer>
-      <Button variant="outline" onclick={() => (isConflictOpen = false)}>
-        Скасувати
-      </Button>
-      <Button variant="outline" onclick={() => submit("rename")}>
-        Перейменувати
-      </Button>
-      <Button onclick={() => submit("replace")}>Замінити</Button>
     </Dialog.Footer>
   </Dialog.Content>
 </Dialog.Root>

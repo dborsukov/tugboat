@@ -617,27 +617,6 @@ fn with_file_details(report: Report, path: &Path, is_stale: bool) -> Report {
     }
 }
 
-// Suggested default file name for a file picker
-fn suggested_file_name(proposed: &str, fallback: &str) -> String {
-    let cleaned: String = proposed
-        .chars()
-        .map(|character| match character {
-            // Invalid characters
-            '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '-',
-            character if character.is_control() => '-',
-            character => character,
-        })
-        .collect();
-
-    // More invalid characters
-    let trimmed = cleaned.trim().trim_end_matches(['.', ' ']);
-    if trimmed.is_empty() {
-        fallback.to_string()
-    } else {
-        trimmed.to_string()
-    }
-}
-
 /// Copies a report out of the reports folder to user selected location,
 /// keeping the original generated file in its original folder.
 #[tauri::command]
@@ -665,7 +644,7 @@ pub async fn download_report(
         ));
     }
 
-    let suggested = suggested_file_name(&file_name, &row.report.file_name);
+    let suggested = crate::utils::suggested_file_name(&file_name, &row.report.file_name);
 
     let chosen = tauri::async_runtime::spawn_blocking(move || {
         use tauri_plugin_dialog::DialogExt;

@@ -7,7 +7,6 @@
   import ArchiveRestoreIcon from "@lucide/svelte/icons/archive-restore";
   import EllipsisIcon from "@lucide/svelte/icons/ellipsis-vertical";
   import FileCheckIcon from "@lucide/svelte/icons/file-check-2";
-  import FileDownIcon from "@lucide/svelte/icons/file-down";
   import FileTextIcon from "@lucide/svelte/icons/file-text";
   import ShieldIcon from "@lucide/svelte/icons/shield-check";
   import EditIcon from "@lucide/svelte/icons/square-pen";
@@ -19,7 +18,6 @@
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
 
   import type {
-    DocumentFormat,
     DocumentKind,
     WorkOrderDeleteImpact,
     WorkOrderType,
@@ -48,7 +46,7 @@
     odometerIn?: number;
     isLocked?: boolean;
     isArchived?: boolean;
-    onGenerate: (kind: DocumentKind, format: DocumentFormat) => void;
+    onGenerate: (kind: DocumentKind) => void;
   } = $props();
   let isSheetOpen = $state(false);
   let isDeleteDialogOpen = $state(false);
@@ -118,29 +116,6 @@
   }
 </script>
 
-{#snippet documentSubmenu(
-  kind: DocumentKind,
-  title: string,
-  Icon: typeof FileTextIcon,
-)}
-  <DropdownMenu.Sub>
-    <DropdownMenu.SubTrigger>
-      <Icon />
-      {title}
-    </DropdownMenu.SubTrigger>
-    <DropdownMenu.SubContent class="w-max whitespace-nowrap">
-      <DropdownMenu.Item onclick={() => onGenerate(kind, "pdf")}>
-        <FileDownIcon />
-        PDF
-      </DropdownMenu.Item>
-      <DropdownMenu.Item onclick={() => onGenerate(kind, "xlsx")}>
-        <FileDownIcon />
-        XLSX
-      </DropdownMenu.Item>
-    </DropdownMenu.SubContent>
-  </DropdownMenu.Sub>
-{/snippet}
-
 <DropdownMenu.Root>
   <DropdownMenu.Trigger
     class={buttonVariants({ variant: "ghost", size: "icon-lg" })}
@@ -167,17 +142,15 @@
           Редагувати
         </DropdownMenu.Item>
         <DropdownMenu.Separator />
-        <DropdownMenu.Label>Документи</DropdownMenu.Label>
-        {@render documentSubmenu(
-          "naryad_zamovlennya",
-          "Наряд-замовлення",
-          FileTextIcon,
-        )}
-        {@render documentSubmenu(
-          "akt_vykonanykh_robit",
-          "Акт виконаних робіт",
-          FileCheckIcon,
-        )}
+        <DropdownMenu.Label>Створити документ</DropdownMenu.Label>
+        <DropdownMenu.Item onclick={() => onGenerate("naryad_zamovlennya")}>
+          <FileTextIcon />
+          Наряд-замовлення
+        </DropdownMenu.Item>
+        <DropdownMenu.Item onclick={() => onGenerate("akt_vykonanykh_robit")}>
+          <FileCheckIcon />
+          Акт виконаних робіт
+        </DropdownMenu.Item>
         {#if type === "Regular"}
           <DropdownMenu.Separator />
           <DropdownMenu.Item onSelect={() => (isWarrantyCreateOpen = true)}>

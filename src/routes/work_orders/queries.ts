@@ -11,7 +11,6 @@ import type {
   CreatePartItemPayload,
   CreateWorkOrderPayload,
   DiscountType,
-  DocumentConflictAction,
   DocumentFormat,
   DocumentKind,
   GenerateDocumentOptions,
@@ -612,17 +611,13 @@ export function createGenerateDocumentMutation(queryClient: QueryClient) {
       mutationFn: (variables: {
         workOrderId: string;
         kind: DocumentKind;
-        format: DocumentFormat;
         options: GenerateDocumentOptions;
-        conflict: DocumentConflictAction;
       }) =>
         unwrap(
           commands.generateDocument(
             variables.workOrderId,
             variables.kind,
-            variables.format,
             variables.options,
-            variables.conflict,
           ),
         ),
       onSuccess: () => {
@@ -634,41 +629,34 @@ export function createGenerateDocumentMutation(queryClient: QueryClient) {
   );
 }
 
-export function createDownloadWorkOrderDocumentMutation(
-  queryClient: QueryClient,
-) {
+export function createOpenWorkOrderDocumentMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
-      mutationFn: (variables: { workOrderId: string; fileName: string }) =>
-        unwrap(
-          commands.downloadWorkOrderDocument(
-            variables.workOrderId,
-            variables.fileName,
-          ),
-        ),
+      mutationFn: (variables: { id: number; format: DocumentFormat }) =>
+        unwrap(commands.openWorkOrderDocument(variables.id, variables.format)),
       onError: showMutationErrorToast,
     }),
     () => queryClient,
   );
 }
 
-export function createDeleteWorkOrderDocumentMutation(
+export function createDownloadWorkOrderDocumentMutation(
   queryClient: QueryClient,
 ) {
   return createMutation(
     () => ({
-      mutationFn: (variables: { workOrderId: string; fileName: string }) =>
+      mutationFn: (variables: {
+        id: number;
+        format: DocumentFormat;
+        fileName: string;
+      }) =>
         unwrap(
-          commands.deleteWorkOrderDocument(
-            variables.workOrderId,
+          commands.downloadWorkOrderDocument(
+            variables.id,
+            variables.format,
             variables.fileName,
           ),
         ),
-      onSuccess: (_result, variables) => {
-        queryClient.invalidateQueries({
-          queryKey: keys.workOrders.documents(variables.workOrderId),
-        });
-      },
       onError: showMutationErrorToast,
     }),
     () => queryClient,

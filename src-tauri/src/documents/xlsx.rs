@@ -325,6 +325,6 @@ pub fn render(data: &DocumentData) -> AppResult<Vec<u8>> {
 
     let buffer: Vec<u8> = workbook
         .save_to_buffer()
-        .map_err(|e| AppError::Generic(format!("Не вдалося згенерувати XLSX: {e}")))?;
+        .map_err(|e| AppError::Generic(format!("Не вдалося створити XLSX: {e}")))?;
     Ok(buffer)
 }

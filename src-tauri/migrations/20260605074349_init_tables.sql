@@ -208,6 +208,20 @@ CREATE TABLE work_order_sequences (
     counter INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE work_order_document_versions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    work_order_id TEXT NOT NULL,
+    document_kind TEXT NOT NULL CHECK (
+        document_kind IN ('naryad_zamovlennya', 'akt_vykonanykh_robit')
+    ),
+    pdf_path TEXT NOT NULL,
+    xlsx_path TEXT NOT NULL,
+    source_hash TEXT NOT NULL,
+    options TEXT NOT NULL,
+    generated_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE
+);
+
 CREATE TABLE reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     report_type TEXT NOT NULL CHECK (report_type IN ('financial', 'vat')),
@@ -382,6 +396,8 @@ CREATE INDEX idx_labor_items_work_order_position ON labor_items (work_order_id, 
 CREATE INDEX idx_part_items_work_order_id ON part_items (work_order_id);
 
 CREATE INDEX idx_part_items_work_order_position ON part_items (work_order_id, position);
+
+CREATE INDEX idx_work_order_document_versions_document ON work_order_document_versions (work_order_id, document_kind, generated_at);
 
 CREATE INDEX idx_reports_type_period ON reports (report_type, period_start, period_end);
 

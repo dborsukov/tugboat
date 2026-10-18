@@ -24,8 +24,8 @@
 
   import type {
     DiscountType,
-    DocumentFormat,
     DocumentKind,
+    GenerateDocumentOptions,
     LaborItemDto,
     PartItemDto,
     PartStatus,
@@ -79,12 +79,16 @@
 
   let generateRequest = $state<{
     kind: DocumentKind;
-    format: DocumentFormat;
+    /** Choices of the version being updated, when it is an update. */
+    seed: GenerateDocumentOptions | null;
   } | null>(null);
   let isGenerateDialogOpen = $state(false);
 
-  function openGenerate(kind: DocumentKind, format: DocumentFormat) {
-    generateRequest = { kind, format };
+  function openGenerate(
+    kind: DocumentKind,
+    seed: GenerateDocumentOptions | null = null,
+  ) {
+    generateRequest = { kind, seed };
     isGenerateDialogOpen = true;
   }
 
@@ -920,14 +924,18 @@
       />
     </div>
 
-    <DocumentsSection workOrderId={params.workorderId} />
+    <DocumentsSection
+      workOrderId={params.workorderId}
+      canGenerate={!isArchived}
+      onGenerate={openGenerate}
+    />
 
     {#if generateRequest}
       <DocumentGenerateDialog
         workOrderId={params.workorderId}
         {workOrderDetails}
         kind={generateRequest.kind}
-        format={generateRequest.format}
+        seed={generateRequest.seed}
         bind:open={isGenerateDialogOpen}
       />
     {/if}

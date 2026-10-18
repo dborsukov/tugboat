@@ -46,4 +46,5 @@ typst-pdf = "0.15.1"
 tauri-build = { version = "2", features = [] }
 
 [dev-dependencies]
+tauri = { version = "2", features = ["test"] }
 typst-render = "0.15.1"

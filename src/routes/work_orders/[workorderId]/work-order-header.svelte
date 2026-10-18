@@ -29,7 +29,6 @@
   import type {
     Client,
     ClientListItem,
-    DocumentFormat,
     DocumentKind,
     WorkOrderDetailsDto,
   } from "$lib/bindings";
@@ -57,7 +56,7 @@
     isArchived?: boolean;
     isLocked?: boolean;
     clients?: ClientListItem[];
-    onGenerate: (kind: DocumentKind, format: DocumentFormat) => void;
+    onGenerate: (kind: DocumentKind) => void;
     class?: string;
   } = $props();
 

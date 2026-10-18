@@ -18,7 +18,21 @@ use crate::{
     error::{AppError, AppResult},
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Serialize,
+    Deserialize,
+    sqlx::Type,
+    specta::Type,
+)]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum DocumentKind {
     NaryadZamovlennya,
@@ -32,6 +46,20 @@ impl DocumentKind {
             DocumentKind::AktVykonanykhRobit => "Акт виконаних робіт",
         }
     }
+
+    /// The stored value and the folder segment of this kind.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            DocumentKind::NaryadZamovlennya => "naryad_zamovlennya",
+            DocumentKind::AktVykonanykhRobit => "akt_vykonanykh_robit",
+        }
+    }
+
+    /// Both kinds, in the order the work order page lists them.
+    pub const ALL: [DocumentKind; 2] = [
+        DocumentKind::NaryadZamovlennya,
+        DocumentKind::AktVykonanykhRobit,
+    ];
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
@@ -50,15 +78,8 @@ impl DocumentFormat {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
-#[serde(rename_all = "snake_case")]
-pub enum DocumentConflictAction {
-    Replace,
-    Rename,
-}
-
 /// Extra information collected from the user right before generation.
-#[derive(Debug, Clone, Deserialize, specta::Type)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct GenerateDocumentOptions {
     pub performer_worker_id: Option<i32>,
@@ -78,21 +99,62 @@ pub struct GenerateDocumentOptions {
     pub skip_customer_signature: bool,
 }
 
+/// One file of a document version.
+#[derive(Debug, Clone, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkOrderDocumentFile {
+    pub format: DocumentFormat,
+    pub file_name: String,
+    /// Size of the file on disk, or `None` when it is no longer there.
+    #[specta(type = Option<specta_typescript::Number>)]
+    pub file_size: Option<i64>,
+}
+
+/// One generated edition of a document.
+///
+/// Both formats are rendered from the same data, so a single version holds both
+/// files and the two can never drift apart.
+#[derive(Debug, Clone, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkOrderDocumentVersion {
+    #[specta(type = specta_typescript::Number)]
+    pub id: i64,
+    pub kind: DocumentKind,
+    pub generated_at: DateTime<Utc>,
+    /// Options this version was generated with. Kept so the version can be
+    /// rebuilt for the staleness check and to seed next generation requests.
+    pub options: GenerateDocumentOptions,
+    /// PDF and XLSX files, in format order.
+    pub files: Vec<WorkOrderDocumentFile>,
+    pub is_stale: bool,
+}
+
+/// A work order owns exactly one document of each kind.
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkOrderDocument {
-    pub name: String,
-    pub path: String,
-    #[specta(type = specta_typescript::Number)]
-    pub size: i64,
-    pub modified_at: DateTime<Utc>,
+    pub kind: DocumentKind,
+    pub title: String,
+    /// Newest first. The first entry is the current document.
+    pub versions: Vec<WorkOrderDocumentVersion>,
 }
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkOrderDocuments {
-    pub folder_path: String,
-    pub files: Vec<WorkOrderDocument>,
+    pub documents: Vec<WorkOrderDocument>,
+}
+
+/// Generation results
+#[derive(Debug, Clone, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct GenerateDocumentOutcome {
+    /// True when a new version was written, false when the newest version
+    /// already described exactly these records.
+    pub created: bool,
+    /// The version that holds the document now, the one just written or the
+    /// one that was already there.
+    pub version: WorkOrderDocumentVersion,
 }
 
 // ---------------------------------------------------------------------------

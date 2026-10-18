@@ -1356,7 +1356,7 @@ fn layout_document(data: &DocumentData) -> AppResult<PagedDocument> {
             .map(|e| e.message.to_string())
             .collect::<Vec<_>>()
             .join("; ");
-        AppError::Generic(format!("Не вдалося згенерувати PDF: {messages}"))
+        AppError::Generic(format!("Не вдалося створити PDF: {messages}"))
     })
 }
 
@@ -1365,7 +1365,7 @@ pub fn render(data: &DocumentData) -> AppResult<Vec<u8>> {
 
     let bytes = typst_pdf::pdf(&document, &typst_pdf::PdfOptions::default()).map_err(|e| {
         AppError::Generic(format!(
-            "Не вдалося згенерувати PDF: {:?}",
+            "Не вдалося створити PDF: {:?}",
             e.iter().collect::<Vec<_>>()
         ))
     })?;

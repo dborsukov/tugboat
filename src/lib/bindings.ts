@@ -112,15 +112,13 @@ export const commands = {
 	previewLaborItem: (payload: PreviewLaborItemPayload) => typedError<PreviewLaborItemQuote, AppError>(__TAURI_INVOKE("preview_labor_item", { payload })),
 	previewPartItem: (payload: PreviewPartItemPayload) => typedError<PreviewPartItemQuote, AppError>(__TAURI_INVOKE("preview_part_item", { payload })),
 	previewWorkOrder: (payload: PreviewWorkOrderPayload) => typedError<PreviewWorkOrderQuote, AppError>(__TAURI_INVOKE("preview_work_order", { payload })),
+	/**  The current document of each kind for a work order, with its older versions. */
 	fetchWorkOrderDocuments: (workOrderId: string) => typedError<WorkOrderDocuments, AppError>(__TAURI_INVOKE("fetch_work_order_documents", { workOrderId })),
-	downloadWorkOrderDocument: (workOrderId: string, fileName: string) => typedError<string | null, AppError>(__TAURI_INVOKE("download_work_order_document", { workOrderId, fileName })),
-	deleteWorkOrderDocument: (workOrderId: string, fileName: string) => typedError<null, AppError>(__TAURI_INVOKE("delete_work_order_document", { workOrderId, fileName })),
-	/**
-	 *  Returns `Some(target path)` when a file with the default document name
-	 *  already exists, `None` otherwise. Used to show the replace/rename dialog.
-	 */
-	documentTargetPath: (workOrderId: string, kind: DocumentKind, format: DocumentFormat) => typedError<string | null, AppError>(__TAURI_INVOKE("document_target_path", { workOrderId, kind, format })),
-	generateDocument: (workOrderId: string, kind: DocumentKind, format: DocumentFormat, options: GenerateDocumentOptions, conflict: DocumentConflictAction) => typedError<WorkOrderDocument, AppError>(__TAURI_INVOKE("generate_document", { workOrderId, kind, format, options, conflict })),
+	/**  Copies one file of a version to a location the user picks. */
+	downloadWorkOrderDocument: (id: number, format: DocumentFormat, fileName: string) => typedError<string | null, AppError>(__TAURI_INVOKE("download_work_order_document", { id, format, fileName })),
+	openWorkOrderDocument: (id: number, format: DocumentFormat) => typedError<null, AppError>(__TAURI_INVOKE("open_work_order_document", { id, format })),
+	/**  Writes a new version of `kind`, both formats, and records it. */
+	generateDocument: (workOrderId: string, kind: DocumentKind, options: GenerateDocumentOptions) => typedError<GenerateDocumentOutcome, AppError>(__TAURI_INVOKE("generate_document", { workOrderId, kind, options })),
 	/**
 	 *  Creates a report of `kind` for `range` and records it.
 	 *  The file is new every time, so a previous version of the same period is never touched.
@@ -597,8 +595,6 @@ export type DateRange = {
 
 export type DiscountType = "None" | "Fixed" | "Percentage";
 
-export type DocumentConflictAction = "replace" | "rename";
-
 export type DocumentFormat = "pdf" | "xlsx";
 
 export type DocumentKind = "naryad_zamovlennya" | "akt_vykonanykh_robit";
@@ -656,6 +652,20 @@ export type GenerateDocumentOptions = {
 	skipLocation?: boolean,
 	skipPerformerSignature?: boolean,
 	skipCustomerSignature?: boolean,
+};
+
+/**  Generation results */
+export type GenerateDocumentOutcome = {
+	/**
+	 *  True when a new version was written, false when the newest version
+	 *  already described exactly these records.
+	 */
+	created: boolean,
+	/**
+	 *  The version that holds the document now, the one just written or the
+	 *  one that was already there.
+	 */
+	version: WorkOrderDocumentVersion,
 };
 
 /**  Generation results */
@@ -1242,16 +1252,44 @@ export type WorkOrderDetailsDto = {
 	totals: WorkOrderTotals,
 };
 
+/**  A work order owns exactly one document of each kind. */
 export type WorkOrderDocument = {
-	name: string,
-	path: string,
-	size: number,
-	modifiedAt: string,
+	kind: DocumentKind,
+	title: string,
+	/**  Newest first. The first entry is the current document. */
+	versions: WorkOrderDocumentVersion[],
+};
+
+/**  One file of a document version. */
+export type WorkOrderDocumentFile = {
+	format: DocumentFormat,
+	fileName: string,
+	/**  Size of the file on disk, or `None` when it is no longer there. */
+	fileSize: number | null,
+};
+
+/**
+ *  One generated edition of a document.
+ * 
+ *  Both formats are rendered from the same data, so a single version holds both
+ *  files and the two can never drift apart.
+ */
+export type WorkOrderDocumentVersion = {
+	id: number,
+	kind: DocumentKind,
+	generatedAt: string,
+	/**
+	 *  Options this version was generated with. Kept so the version can be
+	 *  rebuilt for the staleness check and to seed next generation requests.
+	 */
+	options: GenerateDocumentOptions,
+	/**  PDF and XLSX files, in format order. */
+	files: WorkOrderDocumentFile[],
+	isStale: boolean,
 };
 
 export type WorkOrderDocuments = {
-	folderPath: string,
-	files: WorkOrderDocument[],
+	documents: WorkOrderDocument[],
 };
 
 export type WorkOrderStatus = "Received" | "InDiagnostics" | "AwaitingApproval" | "AwaitingParts" | "Working" | "ReadyForPickup" | 

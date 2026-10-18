@@ -12,6 +12,7 @@ use tauri_specta::{collect_commands, Builder};
 pub mod database;
 pub mod documents;
 pub mod error;
+pub mod hashing;
 pub mod reports;
 pub mod utils;
 pub mod window_geometry;
@@ -139,8 +140,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         database::work_orders::preview_work_order,
         documents::fetch_work_order_documents,
         documents::download_work_order_document,
-        documents::delete_work_order_document,
-        documents::document_target_path,
+        documents::open_work_order_document,
         documents::generate_document,
         reports::generate_report,
         reports::fetch_reports,

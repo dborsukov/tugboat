@@ -2,15 +2,16 @@
 //! The hash is built from individual records, never from aggregated totals.
 
 use blake3::Hasher;
-use chrono::{DateTime, Utc};
-use rust_decimal::Decimal;
 
 use super::structs::DayRange;
-use crate::database::{
-    clients::structs::ClientType,
-    expenses::structs::Expense,
-    vat::structs::VatEntry,
-    work_orders::structs::{LaborItem, PartItem, WorkOrder},
+use crate::{
+    database::{
+        clients::structs::ClientType,
+        expenses::structs::Expense,
+        vat::structs::VatEntry,
+        work_orders::structs::{LaborItem, PartItem, WorkOrder},
+    },
+    hashing::FieldHash,
 };
 
 /// Domain separator per record kind.
@@ -36,74 +37,6 @@ pub struct OrderParty {
     pub car_id: i64,
     pub car_brand: Option<String>,
     pub car_model: String,
-}
-
-/// Feeds one field at a time into a hasher, each framed so field boundaries are unambiguous.
-///
-/// Every field is written as its byte length followed by its bytes.
-/// This avoids collisions on permutations `("ab", "c")` and `("a", "bc")`.
-trait FieldHash {
-    fn field(&mut self, bytes: &[u8]) -> &mut Self;
-
-    fn text(&mut self, value: &str) -> &mut Self {
-        self.field(value.as_bytes())
-    }
-
-    /// An optional value keeps a marker so "absent" differs from "empty".
-    fn optional_text(&mut self, value: Option<&str>) -> &mut Self {
-        match value {
-            Some(value) => {
-                self.field(b"1");
-                self.text(value)
-            }
-            None => self.field(b"0"),
-        }
-    }
-
-    fn number(&mut self, value: i64) -> &mut Self {
-        self.text(&value.to_string())
-    }
-
-    fn optional_number(&mut self, value: Option<i64>) -> &mut Self {
-        match value {
-            Some(value) => {
-                self.field(b"1");
-                self.number(value)
-            }
-            None => self.field(b"0"),
-        }
-    }
-
-    fn flag(&mut self, value: bool) -> &mut Self {
-        self.field(if value { b"1" } else { b"0" })
-    }
-
-    /// Decimals hash through their plain string form: `1.50` and `1.5` are the
-    /// same amount written two ways, and must not read as a change.
-    fn decimal(&mut self, value: Decimal) -> &mut Self {
-        self.text(&value.normalize().to_string())
-    }
-
-    fn timestamp(&mut self, value: DateTime<Utc>) -> &mut Self {
-        self.text(&value.to_rfc3339())
-    }
-
-    fn optional_timestamp(&mut self, value: Option<DateTime<Utc>>) -> &mut Self {
-        match value {
-            Some(value) => {
-                self.field(b"1");
-                self.timestamp(value)
-            }
-            None => self.field(b"0"),
-        }
-    }
-}
-
-impl FieldHash for Hasher {
-    fn field(&mut self, bytes: &[u8]) -> &mut Self {
-        self.update(&(bytes.len() as u64).to_le_bytes());
-        self.update(bytes)
-    }
 }
 
 fn hash_work_order(hasher: &mut Hasher, order: &WorkOrder) {
