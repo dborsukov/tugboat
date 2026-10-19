@@ -512,7 +512,11 @@ pub async fn fetch_work_order_details_dto_by_client_id(
             wo.started_at,
             wo.completed_at,
             wo.paid_at,
-            wo.payment_method
+            wo.payment_method,
+            wo.tax_invoice_number,
+            wo.tax_invoice_date,
+            wo.exemption_code,
+            wo.vat_scheme
         FROM work_orders wo
         JOIN cars c ON c.id = wo.car_id
         WHERE c.client_id = $1

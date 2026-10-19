@@ -79,7 +79,7 @@
       } satisfies ServiceTableMeta;
     },
     getRowId: (row) => String(row.id),
-    initialSorting: [{ id: "name", desc: true }],
+    initialSorting: [{ id: "name", desc: false }],
   });
 
   const selectedServiceIds = $derived(

@@ -83,8 +83,7 @@ export const columns: ColumnDef<Service>[] = [
   },
   {
     id: "laborHours",
-    accessorFn: (row) => row.laborHours,
-    sortingFn: "alphanumeric",
+    accessorFn: (row) => Number(row.laborHours),
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
@@ -115,7 +114,7 @@ export const columns: ColumnDef<Service>[] = [
   },
   {
     id: "fixedPrice",
-    accessorFn: (row) => row.fixedPrice,
+    accessorFn: (row) => Number(row.fixedPrice),
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),

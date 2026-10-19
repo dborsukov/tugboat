@@ -10,6 +10,7 @@ import DataTableSelectCheckbox from "$lib/components/data-table/data-table-selec
 
 import type { Expense } from "$lib/bindings";
 
+import { paymentMethodLabels } from "../work_orders/payment-method";
 import ExpenseCategoryCell from "./expense-category-cell.svelte";
 import ExpensePaymentMethodCell from "./expense-payment-method-cell.svelte";
 import DataTableActions from "./table-actions-cell.svelte";
@@ -35,6 +36,13 @@ export const CATEGORY_FILTER_COLUMN_ID = "categoryId";
 
 const expenseDateSorter = (a: Expense, b: Expense) =>
   a.date.localeCompare(b.date);
+
+/* Sort by the label the user sees, not the enum's storage spelling. */
+const paymentMethodSorter = (a: Expense, b: Expense) =>
+  (a.paymentMethod ? paymentMethodLabels[a.paymentMethod] : "").localeCompare(
+    b.paymentMethod ? paymentMethodLabels[b.paymentMethod] : "",
+    "uk",
+  );
 
 export const columns: ColumnDef<Expense>[] = [
   {
@@ -145,6 +153,8 @@ export const columns: ColumnDef<Expense>[] = [
     id: "paymentMethod",
     accessorFn: (row) => row.paymentMethod ?? "",
     filterFn: "arrIncludesSome",
+    sortingFn: (rowA, rowB) =>
+      paymentMethodSorter(rowA.original, rowB.original),
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),

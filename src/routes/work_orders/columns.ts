@@ -20,6 +20,9 @@ export type WorkOrderRow = WorkOrderDetailsDto & {
   clientColumn?: WorkOrderClientColumn;
 };
 
+const createdAtSorter = (a: WorkOrderRow, b: WorkOrderRow) =>
+  a.workOrder.createdAt.localeCompare(b.workOrder.createdAt);
+
 export const columns: ColumnDef<WorkOrderRow>[] = [
   {
     id: "id",
@@ -105,7 +108,7 @@ export const columns: ColumnDef<WorkOrderRow>[] = [
       const statusB = rowB.original.workOrder?.status;
       const weightA = statusWeights[statusA] ?? 999;
       const weightB = statusWeights[statusB] ?? 999;
-      return weightB - weightA;
+      return weightA - weightB;
     },
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
@@ -157,7 +160,7 @@ export const columns: ColumnDef<WorkOrderRow>[] = [
     id: "createdAt",
     accessorFn: (row) =>
       prettifyIsoDateString(row.workOrder.createdAt, "datetime"),
-    sortingFn: "datetime",
+    sortingFn: (rowA, rowB) => createdAtSorter(rowA.original, rowB.original),
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),

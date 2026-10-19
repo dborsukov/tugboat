@@ -47,8 +47,20 @@
       // attaching after 'src' risks missing that first event.
       testImg.onload = () => {
         if (cancelled) return;
-        imageSrc = targetSrc;
-        isLoading = false;
+
+        const show = () => {
+          if (cancelled) return;
+          imageSrc = targetSrc;
+          isLoading = false;
+        };
+
+        /*
+         * Decode before mounting. WebKit can paint the newly inserted <img>
+         * before its bitmap is ready, and the drop-shadow stays clipped to
+         * the image box until the later decode repaints it (b/236758).
+         * Waiting here makes the first paint already have pixels to shadow.
+         */
+        testImg.decode().then(show, show);
       };
 
       testImg.onerror = () => {
@@ -83,7 +95,7 @@
   });
 </script>
 
-<div class={cn("aspect-square overflow-hidden h-full @container", className)}>
+<div class={cn("aspect-square h-full @container", className)}>
   {#if !hasIcon}
     <div
       class={cn(
@@ -107,7 +119,7 @@
       <Spinner />
     </div>
   {:else}
-    <div class="flex items-center justify-center w-full h-full">
+    <div class="logo-glow flex items-center justify-center w-full h-full">
       <img
         src={imageSrc}
         alt={name || slug}
@@ -118,8 +130,17 @@
 </div>
 
 <style>
-  /* Apply white rim glow to logos when using dark theme */
-  :global(.dark) .logo-img {
+  /*
+   * Apply the white rim glow to the image's wrapper, not to the <img> itself.
+   * WebKit 16 clips a drop-shadow painted by an image that loads after the
+   * element is in the tree, and only a later repaint fixes it
+   * (webkit.org/b/236758). Filtering the parent avoids that image-specific
+   * repaint path; translateZ(0) is the usual Safari workaround for
+   * drop-shadows that are clipped on their first paint.
+   */
+  :global(.dark) .logo-glow {
+    transform: translateZ(0);
+    overflow: visible;
     filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.5))
       drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
   }
