@@ -5,8 +5,6 @@
 
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
 
-  import { Checkbox } from "$lib/components/ui/checkbox";
-  import { Input } from "$lib/components/ui/input";
   import * as Item from "$lib/components/ui/item/index.js";
   import { Slider } from "$lib/components/ui/slider";
 
@@ -14,11 +12,7 @@
 
   import { pluralizeUk } from "$lib/tools";
 
-  import {
-    createUpdateDefaultMarkupMutation,
-    createUpdateDefaultPricesIncludeVatMutation,
-    createUpdateDefaultVatRateMutation,
-  } from "../queries";
+  import { createUpdateDefaultMarkupMutation } from "../queries";
   import {
     getSettingsContext,
     SETTINGS_CONTENT_WIDTH_CLASS,
@@ -28,9 +22,6 @@
   const { draft } = getSettingsContext();
 
   const updateMarkupMutation = createUpdateDefaultMarkupMutation(queryClient);
-  const updateVatRateMutation = createUpdateDefaultVatRateMutation(queryClient);
-  const updatePricesIncludeVatMutation =
-    createUpdateDefaultPricesIncludeVatMutation(queryClient);
 
   // ---------- Default markup ----------
 
@@ -46,43 +37,6 @@
     draft.defaultMarkup = String(value);
     // fires once per slider release, so it can persist immediately
     updateMarkupMutation.mutate(draft.defaultMarkup);
-  }
-
-  // ---------- VAT ----------
-
-  // Free-text rate input: keep a local draft while typing, persist on blur.
-  let vatRateInput = $state("20");
-  let vatRateFocused = $state(false);
-
-  $effect(() => {
-    if (!vatRateFocused && draft) {
-      vatRateInput = draft.defaultVatRate;
-    }
-  });
-
-  function commitVatRate(raw: string) {
-    if (!draft) return;
-    const normalized = raw.trim().replace(",", ".");
-    const value = Number(normalized);
-    if (
-      normalized === "" ||
-      !Number.isFinite(value) ||
-      value < 0 ||
-      value > 100
-    ) {
-      vatRateInput = draft.defaultVatRate;
-      return;
-    }
-    draft.defaultVatRate = normalized;
-    vatRateInput = normalized;
-    updateVatRateMutation.mutate(normalized);
-  }
-
-  function onVatRateKeydown(e: KeyboardEvent) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      (e.currentTarget as HTMLInputElement).blur();
-    }
   }
 
   // ---------- Rate variants (managed on a separate page) ----------
@@ -142,54 +96,6 @@
             step={1}
             class="w-40"
           />
-        </div>
-      </Item.Actions>
-    </Item.Root>
-
-    <Item.Root id="settings-vat-inclusive">
-      <Item.Content>
-        <Item.Title>Ціни включають ПДВ</Item.Title>
-        <Item.Description
-          >Вважати ціни в нових замовленнях такими, що вже включають ПДВ, за
-          замовчуванням</Item.Description
-        >
-      </Item.Content>
-      <Item.Actions>
-        <Checkbox
-          checked={draft?.defaultPricesIncludeVat ?? true}
-          onCheckedChange={(checked) => {
-            const next = checked === true;
-            if (!draft) return;
-            draft.defaultPricesIncludeVat = next;
-            updatePricesIncludeVatMutation.mutate(next);
-          }}
-          aria-label="Ціни з ПДВ"
-        />
-      </Item.Actions>
-    </Item.Root>
-
-    <Item.Root id="settings-vat-rate">
-      <Item.Content>
-        <Item.Title>Ставка ПДВ</Item.Title>
-        <Item.Description
-          >Ставка за замовчуванням для нових замовлень</Item.Description
-        >
-      </Item.Content>
-      <Item.Actions>
-        <div class="flex items-center gap-2">
-          <Input
-            bind:value={vatRateInput}
-            type="text"
-            inputmode="decimal"
-            class="w-20 text-right"
-            onfocus={() => (vatRateFocused = true)}
-            onblur={() => {
-              vatRateFocused = false;
-              commitVatRate(vatRateInput);
-            }}
-            onkeydown={onVatRateKeydown}
-          />
-          <p>%</p>
         </div>
       </Item.Actions>
     </Item.Root>

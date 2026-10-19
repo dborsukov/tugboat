@@ -12,16 +12,18 @@
   import CheckIcon from "@lucide/svelte/icons/check";
   import CreditCardIcon from "@lucide/svelte/icons/credit-card";
   import MapPinIcon from "@lucide/svelte/icons/map-pin";
+  import PercentIcon from "@lucide/svelte/icons/percent";
   import UserIcon from "@lucide/svelte/icons/user";
 
   import { Button } from "$lib/components/ui/button";
-  import { Checkbox } from "$lib/components/ui/checkbox";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
+  import * as Item from "$lib/components/ui/item/index.js";
   import { Label } from "$lib/components/ui/label";
   import * as Select from "$lib/components/ui/select/index.js";
   import Spinner from "$lib/components/ui/spinner/spinner.svelte";
+  import { Switch } from "$lib/components/ui/switch";
   import { Textarea } from "$lib/components/ui/textarea";
 
   import MutationSheetSectionTitle from "$lib/components/mutation-sheet-section-title.svelte";
@@ -29,7 +31,11 @@
 
   import type { CompanyInfo, CompanyKind } from "$lib/bindings";
 
-  import { createUpdateCompanyInfoMutation } from "../../queries";
+  import {
+    createUpdateCompanyInfoMutation,
+    createUpdateDefaultPricesIncludeVatMutation,
+    createUpdateDefaultVatRateMutation,
+  } from "../../queries";
   import {
     getSettingsContext,
     SETTINGS_CONTENT_WIDTH_CLASS,
@@ -40,6 +46,10 @@
 
   const updateCompanyInfoMutation =
     createUpdateCompanyInfoMutation(queryClient);
+  const updateVatPayerMutation = createUpdateCompanyInfoMutation(queryClient);
+  const updateVatRateMutation = createUpdateDefaultVatRateMutation(queryClient);
+  const updatePricesIncludeVatMutation =
+    createUpdateDefaultPricesIncludeVatMutation(queryClient);
 
   // ---------- Form ----------
 
@@ -73,7 +83,6 @@
       directorPatronymic: z.string().default(""),
       iban: z.string().default(""),
       bankName: z.string().default(""),
-      vatPayer: z.boolean().default(false),
     })
     .superRefine((data, ctx) => {
       const iban = data.iban.trim();
@@ -105,7 +114,7 @@
     });
 
   type CompanyInfoFormData = z.infer<typeof companyInfoSchema>;
-  type TextField = Exclude<keyof CompanyInfoFormData, "kind" | "vatPayer">;
+  type TextField = Exclude<keyof CompanyInfoFormData, "kind">;
 
   function trimToNull(value: string): string | null {
     const trimmed = value.trim();
@@ -130,7 +139,7 @@
       directorPatronymic: trimToNull(data.directorPatronymic),
       iban: trimToNull(data.iban),
       bankName: trimToNull(data.bankName),
-      vatPayer: data.vatPayer,
+      vatPayer: draft?.companyInfo?.vatPayer ?? false,
       // Placeholder: the backend recomputes this flag from the actual values
       isComplete: false,
     };
@@ -153,7 +162,6 @@
     $formData.directorPatronymic = saved?.directorPatronymic ?? "";
     $formData.iban = saved?.iban ?? "";
     $formData.bankName = saved?.bankName ?? "";
-    $formData.vatPayer = saved?.vatPayer ?? false;
   }
 
   const form = superForm(defaults(zod4(companyInfoSchema)), {
@@ -164,16 +172,24 @@
     id: "company-info-form",
     async onUpdate({ form: nativeForm, cancel }) {
       if (!nativeForm.valid) return;
+      if (updateVatPayerMutation.isPending) {
+        cancel();
+        return;
+      }
 
       const payload = buildPayload(nativeForm.data);
-      const saved = await updateCompanyInfoMutation
-        .mutateAsync(payload)
-        .catch(() => null);
-      if (saved && draft) {
-        draft.companyInfo = saved;
-        savedPayloadKey = JSON.stringify(payload);
+
+      try {
+        const saved = await updateCompanyInfoMutation.mutateAsync(payload);
+        if (saved && draft) {
+          draft.companyInfo = saved;
+          savedPayloadKey = JSON.stringify(payload);
+        }
+      } catch {
+        // The mutation exposes its error in the UI.
+      } finally {
+        cancel();
       }
-      cancel();
     },
   });
 
@@ -232,6 +248,101 @@
     fillForm(draft.companyInfo ?? null);
     savedPayloadKey = JSON.stringify(buildPayload($formData));
   });
+
+  // ---------- Tax settings (auto-saved) ----------
+
+  function normalizeVatRate(value: string): string {
+    return value.trim().replace(",", ".");
+  }
+
+  let vatRateInput = $state(draft?.defaultVatRate ?? "20");
+  let vatRateFocused = $state(false);
+
+  $effect(() => {
+    if (!vatRateFocused && draft) {
+      vatRateInput = draft.defaultVatRate;
+    }
+  });
+
+  async function commitVatRate(raw: string) {
+    if (!draft) return;
+    const normalized = normalizeVatRate(raw);
+    if (!/^\d{1,3}(\.\d{1,2})?$/.test(normalized) || Number(normalized) > 100) {
+      vatRateInput = draft.defaultVatRate;
+      return;
+    }
+
+    const previous = draft.defaultVatRate;
+    draft.defaultVatRate = normalized;
+    vatRateInput = normalized;
+
+    try {
+      const saved = await updateVatRateMutation.mutateAsync(normalized);
+      draft.defaultVatRate = saved;
+      vatRateInput = saved;
+    } catch {
+      draft.defaultVatRate = previous;
+      vatRateInput = previous;
+    }
+  }
+
+  function onVatRateKeydown(e: KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      (e.currentTarget as HTMLInputElement).blur();
+    }
+  }
+
+  /** Keep the form's saved-payload baseline in step after an auto-saved payer change. */
+  function withVatPayer(key: string, vatPayer: boolean): string {
+    const payload = JSON.parse(key) as CompanyInfo;
+    return JSON.stringify({ ...payload, vatPayer });
+  }
+
+  async function setVatPayer(next: boolean) {
+    const current = draft?.companyInfo;
+    if (
+      !draft ||
+      !current ||
+      $submitting ||
+      updateCompanyInfoMutation.isPending
+    )
+      return;
+
+    const previous = current;
+    const updated: CompanyInfo = {
+      ...current,
+      vatPayer: next,
+    };
+    draft.companyInfo = updated;
+
+    try {
+      const saved = await updateVatPayerMutation.mutateAsync(updated);
+      if (!saved) {
+        draft.companyInfo = previous;
+        return;
+      }
+      draft.companyInfo = saved;
+      if (savedPayloadKey !== null) {
+        savedPayloadKey = withVatPayer(savedPayloadKey, saved.vatPayer);
+      }
+    } catch {
+      draft.companyInfo = previous;
+    }
+  }
+
+  async function setPricesIncludeVat(next: boolean) {
+    if (!draft) return;
+    const previous = draft.defaultPricesIncludeVat;
+    draft.defaultPricesIncludeVat = next;
+
+    try {
+      const saved = await updatePricesIncludeVatMutation.mutateAsync(next);
+      draft.defaultPricesIncludeVat = saved;
+    } catch {
+      draft.defaultPricesIncludeVat = previous;
+    }
+  }
 </script>
 
 {#snippet inputField(
@@ -239,8 +350,9 @@
   label: string,
   placeholder = "",
   inputmode: "numeric" | "decimal" | undefined = undefined,
+  fieldClass = "",
 )}
-  <Form.Field {form} name={field}>
+  <Form.Field {form} name={field} class={fieldClass}>
     <Form.Control>
       {#snippet children({ props })}
         <Label>{label}</Label>
@@ -256,8 +368,13 @@
   </Form.Field>
 {/snippet}
 
-{#snippet textAreaField(field: TextField, label: string, placeholder = "")}
-  <Form.Field {form} name={field}>
+{#snippet textAreaField(
+  field: TextField,
+  label: string,
+  placeholder = "",
+  fieldClass = "",
+)}
+  <Form.Field {form} name={field} class={fieldClass}>
     <Form.Control>
       {#snippet children({ props })}
         <Label>{label}</Label>
@@ -278,7 +395,7 @@
   firstNameField: "firstName" | "directorFirstName",
   patronymicField: "patronymic" | "directorPatronymic",
 )}
-  <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+  <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
     {@render inputField(surnameField, "Прізвище")}
     {@render inputField(firstNameField, "Ім'я")}
     {@render inputField(patronymicField, "По-батькові")}
@@ -300,110 +417,109 @@
     </div>
   </div>
 
-  <div class="mt-4">
+  <form use:enhance id="company-info-form" class="mt-4 flex flex-col gap-4">
     <div
       id="settings-company-info"
       class="border border-border rounded bg-card"
     >
-      <form use:enhance id="company-info-form" class="flex flex-col gap-4 p-4">
-        <div
-          class="sticky top-0 z-10 -mx-4 -mt-4 flex flex-col gap-4 rounded-t border-b border-border/70 bg-card px-4 pb-3 pt-4"
-        >
-          <div class="flex flex-wrap items-center justify-between gap-3">
-            <Form.Field {form} name="kind" class="w-full sm:w-64">
-              <Form.Control>
-                {#snippet children({ props })}
-                  <Label>Форма ведення бізнесу</Label>
-                  <Select.Root
-                    type="single"
-                    bind:value={$formData.kind}
-                    {...props}
-                  >
-                    <Select.Trigger class="w-full">
-                      {@const KindIcon = KIND_ICONS[$formData.kind]}
+      <div
+        class="sticky top-0 z-10 flex flex-col gap-4 rounded-t border-b border-border/70 bg-card px-4 pb-3 pt-4"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <Form.Field {form} name="kind" class="w-full sm:w-64">
+            <Form.Control>
+              {#snippet children({ props })}
+                <Label>Форма ведення бізнесу</Label>
+                <Select.Root
+                  type="single"
+                  bind:value={$formData.kind}
+                  {...props}
+                >
+                  <Select.Trigger class="w-full">
+                    {@const KindIcon = KIND_ICONS[$formData.kind]}
+                    <span class="flex items-center gap-2">
+                      <KindIcon class="size-4 text-muted-foreground" />
+                      {KIND_LABELS[$formData.kind]}
+                    </span>
+                  </Select.Trigger>
+                  <Select.Content>
+                    <Select.Item value="fop">
                       <span class="flex items-center gap-2">
-                        <KindIcon class="size-4 text-muted-foreground" />
-                        {KIND_LABELS[$formData.kind]}
+                        <BriefcaseIcon class="size-4 text-muted-foreground" />
+                        {KIND_LABELS["fop"]}
                       </span>
-                    </Select.Trigger>
-                    <Select.Content>
-                      <Select.Item value="fop">
-                        <span class="flex items-center gap-2">
-                          <BriefcaseIcon class="size-4 text-muted-foreground" />
-                          {KIND_LABELS["fop"]}
-                        </span>
-                      </Select.Item>
-                      <Select.Item value="company">
-                        <span class="flex items-center gap-2">
-                          <BuildingIcon class="size-4 text-muted-foreground" />
-                          {KIND_LABELS["company"]}
-                        </span>
-                      </Select.Item>
-                    </Select.Content>
-                  </Select.Root>
-                {/snippet}
-              </Form.Control>
-              <Form.FieldErrors />
-            </Form.Field>
+                    </Select.Item>
+                    <Select.Item value="company">
+                      <span class="flex items-center gap-2">
+                        <BuildingIcon class="size-4 text-muted-foreground" />
+                        {KIND_LABELS["company"]}
+                      </span>
+                    </Select.Item>
+                  </Select.Content>
+                </Select.Root>
+              {/snippet}
+            </Form.Control>
+            <Form.FieldErrors />
+          </Form.Field>
 
-            <div class="flex items-center gap-2">
-              <Button
-                variant="outline"
-                type="button"
-                disabled={!hasChanges || $submitting}
-                onclick={discard}
-              >
-                Скасувати
-              </Button>
-              <Button type="submit" disabled={!hasChanges || $submitting}>
-                {#if $submitting}Збереження <Spinner />{:else}Зберегти{/if}
-              </Button>
-            </div>
+          <div class="flex items-center gap-2">
+            <Button
+              variant="outline"
+              type="button"
+              disabled={!hasChanges ||
+                $submitting ||
+                updateVatPayerMutation.isPending}
+              onclick={discard}
+            >
+              Скасувати
+            </Button>
+            <Button
+              type="submit"
+              disabled={!hasChanges ||
+                $submitting ||
+                updateVatPayerMutation.isPending}
+            >
+              {#if $submitting}Збереження <Spinner />{:else}Зберегти{/if}
+            </Button>
           </div>
-
-          {#if updateCompanyInfoMutation.isError}
-            <div class="flex items-center justify-end gap-3">
-              <p class="text-xs text-destructive">
-                Не вдалося зберегти:
-                {updateCompanyInfoMutation.error?.message}
-              </p>
-            </div>
-          {/if}
         </div>
 
+        {#if updateCompanyInfoMutation.isError}
+          <div class="flex items-center justify-end gap-3">
+            <p class="text-xs text-destructive">
+              Не вдалося зберегти:
+              {updateCompanyInfoMutation.error?.message}
+            </p>
+          </div>
+        {/if}
+      </div>
+
+      <div class="flex flex-col gap-4 p-4">
         <MutationSheetSectionTitle
           text="Основні дані"
           icon={MapPinIcon}
           class="mt-0"
         />
 
-        {@render inputField("name", "Назва бізнесу", "Автосервіс Плюс")}
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {@render inputField(
+            "name",
+            "Назва бізнесу",
+            "Автосервіс Плюс",
+            undefined,
+            "sm:col-span-2",
+          )}
+          {@render inputField("phone", "Телефон", "+380...")}
+        </div>
 
-        {@render textAreaField(
-          "physicalAddress",
-          "Фактична адреса",
-          "Фізична адреса, де фактично знаходиться бізнес...",
-        )}
-
-        {@render inputField("phone", "Телефон", "+380...")}
-
-        <Form.Field {form} name="vatPayer">
-          <Form.Control>
-            {#snippet children({ props })}
-              <div class="flex items-center gap-2">
-                <Checkbox
-                  {...props}
-                  id="companyInfoVatPayer"
-                  bind:checked={$formData.vatPayer}
-                />
-                <Label for="companyInfoVatPayer" class="font-normal"
-                  >Платник ПДВ</Label
-                >
-              </div>
-            {/snippet}
-          </Form.Control>
-          <Form.FieldErrors />
-        </Form.Field>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {@render textAreaField(
+            "physicalAddress",
+            "Фактична адреса",
+            "Фізична адреса, де фактично знаходиться бізнес...",
+            "sm:col-span-2",
+          )}
+        </div>
 
         {#if $formData.kind === "company"}
           <MutationSheetSectionTitle
@@ -412,17 +528,24 @@
             class="mt-0"
           />
 
-          {@render inputField(
-            "legalName",
-            "Юридична назва",
-            "ТОВ «Автосервіс Плюс»",
-          )}
-          {@render inputField("edrpou", "ЄДРПОУ", "12345678", "numeric")}
-          {@render textAreaField(
-            "legalAddress",
-            "Юридична адреса",
-            "Адреса реєстрації організації...",
-          )}
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {@render inputField(
+              "legalName",
+              "Юридична назва",
+              "ТОВ «Автосервіс Плюс»",
+              undefined,
+              "sm:col-span-2",
+            )}
+            {@render inputField("edrpou", "ЄДРПОУ", "12345678", "numeric")}
+          </div>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {@render textAreaField(
+              "legalAddress",
+              "Юридична адреса",
+              "Адреса реєстрації організації...",
+              "sm:col-span-2",
+            )}
+          </div>
 
           <MutationSheetSectionTitle
             text="Керівник"
@@ -444,12 +567,15 @@
 
           {@render pibRow("surname", "firstName", "patronymic")}
 
-          {@render inputField("rnokpp", "РНОКПП", "1234567890", "numeric")}
-          {@render textAreaField(
-            "legalAddress",
-            "Адреса реєстрації",
-            "Адреса реєстрації ФОП...",
-          )}
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {@render inputField("rnokpp", "РНОКПП", "1234567890", "numeric")}
+            {@render textAreaField(
+              "legalAddress",
+              "Адреса реєстрації",
+              "Адреса реєстрації ФОП...",
+              "sm:col-span-2",
+            )}
+          </div>
         {/if}
 
         <MutationSheetSectionTitle
@@ -458,10 +584,115 @@
           class="mt-0"
         />
 
-        {@render inputField("bankName", "Назва банку")}
-        {@render inputField("iban", "IBAN", "UA...")}
-      </form>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {@render inputField(
+            "bankName",
+            "Назва банку",
+            "",
+            undefined,
+            "sm:col-span-2",
+          )}
+          {@render inputField("iban", "IBAN", "UA...")}
+        </div>
+      </div>
     </div>
+  </form>
+
+  <div
+    id="settings-company-tax"
+    class="mt-4 border border-border rounded bg-card"
+  >
+    <div class="px-4 pt-3 pb-1">
+      <MutationSheetSectionTitle
+        text="Оподаткування"
+        icon={PercentIcon}
+        class="mt-0"
+      />
+    </div>
+
+    <Item.Root id="settings-vat-payer">
+      <Item.Content>
+        <Item.Title>Платник ПДВ</Item.Title>
+        <Item.Description
+          >Підприємство зареєстроване як платник ПДВ</Item.Description
+        >
+      </Item.Content>
+      <Item.Actions>
+        <Switch
+          checked={draft?.companyInfo?.vatPayer ?? false}
+          onCheckedChange={setVatPayer}
+          disabled={!draft?.companyInfo ||
+            updateVatPayerMutation.isPending ||
+            updateCompanyInfoMutation.isPending ||
+            $submitting}
+          aria-label="Платник ПДВ"
+        />
+      </Item.Actions>
+    </Item.Root>
+    {#if updateVatPayerMutation.isError}
+      <p class="px-4 pb-2 text-xs text-destructive">
+        Не вдалося зберегти:
+        {updateVatPayerMutation.error?.message}
+      </p>
+    {/if}
+
+    <Item.Root id="settings-vat-rate">
+      <Item.Content>
+        <Item.Title>Ставка ПДВ</Item.Title>
+        <Item.Description
+          >Ставка за замовчуванням для нових замовлень</Item.Description
+        >
+      </Item.Content>
+      <Item.Actions>
+        <div class="flex items-center gap-2">
+          <Input
+            bind:value={vatRateInput}
+            type="text"
+            inputmode="decimal"
+            aria-label="Ставка ПДВ"
+            class="w-20 text-right"
+            disabled={updateVatRateMutation.isPending}
+            onfocus={() => (vatRateFocused = true)}
+            onblur={() => {
+              vatRateFocused = false;
+              commitVatRate(vatRateInput);
+            }}
+            onkeydown={onVatRateKeydown}
+          />
+          <p>%</p>
+        </div>
+      </Item.Actions>
+    </Item.Root>
+    {#if updateVatRateMutation.isError}
+      <p class="px-4 pb-2 text-xs text-destructive">
+        Не вдалося зберегти ставку:
+        {updateVatRateMutation.error?.message}
+      </p>
+    {/if}
+
+    <Item.Root id="settings-vat-inclusive">
+      <Item.Content>
+        <Item.Title>Ціни включають ПДВ</Item.Title>
+        <Item.Description
+          >Вважати ціни в нових замовленнях такими, що вже включають ПДВ, за
+          замовчуванням</Item.Description
+        >
+      </Item.Content>
+      <Item.Actions>
+        <Switch
+          checked={draft?.defaultPricesIncludeVat ?? true}
+          onCheckedChange={setPricesIncludeVat}
+          disabled={updatePricesIncludeVatMutation.isPending}
+          aria-label="Ціни включають ПДВ"
+        />
+      </Item.Actions>
+    </Item.Root>
+    {#if updatePricesIncludeVatMutation.isError}
+      <p class="px-4 pb-2 text-xs text-destructive">
+        Не вдалося зберегти:
+        {updatePricesIncludeVatMutation.error?.message}
+      </p>
+    {/if}
   </div>
 </PageLayout>
 

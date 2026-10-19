@@ -14,9 +14,8 @@ export type SettingsSearchItem = {
 /**
  * Registry of every searchable settings section. The `id` of each entry must
  * match an element id rendered on the corresponding page so the search can
- * scroll to and highlight it. Only sections on the main settings pages are
- * indexed — sub-pages (rate variants, lookup templates, business data) are
- * reached through their navigation rows, so they are not listed here.
+ * scroll to and highlight it. Most entries live on the main settings pages;
+ * the tax fields are also indexed on the business-data sub-page.
  */
 export const settingsSearchIndex: SettingsSearchItem[] = [
   {
@@ -74,19 +73,28 @@ export const settingsSearchIndex: SettingsSearchItem[] = [
     hint: "Замовлення",
   },
   {
+    id: "settings-vat-payer",
+    route: "/settings/general/company-info",
+    label: "Платник ПДВ",
+    keywords:
+      "пдв податок платник податкова vat tax payer оподаткування дані бізнесу",
+    hint: "Дані бізнесу",
+  },
+  {
     id: "settings-vat-rate",
-    route: "/settings/workorders",
+    route: "/settings/general/company-info",
     label: "Ставка ПДВ",
     keywords:
-      "пдв податок ставка податкова vat tax відсоток ціни з пдв без пдв замовлення",
-    hint: "Замовлення",
+      "пдв податок ставка податкова vat tax відсоток ціни з пдв без пдв замовлення оподаткування",
+    hint: "Дані бізнесу",
   },
   {
     id: "settings-vat-inclusive",
-    route: "/settings/workorders",
-    label: "Ціни з ПДВ",
-    keywords: "пдв податок ціни з пдв включено vat tax inclusive замовлення",
-    hint: "Замовлення",
+    route: "/settings/general/company-info",
+    label: "Ціни включають ПДВ",
+    keywords:
+      "пдв податок ціни з пдв включено vat tax inclusive замовлення оподаткування дані бізнесу",
+    hint: "Дані бізнесу",
   },
   {
     id: "settings-rate-variants-entry",
