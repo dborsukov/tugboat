@@ -8,6 +8,7 @@
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
   import PlusIcon from "@lucide/svelte/icons/plus";
 
+  import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
   import * as Pagination from "$lib/components/ui/pagination/index.js";
@@ -17,10 +18,12 @@
   import ArchivedBadge from "$lib/components/archived-badge.svelte";
   import CarLogoLoader from "$lib/components/car-logo-loader.svelte";
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
+  import LicensePlate from "$lib/components/license-plate.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import { UseAutoPageSize } from "$lib/hooks/use-auto-page-size.svelte";
 
+  import ClientAvatar from "../clients/client-avatar.svelte";
   import CarMutationSheet from "./car-mutation-sheet.svelte";
   import { createCarDetailsListQuery } from "./queries";
 
@@ -127,16 +130,6 @@
     currentPage = 1;
   }
 
-  function carSecondaryLine(cli: (typeof visibleCarDetailsList)[number]) {
-    return [
-      cli.carDto?.car?.year,
-      cli.carDto?.car?.licensePlate,
-      cli.carDto?.car?.vin,
-    ]
-      .filter(Boolean)
-      .join(" · ");
-  }
-
   let controlsDisabled = $derived(
     !carDetailsQuery.isSuccess || (carDetailsQuery.data?.length ?? 0) === 0,
   );
@@ -225,7 +218,7 @@
     <div class="pt-4 flex flex-col">
       <div
         bind:this={autoPageSize.container}
-        class="border border-border rounded bg-card flex flex-col divide-y divide-border"
+        class="border border-border rounded bg-card flex flex-col @container"
       >
         {#if carDetailsQuery.isLoading}
           <Skeleton class="w-full h-16 shrink-0" />
@@ -252,42 +245,64 @@
           {/if}
         {:else}
           {#each paginatedCarListItems as cli (cli.carDto?.car?.id)}
-            <Button
-              variant="ghost"
-              class="w-full h-auto justify-start rounded-none px-5 py-3 shrink-0 {cli
-                .carDto?.car?.archivedAt
-                ? 'opacity-60'
-                : ''}"
-              onclick={async () => await goto(`/cars/${cli.carDto?.car?.id}`)}
-            >
-              <div class="flex w-full items-center gap-3.5">
-                <CarLogoLoader
-                  slug={cli.carDto?.brand?.iconSlug ?? ""}
-                  name={cli.carDto?.brand?.name}
-                  class="h-12"
-                />
-                <div class="flex-1 min-w-0 text-left flex flex-col gap-0.5">
-                  <div class="flex items-center gap-2">
-                    <p class="truncate text-lg font-medium">
-                      {cli.carDto?.brand?.name}
-                      {cli.carDto?.car?.model}
+            <div class="border-b border-border last:border-b-0">
+              <Button
+                variant="ghost"
+                class="w-full h-auto justify-start rounded-none px-5 py-3 shrink-0 {cli
+                  .carDto?.car?.archivedAt
+                  ? 'opacity-60'
+                  : ''}"
+                onclick={async () => await goto(`/cars/${cli.carDto?.car?.id}`)}
+              >
+                <div class="flex w-full items-center gap-3.5">
+                  <CarLogoLoader
+                    slug={cli.carDto?.brand?.iconSlug ?? ""}
+                    name={cli.carDto?.brand?.name}
+                    class="h-10"
+                  />
+                  <div class="flex-1 min-w-0 text-left flex flex-col gap-1">
+                    <div class="flex items-center gap-2">
+                      <p class="truncate text-base font-semibold">
+                        {cli.carDto?.brand?.name}
+                        {cli.carDto?.car?.model}
+                      </p>
+                      {#if cli.carDto?.car?.archivedAt}
+                        <ArchivedBadge date={cli.carDto?.car?.archivedAt} />
+                      {/if}
+                    </div>
+                    <p
+                      class="flex min-w-0 items-center gap-1.5 truncate text-muted-foreground"
+                    >
+                      {#if cli.carDto?.car?.year}
+                        <Badge
+                          variant="secondary"
+                          class="h-5 rounded-2xl bg-muted px-2 text-xs font-medium text-muted-foreground"
+                          >{cli.carDto.car.year}</Badge
+                        >
+                      {/if}
+                      {#if cli.carDto?.car?.licensePlate}
+                        <LicensePlate
+                          value={cli.carDto.car.licensePlate}
+                          size="sm"
+                        />
+                      {/if}
                     </p>
-                    {#if cli.carDto?.car?.archivedAt}
-                      <ArchivedBadge date={cli.carDto?.car?.archivedAt} />
-                    {/if}
                   </div>
-                  <p class="truncate text-muted-foreground">
-                    {carSecondaryLine(cli)}
-                  </p>
+                  <span
+                    class="flex shrink-0 items-center gap-2 text-muted-foreground @max-[500px]:hidden"
+                  >
+                    <ClientAvatar
+                      name={cli.client?.name}
+                      class="size-7 shrink-0"
+                    />
+                    <span>{cli.client?.name}</span>
+                  </span>
+                  <ChevronRightIcon
+                    class="size-4 shrink-0 text-muted-foreground"
+                  />
                 </div>
-                <span class="shrink-0 text-muted-foreground">
-                  {cli.client?.name}
-                </span>
-                <ChevronRightIcon
-                  class="size-4 shrink-0 text-muted-foreground"
-                />
-              </div>
-            </Button>
+              </Button>
+            </div>
           {/each}
         {/if}
       </div>

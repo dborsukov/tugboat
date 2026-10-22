@@ -18,11 +18,11 @@
 
 <div
   class={cn(
-    "w-full h-full flex items-center justify-end px-2",
-    belowCost &&
-      "bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300 font-medium",
+    "flex w-full items-center justify-end gap-1.5 tabular-nums",
+    belowCost && "text-rose-600 dark:text-rose-400 font-medium",
     className,
   )}
+  title={belowCost ? "Нижче собівартості" : undefined}
 >
-  <CurrencyDisplay amount={priceString} {suffix} class="justify-end" />
+  <CurrencyDisplay amount={priceString} {suffix} />
 </div>

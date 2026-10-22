@@ -84,7 +84,15 @@ export const columns: ColumnDef<PartItemDto>[] = [
   },
   {
     accessorKey: "quantity",
-    header: "Кількість",
+    header: () => {
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () => `<div class="text-center">К-сть</div>`,
+          };
+        }),
+      );
+    },
     cell: ({ row }) => {
       return renderSnippet(
         createRawSnippet(() => {
@@ -98,13 +106,21 @@ export const columns: ColumnDef<PartItemDto>[] = [
   },
   {
     accessorKey: "unitType",
-    header: "Од. вим.",
+    header: () => {
+      return renderSnippet(
+        createRawSnippet(() => {
+          return {
+            render: () => `<div class="text-center">Од.</div>`,
+          };
+        }),
+      );
+    },
     cell: ({ row }) => {
       return renderSnippet(
         createRawSnippet(() => {
           return {
             render: () =>
-              `<div class="text-center">${row.original.unitType}</div>`,
+              `<div class="text-center text-muted-foreground">${row.original.unitType}</div>`,
           };
         }),
       );
@@ -116,7 +132,7 @@ export const columns: ColumnDef<PartItemDto>[] = [
       return renderSnippet(
         createRawSnippet(() => {
           return {
-            render: () => `<div class="text-end">Ціна закупівлі</div>`,
+            render: () => `<div class="text-end">Закупівля</div>`,
           };
         }),
       );
@@ -125,7 +141,7 @@ export const columns: ColumnDef<PartItemDto>[] = [
       return renderComponent(CurrencyDisplay, {
         amount: row.original.baseCost,
         suffix: "грн.",
-        class: "justify-end",
+        class: "justify-end text-muted-foreground",
       });
     },
   },
@@ -145,7 +161,7 @@ export const columns: ColumnDef<PartItemDto>[] = [
         createRawSnippet(() => {
           return {
             render: () =>
-              `<div class="text-center">${row.original.markup != "0" ? row.original.markup + "%" : "—"}</div>`,
+              `<div class="text-center text-muted-foreground">${row.original.markup != "0" ? row.original.markup + "%" : "—"}</div>`,
           };
         }),
       );
@@ -166,7 +182,7 @@ export const columns: ColumnDef<PartItemDto>[] = [
       return renderComponent(CurrencyDisplay, {
         amount: row.original.totals.retailPrice,
         suffix: "грн.",
-        class: "justify-end",
+        class: "justify-end text-muted-foreground",
       });
     },
   },
@@ -185,7 +201,7 @@ export const columns: ColumnDef<PartItemDto>[] = [
       return renderComponent(TableDiscountCell, {
         type: row.original.discountType,
         value: row.original.discountValue,
-        class: "justify-center",
+        class: "justify-center text-muted-foreground",
       });
     },
   },
@@ -224,7 +240,7 @@ export const columns: ColumnDef<PartItemDto>[] = [
           createRawSnippet(() => {
             return {
               render: () =>
-                `<div class="w-full h-full flex items-center justify-end px-2 bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300 font-medium whitespace-nowrap">Безкоштовно</div>`,
+                `<div class="flex justify-end"><span class="inline-flex h-6 items-center rounded-full bg-amber-100 px-2.5 text-xs font-medium whitespace-nowrap text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">Безкоштовно</span></div>`,
             };
           }),
         );
@@ -232,7 +248,7 @@ export const columns: ColumnDef<PartItemDto>[] = [
       return renderComponent(CurrencyDisplay, {
         amount: row.original.totals.total,
         suffix: "грн.",
-        class: "font-medium justify-end px-2",
+        class: "font-semibold justify-end",
       });
     },
   },

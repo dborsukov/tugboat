@@ -5,25 +5,17 @@
 
   import ArchiveIcon from "@lucide/svelte/icons/archive";
   import ArchiveRestoreIcon from "@lucide/svelte/icons/archive-restore";
-  import BanknoteIcon from "@lucide/svelte/icons/banknote";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
-  import CircleGaugeIcon from "@lucide/svelte/icons/circle-gauge";
-  import CircleUserRoundIcon from "@lucide/svelte/icons/circle-user-round";
-  import CreditCardIcon from "@lucide/svelte/icons/credit-card";
-  import FileTextIcon from "@lucide/svelte/icons/file-text";
   import LockIcon from "@lucide/svelte/icons/lock";
   import LockOpenIcon from "@lucide/svelte/icons/lock-open";
-  import MilestoneIcon from "@lucide/svelte/icons/milestone";
   import ShieldCheckIcon from "@lucide/svelte/icons/shield-check";
-  import UserRoundIcon from "@lucide/svelte/icons/user-round";
-  import WrenchIcon from "@lucide/svelte/icons/wrench";
 
   import { Button } from "$lib/components/ui/button";
   import * as Popover from "$lib/components/ui/popover/index.js";
   import { Skeleton } from "$lib/components/ui/skeleton";
 
-  import CarLogoLoader from "$lib/components/car-logo-loader.svelte";
+  import LicensePlate from "$lib/components/license-plate.svelte";
   import PhoneDisplay from "$lib/components/phone-display.svelte";
 
   import type {
@@ -35,7 +27,9 @@
   import { prettifyIsoDateString } from "$lib/tools";
   import { cn } from "$lib/utils";
 
-  import { workerShortName } from "../../workers/labels";
+  import CarBadge from "../../cars/car-badge.svelte";
+  import ClientAvatar from "../../clients/client-avatar.svelte";
+  import { workerFullName, workerShortName } from "../../workers/labels";
   import { paymentMethodInstrumentalLabel } from "../payment-method";
   import { createRestoreWorkOrderMutation } from "../queries";
   import StatusSelector from "../work-order-status-selector.svelte";
@@ -48,6 +42,7 @@
     isArchived = false,
     isLocked = $bindable(false),
     clients = [],
+    hideNotes = false,
     onGenerate,
     class: className,
   }: {
@@ -56,6 +51,7 @@
     isArchived?: boolean;
     isLocked?: boolean;
     clients?: ClientListItem[];
+    hideNotes?: boolean;
     onGenerate: (kind: DocumentKind) => void;
     class?: string;
   } = $props();
@@ -68,11 +64,9 @@
   const carDto = $derived(workOrderDetails?.carDto);
 
   const isTerminal = $derived(
-    workOrder?.status === "Paid" || workOrder?.status === "Completed",
-  );
-
-  const secondaryLine = $derived(
-    [carDto?.car?.licensePlate, carDto?.car?.year].filter(Boolean).join(" · "),
+    workOrder?.status === "Paid" ||
+      workOrder?.status === "AwaitingPayment" ||
+      workOrder?.status === "Completed",
   );
 
   const clientsById = $derived(new Map((clients ?? []).map((c) => [c.id, c])));
@@ -96,9 +90,6 @@
       ? (clientsById.get(workOrder.payerClientId) ?? null)
       : (ownerContact ?? null),
   );
-  const customerIsOwner = $derived(workOrder?.customerClientId == null);
-  const payerIsOwner = $derived(workOrder?.payerClientId == null);
-
   const driverName = $derived(
     [
       workOrder?.driverSurname,
@@ -128,7 +119,7 @@
 
   /**
    * How the order was paid, appended to the date so the header reads
-   * "Сплачено 10 вересня 2026 р. о 17:12 · Карткою". Gated on `paidAt` rather
+   * "Сплачено 10 вересня 2026, 17:12 · Карткою". Gated on `paidAt` rather
    * than on the status because `paidAt` is what makes the line say "Сплачено";
    * orders paid before the method was recorded simply keep the bare date.
    */
@@ -156,7 +147,7 @@
     ].map((entry) => ({
       label: entry.label,
       value: entry.value
-        ? `${prettifyIsoDateString(entry.value, "datetime")}${entry.suffix}`
+        ? `${prettifyIsoDateString(entry.value, "table-datetime")}${entry.suffix}`
         : "—",
     })),
   );
@@ -226,99 +217,87 @@
   );
 </script>
 
-{#snippet personCard(
+{#snippet fieldBox(
   label: string,
-  Icon: typeof UserRoundIcon,
-  name: string | null | undefined,
-  options: {
-    /** Rendered through PhoneDisplay. Omit for text that isn't a phone
-     * number — use `subtitle` instead (e.g. a job position). */
-    phone?: string | null;
-    subtitle?: string | null;
-    /** Muted placeholder */
-    hint?: string;
-    href?: string;
-    loading?: boolean;
-    class?: string;
-  } = {},
+  value: string | number | null | undefined,
+  avatarName: string | null = null,
 )}
-  <div
-    class={cn(
-      "flex min-h-15 items-start gap-3 rounded border border-border px-3 py-2.5",
-      options.class,
-    )}
-  >
-    <span
-      class="flex size-9 shrink-0 items-center justify-center rounded border border-border bg-muted/40 text-muted-foreground"
+  <div class="flex min-w-0 flex-col gap-1 bg-card px-4 py-3">
+    <span class="truncate text-sm text-muted-foreground" title={label}
+      >{label}</span
     >
-      <Icon class="size-4.5" />
-    </span>
-    <div class="flex w-full min-w-0 flex-col gap-0.5">
-      <!-- title= mirrors every line that truncates, so the full value stays
-           readable on hover. -->
-      <span class="truncate text-xs text-muted-foreground" title={label}
-        >{label}</span
-      >
-      {#if options.hint}
-        <span class="truncate text-sm italic text-muted-foreground"
-          >{options.hint}</span
-        >
-      {:else if options.loading}
-        <Skeleton class="my-1 h-4 w-40" />
-      {:else if options.href && name}
-        <a
-          href={options.href}
-          class="min-w-0 truncate text-sm font-medium underline-offset-4 hover:underline"
-          title={name}
-        >
-          {name}
-        </a>
-      {:else}
-        <span class="truncate text-sm font-medium" title={name ?? undefined}>
-          {name ?? "—"}
-        </span>
+    <div class="flex min-w-0 items-center gap-2">
+      {#if avatarName}
+        <ClientAvatar name={avatarName} class="size-6 shrink-0" />
       {/if}
-      {#if !options.hint && !options.loading}
-        {#if options.phone}
-          <PhoneDisplay
-            value={options.phone}
-            class="block w-full truncate text-xs text-muted-foreground"
-          />
-        {/if}
-        {#if options.subtitle}
-          <span
-            class="block w-full truncate text-xs text-muted-foreground"
-            title={options.subtitle}
-          >
-            {options.subtitle}
-          </span>
-        {/if}
+      <span
+        class="truncate font-semibold"
+        title={value != null ? String(value) : undefined}>{value ?? "—"}</span
+      >
+    </div>
+  </div>
+{/snippet}
+
+{#snippet personContent(
+  label: string,
+  name: string | null | undefined,
+  phone: string | null | undefined,
+)}
+  <span class="truncate text-sm text-muted-foreground" title={label}
+    >{label}</span
+  >
+  <div class="flex min-w-0 items-start gap-2">
+    {#if name}
+      <ClientAvatar {name} class="size-6 shrink-0" />
+    {/if}
+    <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+      <span class="truncate font-semibold" title={name ?? undefined}
+        >{name ?? "—"}</span
+      >
+      {#if phone}
+        <PhoneDisplay
+          value={phone}
+          class="block w-full truncate text-sm text-muted-foreground"
+        />
       {/if}
     </div>
   </div>
 {/snippet}
 
-{#snippet fieldCard(
+{#snippet personBox(
   label: string,
-  value: string | number | undefined,
-  Icon: typeof UserRoundIcon,
+  name: string | null | undefined,
+  phone: string | null | undefined,
+  href: string | null = null,
 )}
-  <div
-    class="flex min-h-15 items-start gap-3 rounded border border-border px-3 py-2.5"
-  >
-    <span
-      class="flex size-9 shrink-0 items-center justify-center rounded border border-border bg-muted/40 text-muted-foreground"
+  {#if href}
+    <a
+      {href}
+      class="group flex min-w-0 items-center gap-3 bg-card px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none"
     >
-      <Icon class="size-4.5" />
-    </span>
-    <div class="flex min-w-0 flex-col gap-0.5">
-      <p class="truncate text-xs text-muted-foreground" title={label}>
-        {label}
-      </p>
-      <p class="truncate text-sm font-medium" title={String(value ?? "")}>
-        {value}
-      </p>
+      <span class="flex min-w-0 flex-1 flex-col gap-1">
+        {@render personContent(label, name, phone)}
+      </span>
+      <ChevronRightIcon
+        class="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
+        aria-hidden="true"
+      />
+    </a>
+  {:else}
+    <div class="flex min-w-0 flex-col gap-1 bg-card px-4 py-3">
+      {@render personContent(label, name, phone)}
     </div>
+  {/if}
+{/snippet}
+
+{#snippet notesBox(label: string, value: string)}
+  <div class="min-w-0 bg-card px-4 py-3">
+    <span class="text-sm text-muted-foreground">{label}</span>
+    <p
+      class="mt-1 text-sm wrap-break-word italic text-foreground/90 whitespace-pre-wrap"
+    >
+      {value}
+    </p>
   </div>
 {/snippet}
 
@@ -330,8 +309,6 @@
       <Skeleton class="ml-auto h-5 w-24" />
     </div>
     <div class="px-4 py-4">
-      <!-- Mirrors the identity row below, wrapping included, so the skeleton
-           does not jump when the order arrives. -->
       <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <div class="flex min-w-0 flex-col gap-2">
           <Skeleton class="h-7 w-48" />
@@ -345,44 +322,47 @@
       </div>
     </div>
   </div>
-  <div class="rounded-b border border-t-0 border-border bg-card">
-    <div class="flex flex-col gap-4 px-4 pt-0 pb-4">
-      <div class="grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-1.5">
-        {#each { length: 3 } as _, i (i)}
-          <div
-            class="flex min-h-15 items-start gap-3 rounded border border-border px-4 py-2.5"
-          >
-            <span class="size-9 shrink-0"></span>
-            <div class="flex flex-col gap-1">
-              <Skeleton class="h-3.5 w-16" />
-              <Skeleton class="h-4 w-24" />
-            </div>
-          </div>
-        {/each}
-        <div
-          class="flex min-h-15 items-start gap-3 rounded border border-border px-3 py-2.5"
-        >
-          <Skeleton class="size-9 shrink-0 rounded" />
-          <div class="flex flex-col gap-1">
-            <Skeleton class="h-3.5 w-16" />
-            <Skeleton class="h-4 w-28" />
-          </div>
+  <div
+    class="overflow-hidden rounded-b border border-t-0 border-border bg-card @container"
+  >
+    <div
+      class="grid grid-cols-4 gap-px border-t border-border bg-border @max-[900px]:grid-cols-2 @max-[560px]:grid-cols-1"
+    >
+      {#each { length: 4 } as _, i (i)}
+        <div class="flex min-w-0 flex-col gap-1 bg-card px-4 py-3">
+          <Skeleton class="h-4 w-20" />
+          <Skeleton class="h-5 w-24" />
         </div>
-      </div>
-      <Skeleton class="h-14 rounded border border-border" />
-      <div class="grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-1.5">
-        {#each { length: 4 } as _, i (i)}
-          <div
-            class="flex min-h-15 items-start gap-3 rounded border border-border px-3 py-2.5"
-          >
-            <Skeleton class="size-9 shrink-0 rounded" />
-            <div class="flex flex-col gap-1">
-              <Skeleton class="h-3.5 w-14" />
-              <Skeleton class="h-4 w-32" />
-            </div>
-          </div>
-        {/each}
-      </div>
+      {/each}
+    </div>
+    <div
+      class="flex h-14 items-center gap-3 border-t border-border bg-card px-4"
+    >
+      <Skeleton class="size-8 rounded-full" />
+      <Skeleton class="h-4 w-48" />
+      <Skeleton class="ml-auto h-4 w-16" />
+    </div>
+    <div
+      class="grid grid-cols-4 gap-px border-t border-border bg-border @max-[900px]:grid-cols-2 @max-[560px]:grid-cols-1"
+    >
+      {#each { length: 4 } as _, i (i)}
+        <div class="flex min-w-0 flex-col gap-1 bg-card px-4 py-3">
+          <Skeleton class="h-4 w-16" />
+          <Skeleton class="h-5 w-32" />
+          <Skeleton class="h-4 w-24" />
+        </div>
+      {/each}
+    </div>
+    <div
+      class="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] gap-px border-t border-border bg-border"
+    >
+      {#each { length: 3 } as _, i (i)}
+        <div class="flex min-w-0 flex-col gap-1.5 bg-card px-4 py-3">
+          <Skeleton class="h-4 w-16" />
+          <Skeleton class="h-4 w-full" />
+          <Skeleton class="h-4 w-2/3" />
+        </div>
+      {/each}
     </div>
   </div>
 {/snippet}
@@ -429,7 +409,7 @@
         <span class="flex items-center gap-2 text-muted-foreground">
           <ArchiveIcon class="size-4" />
           Замовлення архівоване
-          {prettifyIsoDateString(workOrder.archivedAt ?? "", "datetime")}
+          {prettifyIsoDateString(workOrder.archivedAt ?? "", "table-datetime")}
         </span>
         <Button
           variant="link"
@@ -450,6 +430,8 @@
             <LockIcon class="size-4" />
             {#if workOrder.status === "Paid"}
               Замовлення оплачено і заблоковано від змін
+            {:else if workOrder.status === "AwaitingPayment"}
+              Замовлення очікує оплати і заблоковано від змін
             {:else}
               Замовлення завершено і заблоковано від змін
             {/if}
@@ -485,7 +467,7 @@
            and puts them at the left edge (fully visible) when they wrap. -->
       <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <div class="flex min-w-0 flex-col gap-1">
-          <h1 class="text-2xl font-semibold tracking-tight whitespace-nowrap">
+          <h1 class="text-2xl font-mono font-semibold whitespace-nowrap">
             {workOrder.id}
           </h1>
           <Popover.Root>
@@ -501,7 +483,7 @@
                   <span
                     >{prettifyIsoDateString(
                       datetimeIsoString,
-                      "datetime",
+                      "table-datetime",
                     )}{paymentMethodSuffix}</span
                   >
                   <ChevronDownIcon
@@ -551,90 +533,99 @@
     </div>
   </div>
 
-  <div class="rounded-b border border-t-0 border-border bg-card">
-    <div class="flex flex-col gap-4 px-4 pt-0 pb-4">
-      <div class="grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-1.5">
-        {@render personCard(
-          "Виконавець",
-          WrenchIcon,
-          workOrderDetails?.worker
-            ? workerShortName(workOrderDetails.worker)
-            : null,
-          {
-            hint: workOrderDetails?.worker ? undefined : "не призначено",
-          },
-        )}
-        {@render fieldCard(
-          "Пробіг",
-          `${workOrder.odometerIn} км`,
-          CircleGaugeIcon,
-        )}
-        {#if workOrder.odometerOut != null}
-          {@render fieldCard(
-            "Пробіг при видачі",
-            `${workOrder.odometerOut} км`,
-            MilestoneIcon,
-          )}
-        {/if}
-        {@render fieldCard(
-          "Тариф",
-          `${workOrder.rate} грн./год.`,
-          BanknoteIcon,
-        )}
-      </div>
-
-      <Button
-        variant="ghost"
-        class="h-auto w-full justify-start gap-3 rounded border border-border px-4 py-3 font-normal hover:bg-muted/40"
-        onclick={async () => {
-          await goto(`/cars/${carDto?.car?.id}`);
-        }}
-      >
-        <CarLogoLoader
-          slug={carDto?.brand?.iconSlug ?? ""}
-          name={carDto?.brand?.name}
-          class="size-8"
-        />
-        <span class="flex min-w-0 flex-col items-start">
-          <span class="truncate text-sm font-medium">
-            {carDto?.brand?.name}
-            {carDto?.car?.model}
-          </span>
-          {#if secondaryLine}
-            <span class="truncate text-xs text-muted-foreground">
-              {secondaryLine}
-            </span>
-          {/if}
-        </span>
-        <ChevronRightIcon class="ml-auto size-4" />
-      </Button>
-
-      <div class="grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-1.5">
-        {@render personCard("Власник", UserRoundIcon, client?.name, {
-          phone: phoneOf(ownerContact),
-          href: `/clients/${client?.id}`,
-        })}
-        {@render personCard("Замовник", FileTextIcon, customer?.name, {
-          phone: phoneOf(customer),
-          hint: customerIsOwner ? "той самий, що й власник" : undefined,
-          href: `/clients/${workOrder.customerClientId}`,
-          loading: !customerIsOwner && !customer,
-        })}
-        {#if driverName || workOrder.driverPhone}
-          {@render personCard(
-            "Водій / Представник",
-            CircleUserRoundIcon,
-            driverName,
-            { phone: workOrder.driverPhone },
-          )}
-        {/if}
-        {@render personCard("Платник", CreditCardIcon, payer?.name, {
-          phone: phoneOf(payer),
-          hint: payerIsOwner ? "той самий, що й власник" : undefined,
-          href: `/clients/${workOrder.payerClientId}`,
-          loading: !payerIsOwner && !payer,
-        })}
-      </div>
+  <div
+    class="overflow-hidden rounded-b border border-t-0 border-border bg-card @container"
+  >
+    <div
+      class="grid grid-cols-4 gap-px border-t border-border bg-border @max-[900px]:grid-cols-2 @max-[560px]:grid-cols-1"
+    >
+      {@render fieldBox(
+        "Виконавець",
+        workOrderDetails?.worker
+          ? workerShortName(workOrderDetails.worker)
+          : null,
+        workOrderDetails?.worker
+          ? workerFullName(workOrderDetails.worker)
+          : null,
+      )}
+      {@render fieldBox("Пробіг", `${workOrder.odometerIn} км`)}
+      {@render fieldBox(
+        "Пробіг при видачі",
+        workOrder.odometerOut != null ? `${workOrder.odometerOut} км` : null,
+      )}
+      {@render fieldBox("Тариф", `${workOrder.rate} грн./год.`)}
     </div>
+
+    {#if carDto?.car}
+      <a
+        href={`/cars/${carDto.car.id}`}
+        class="flex w-full items-center gap-3 border-t border-border bg-card px-4 py-3 text-left transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none"
+      >
+        <CarBadge
+          car={carDto.car}
+          carBrand={carDto.brand}
+          class="min-w-0 text-base [&>p]:min-w-0 [&>p]:truncate"
+        />
+        {#if carDto.car.licensePlate}
+          <LicensePlate value={carDto.car.licensePlate} />
+        {/if}
+        <ChevronRightIcon
+          class="ml-auto size-4 shrink-0 text-muted-foreground"
+        />
+      </a>
+    {/if}
+
+    <div
+      class="grid grid-cols-4 gap-px border-t border-border bg-border @max-[900px]:grid-cols-2 @max-[560px]:grid-cols-1"
+    >
+      {@render personBox(
+        "Власник",
+        client?.name,
+        phoneOf(ownerContact),
+        client ? `/clients/${client.id}` : null,
+      )}
+      {@render personBox(
+        "Замовник",
+        customer?.name,
+        phoneOf(customer),
+        workOrder.customerClientId != null
+          ? `/clients/${workOrder.customerClientId}`
+          : client
+            ? `/clients/${client.id}`
+            : null,
+      )}
+      {@render personBox(
+        "Водій / Представник",
+        driverName || null,
+        workOrder.driverPhone,
+        null,
+      )}
+      {@render personBox(
+        "Платник",
+        payer?.name,
+        phoneOf(payer),
+        workOrder.payerClientId != null
+          ? `/clients/${workOrder.payerClientId}`
+          : client
+            ? `/clients/${client.id}`
+            : null,
+      )}
+    </div>
+
+    {#if workOrder?.description || workOrder?.conditionReport || (!hideNotes && workOrder?.notes)}
+      <div
+        class="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] gap-px border-t border-border bg-border"
+      >
+        {#if workOrder?.description}
+          {@render notesBox("Опис", workOrder.description)}
+        {/if}
+        {#if workOrder?.conditionReport}
+          {@render notesBox("Огляд при прийнятті", workOrder.conditionReport)}
+        {/if}
+        {#if !hideNotes && workOrder?.notes}
+          {@render notesBox("Нотатки", workOrder.notes)}
+        {/if}
+      </div>
+    {/if}
   </div>
 {/if}

@@ -20,7 +20,7 @@
   import DeleteDialog from "$lib/components/delete-dialog.svelte";
 
   import type { CarDeleteImpact } from "$lib/bindings";
-  import { copyText } from "$lib/hooks/use-clipboard.svelte";
+  import { copyValue } from "$lib/clipboard";
   import { settingsState } from "$lib/states/settings.svelte";
   import { pluralizeUk } from "$lib/tools";
 
@@ -119,18 +119,6 @@
     restoreCarMutation.mutate(carId, {
       onSuccess: invalidateCascades,
     });
-  }
-
-  async function copyValue(value: string, label: string) {
-    const status = await copyText(value);
-    if (status === "success") {
-      toast.success(`${label} скопійовано`, { position: "bottom-right" });
-    } else {
-      toast.error("Не вдалося скопіювати", {
-        description: label,
-        position: "bottom-right",
-      });
-    }
   }
 
   function buildLookupUrl(urlTemplate: string, value: string): string {

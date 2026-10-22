@@ -11,6 +11,7 @@ import type { Worker } from "$lib/bindings";
 
 import { workerFullName } from "./labels";
 import DataTableActions from "./table-actions-cell.svelte";
+import WorkerNameCell from "./worker-name-cell.svelte";
 import WorkerStatusCell from "./worker-status-cell.svelte";
 
 export interface WorkerTableMeta {
@@ -56,8 +57,8 @@ export const columns: ColumnDef<Worker>[] = [
       });
     },
     cell: ({ row }) => {
-      return renderComponent(DataTableOptionalCell, {
-        value: workerFullName(row.original),
+      return renderComponent(WorkerNameCell, {
+        worker: row.original,
       });
     },
   },

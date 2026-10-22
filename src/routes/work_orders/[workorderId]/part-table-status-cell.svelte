@@ -9,12 +9,14 @@
   const styles = $derived(partStatusStylesRecord[status]);
 </script>
 
-<div
-  class={cn(
-    "h-full w-full p-2 flex items-center justify-start gap-2",
-    styles.base,
-  )}
->
-  <styles.icon class="size-5" />
-  <p class="font-medium">{styles.text}</p>
+<div class="flex items-center">
+  <span
+    class={cn(
+      "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-sm font-medium whitespace-nowrap",
+      styles.base,
+    )}
+  >
+    <styles.icon class="size-3.5 shrink-0" />
+    {styles.text}
+  </span>
 </div>

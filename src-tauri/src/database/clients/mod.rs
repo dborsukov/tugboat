@@ -142,7 +142,16 @@ pub async fn fetch_clients_list(
             d.contact_email,
             d.rnokpp,
             d.edrpou,
-            d.iban
+            d.iban,
+            (SELECT COUNT(*) FROM cars WHERE client_id = c.id) AS car_count,
+            (
+                SELECT COUNT(*)
+                FROM work_orders wo
+                JOIN cars wc ON wc.id = wo.car_id
+                WHERE wc.client_id = c.id
+                    OR wo.customer_client_id = c.id
+                    OR wo.payer_client_id = c.id
+            ) AS work_order_count
         FROM clients c
         LEFT JOIN client_details d ON d.client_id = c.id
         "#,

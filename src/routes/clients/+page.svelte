@@ -30,6 +30,7 @@
 
   import type { ClientType } from "$lib/bindings";
   import { UseAutoPageSize } from "$lib/hooks/use-auto-page-size.svelte";
+  import { pluralizeUk } from "$lib/tools";
 
   import ClientAvatar from "./client-avatar.svelte";
   import ClientMutationSheet from "./client-mutation-sheet.svelte";
@@ -287,7 +288,7 @@
     <div class="pt-4 flex flex-col">
       <div
         bind:this={autoPageSize.container}
-        class="border border-border rounded bg-card flex flex-col divide-y divide-border"
+        class="border border-border rounded bg-card flex flex-col"
       >
         {#if clientsQuery.isLoading}
           <Skeleton class="w-full h-14 shrink-0" />
@@ -318,42 +319,54 @@
           {/if}
         {:else}
           {#each paginatedClients as client (client.id)}
-            <Button
-              variant="ghost"
-              class="w-full h-auto justify-start rounded-none px-5 py-3 shrink-0 {client.archivedAt
-                ? 'opacity-60'
-                : ''}"
-              onclick={async () => await goto(`/clients/${client.id}`)}
-            >
-              <div class="flex w-full items-center gap-3.5">
-                <ClientAvatar name={client?.name} class="size-9 shrink-0" />
-                <div class="flex flex-1 min-w-0 items-center gap-2">
-                  {#if client?.clientType !== "individual"}
-                    <Badge
-                      variant="outline"
-                      class="px-2 py-2.5 text-sm font-normal shrink-0"
-                    >
-                      {client?.clientType === "company" ? "Організація" : "ФОП"}
-                    </Badge>
-                  {/if}
-                  <p class="truncate text-left text-base font-medium">
-                    {client?.name}
-                  </p>
-                  {#if client.archivedAt}
-                    <ArchivedBadge date={client.archivedAt} />
-                  {/if}
+            <div class="border-b border-border last:border-b-0">
+              <Button
+                variant="ghost"
+                class="w-full h-auto justify-start rounded-none px-5 py-3 shrink-0 {client.archivedAt
+                  ? 'opacity-60'
+                  : ''}"
+                onclick={async () => await goto(`/clients/${client.id}`)}
+              >
+                <div class="flex w-full items-center gap-3.5">
+                  <ClientAvatar name={client?.name} class="size-10 shrink-0" />
+                  <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <div class="flex min-w-0 items-center gap-2">
+                      <p class="truncate text-left text-base font-semibold">
+                        {client?.name}
+                      </p>
+                      {#if client?.clientType !== "individual"}
+                        <Badge
+                          variant="secondary"
+                          class="h-5 shrink-0 rounded-2xl bg-muted px-2 text-xs font-medium text-muted-foreground"
+                        >
+                          {clientTypeLabels[client.clientType]}
+                        </Badge>
+                      {/if}
+                      {#if client.archivedAt}
+                        <ArchivedBadge date={client.archivedAt} />
+                      {/if}
+                    </div>
+                    <p class="truncate text-left text-sm text-muted-foreground">
+                      {client.carCount} авто · {client.workOrderCount}
+                      {pluralizeUk(client.workOrderCount, [
+                        "замовлення",
+                        "замовлення",
+                        "замовлень",
+                      ])}
+                    </p>
+                  </div>
+                  <PhoneDisplay
+                    value={client?.clientType !== "individual"
+                      ? (client?.contactPhone ?? client?.phone)
+                      : client?.phone}
+                    class="shrink-0 text-sm text-muted-foreground select-none!"
+                  />
+                  <ChevronRightIcon
+                    class="size-4 shrink-0 text-muted-foreground"
+                  />
                 </div>
-                <PhoneDisplay
-                  value={client?.clientType !== "individual"
-                    ? (client?.contactPhone ?? client?.phone)
-                    : client?.phone}
-                  class="shrink-0 text-sm text-muted-foreground select-none!"
-                />
-                <ChevronRightIcon
-                  class="size-4 shrink-0 text-muted-foreground"
-                />
-              </div>
-            </Button>
+              </Button>
+            </div>
           {/each}
         {/if}
       </div>

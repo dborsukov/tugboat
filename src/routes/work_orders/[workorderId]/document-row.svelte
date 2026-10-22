@@ -168,46 +168,51 @@
 
 <div class="flex flex-col">
   <div
-    class={cn(
-      "flex min-h-16 gap-3 px-4 py-2 transition-colors hover:bg-muted/50",
-      previous.length > 0 ? "items-start" : "items-center",
-    )}
+    class="flex min-h-18 items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
   >
-    <span class="flex h-6 w-5 shrink-0 items-center">
+    <span
+      class={cn(
+        "flex h-6 w-5 shrink-0 items-center",
+        current == null ? "text-muted-foreground/60" : "text-muted-foreground",
+      )}
+    >
       {#if doc.kind === "naryad_zamovlennya"}
-        <FileTextIcon class="size-5 text-muted-foreground" />
+        <FileTextIcon class="size-5" />
       {:else}
-        <FileCheckIcon class="size-5 text-muted-foreground" />
+        <FileCheckIcon class="size-5" />
       {/if}
     </span>
 
-    <div class="flex min-w-0 flex-1 flex-col gap-1">
-      <div class="flex min-h-6 min-w-0 flex-wrap items-center gap-2">
-        <span class="truncate font-medium">{doc.title}</span>
+    <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+      <span
+        class={cn(
+          "truncate font-semibold",
+          current == null && "text-muted-foreground",
+        )}>{doc.title}</span
+      >
 
-        {#if current == null}
-          <span class="text-sm text-muted-foreground">ще не створено</span>
-        {:else}
-          {#if current.isStale}
-            <Badge
-              variant="warning"
-              title="Дані змінилися після створення документа"
-            >
-              <TriangleAlertIcon />
-              дані змінились
-            </Badge>
-          {/if}
-          {#if currentIsMissingFiles}
-            <Badge variant="destructive">файл видалено</Badge>
-          {/if}
+      {#if current == null}
+        <span class="text-sm text-muted-foreground">ще не створено</span>
+      {:else}
+        {#if current.isStale}
+          <Badge
+            variant="warning"
+            title="Дані змінилися після створення документа"
+          >
+            <TriangleAlertIcon />
+            дані змінились
+          </Badge>
         {/if}
-      </div>
+        {#if currentIsMissingFiles}
+          <Badge variant="destructive">файл видалено</Badge>
+        {/if}
+      {/if}
 
       {#if previous.length > 0}
         <Button
           variant="link"
           size="sm"
-          class="-ms-2 h-6 self-start gap-1 px-2 text-xs font-normal text-blue-800/70 dark:text-blue-300/70"
+          class="h-6 shrink-0 gap-1 px-1 text-xs font-normal text-blue-800/70 dark:text-blue-300/70"
           aria-expanded={expanded}
           onclick={() => (expanded = !expanded)}
         >
@@ -258,10 +263,10 @@
   </div>
 
   {#if expanded}
-    <div class="relative">
+    <div class="relative pb-2">
       <span
         aria-hidden="true"
-        class="absolute inset-y-0 left-6.5 w-px bg-border"
+        class="absolute top-0 bottom-2 left-6.5 w-px bg-border"
       ></span>
 
       {#each shownVersions as version, index (version.id)}

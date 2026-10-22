@@ -44,6 +44,7 @@
     headerClasses = {},
     cellClasses = {},
     rounded = true,
+    variant = "card",
     onRowClick,
     rowClassName,
     selectionActions,
@@ -56,6 +57,11 @@
     headerClasses?: Record<string, string>;
     cellClasses?: Record<string, string>;
     rounded?: boolean;
+    /**
+     * `card` draws the table as its own bordered surface.
+     * `embedded` drops the side and bottom borders and the rounding.
+     */
+    variant?: "card" | "embedded";
     onRowClick?: (row: TData) => void;
     rowClassName?: (row: TData) => string | undefined;
     selectionActions?: Snippet;
@@ -290,15 +296,20 @@
     <div
       bind:this={wrapperRef}
       class={cn(
-        "flex-1 w-full overflow-auto border border-border",
-        rounded && "rounded",
-        footerVisible && "rounded-b-none",
+        "flex-1 w-full overflow-auto",
+        variant === "card"
+          ? cn(
+              "border border-border bg-card",
+              rounded && "rounded",
+              footerVisible && "rounded-b-none border-b-0",
+            )
+          : "border-t border-border",
       )}
     >
       <TableUI.Root class="flex-1 w-full">
         <TableUI.Header bind:ref={headerRef}>
           {#each table.getHeaderGroups() as headerGroup (headerGroup.id)}
-            <TableUI.Row class="divide-x divide-border">
+            <TableUI.Row class="hover:bg-transparent">
               {#each headerGroup.headers as header (header.id)}
                 <TableUI.Head
                   colspan={header.colSpan}
@@ -330,16 +341,15 @@
                 tabindex={onRowClick ? 0 : undefined}
                 data-state={row.getIsSelected() && "selected"}
                 class={cn(
-                  "divide-x divide-border",
                   onRowClick &&
-                    "hover:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:bg-muted/90",
+                    "hover:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:bg-muted/60",
                   rowClassName?.(row.original),
                 )}
                 onclick={() => onRowClick?.(row.original)}
                 onkeydown={(e) => handleRowKeyDown(e, row.original)}
               >
                 {#each row.getVisibleCells() as cell (cell.id)}
-                  <TableUI.Cell class={cn("h-px", cellClasses[cell.column.id])}>
+                  <TableUI.Cell class={cellClasses[cell.column.id]}>
                     <FlexRender
                       content={cell.column.columnDef.cell}
                       context={cell.getContext()}
@@ -352,7 +362,7 @@
             <TableUI.Row>
               <TableUI.Cell
                 colspan={table.getVisibleFlatColumns().length}
-                class="h-24 text-center"
+                class="h-24 text-center text-muted-foreground"
               >
                 {emptyMessage}
               </TableUI.Cell>
@@ -365,8 +375,9 @@
     {#if showSelectionBar}
       <div
         class={cn(
-          "flex items-center justify-between sticky bottom-0 z-10 mt-auto p-2 bg-card border-x border-b border-border",
-          rounded && "rounded-b",
+          "flex h-10 items-center justify-between sticky bottom-0 z-10 mt-auto border-t border-border bg-card px-4",
+          variant === "card" &&
+            cn("border-x border-b border-border", rounded && "rounded-b"),
         )}
       >
         {@render selectionInfo()}
@@ -376,71 +387,78 @@
     {#if showPagination}
       <div
         class={cn(
-          "flex items-center justify-between sticky bottom-0 z-10 mt-auto p-2 bg-card border-x border-b border-border",
-          rounded && "rounded-b",
+          "flex h-10 items-center justify-between gap-4 sticky bottom-0 z-10 mt-auto border-t border-border bg-card px-4",
+          variant === "card" &&
+            cn("border-x border-b border-border", rounded && "rounded-b"),
         )}
       >
         {@render selectionInfo()}
         <div class="flex items-center gap-4">
-          <div class="flex gap-1 items-center">
-            <p class="font-medium text-sm">Рядків на сторінці:</p>
-            <Select.Root
-              type="single"
-              value={autoPageSize ? "auto" : String(currentPageSize)}
-              onValueChange={(value) => {
-                if (value !== "auto") table.setPageSize(Number(value));
-              }}
-              disabled={autoPageSize}
-            >
-              <Select.Trigger size="sm" class="w-fit">
-                {autoPageSize ? "Авто" : currentPageSize}
-              </Select.Trigger>
-              <Select.Content>
-                {#if autoPageSize}
-                  <Select.Item value="auto">Авто</Select.Item>
-                {:else}
+          <div class="flex items-center gap-1">
+            <p class="text-sm text-muted-foreground">Рядків на сторінці:</p>
+            {#if autoPageSize}
+              <span class="text-sm font-medium">Авто</span>
+            {:else}
+              <Select.Root
+                type="single"
+                value={String(currentPageSize)}
+                onValueChange={(value) => {
+                  if (value !== "auto") table.setPageSize(Number(value));
+                }}
+              >
+                <Select.Trigger
+                  size="sm"
+                  class="h-7 w-fit gap-1 rounded-md border-0 bg-transparent px-1.5 text-sm font-normal hover:bg-muted focus-visible:ring-2"
+                >
+                  {currentPageSize}
+                </Select.Trigger>
+                <Select.Content>
                   {#each pageSizeOptions as option (option)}
                     <Select.Item value={String(option)}>{option}</Select.Item>
                   {/each}
-                {/if}
-              </Select.Content>
-            </Select.Root>
+                </Select.Content>
+              </Select.Root>
+            {/if}
           </div>
-          <p class="font-medium text-sm">
+          <p class="text-sm font-semibold">
             Сторінка {table.getState().pagination.pageIndex + 1} з {table.getPageCount()}
           </p>
-          <div class="flex gap-2">
+          <div class="flex gap-1">
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon-sm"
+              class="text-muted-foreground"
               onclick={() => table.firstPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              <ChevronsLeftIcon />
+              <ChevronsLeftIcon class="size-3.5" />
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon-sm"
+              class="text-muted-foreground"
               onclick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              <ChevronLeftIcon />
+              <ChevronLeftIcon class="size-3.5" />
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon-sm"
+              class="text-muted-foreground"
               onclick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              <ChevronRightIcon />
+              <ChevronRightIcon class="size-3.5" />
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon-sm"
+              class="text-muted-foreground"
               onclick={() => table.lastPage()}
               disabled={!table.getCanNextPage()}
             >
-              <ChevronsRightIcon />
+              <ChevronsRightIcon class="size-3.5" />
             </Button>
           </div>
         </div>

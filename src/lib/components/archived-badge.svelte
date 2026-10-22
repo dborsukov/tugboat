@@ -14,8 +14,8 @@
 </script>
 
 <Badge
-  variant="outline"
-  class="gap-1 px-2 py-1 text-xs font-normal text-muted-foreground shrink-0 {className}"
+  variant="secondary"
+  class="gap-1 px-2 py-0.5 text-xs font-normal text-muted-foreground shrink-0 {className}"
   title={formattedDate ? `Архівовано ${formattedDate}` : "Архівовано"}
 >
   <ArchiveIcon class="size-3" />

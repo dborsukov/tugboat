@@ -120,10 +120,10 @@
     <DataTable
       {table}
       emptyMessage="Працівників не знайдено..."
-      headerClasses={{ name: "w-full", select: "w-10 p-0" }}
-      cellClasses={{ actions: "p-0", select: "p-0", status: "p-0" }}
+      headerClasses={{ select: "pl-4 pr-0", name: "w-full" }}
+      cellClasses={{ select: "pl-4 pr-0", actions: "p-0.5" }}
       autoPageSize
-      class="mt-4 rounded shadow-xs bg-card"
+      class="mt-4"
     >
       {#snippet selectionActions()}
         <DataTableBulkActions

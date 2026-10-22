@@ -1,33 +1,35 @@
 <script lang="ts">
   import { createQueries, useQueryClient } from "@tanstack/svelte-query";
+  import Big from "big.js";
 
   import { goto } from "$app/navigation";
 
   import ArchiveIcon from "@lucide/svelte/icons/archive";
   import ArchiveRestoreIcon from "@lucide/svelte/icons/archive-restore";
-  import CalendarPlusIcon from "@lucide/svelte/icons/calendar-plus";
   import ChevronRightIcon from "@lucide/svelte/icons/chevron-right";
-  import DotIcon from "@lucide/svelte/icons/dot";
-  import MailIcon from "@lucide/svelte/icons/mail";
-  import PhoneIcon from "@lucide/svelte/icons/phone";
-  import StickyNoteIcon from "@lucide/svelte/icons/sticky-note";
+  import CopyIcon from "@lucide/svelte/icons/copy";
 
   import * as Accordion from "$lib/components/ui/accordion";
   import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
+  import * as Popover from "$lib/components/ui/popover/index.js";
   import { Skeleton } from "$lib/components/ui/skeleton";
 
   import ArchivedBadge from "$lib/components/archived-badge.svelte";
   import LogoLoader from "$lib/components/car-logo-loader.svelte";
+  import CurrencyDisplay from "$lib/components/currency-display.svelte";
   import DataTable from "$lib/components/data-table/data-table.svelte";
   import { buildTable } from "$lib/components/data-table/table-builder.svelte";
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
+  import LicensePlate from "$lib/components/license-plate.svelte";
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
   import PhoneDisplay from "$lib/components/phone-display.svelte";
 
   import { isUnknownBrand } from "$lib/brands";
-  import { prettifyIsoDateString } from "$lib/tools";
+  import { copyValue } from "$lib/clipboard";
+  import { pluralizeUk, prettifyIsoDateString } from "$lib/tools";
+  import { cn } from "$lib/utils";
 
   import CarMutationSheet from "../../cars/car-mutation-sheet.svelte";
   import { invalidateCars } from "../../cars/queries";
@@ -37,6 +39,8 @@
     workOrderDetailsListByClientIdQueryOptions,
   } from "../../work_orders/queries";
   import { buildWorkOrderClientColumn } from "../../work_orders/work-order-client-column";
+  import WorkOrderMutationSheet from "../../work_orders/work-order-mutation-sheet.svelte";
+  import { isAwaitingPayment } from "../../work_orders/work-order-status";
   import ClientAvatar from "../client-avatar.svelte";
   import {
     clientDetailsQueryOptions,
@@ -57,6 +61,10 @@
 
   let { params } = $props();
   let isCarMutationSheetOpen = $state(false);
+  let isWorkOrderCarPopoverOpen = $state(false);
+  let selectedWorkOrderCarId = $state<number | null>(null);
+  let isWorkOrderSheetOpen = $state(false);
+  let orgDetailsOpen = $state<string | undefined>(undefined);
   let clientId = $derived(Number(params.clientId));
 
   const queryClient = useQueryClient();
@@ -116,9 +124,69 @@
     get columns() {
       return columns;
     },
+    hiddenColumns: ["client"],
     disableFiltering: true,
     disablePagination: true,
     initialSorting: [{ id: "createdAt", desc: true }],
+  });
+
+  const isIndividual = $derived(
+    clientDetails?.client?.clientType === "individual",
+  );
+  const clientPhone = $derived(
+    isIndividual
+      ? clientDetails?.client?.phone
+      : clientDetails?.details?.contactPhone,
+  );
+  const clientEmail = $derived(
+    isIndividual
+      ? clientDetails?.client?.email
+      : clientDetails?.details?.contactEmail,
+  );
+
+  const ordersCount = $derived(workOrderListItems.length);
+  const paidTotal = $derived(
+    workOrderListItems
+      .filter((details) => details.workOrder.status === "Paid")
+      .reduce(
+        (sum, details) => sum.plus(details.totals?.totalWithVat ?? "0"),
+        new Big(0),
+      ),
+  );
+
+  const awaitingPaymentOrders = $derived(
+    workOrderListItems.filter((details) =>
+      isAwaitingPayment(details.workOrder.status),
+    ),
+  );
+  const awaitingPaymentTotal = $derived(
+    awaitingPaymentOrders.reduce(
+      (sum, details) => sum.plus(details.totals?.totalWithVat ?? "0"),
+      new Big(0),
+    ),
+  );
+  const lastVisit = $derived(
+    workOrderListItems.reduce<string | null>((latest, details) => {
+      const createdAt = details.workOrder.createdAt;
+      return !latest || new Date(createdAt) > new Date(latest)
+        ? createdAt
+        : latest;
+    }, null),
+  );
+
+  const carOrderStats = $derived.by(() => {
+    const map = new Map<number, { count: number; total: Big }>();
+    for (const details of workOrderListItems) {
+      const carId = details.carDto?.car?.id;
+      if (carId == null) continue;
+      const entry = map.get(carId) ?? { count: 0, total: new Big(0) };
+      entry.count += 1;
+      if (details.workOrder.status === "Paid") {
+        entry.total = entry.total.plus(details.totals?.totalWithVat ?? "0");
+      }
+      map.set(carId, entry);
+    }
+    return map;
   });
 
   function handleRestore() {
@@ -131,6 +199,58 @@
   }
 </script>
 
+{#snippet copyCell(
+  label: string,
+  value: string | null | undefined,
+  kind: "text" | "phone" = "text",
+)}
+  {#if value}
+    <button
+      type="button"
+      class="group flex w-full min-w-0 cursor-pointer flex-col gap-1 bg-card px-4 py-3 text-left transition-colors outline-none hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted/70"
+      title="Копіювати"
+      onclick={() => copyValue(value, label)}
+    >
+      <span class="flex items-center gap-1.5 text-sm text-muted-foreground">
+        {label}
+        <CopyIcon
+          class="size-3.5 text-muted-foreground/70 transition-colors group-hover:text-foreground"
+          aria-hidden="true"
+        />
+      </span>
+      {#if kind === "phone"}
+        <PhoneDisplay {value} class="block w-full truncate" />
+      {:else}
+        <span class="truncate">{value}</span>
+      {/if}
+    </button>
+  {:else}
+    <div class="flex min-w-0 flex-col gap-1 bg-card px-4 py-3">
+      <span class="text-sm text-muted-foreground">{label}</span>
+      <span class="text-muted-foreground/50">—</span>
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet infoCell(
+  label: string,
+  value: string | null | undefined,
+  wide: boolean = false,
+)}
+  <div
+    class={cn(
+      "flex min-w-0 flex-col gap-1 bg-card px-4 py-3",
+      wide && "col-span-2 @max-[600px]:col-span-1",
+    )}
+  >
+    <span class="text-sm text-muted-foreground">{label}</span>
+    <span
+      class="truncate {value ? '' : 'text-muted-foreground/50'}"
+      title={value ?? undefined}>{value || "—"}</span
+    >
+  </div>
+{/snippet}
+
 <PageLayout>
   {#if combinedQueries.isError}
     <FetchErrorDisplay
@@ -139,88 +259,141 @@
       class="mt-20"
     />
   {:else if combinedQueries.isLoading}
-    <div class="mt-4 border border-border rounded bg-card">
-      <!-- Header Skeleton -->
-      <div class="p-4">
-        <div class="flex flex-row items-center gap-4">
+    <div
+      class="mt-4 overflow-hidden rounded border border-border bg-card @container"
+    >
+      <div class="border-b border-border p-4">
+        <div class="flex flex-wrap items-center gap-4">
           <Skeleton class="size-16 rounded-full shrink-0" />
-          <div class="flex flex-col gap-2">
+          <div class="flex min-w-0 flex-col gap-2">
             <Skeleton class="h-7 w-48" />
-            <div class="flex flex-row items-center gap-2">
-              <Skeleton class="h-4 w-32" />
-              <Skeleton class="size-1 rounded-full shrink-0" />
-              <Skeleton class="h-4 w-32" />
-            </div>
+            <Skeleton class="h-4 w-40" />
           </div>
-          <div class="h-full ml-auto flex flex-col items-start">
-            <Skeleton class="size-8 rounded-md" />
-          </div>
-        </div>
-      </div>
-
-      <!-- Notes Skeleton -->
-      <div class="w-full flex flex-wrap border-t border-border bg-muted/40">
-        <div class="flex-1 flex flex-col items-start gap-1.5 px-4 py-2">
-          <div class="flex items-center gap-2">
-            <Skeleton class="size-4 rounded-sm" />
-            <Skeleton class="h-4 w-16" />
-          </div>
-          <Skeleton class="h-4 w-full max-w-md" />
-        </div>
-      </div>
-    </div>
-
-    <div class="mt-4 border border-border rounded bg-card">
-      <!-- Cars Section Skeleton -->
-      <div class="p-0 border-b border-border">
-        <div class="px-4 pt-4 pb-3 flex flex-row items-center gap-2">
-          <Skeleton class="h-7 w-28" />
-          <Skeleton class="h-7 w-8" />
-          <Skeleton class="ml-auto h-5 w-20" />
-        </div>
-        <div class="px-4 pb-4">
           <div
-            class="border border-border rounded bg-card flex flex-col divide-y divide-border"
+            class="ml-auto flex flex-wrap items-start gap-x-6 gap-y-3 @max-[900px]:hidden"
           >
-            {#each Array(2) as _}
-              <div class="h-10 w-full px-3 flex flex-row items-center gap-2.5">
-                <Skeleton class="size-6 rounded-full shrink-0" />
-                <Skeleton class="h-4 w-32" />
-                <Skeleton class="h-4 w-14 ml-auto" />
-                <Skeleton class="h-4 w-8" />
-                <Skeleton class="size-4 rounded-sm shrink-0" />
+            {#each { length: 4 } as _, i (i)}
+              <div class="flex flex-col gap-1">
+                <Skeleton class="h-4 w-20" />
+                <Skeleton class="h-5 w-24" />
               </div>
             {/each}
           </div>
+          <Skeleton class="size-8 rounded-md @max-[900px]:ml-auto" />
         </div>
       </div>
-
-      <!-- Work Orders Section Skeleton -->
-      <div class="p-4">
-        <div class="flex flex-row items-center gap-2">
-          <Skeleton class="h-7 w-32" />
-          <Skeleton class="h-7 w-8" />
-        </div>
-
-        <!-- Table Skeleton -->
-        <div class="mt-4 border border-border rounded-md">
-          <div class="h-10 border-b border-border flex items-center px-4 gap-4">
-            <Skeleton class="h-4 w-1/2" />
-            <Skeleton class="h-4 w-14" />
-            <Skeleton class="h-4 w-14 ml-auto" />
+      <div
+        class="hidden grid-cols-4 gap-px bg-border @max-[900px]:grid @max-[900px]:grid-cols-2 @max-[600px]:grid-cols-1"
+      >
+        {#each { length: 4 } as _, i (i)}
+          <div class="flex min-w-0 flex-col gap-1 bg-card px-4 py-3">
             <Skeleton class="h-4 w-20" />
+            <Skeleton class="h-5 w-24" />
           </div>
-          {#each { length: 3 } as _, i (i)}
-            <div
-              class="h-12 border-b border-border last:border-0 flex items-center px-4 gap-4"
-            >
-              <Skeleton class="h-4 w-2/3" />
-              <Skeleton class="h-5 w-14 rounded-full" />
-              <Skeleton class="h-4 w-14 ml-auto" />
-              <Skeleton class="h-4 w-20" />
+        {/each}
+      </div>
+      <div class="@max-[900px]:border-t @max-[900px]:border-border">
+        <div class="grid grid-cols-2 gap-px bg-border @max-[480px]:grid-cols-1">
+          {#each { length: 2 } as _, i (i)}
+            <div class="flex min-w-0 flex-col gap-1 bg-card px-4 py-3">
+              <Skeleton class="h-4 w-16" />
+              <Skeleton class="h-5 w-40" />
             </div>
           {/each}
         </div>
+      </div>
+      <div class="border-t border-border px-4 py-3">
+        <Skeleton class="h-4 w-2/3" />
+      </div>
+    </div>
+
+    <div
+      class="mt-4 overflow-hidden rounded border border-border bg-card @container"
+    >
+      <div
+        class="flex min-h-12 items-center border-b border-border px-4 py-2 mb-0.5"
+      >
+        <Skeleton class="h-7 w-40" />
+      </div>
+      <div class="grid grid-cols-3 gap-px bg-border @max-[560px]:grid-cols-1">
+        {#each { length: 3 } as _, i (i)}
+          <div class="flex min-w-0 flex-col gap-1 bg-card px-4 py-3">
+            <Skeleton class="h-4 w-16" />
+            <Skeleton class="h-5 w-40" />
+          </div>
+        {/each}
+      </div>
+    </div>
+
+    <div
+      class="mt-4 overflow-hidden rounded border border-border bg-card @container"
+    >
+      <div
+        class="flex min-h-12 items-center border-b border-border px-4 py-2 mb-0.5"
+      >
+        <Skeleton class="h-7 w-44" />
+      </div>
+      <div
+        class="-mx-4 -mb-4 grid grid-cols-3 gap-px bg-border @max-[600px]:grid-cols-1"
+      >
+        {#each { length: 9 } as _, i (i)}
+          <div
+            class={cn(
+              "flex min-w-0 flex-col gap-1 bg-card px-4 py-3",
+              (i === 0 || i === 2) && "col-span-2 @max-[600px]:col-span-1",
+            )}
+          >
+            <Skeleton class="h-4 w-20" />
+            <Skeleton class="h-5 w-40" />
+          </div>
+        {/each}
+      </div>
+    </div>
+
+    <div
+      class="mt-4 overflow-hidden rounded border border-border bg-card @container"
+    >
+      <div class="flex min-h-12 items-center gap-2 px-4 py-2 mb-0.5">
+        <Skeleton class="h-7 w-28" />
+        <Skeleton class="ml-auto h-5 w-20" />
+      </div>
+      <div class="border-t border-border">
+        {#each { length: 2 } as _, i (i)}
+          <div
+            class="flex items-center gap-3 border-b border-border px-4 py-3 last:border-b-0"
+          >
+            <Skeleton class="size-8 rounded-full" />
+            <Skeleton class="h-5 w-40" />
+            <Skeleton class="ml-auto h-4 w-20" />
+            <Skeleton class="h-4 w-24" />
+            <Skeleton class="size-4 rounded-sm" />
+          </div>
+        {/each}
+      </div>
+    </div>
+
+    <div class="mt-4 overflow-hidden rounded border border-border bg-card">
+      <div class="flex min-h-12 items-center gap-2 px-4 py-2 mb-0.5">
+        <Skeleton class="h-7 w-32" />
+        <Skeleton class="ml-auto h-5 w-20" />
+      </div>
+      <div class="border-t border-border">
+        <div class="h-10 border-b border-border flex items-center gap-4 px-4">
+          <Skeleton class="h-4 w-1/2" />
+          <Skeleton class="h-4 w-16" />
+          <Skeleton class="h-4 w-16 ml-auto" />
+          <Skeleton class="h-4 w-20" />
+        </div>
+        {#each { length: 3 } as _, i (i)}
+          <div
+            class="h-12 border-b border-border last:border-0 flex items-center gap-4 px-4"
+          >
+            <Skeleton class="h-4 w-1/2" />
+            <Skeleton class="h-5 w-16 rounded-full" />
+            <Skeleton class="h-4 w-16 ml-auto" />
+            <Skeleton class="h-4 w-20" />
+          </div>
+        {/each}
       </div>
     </div>
   {:else if !clientDetails}
@@ -229,10 +402,12 @@
       class="mt-10"
     />
   {:else}
-    <div class="mt-4 border border-border rounded bg-card">
+    <div
+      class="sticky top-0 z-20 mt-4 overflow-hidden rounded-t border border-border bg-card @container"
+    >
       {#if clientDetails?.client?.archivedAt}
         <div
-          class="flex items-center justify-between gap-2 rounded-t px-4 py-2 border-b border-border bg-muted/40 text-sm"
+          class="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-4 py-2 text-sm"
         >
           <span class="flex items-center gap-2 text-muted-foreground">
             <ArchiveIcon class="size-4" />
@@ -250,132 +425,190 @@
           </Button>
         </div>
       {/if}
-      <div class="p-4">
-        <div class="flex flex-row items-center gap-4">
-          <ClientAvatar name={clientDetails?.client?.name} class="size-16" />
-          <div class="flex flex-col gap-2">
-            <p class="text-xl font-semibold leading-none">
-              {clientDetails?.client?.name}
-            </p>
 
-            <div class="flex flex-row items-center">
-              {#if clientDetails?.client?.clientType === "individual"}
-                {#if clientDetails?.client?.phone}
-                  <PhoneIcon class="size-4 mr-2 text-muted-foreground" />
-                  <PhoneDisplay
-                    value={clientDetails?.client?.phone}
-                    class="text-end select-none!"
-                  />
-                {/if}
-                {#if clientDetails?.client?.email}
-                  {#if clientDetails?.client?.phone}
-                    <DotIcon class="mx-1 size-4 text-muted-foreground" />
-                  {/if}
-                  <MailIcon class="size-4 mr-2 text-muted-foreground" />
-                  {clientDetails?.client?.email}
-                {/if}
-                {#if clientDetails?.client?.phone || clientDetails?.client?.email}
-                  <DotIcon class="mx-1 size-4 text-muted-foreground" />
-                {/if}
-              {:else}
+      <div class="p-4">
+        <div class="flex flex-wrap items-center gap-4">
+          <ClientAvatar
+            name={clientDetails?.client?.name}
+            class="size-16 shrink-0"
+          />
+          <div class="flex min-w-0 flex-col gap-1.5">
+            <div class="flex flex-wrap items-center gap-2">
+              <p class="text-xl font-semibold">
+                {clientDetails?.client?.name}
+              </p>
+              {#if clientDetails?.client?.clientType !== "individual"}
                 <Badge
-                  variant="outline"
-                  class="px-2 py-2.5 text-sm font-normal"
+                  variant="secondary"
+                  class="h-6 rounded-2xl bg-muted px-2 text-xs font-medium text-muted-foreground"
                 >
                   {clientDetails?.client?.clientType === "company"
                     ? "Організація"
                     : "ФОП"}
                 </Badge>
-                <DotIcon class="mx-1 size-4 text-muted-foreground" />
-                {#if clientDetails?.details?.contactPhone}
-                  <PhoneIcon class="size-4 mr-2 text-muted-foreground" />
-                  <PhoneDisplay
-                    value={clientDetails?.details?.contactPhone}
-                    class="text-end select-none!"
-                  />
-                {/if}
-                {#if clientDetails?.details?.contactEmail}
-                  {#if clientDetails?.details?.contactPhone}
-                    <DotIcon class="mx-1 size-4 text-muted-foreground" />
-                  {/if}
-                  <MailIcon class="size-4 mr-2 text-muted-foreground" />
-                  {clientDetails?.details?.contactEmail}
-                {/if}
-                {#if clientDetails?.details?.contactPhone || clientDetails?.details?.contactEmail}
-                  <DotIcon class="mx-1 size-4 text-muted-foreground" />
-                {/if}
               {/if}
-              <CalendarPlusIcon class="size-4 mr-2 text-muted-foreground" />
-              {prettifyIsoDateString(clientDetails?.client?.createdAt, "long")}
+            </div>
+            <p class="text-base text-muted-foreground">
+              Клієнт з {prettifyIsoDateString(
+                clientDetails?.client?.createdAt,
+                "long",
+              )}
+            </p>
+          </div>
+
+          <div
+            class="ml-auto flex flex-wrap items-start gap-x-6 gap-y-3 @max-[900px]:hidden"
+          >
+            <div class="flex flex-col gap-0.5">
+              <span class="text-sm text-muted-foreground">Замовлень</span>
+              <span class="font-semibold tabular-nums">{ordersCount}</span>
+            </div>
+            <div class="flex flex-col gap-0.5">
+              <span class="text-sm text-muted-foreground">Всього витрачено</span
+              >
+              <CurrencyDisplay
+                amount={paidTotal.toString()}
+                suffix="грн."
+                class="font-semibold"
+              />
+            </div>
+            {#if awaitingPaymentOrders.length > 0}
+              <div class="flex flex-col gap-0.5">
+                <span class="text-sm text-muted-foreground">Очікує оплати</span>
+                <CurrencyDisplay
+                  amount={awaitingPaymentTotal.toString()}
+                  suffix="грн."
+                  class="font-semibold text-primary"
+                />
+              </div>
+            {/if}
+            <div class="flex flex-col gap-0.5">
+              <span class="text-sm text-muted-foreground">Останній візит</span>
+              <span
+                class="font-semibold tabular-nums {lastVisit
+                  ? ''
+                  : 'text-muted-foreground'}"
+              >
+                {lastVisit ? prettifyIsoDateString(lastVisit, "short") : "—"}
+              </span>
             </div>
           </div>
-          <div class="h-full ml-auto flex flex-col items-start">
+
+          <div class="flex flex-col items-start @max-[900px]:ml-auto">
             <DropdownMenu
               clientId={clientDetails?.client?.id}
               isArchived={clientDetails?.client?.archivedAt != null}
-              phone={(clientDetails?.client?.clientType === "individual"
-                ? clientDetails?.client?.phone
-                : clientDetails?.details?.contactPhone) ?? null}
-              email={(clientDetails?.client?.clientType === "individual"
-                ? clientDetails?.client?.email
-                : clientDetails?.details?.contactEmail) ?? null}
+              phone={clientPhone ?? null}
+              email={clientEmail ?? null}
             />
           </div>
         </div>
       </div>
 
-      {#if clientDetails?.client?.notes}
-        <div class="w-full flex flex-wrap border-t border-border bg-muted/40">
-          <div class="flex-1 flex flex-col items-start gap-1 px-4 py-2">
-            <span
-              class="flex items-center justify-center gap-2 text-base text-muted-foreground"
-            >
-              <StickyNoteIcon class="size-4" />
-              <span>Нотатки</span>
-            </span>
-            <p class="text-base italic text-foreground/90 whitespace-pre-wrap">
-              {clientDetails.client.notes}
-            </p>
+      <div
+        class={cn(
+          "hidden gap-px bg-border @max-[900px]:grid @max-[900px]:border-t @max-[900px]:border-border @max-[900px]:grid-cols-2 @max-[600px]:grid-cols-1",
+          awaitingPaymentOrders.length > 0 ? "grid-cols-4" : "grid-cols-3",
+        )}
+      >
+        <div class="flex flex-col gap-0.5 bg-card px-4 py-3">
+          <span class="text-sm text-muted-foreground">Замовлень</span>
+          <span class="font-semibold tabular-nums">{ordersCount}</span>
+        </div>
+        <div class="flex flex-col gap-0.5 bg-card px-4 py-3">
+          <span class="text-sm text-muted-foreground">Всього витрачено</span>
+          <CurrencyDisplay
+            amount={paidTotal.toString()}
+            suffix="грн."
+            class="font-semibold"
+          />
+        </div>
+        {#if awaitingPaymentOrders.length > 0}
+          <div class="flex flex-col gap-0.5 bg-card px-4 py-3">
+            <span class="text-sm text-muted-foreground">Очікує оплати</span>
+            <CurrencyDisplay
+              amount={awaitingPaymentTotal.toString()}
+              suffix="грн."
+              class="font-semibold text-primary"
+            />
           </div>
+        {/if}
+        <div class="flex flex-col gap-0.5 bg-card px-4 py-3">
+          <span class="text-sm text-muted-foreground">Останній візит</span>
+          <span
+            class="font-semibold tabular-nums {lastVisit
+              ? ''
+              : 'text-muted-foreground'}"
+          >
+            {lastVisit ? prettifyIsoDateString(lastVisit, "short") : "—"}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div
+      class="overflow-hidden rounded-b border-x border-b border-border bg-card @container"
+    >
+      <div class="grid grid-cols-2 gap-px bg-border @max-[480px]:grid-cols-1">
+        {@render copyCell("Телефон", clientPhone, "phone")}
+        {@render copyCell("Email", clientEmail)}
+      </div>
+
+      {#if clientDetails?.client?.notes}
+        <div
+          class="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-border px-4 py-2"
+        >
+          <span class="shrink-0 text-sm text-muted-foreground">Нотатки</span>
+          <p
+            class="min-w-0 text-sm italic text-foreground/90 whitespace-pre-wrap"
+          >
+            {clientDetails.client.notes}
+          </p>
         </div>
       {/if}
     </div>
 
     {#if clientDetails?.details}
-      {#snippet detailRow(label: string, value: string | null | undefined)}
-        <div class="flex flex-col gap-0.5 min-w-0">
-          <span class="text-sm text-muted-foreground">{label}</span>
-          <span class="truncate {value ? '' : 'text-muted-foreground/50'}">
-            {value || "—"}
-          </span>
+      <div
+        class="mt-4 overflow-hidden rounded border border-border bg-card @container"
+      >
+        <div
+          class="flex min-h-12 items-center border-b border-border px-4 py-2 mb-0.5"
+        >
+          <p class="text-xl font-medium">Контактна особа</p>
         </div>
-      {/snippet}
+        <div class="grid grid-cols-3 gap-px bg-border @max-[560px]:grid-cols-1">
+          {@render infoCell(
+            "ПІБ",
+            composeName(
+              clientDetails.details.contactSurname,
+              clientDetails.details.contactFirstName,
+              clientDetails.details.contactPatronymic,
+            ),
+          )}
+          {@render copyCell(
+            "Телефон",
+            clientDetails.details.contactPhone,
+            "phone",
+          )}
+          {@render copyCell("Email", clientDetails.details.contactEmail)}
+        </div>
+      </div>
 
-      <div class="mt-4 border border-border rounded bg-card">
-        <!-- Contact person: always visible, same header style as the rest
-             of the page. Sits outside the accordion below. -->
-        <div class="p-4 border-b border-border">
-          <p class="text-xl font-medium mb-3">Контактна особа</p>
-          <div
-            class="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-3 text-base"
+      <div
+        class="mt-4 overflow-hidden rounded border border-border bg-card @container"
+      >
+        <Accordion.Root
+          type="single"
+          bind:value={orgDetailsOpen}
+          class="w-full rounded-none border-none"
+        >
+          <Accordion.Item
+            value="requisites"
+            class="border-none data-open:bg-transparent"
           >
-            {@render detailRow(
-              "ПІБ",
-              composeName(
-                clientDetails?.details?.contactSurname,
-                clientDetails?.details?.contactFirstName,
-                clientDetails?.details?.contactPatronymic,
-              ),
-            )}
-            {@render detailRow("Телефон", clientDetails?.details?.contactPhone)}
-            {@render detailRow("Email", clientDetails?.details?.contactEmail)}
-          </div>
-        </div>
-
-        <Accordion.Root type="single" class="w-full border-none">
-          <Accordion.Item value="requisites" class="border-none">
             <Accordion.Trigger
-              class="p-4 text-xl font-medium items-center hover:no-underline"
+              class="min-h-12 items-center border-0 p-0 px-4 py-2 text-xl font-medium aria-expanded:border-b aria-expanded:border-border hover:no-underline mb-0.5"
             >
               {clientDetails?.client?.clientType === "company"
                 ? "Дані організації"
@@ -383,45 +616,49 @@
             </Accordion.Trigger>
             <Accordion.Content>
               <div
-                class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 text-base"
+                class="-mx-4 -mb-4 grid grid-cols-3 gap-px bg-border @max-[600px]:grid-cols-1"
               >
                 {#if clientDetails?.client?.clientType === "company"}
-                  {@render detailRow(
+                  {@render infoCell(
                     "Юридична назва",
-                    clientDetails?.details?.legalName,
+                    clientDetails.details.legalName,
+                    true,
                   )}
-                  {@render detailRow("ЄДРПОУ", clientDetails?.details?.edrpou)}
-                  {@render detailRow(
+                  {@render copyCell("ЄДРПОУ", clientDetails.details.edrpou)}
+                  {@render infoCell(
                     "Юридична адреса",
-                    clientDetails?.details?.legalAddress,
+                    clientDetails.details.legalAddress,
+                    true,
                   )}
-                  {@render detailRow(
+                  {@render infoCell(
                     "Керівник",
                     composeName(
-                      clientDetails?.details?.directorSurname,
-                      clientDetails?.details?.directorFirstName,
-                      clientDetails?.details?.directorPatronymic,
+                      clientDetails.details.directorSurname,
+                      clientDetails.details.directorFirstName,
+                      clientDetails.details.directorPatronymic,
                     ),
                   )}
-                  {@render detailRow("IBAN", clientDetails?.details?.iban)}
-                  {@render detailRow("Банк", clientDetails?.details?.bankName)}
-                  {@render detailRow(
-                    "Платник ПДВ",
-                    clientDetails?.details?.vatPayer ? "Так" : "Ні",
-                  )}
+                  {@render copyCell("IBAN", clientDetails.details.iban)}
+                  {@render infoCell("Банк", clientDetails.details.bankName)}
                 {:else}
-                  {@render detailRow("РНОКПП", clientDetails?.details?.rnokpp)}
-                  {@render detailRow(
+                  {@render copyCell("РНОКПП", clientDetails.details.rnokpp)}
+                  {@render infoCell(
                     "Юридична адреса",
-                    clientDetails?.details?.legalAddress,
+                    clientDetails.details.legalAddress,
+                    true,
                   )}
-                  {@render detailRow("IBAN", clientDetails?.details?.iban)}
-                  {@render detailRow("Банк", clientDetails?.details?.bankName)}
-                  {@render detailRow(
-                    "Платник ПДВ",
-                    clientDetails?.details?.vatPayer ? "Так" : "Ні",
-                  )}
+                  {@render copyCell("IBAN", clientDetails.details.iban)}
+                  {@render infoCell("Банк", clientDetails.details.bankName)}
                 {/if}
+                <div class="flex min-w-0 flex-col gap-1 bg-card px-4 py-3">
+                  <span class="text-sm text-muted-foreground">Платник ПДВ</span>
+                  <Badge
+                    variant="secondary"
+                    class="w-fit px-2 py-0.5 text-sm font-normal"
+                  >
+                    {clientDetails.details.vatPayer ? "Так" : "Ні"}
+                  </Badge>
+                </div>
               </div>
             </Accordion.Content>
           </Accordion.Item>
@@ -429,113 +666,166 @@
       </div>
     {/if}
 
-    <div class="mt-4 border border-border rounded bg-card">
-      <div class="p-0 border-b border-border">
-        <div
-          class="px-4 pt-4 pb-3 flex flex-row gap-2 items-center text-xl font-medium"
-        >
-          <p>Автомобілі</p>
-          <p class="text-muted-foreground">
-            {clientDetails?.cars?.length}
-          </p>
-          {#if !clientDetails?.client?.archivedAt}
-            <Button
-              variant="link"
-              class="ml-auto text-base"
-              onclick={() => (isCarMutationSheetOpen = !isCarMutationSheetOpen)}
-              >Додати +</Button
-            >
-          {/if}
-          <CarMutationSheet
-            initClientId={clientDetails?.client?.id}
-            bind:open={isCarMutationSheetOpen}
-          />
+    <div
+      class="mt-4 overflow-hidden rounded border border-border bg-card @container"
+    >
+      <div class="flex min-h-12 flex-wrap items-center gap-2 px-4 py-2 mb-0.5">
+        <div class="flex items-baseline gap-2">
+          <p class="text-xl font-medium">Автомобілі</p>
+          <p class="text-muted-foreground">{clientDetails?.cars?.length}</p>
         </div>
-        <div class="px-4 pb-4">
-          <div
-            class="border border-border rounded bg-card flex flex-col divide-y divide-border"
+        {#if !clientDetails?.client?.archivedAt}
+          <Button
+            variant="link"
+            class="ml-auto pr-0 text-base"
+            onclick={() => (isCarMutationSheetOpen = !isCarMutationSheetOpen)}
+            >Додати +</Button
           >
-            {#if clientDetails?.cars?.length != 0}
-              {#each clientDetails?.cars as cli (cli.car.id)}
+        {/if}
+        <CarMutationSheet
+          initClientId={clientDetails?.client?.id}
+          bind:open={isCarMutationSheetOpen}
+        />
+      </div>
+      {#if clientDetails?.cars?.length}
+        <div class="border-t border-border">
+          {#each clientDetails.cars as cli (cli.car.id)}
+            {@const stats = carOrderStats.get(cli.car.id)}
+            <a
+              href={`/cars/${cli.car.id}`}
+              class={cn(
+                "flex w-full items-center gap-3 border-b border-border bg-card px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none",
+                cli.car?.archivedAt && "opacity-60",
+              )}
+            >
+              <span class="size-8 shrink-0">
+                <LogoLoader slug={cli.brand.iconSlug} name={cli.brand.name} />
+              </span>
+              <span class="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                <span class="truncate font-medium">
+                  {isUnknownBrand(cli.brand) ? "" : cli.brand?.name + " "}{cli
+                    .car?.model}
+                </span>
+                <Badge
+                  variant="secondary"
+                  class="h-5 rounded-2xl bg-muted px-2 text-xs font-medium text-muted-foreground"
+                  >{cli.car?.year}</Badge
+                >
+                {#if cli.car?.licensePlate}
+                  <LicensePlate value={cli.car.licensePlate} size="sm" />
+                {/if}
+                {#if cli.car?.archivedAt}
+                  <ArchivedBadge date={cli.car.archivedAt} />
+                {/if}
+              </span>
+              <span
+                class="shrink-0 text-sm text-muted-foreground @max-[900px]:hidden"
+              >
+                {stats?.count ?? 0}
+                {pluralizeUk(stats?.count ?? 0, [
+                  "замовлення",
+                  "замовлення",
+                  "замовлень",
+                ])}
+              </span>
+              <CurrencyDisplay
+                amount={(stats?.total ?? new Big(0)).toString()}
+                suffix="грн."
+                class="shrink-0 font-semibold @max-[900px]:hidden"
+              />
+              <ChevronRightIcon class="size-4 shrink-0 text-muted-foreground" />
+            </a>
+          {/each}
+        </div>
+      {:else}
+        <div
+          class="border-t border-border p-4 text-center text-muted-foreground"
+        >
+          Автомобілів ще не додано
+        </div>
+      {/if}
+    </div>
+
+    <div class="mt-4 overflow-hidden rounded border border-border bg-card">
+      <div class="flex min-h-12 flex-wrap items-center gap-2 px-4 py-2 mb-0.5">
+        <div class="flex items-baseline gap-2">
+          <p class="text-xl font-medium">Замовлення</p>
+          <p class="text-muted-foreground">{workOrderListItems.length}</p>
+        </div>
+        {#if !clientDetails?.client?.archivedAt}
+          <Popover.Root bind:open={isWorkOrderCarPopoverOpen}>
+            <Popover.Trigger>
+              {#snippet child({ props })}
+                <Button
+                  variant="link"
+                  {...props}
+                  class="ml-auto pr-0 text-base"
+                  disabled={!clientDetails?.cars?.length}
+                >
+                  Створити +
+                </Button>
+              {/snippet}
+            </Popover.Trigger>
+            <Popover.Content class="w-72 p-2" align="end">
+              <p class="px-2 py-1.5 text-sm text-muted-foreground">
+                Оберіть автомобіль
+              </p>
+              {#each clientDetails?.cars ?? [] as cli (cli.car.id)}
                 <Button
                   variant="ghost"
-                  class="w-full h-10 justify-start rounded-none px-3 shrink-0 {cli
-                    .car?.archivedAt
-                    ? 'opacity-60'
-                    : ''}"
-                  onclick={async () => await goto(`/cars/${cli.car?.id}`)}
+                  class="w-full justify-start"
+                  onclick={() => {
+                    selectedWorkOrderCarId = cli.car.id;
+                    isWorkOrderSheetOpen = true;
+                    isWorkOrderCarPopoverOpen = false;
+                  }}
                 >
-                  <div class="flex w-full items-center gap-1">
-                    <LogoLoader
-                      slug={cli.brand.iconSlug}
-                      name={cli.brand.name}
-                      class="size-5 mr-2"
+                  {isUnknownBrand(cli.brand) ? "" : cli.brand?.name + " "}{cli
+                    .car?.model}
+                  {#if cli.car?.licensePlate}
+                    <LicensePlate
+                      value={cli.car.licensePlate}
+                      size="sm"
+                      class="ml-auto"
                     />
-                    <p
-                      class="truncate text-base font-medium text-left flex-1 min-w-0"
-                    >
-                      {isUnknownBrand(cli.brand)
-                        ? ""
-                        : cli.brand?.name + " "}{cli.car?.model}
-                    </p>
-                    {#if cli.car?.archivedAt}
-                      <ArchivedBadge date={cli.car.archivedAt} />
-                    {/if}
-                    {#if cli.car?.licensePlate}
-                      <span
-                        class="shrink-0 text-muted-foreground font-mono text-sm"
-                      >
-                        {cli.car.licensePlate}
-                      </span>
-                      <DotIcon class="size-4 text-muted-foreground" />
-                    {/if}
-                    <span class="shrink-0 text-muted-foreground text-sm">
-                      {cli.car?.year}
-                    </span>
-                    <ChevronRightIcon
-                      class="size-4 shrink-0 text-muted-foreground"
-                    />
-                  </div>
+                  {/if}
                 </Button>
               {/each}
-            {:else}
-              <div class="p-4 flex items-center justify-center">
-                <p class="text-muted-foreground">Автомобілей ще не додано</p>
-              </div>
-            {/if}
-          </div>
-        </div>
-      </div>
-
-      <div class="p-4">
-        <div class="flex flex-row gap-2 text-xl font-medium">
-          <p>Замовлення</p>
-          <p class="text-muted-foreground">
-            {workOrderListItems.length}
-          </p>
-        </div>
-        {#if workOrderListItems.length != 0}
-          <DataTable
-            {table}
-            class="mt-4"
-            emptyMessage="Пусто..."
-            onRowClick={(row) => goto(`/work_orders/${row.workOrder.id}`)}
-            rowClassName={(row) =>
-              row.workOrder.archivedAt ? "opacity-60" : undefined}
-            headerClasses={{
-              total: "px-0 text-right",
-              createdAt: "px-0 text-right",
-            }}
-            cellClasses={{
-              status: "p-0",
-              total: "p-0",
-              createdAt: "px-2 text-right",
-            }}
-          />
-        {:else}
-          <p class="text-muted-foreground">Замовлень ще не було</p>
+            </Popover.Content>
+          </Popover.Root>
         {/if}
       </div>
+      {#if workOrderListItems.length != 0}
+        <DataTable
+          {table}
+          variant="embedded"
+          emptyMessage="Пусто..."
+          onRowClick={(row) => goto(`/work_orders/${row.workOrder.id}`)}
+          rowClassName={(row) =>
+            row.workOrder.archivedAt ? "opacity-60" : undefined}
+          headerClasses={{
+            total: "text-right",
+            createdAt: "text-right",
+          }}
+          cellClasses={{
+            total: "text-right",
+            createdAt: "text-right",
+          }}
+        />
+      {:else}
+        <div
+          class="border-t border-border p-4 text-center text-muted-foreground"
+        >
+          Замовлень ще не було
+        </div>
+      {/if}
+      {#if selectedWorkOrderCarId != null}
+        <WorkOrderMutationSheet
+          bind:open={isWorkOrderSheetOpen}
+          mode="create"
+          carId={selectedWorkOrderCarId}
+        />
+      {/if}
     </div>
   {/if}
 </PageLayout>

@@ -12,8 +12,8 @@
   }: { id: string; type?: WorkOrderType; archivedAt: string | null } = $props();
 </script>
 
-<div class="px-2 flex items-center gap-2 whitespace-nowrap">
-  <span class="font-mono">{id}</span>
+<div class="flex items-center gap-2 whitespace-nowrap">
+  <span class="tabular-nums">{id}</span>
   {#if type === "Warranty"}
     <WorkOrderTypeBadge />
   {/if}

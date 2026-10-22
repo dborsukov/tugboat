@@ -125,9 +125,8 @@
   data-state={row.getIsSelected() && "selected"}
   data-dragging={sortable.isDragSource ? "" : undefined}
   class={cn(
-    "divide-x divide-border",
     onRowClick &&
-      "hover:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:bg-muted/90",
+      "hover:cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:bg-muted/60",
     // The dragged row floats above the table while it follows the pointer.
     sortable.isDragSource && "relative z-10 bg-card shadow-lg",
     rowClassName?.(row.original),
@@ -137,7 +136,7 @@
   onkeydown={handleKeyDown}
 >
   {#each row.getVisibleCells() as cell (cell.id)}
-    <TableUI.Cell class={cn("h-px", cellClasses[cell.column.id])}>
+    <TableUI.Cell class={cellClasses[cell.column.id]}>
       <FlexRender
         content={cell.column.columnDef.cell}
         context={cell.getContext()}

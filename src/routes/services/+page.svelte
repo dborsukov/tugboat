@@ -68,7 +68,7 @@
       return columns;
     },
     get searchTerm() {
-      return inputValue;
+      return inputValue.replace(/,/g, ".");
     },
     get meta() {
       return {
@@ -202,11 +202,16 @@
       emptyMessage={showArchived
         ? "Архівних сервісів не знайдено..."
         : "Сервісів не знайдено..."}
-      headerClasses={{ name: "w-full", select: "w-10 p-0" }}
-      cellClasses={{ actions: "p-0", select: "p-0" }}
+      headerClasses={{
+        select: "pl-4 pr-0",
+        name: "w-full",
+        laborHours: "text-center",
+        fixedPrice: "text-right",
+      }}
+      cellClasses={{ select: "pl-4 pr-0", actions: "p-0.5" }}
       rowClassName={(row) => (row.archivedAt ? "opacity-60" : undefined)}
       autoPageSize
-      class="mt-4 rounded shadow-xs bg-card"
+      class="mt-4"
     >
       {#snippet selectionActions()}
         {#if showArchived}

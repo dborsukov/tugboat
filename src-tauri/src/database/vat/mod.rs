@@ -71,7 +71,10 @@ fn parse_day(text: &str) -> Option<NaiveDate> {
 pub(crate) fn status_is_supplied(status: WorkOrderStatus) -> bool {
     matches!(
         status,
-        WorkOrderStatus::ReadyForPickup | WorkOrderStatus::Completed | WorkOrderStatus::Paid
+        WorkOrderStatus::ReadyForPickup
+            | WorkOrderStatus::AwaitingPayment
+            | WorkOrderStatus::Completed
+            | WorkOrderStatus::Paid
     )
 }
 

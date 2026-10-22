@@ -14,7 +14,7 @@
   } = $props();
 </script>
 
-<div class="flex items-center justify-center px-2">
+<div class="flex items-center justify-center">
   <Checkbox
     {checked}
     {indeterminate}

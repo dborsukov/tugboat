@@ -362,6 +362,8 @@ export type ClientListItem = {
 	rnokpp: string | null,
 	edrpou: string | null,
 	iban: string | null,
+	carCount: number,
+	workOrderCount: number,
 };
 
 /**  New versus returning clients over a period. */
@@ -1334,7 +1336,7 @@ export type WorkOrderDocuments = {
 	documents: WorkOrderDocument[],
 };
 
-export type WorkOrderStatus = "Received" | "InDiagnostics" | "AwaitingApproval" | "AwaitingParts" | "Working" | "ReadyForPickup" | 
+export type WorkOrderStatus = "Received" | "InDiagnostics" | "AwaitingApproval" | "AwaitingParts" | "Working" | "ReadyForPickup" | "AwaitingPayment" | 
 /**  Terminal state for no-payment orders (warranty claims) */
 "Completed" | "Paid" | "Canceled";
 

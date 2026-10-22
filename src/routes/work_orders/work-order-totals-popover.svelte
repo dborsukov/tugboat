@@ -2,7 +2,6 @@
   import Big from "big.js";
 
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
-  import ReceiptIcon from "@lucide/svelte/icons/receipt-text";
 
   import { buttonVariants } from "$lib/components/ui/button";
   import * as Popover from "$lib/components/ui/popover/index.js";
@@ -79,24 +78,25 @@
   <Popover.Trigger
     class={cn(
       buttonVariants({ size: "lg", variant: "outline" }),
-      "text-base px-2 border-none",
-      !totalIsZero &&
-        "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
-      totalIsZero && !belowCost && "bg-muted text-muted-foreground",
+      "h-10 gap-2 rounded-4xl px-3.5 text-base font-medium",
       belowCost &&
-        "bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300",
+        "border-rose-300 bg-rose-100 text-rose-800 hover:bg-rose-200 hover:text-rose-900 aria-expanded:bg-rose-100 aria-expanded:text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300 dark:hover:bg-rose-500/25 dark:hover:text-rose-200 dark:aria-expanded:bg-rose-500/15 dark:aria-expanded:text-rose-300",
       className,
     )}
   >
-    <ReceiptIcon
-      class={cn("size-5", belowCost && "text-rose-800 dark:text-rose-300")}
-    />
     <CurrencyDisplay
       amount={totalWithVat.toString()}
       suffix="грн."
-      class={cn("text-base font-medium")}
+      class={cn("text-base font-semibold")}
     />
-    <ChevronDownIcon class={cn("size-5 opacity-75")} />
+    <ChevronDownIcon
+      class={cn(
+        "size-4",
+        belowCost
+          ? "text-rose-700 dark:text-rose-300"
+          : "text-muted-foreground",
+      )}
+    />
   </Popover.Trigger>
   <Popover.Content align="end" class="w-72 p-4">
     <div class="flex flex-col gap-3">

@@ -1,17 +1,11 @@
 <script lang="ts">
-  import ArrowDownIcon from "@lucide/svelte/icons/chevron-down";
-  import ArrowUpIcon from "@lucide/svelte/icons/chevron-up";
-  import ArrowUpDownIcon from "@lucide/svelte/icons/chevrons-up-down";
+  import type { Snippet } from "svelte";
 
-  import { Button, type ButtonProps } from "$lib/components/ui/button/index.js";
+  import ArrowUpDownIcon from "@lucide/svelte/icons/arrow-up-down";
+  import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
+  import ChevronUpIcon from "@lucide/svelte/icons/chevron-up";
 
   import { cn } from "$lib/utils";
-
-  interface Props extends ButtonProps {
-    disabled?: boolean;
-    sortStatus: boolean | string;
-    onclick: ((event: unknown) => void) | undefined;
-  }
 
   let {
     disabled = false,
@@ -19,29 +13,33 @@
     onclick,
     children,
     class: className,
-    ...restProps
-  }: Props = $props();
+  }: {
+    disabled?: boolean;
+    sortStatus: boolean | string;
+    onclick?: (event: unknown) => void;
+    children?: Snippet;
+    class?: string;
+  } = $props();
 </script>
 
-<Button
-  variant="ghost"
+<button
+  type="button"
   class={cn(
-    "disabled:opacity-100 disabled:text-foreground",
-    disabled ? "cursor-default" : "hover:cursor-pointer",
+    "inline-flex items-center gap-1 rounded-sm text-sm font-medium whitespace-nowrap text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:cursor-default",
+    !disabled && "cursor-pointer",
     className,
   )}
   {disabled}
   {onclick}
-  {...restProps}
 >
   {@render children?.()}
   {#if !disabled}
     {#if sortStatus === "asc"}
-      <ArrowUpIcon />
+      <ChevronUpIcon class="size-3.5" />
     {:else if sortStatus === "desc"}
-      <ArrowDownIcon />
+      <ChevronDownIcon class="size-3.5" />
     {:else}
-      <ArrowUpDownIcon />
+      <ArrowUpDownIcon class="size-3.5 opacity-60" />
     {/if}
   {/if}
-</Button>
+</button>

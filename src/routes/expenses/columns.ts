@@ -37,6 +37,28 @@ export const CATEGORY_FILTER_COLUMN_ID = "categoryId";
 const expenseDateSorter = (a: Expense, b: Expense) =>
   a.date.localeCompare(b.date);
 
+function expenseDateDisplay(raw: string): string {
+  const [year, month, day] = raw.split("-");
+  if (!year || !month || !day) return raw;
+
+  const date = new Date(`${year}-${month}-${day}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return raw;
+
+  return new Intl.DateTimeFormat("uk-UA", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  })
+    .format(date)
+    .replace(/\s*р\.$/, "");
+}
+
+function expenseDateSearchValue(raw: string): string {
+  const display = expenseDateDisplay(raw);
+  return display === raw ? display : `${display} ${raw}`;
+}
+
 /* Sort by the label the user sees, not the enum's storage spelling. */
 const paymentMethodSorter = (a: Expense, b: Expense) =>
   (a.paymentMethod ? paymentMethodLabels[a.paymentMethod] : "").localeCompare(
@@ -67,7 +89,7 @@ export const columns: ColumnDef<Expense>[] = [
   },
   {
     id: "date",
-    accessorFn: (row) => row.date,
+    accessorFn: (row) => expenseDateSearchValue(row.date),
     sortingFn: (rowA, rowB) => expenseDateSorter(rowA.original, rowB.original),
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
@@ -82,10 +104,8 @@ export const columns: ColumnDef<Expense>[] = [
       });
     },
     cell: ({ row }) => {
-      const raw = row.original.date;
-      const [year, month, day] = raw.split("-");
       return renderComponent(DataTableOptionalCell, {
-        value: day ? `${day}.${month}.${year}` : raw,
+        value: expenseDateDisplay(row.original.date),
         valueClass: "tabular-nums whitespace-nowrap",
       });
     },
@@ -192,7 +212,7 @@ export const columns: ColumnDef<Expense>[] = [
       return renderComponent(CurrencyDisplay, {
         amount: row.original.amount,
         suffix: "грн.",
-        class: "justify-end px-2",
+        class: "justify-end",
       });
     },
   },

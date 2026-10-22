@@ -75,6 +75,10 @@ pub struct ClientListItem {
     pub rnokpp: Option<String>,
     pub edrpou: Option<String>,
     pub iban: Option<String>,
+    #[specta(type = specta_typescript::Number)]
+    pub car_count: i64,
+    #[specta(type = specta_typescript::Number)]
+    pub work_order_count: i64,
 }
 
 impl From<ClientListItem> for Client {

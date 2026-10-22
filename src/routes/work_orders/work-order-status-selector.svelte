@@ -199,22 +199,20 @@
   }
 </script>
 
-<Button
-  size="lg"
-  variant="outline"
+<button
+  type="button"
   disabled={workOrder === undefined}
   onclick={() => (dialogOpen = true)}
   class={cn(
+    "inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-4xl border-0 px-3.5 text-base font-medium transition outline-none select-none hover:cursor-pointer hover:brightness-95 focus-visible:ring-3 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50",
     styles.base,
-    styles.highlighted,
-    "text-base px-2 border-none",
     className,
   )}
 >
-  <styles.icon class="size-5" />
-  <p>{styles.text}</p>
-  <ChevronRightIcon class="size-5 opacity-75" />
-</Button>
+  <styles.icon class="size-5 shrink-0" />
+  <span>{styles.text}</span>
+  <ChevronRightIcon class="size-4 opacity-80" />
+</button>
 
 {#if workOrder}
   <Dialog.Root open={dialogOpen} onOpenChange={handleOpenChange}>

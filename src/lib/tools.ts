@@ -62,7 +62,13 @@ export function isoDayOf(iso_string: string): string {
 
 export function prettifyIsoDateString(
   iso_string: string,
-  type: "short" | "long" | "datetime" | "datetime-short",
+  type:
+    | "short"
+    | "long"
+    | "datetime"
+    | "datetime-short"
+    | "table-datetime"
+    | "table-datetime-full",
 ) {
   const timeZone = settingsState.settings?.timezone ?? undefined;
   if (type === "short") {
@@ -90,6 +96,29 @@ export function prettifyIsoDateString(
       minute: "numeric",
       timeZone,
     });
+  }
+
+  if (type === "table-datetime" || type === "table-datetime-full") {
+    const date = new Date(iso_string);
+    const datePart = new Intl.DateTimeFormat(date_locale, {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      timeZone,
+    }).format(date);
+
+    if (type === "table-datetime-full") {
+      const timePart = new Intl.DateTimeFormat(date_locale, {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hourCycle: "h23",
+        timeZone,
+      }).format(date);
+      return `${datePart}, ${timePart}`;
+    }
+
+    return `${datePart.replace(/\s*р\.$/, "")}, ${timeOf(date, timeZone)}`;
   }
 
   /*

@@ -56,35 +56,33 @@
   }
 </script>
 
-<div class="mt-4 border border-border rounded bg-card">
-  <div class="p-4">
-    <p class="text-xl font-medium">Документи</p>
-
-    {#if documentsQuery.isPending}
-      <div class="mt-4 flex flex-col gap-2">
-        <Skeleton class="h-12 w-full" />
-        <Skeleton class="h-12 w-full" />
-      </div>
-    {:else if documentsQuery.isError}
-      <p class="mt-4 text-sm text-destructive">
-        Не вдалося завантажити документи:
-        {documentsQuery.error?.message}
-      </p>
-    {:else}
-      <div
-        class="mt-3 flex flex-col divide-y divide-border rounded-md border border-border"
-      >
-        {#each documents as document (document.kind)}
-          <DocumentRow
-            {document}
-            {workOrderId}
-            {canGenerate}
-            downloading={downloadMutation.isPending}
-            {onGenerate}
-            onDownload={download}
-          />
-        {/each}
-      </div>
-    {/if}
+<div class="mt-4 border border-border rounded bg-card overflow-hidden">
+  <div class="flex min-h-12 items-center border-b border-border px-4 py-2">
+    <p class="text-xl font-medium mb-0.5">Документи</p>
   </div>
+
+  {#if documentsQuery.isPending}
+    <div class="flex flex-col gap-2 px-4 py-3">
+      <Skeleton class="h-12 w-full" />
+      <Skeleton class="h-12 w-full" />
+    </div>
+  {:else if documentsQuery.isError}
+    <p class="px-4 py-3 text-sm text-destructive">
+      Не вдалося завантажити документи:
+      {documentsQuery.error?.message}
+    </p>
+  {:else}
+    <div class="flex flex-col divide-y divide-border">
+      {#each documents as document (document.kind)}
+        <DocumentRow
+          {document}
+          {workOrderId}
+          {canGenerate}
+          downloading={downloadMutation.isPending}
+          {onGenerate}
+          onDownload={download}
+        />
+      {/each}
+    </div>
+  {/if}
 </div>

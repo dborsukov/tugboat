@@ -192,11 +192,12 @@ pub async fn fetch_outstanding_balance(
 ) -> AppResult<OutstandingBalance> {
     let sql = format!(
         "SELECT {} FROM work_orders
-         WHERE archived_at IS NULL AND status IN (?, ?)",
+         WHERE archived_at IS NULL AND status IN (?, ?, ?)",
         work_orders::WORK_ORDER_COLUMNS
     );
     let orders: Vec<WorkOrder> = sqlx::query_as(&sql)
         .bind(WorkOrderStatus::ReadyForPickup)
+        .bind(WorkOrderStatus::AwaitingPayment)
         .bind(WorkOrderStatus::Completed)
         .fetch_all(&state.db_pool)
         .await?;
@@ -232,7 +233,7 @@ pub async fn fetch_in_progress_balance(
 ) -> AppResult<InProgressBalance> {
     let sql = format!(
         "SELECT {} FROM work_orders
-         WHERE archived_at IS NULL AND status NOT IN (?, ?, ?, ?)",
+         WHERE archived_at IS NULL AND status NOT IN (?, ?, ?, ?, ?)",
         work_orders::WORK_ORDER_COLUMNS
     );
     let orders: Vec<WorkOrder> = sqlx::query_as(&sql)
@@ -240,6 +241,7 @@ pub async fn fetch_in_progress_balance(
         .bind(WorkOrderStatus::Paid)
         .bind(WorkOrderStatus::Completed)
         .bind(WorkOrderStatus::ReadyForPickup)
+        .bind(WorkOrderStatus::AwaitingPayment)
         .fetch_all(&state.db_pool)
         .await?;
 

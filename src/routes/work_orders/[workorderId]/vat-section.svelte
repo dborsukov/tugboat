@@ -117,37 +117,18 @@
 </script>
 
 {#if visible}
-  <div class="mt-4 rounded border border-border bg-card p-4">
-    <div class="flex flex-wrap items-start justify-between gap-3">
-      <div class="flex items-start gap-2">
+  <div class="mt-4 rounded border border-border bg-card">
+    <div class="flex min-h-12 flex-wrap items-center gap-3 px-4 py-2 mb-0.5">
+      <div class="flex min-w-0 items-center gap-2">
         {#if liveEntries.length > 0}
-          <ShieldCheckIcon class="mt-0.5 size-5 shrink-0 text-emerald-600" />
+          <ShieldCheckIcon class="size-5 shrink-0 text-emerald-600" />
         {:else}
-          <CircleHelpIcon
-            class="mt-0.5 size-5 shrink-0 text-muted-foreground"
-          />
+          <CircleHelpIcon class="size-5 shrink-0 text-muted-foreground" />
         {/if}
-        <div>
-          <p class="text-xl font-medium">ПДВ</p>
-          {#if liveEntries.length > 0}
-            <p class="text-sm text-muted-foreground">
-              Зафіксовано {dayText(liveEntries[0].taxPoint)} · документ {liveEntries[0]
-                .documentNumber ?? liveEntries[0].sourceId}
-            </p>
-          {:else if canRecord}
-            <p class="text-sm text-muted-foreground">
-              ПДВ ще не зафіксовано. Зафіксуйте його, коли замовлення виконано
-              або оплачено.
-            </p>
-          {:else}
-            <p class="text-sm text-muted-foreground">
-              ПДВ за цим замовленням сторновано.
-            </p>
-          {/if}
-        </div>
+        <p class="text-xl font-medium">ПДВ</p>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="ml-auto flex items-center gap-2">
         {#if canManage}
           {#if liveEntries.length > 0}
             <Button
@@ -174,52 +155,70 @@
       </div>
     </div>
 
-    {#if liveEntries.length > 0}
-      <div
-        class="mt-3 grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3 text-sm"
-      >
-        {#each liveEntries as entry (entry.id)}
-          <div class="rounded border border-border/70 px-3 py-2">
-            <p class="text-muted-foreground">
-              ПДВ {Big(entry.rate).toString()}%{schemeText(entry)}
-            </p>
-            <div class="font-medium">
-              <CurrencyDisplay amount={entry.amount} />
-            </div>
-            <div class="text-xs text-muted-foreground">
-              База <CurrencyDisplay amount={entry.base} class="inline-flex" />
-            </div>
-            {#if entry.exemptionCode}
-              <p class="text-xs text-muted-foreground">
-                Код пільги {entry.exemptionCode}
-              </p>
-            {/if}
-          </div>
-        {/each}
-      </div>
-    {/if}
+    <div class="px-4 pb-4">
+      {#if liveEntries.length > 0}
+        <p class="text-sm text-muted-foreground">
+          Зафіксовано {dayText(liveEntries[0].taxPoint)} · документ {liveEntries[0]
+            .documentNumber ?? liveEntries[0].sourceId}
+        </p>
+      {:else if canRecord}
+        <p class="text-sm text-muted-foreground">
+          ПДВ ще не зафіксовано. Зафіксуйте його, коли замовлення виконано або
+          оплачено.
+        </p>
+      {:else}
+        <p class="text-sm text-muted-foreground">
+          ПДВ за цим замовленням сторновано.
+        </p>
+      {/if}
 
-    {#if voided.length > 0}
-      <details class="mt-3">
-        <summary class="cursor-pointer text-sm text-muted-foreground">
-          Історія: сторновано {voided.length}
-        </summary>
-        <ul class="mt-2 space-y-1 text-sm">
-          {#each voided as entry (entry.id)}
-            <li
-              class="flex flex-wrap items-center gap-x-2 text-muted-foreground"
-            >
-              <span>{dayText(entry.taxPoint)}</span>
-              <span>·</span>
-              <CurrencyDisplay amount={entry.base} />
-              <span>база,</span>
-              <CurrencyDisplay amount={entry.amount} />
-              <span>ПДВ</span>
-            </li>
+      {#if liveEntries.length > 0}
+        <div
+          class="mt-3 grid grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] gap-3 text-sm"
+        >
+          {#each liveEntries as entry (entry.id)}
+            <div class="rounded border border-border/70 px-3 py-2">
+              <p class="text-muted-foreground">
+                ПДВ {Big(entry.rate).toString()}%{schemeText(entry)}
+              </p>
+              <div class="font-medium">
+                <CurrencyDisplay amount={entry.amount} />
+              </div>
+              <div class="text-xs text-muted-foreground">
+                База <CurrencyDisplay amount={entry.base} class="inline-flex" />
+              </div>
+              {#if entry.exemptionCode}
+                <p class="text-xs text-muted-foreground">
+                  Код пільги {entry.exemptionCode}
+                </p>
+              {/if}
+            </div>
           {/each}
-        </ul>
-      </details>
-    {/if}
+        </div>
+      {/if}
+
+      {#if voided.length > 0}
+        <details class="mt-3">
+          <summary class="cursor-pointer text-sm text-muted-foreground">
+            Історія: сторновано {voided.length}
+          </summary>
+          <ul class="mt-2 space-y-1 text-sm">
+            {#each voided as entry (entry.id)}
+              <li
+                class="flex flex-wrap items-center gap-x-2 text-muted-foreground"
+              >
+                <span>{dayText(entry.taxPoint)}</span>
+                <span>·</span>
+                <CurrencyDisplay amount={entry.base} />
+                <span>база,</span>
+                <CurrencyDisplay amount={entry.amount} />
+                <span>ПДВ</span>
+              </li>
+            {/each}
+          </ul>
+        </details>
+      {/if}
+    </div>
   </div>
 
   <AlertDialog.Root bind:open={voidOpen}>

@@ -14,10 +14,6 @@
     class?: string;
   } = $props();
 
-  let closed = $derived(
-    workOrderDetails?.workOrder.status === "Paid" ||
-      workOrderDetails?.workOrder.status === "Completed",
-  );
   let totalWithVat = $derived(
     new Big(workOrderDetails?.totals?.totalWithVat ?? "0"),
   );
@@ -26,14 +22,12 @@
 
 <div
   class={cn(
-    "w-full h-full flex items-center justify-center",
+    "flex w-full items-center justify-end gap-1.5 font-semibold tabular-nums",
     totalWithVat.eq(0) && "text-muted-foreground",
-    closed &&
-      "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300 font-medium",
-    belowCost &&
-      "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300 font-medium",
+    belowCost && "text-rose-600 dark:text-rose-400",
     className,
   )}
+  title={belowCost ? "Нижче собівартості" : undefined}
 >
   <CurrencyDisplay amount={totalWithVat.toString()} suffix="грн." />
 </div>

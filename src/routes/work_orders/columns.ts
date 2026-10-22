@@ -12,6 +12,7 @@ import CarBadge from "../cars/car-badge.svelte";
 import type { WorkOrderClientColumn } from "./work-order-client-column";
 import { statusWeights } from "./work-order-status";
 import WorkOrderTableClientCell from "./work-order-table-client-cell.svelte";
+import WorkOrderTableCreatedAtCell from "./work-order-table-created-at-cell.svelte";
 import WorkOrderTableIdCell from "./work-order-table-id-cell.svelte";
 import WorkOrderTableStatusCell from "./work-order-table-status-cell.svelte";
 import WorkOrderTableTotalCell from "./work-order-table-total-cell.svelte";
@@ -30,7 +31,7 @@ export const columns: ColumnDef<WorkOrderRow>[] = [
     header: () => {
       const nameCellSnippet = createRawSnippet(() => {
         return {
-          render: () => `<div class="px-2">Код</div>`,
+          render: () => `<div>Код</div>`,
         };
       });
       return renderSnippet(nameCellSnippet);
@@ -57,7 +58,6 @@ export const columns: ColumnDef<WorkOrderRow>[] = [
         onclick: column.getToggleSortingHandler(),
         sortStatus: column.getIsSorted(),
         disabled: !column.getCanSort(),
-        class: "pl-0",
         children: createRawSnippet(() => {
           return {
             render: () => "<span>Замовник</span>",
@@ -83,7 +83,6 @@ export const columns: ColumnDef<WorkOrderRow>[] = [
         onclick: column.getToggleSortingHandler(),
         sortStatus: column.getIsSorted(),
         disabled: !column.getCanSort(),
-        class: "pl-0",
         children: createRawSnippet(() => {
           return {
             render: () => "<span>Автомобіль</span>",
@@ -115,7 +114,6 @@ export const columns: ColumnDef<WorkOrderRow>[] = [
         onclick: column.getToggleSortingHandler(),
         sortStatus: column.getIsSorted(),
         disabled: !column.getCanSort(),
-        class: "pl-0",
         children: createRawSnippet(() => {
           return {
             render: () => "<span>Статус</span>",
@@ -141,7 +139,6 @@ export const columns: ColumnDef<WorkOrderRow>[] = [
         onclick: column.getToggleSortingHandler(),
         sortStatus: column.getIsSorted(),
         disabled: !column.getCanSort(),
-        class: "px-2",
         children: createRawSnippet(() => {
           return {
             render: () => "<span>Сума</span>",
@@ -152,21 +149,19 @@ export const columns: ColumnDef<WorkOrderRow>[] = [
     cell: ({ row }) => {
       return renderComponent(WorkOrderTableTotalCell, {
         workOrderDetails: row.original,
-        class: "justify-end px-2",
       });
     },
   },
   {
     id: "createdAt",
     accessorFn: (row) =>
-      prettifyIsoDateString(row.workOrder.createdAt, "datetime"),
+      prettifyIsoDateString(row.workOrder.createdAt, "table-datetime"),
     sortingFn: (rowA, rowB) => createdAtSorter(rowA.original, rowB.original),
     header: ({ column }) => {
       return renderComponent(DataTableSortButton, {
         onclick: column.getToggleSortingHandler(),
         sortStatus: column.getIsSorted(),
         disabled: !column.getCanSort(),
-        class: "pl-2",
         children: createRawSnippet(() => {
           return {
             render: () => "<span>Створено</span>",
@@ -175,13 +170,9 @@ export const columns: ColumnDef<WorkOrderRow>[] = [
       });
     },
     cell: ({ row }) => {
-      const createdCellSnippet = createRawSnippet(() => {
-        return {
-          render: () =>
-            `<div class="px-2">${prettifyIsoDateString(row.original.workOrder.createdAt, "datetime")}</div>`,
-        };
+      return renderComponent(WorkOrderTableCreatedAtCell, {
+        createdAt: row.original.workOrder.createdAt,
       });
-      return renderSnippet(createdCellSnippet);
     },
   },
 ];

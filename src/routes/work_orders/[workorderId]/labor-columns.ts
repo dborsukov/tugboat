@@ -88,12 +88,14 @@ export const columns: ColumnDef<LaborItemDto>[] = [
       if (row.original.priceType === "Hourly") {
         return renderComponent(TableDecimalDisplayCell, {
           value: row.original.laborHours,
+          class: "text-muted-foreground",
         });
       } else {
         return renderSnippet(
           createRawSnippet(() => {
             return {
-              render: () => `<p class="text-center">—</p>`,
+              render: () =>
+                `<p class="text-center text-muted-foreground">—</p>`,
             };
           }),
         );
@@ -115,7 +117,7 @@ export const columns: ColumnDef<LaborItemDto>[] = [
       return renderComponent(CurrencyDisplay, {
         amount: row.original.totals.price,
         suffix: "грн.",
-        class: "justify-end",
+        class: "justify-end text-muted-foreground",
       });
     },
   },
@@ -134,7 +136,7 @@ export const columns: ColumnDef<LaborItemDto>[] = [
       return renderComponent(TableDiscountCell, {
         type: row.original.discountType,
         value: row.original.discountValue,
-        class: "justify-center",
+        class: "justify-center text-muted-foreground",
       });
     },
   },
@@ -174,7 +176,7 @@ export const columns: ColumnDef<LaborItemDto>[] = [
           createRawSnippet(() => {
             return {
               render: () =>
-                `<div class="w-full h-full flex items-center justify-end px-2 bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300 font-medium whitespace-nowrap">Безкоштовно</div>`,
+                `<div class="flex justify-end"><span class="inline-flex h-6 items-center rounded-full bg-amber-100 px-2.5 text-xs font-medium whitespace-nowrap text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">Безкоштовно</span></div>`,
             };
           }),
         );
@@ -182,7 +184,7 @@ export const columns: ColumnDef<LaborItemDto>[] = [
       return renderComponent(CurrencyDisplay, {
         amount: row.original.totals.total,
         suffix: "грн.",
-        class: "font-medium justify-end px-2",
+        class: "font-semibold justify-end",
       });
     },
   },

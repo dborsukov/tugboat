@@ -91,7 +91,10 @@
 <!-- The id is how the page finds a row to scroll to -->
 <div
   id="report-row-{report.id}"
-  class={cn("border-b border-border", highlighted && "report-row-flash")}
+  class={cn(
+    "border-b border-border last:border-b-0",
+    highlighted && "report-row-flash",
+  )}
 >
   <div
     class={cn(
@@ -203,10 +206,10 @@
   </div>
 
   {#if expanded}
-    <div class="relative">
+    <div class="relative pb-2">
       <span
         aria-hidden="true"
-        class="absolute inset-y-0 left-6.5 w-px bg-border"
+        class="absolute top-0 bottom-2 left-6.5 w-px bg-border"
       ></span>
 
       {#each shownVersions as version, index (version.id)}

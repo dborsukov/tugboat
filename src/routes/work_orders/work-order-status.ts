@@ -2,6 +2,7 @@ import type { Component } from "svelte";
 
 import AwaitingPartsIcon from "@lucide/svelte/icons/boxes";
 import CircleCheckIcon from "@lucide/svelte/icons/circle-check";
+import ClockFadingIcon from "@lucide/svelte/icons/clock-fading";
 import ReadyForPickupIcon from "@lucide/svelte/icons/flag";
 import AwaitingApprovalIcon from "@lucide/svelte/icons/handshake";
 import ReceivedIcon from "@lucide/svelte/icons/inbox";
@@ -27,16 +28,32 @@ export const statuses: WorkOrderStatus[] = [
   "AwaitingParts",
   "Working",
   "ReadyForPickup",
+  "AwaitingPayment",
   "Completed",
   "Paid",
   "Canceled",
 ];
 
+/** Orders that are finished but still owe money. */
+export const AWAITING_PAYMENT_STATUSES: ReadonlySet<WorkOrderStatus> = new Set([
+  "ReadyForPickup",
+  "AwaitingPayment",
+]);
+
+export function isAwaitingPayment(
+  status: WorkOrderStatus | null | undefined,
+): boolean {
+  return status != null && AWAITING_PAYMENT_STATUSES.has(status);
+}
+
 /// Statuses a given order type may move to. Warranty orders never receive
-/// money (`Paid` doesn't apply); regular orders never use `Completed`.
+/// money (`Paid`/`AwaitingPayment` don't apply); regular orders never use
+/// `Completed`.
 export function selectableStatuses(type: WorkOrderType): WorkOrderStatus[] {
   return statuses.filter((s) =>
-    type === "Warranty" ? s !== "Paid" : s !== "Completed",
+    type === "Warranty"
+      ? s !== "Paid" && s !== "AwaitingPayment"
+      : s !== "Completed",
   );
 }
 
@@ -47,15 +64,17 @@ export const statusWeights: Record<string, number> = {
   AwaitingParts: 4,
   Working: 5,
   ReadyForPickup: 6,
-  Completed: 7,
-  Paid: 8,
-  Canceled: 9,
+  AwaitingPayment: 7,
+  Completed: 8,
+  Paid: 9,
+  Canceled: 10,
 };
 
 export type StatusColor =
   | "slate"
   | "sky"
   | "amber"
+  | "orange"
   | "violet"
   | "blue"
   | "teal"
@@ -95,6 +114,14 @@ export const statusColorThemes: Record<
     highlighted:
       "data-highlighted:bg-amber-200 data-highlighted:text-amber-900 dark:data-highlighted:bg-amber-500/25 dark:data-highlighted:text-amber-100",
     border: "border-amber-300 dark:border-amber-500/30",
+  },
+  orange: {
+    bgColor: "bg-orange-700",
+    textColor: "text-orange-300",
+    base: "bg-orange-100 text-orange-800 dark:bg-orange-600/20 dark:text-orange-300",
+    highlighted:
+      "data-highlighted:bg-orange-200 data-highlighted:text-orange-900 dark:data-highlighted:bg-orange-600/30 dark:data-highlighted:text-orange-100",
+    border: "border-orange-300 dark:border-orange-600/30",
   },
   violet: {
     bgColor: "bg-violet-700",
@@ -175,7 +202,13 @@ export const statusConfig: Record<
   ReadyForPickup: {
     text: "Готово до видачі",
     icon: ReadyForPickupIcon,
-    color: "green",
+    color: "blue",
+    rounding: "",
+  },
+  AwaitingPayment: {
+    text: "Очікує оплати",
+    icon: ClockFadingIcon,
+    color: "orange",
     rounding: "",
   },
   Completed: {
@@ -256,6 +289,15 @@ export const statusEffects: Partial<
     }),
   },
   Completed: {
+    parts: {
+      from: ["Quoted", "Ordered", "InStock", "Installing"],
+      to: "Installed",
+    },
+    workOrderFields: (workOrder) => ({
+      completedAt: workOrder.completedAt ?? new Date().toISOString(),
+    }),
+  },
+  AwaitingPayment: {
     parts: {
       from: ["Quoted", "Ordered", "InStock", "Installing"],
       to: "Installed",

@@ -176,12 +176,11 @@
       onRowClick={(row) => goto(`/work_orders/${row.workOrder.id}`)}
       rowClassName={(row) =>
         row.workOrder.archivedAt ? "opacity-60" : undefined}
-      class="mt-4 rounded-sm shadow-xs bg-card"
-      headerClasses={{ total: "px-0 text-right", createdAt: "px-0 text-right" }}
+      class="mt-4"
+      headerClasses={{ total: "text-right", createdAt: "text-right" }}
       cellClasses={{
-        status: "p-0",
-        total: "p-0",
-        createdAt: "px-2 text-right",
+        total: "text-right",
+        createdAt: "text-right",
       }}
       autoPageSize
     />

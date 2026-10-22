@@ -20,6 +20,10 @@
 
 <div class={cn("flex items-center gap-2 h-8", className)}>
   <CarLogoLoader slug={carBrand.iconSlug} name={carBrand.name} />
-  <p class="tracking-wide">{brandName}{car.model}</p>
-  <Badge variant="outline" class="tracking-wider">{car.year}</Badge>
+  <p>{brandName}{car.model}</p>
+  <Badge
+    variant="secondary"
+    class="h-6 rounded-2xl bg-muted px-2 text-xs font-medium text-muted-foreground"
+    >{car.year}</Badge
+  >
 </div>

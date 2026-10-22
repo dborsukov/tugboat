@@ -14,6 +14,7 @@ pub enum WorkOrderStatus {
     AwaitingParts,
     Working,
     ReadyForPickup,
+    AwaitingPayment,
     /// Terminal state for no-payment orders (warranty claims)
     Completed,
     Paid,

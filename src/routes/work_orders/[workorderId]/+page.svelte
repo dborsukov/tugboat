@@ -2,10 +2,7 @@
   import { createQueries, useQueryClient } from "@tanstack/svelte-query";
   import Big from "big.js";
 
-  import CarFrontIcon from "@lucide/svelte/icons/car-front";
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
-  import QuoteIcon from "@lucide/svelte/icons/message-square-quote";
-  import StickyNoteIcon from "@lucide/svelte/icons/sticky-note";
 
   import Button from "$lib/components/ui/button/button.svelte";
   import * as Command from "$lib/components/ui/command/index.js";
@@ -153,7 +150,7 @@
 
   /** The work has been handed over, which is when VAT becomes due. */
   const statusIsSupplied = $derived(
-    ["ReadyForPickup", "Completed", "Paid"].includes(
+    ["ReadyForPickup", "AwaitingPayment", "Completed", "Paid"].includes(
       workOrderDetails?.workOrder?.status ?? "",
     ),
   );
@@ -169,22 +166,13 @@
     Big(workOrderDetails?.totals?.partsPendingTotal ?? "0").gt(0),
   );
 
-  const hasNotes = $derived(
-    Boolean(
-      workOrderDetails?.workOrder?.description ||
-      workOrderDetails?.workOrder?.conditionReport ||
-      (!privacyState.hideNotes && workOrderDetails?.workOrder?.notes),
-    ),
-  );
-
   $effect(() => {
     const currentStatus = workOrderDetails?.workOrder?.status;
     if (currentStatus === undefined) return;
 
     // A recorded VAT entry freezes the figures just as a terminal status does,
     // even when the order has not been paid yet: the tax point already happened.
-    const currentTerminal =
-      currentStatus === "Paid" || currentStatus === "Completed" || hasLiveVat;
+    const currentTerminal = isTerminal(currentStatus) || hasLiveVat;
 
     if (previousStatus === undefined) {
       isLocked = currentTerminal;
@@ -196,7 +184,11 @@
   });
 
   function isTerminal(status: WorkOrderStatus): boolean {
-    return status === "Paid" || status === "Completed";
+    return (
+      status === "Paid" ||
+      status === "AwaitingPayment" ||
+      status === "Completed"
+    );
   }
 
   let partsTableActions = new TableActionState<number>();
@@ -578,26 +570,6 @@
   }
 </script>
 
-{#snippet noteCard(label: string, Icon: typeof QuoteIcon, value: string)}
-  <div
-    class="flex min-h-15 items-start gap-3 rounded border border-border bg-card px-3 py-2.5"
-  >
-    <span
-      class="flex size-9 shrink-0 items-center justify-center rounded border border-border bg-muted/40 text-muted-foreground"
-    >
-      <Icon class="size-4.5" />
-    </span>
-    <div class="flex min-w-0 flex-col gap-1">
-      <span class="text-xs text-muted-foreground">{label}</span>
-      <p
-        class="text-sm wrap-break-word italic text-foreground/90 whitespace-pre-wrap"
-      >
-        {value}
-      </p>
-    </div>
-  </div>
-{/snippet}
-
 <PageLayout contentWidthClass="max-w-fit">
   {#if orderIsError}
     <FetchErrorDisplay
@@ -608,10 +580,12 @@
   {:else if orderIsPending}
     <WorkOrderHeader isLoading onGenerate={openGenerate} />
 
-    <div class="mt-4 border border-border rounded bg-card">
+    <div class="mt-4 border border-border rounded bg-card overflow-hidden">
       <!-- Services (labor) section -->
-      <div class="p-4">
-        <div class="flex flex-row items-center justify-between">
+      <div class="px-4 pb-2">
+        <div
+          class="flex min-h-12 flex-wrap items-center justify-between gap-3 mb-0.5"
+        >
           <div class="flex flex-row items-center gap-2">
             <Skeleton class="h-7 w-20" />
             <!-- Title -->
@@ -626,28 +600,36 @@
           </div>
         </div>
         <!-- Simulated DataTable -->
-        <div class="mt-4 border border-border rounded-md">
-          <div class="h-10 border-b border-border flex items-center px-4 gap-4">
-            <Skeleton class="h-4 w-1/2" />
-            <Skeleton class="h-4 w-16" />
-            <Skeleton class="h-4 w-16" />
-          </div>
-          {#each { length: 3 } as _, i (i)}
+        <div class="-mx-4 -mb-2 w-[calc(100%+2rem)] max-w-none">
+          <div class="border-t border-border">
             <div
-              class="h-12 border-b border-border last:border-0 flex items-center px-4 gap-4"
+              class="h-10 border-b border-border flex items-center px-4 gap-4"
             >
-              <Skeleton class="h-4 w-2/3" />
+              <Skeleton class="h-4 w-1/2" />
               <Skeleton class="h-4 w-16" />
               <Skeleton class="h-4 w-16" />
-              <Skeleton class="size-8 rounded-md ml-auto" />
             </div>
-          {/each}
+            {#each { length: 3 } as _, i (i)}
+              <div
+                class="h-12 border-b border-border last:border-0 flex items-center px-4 gap-4"
+              >
+                <Skeleton class="h-4 w-2/3" />
+                <Skeleton class="h-4 w-16" />
+                <Skeleton class="h-4 w-16" />
+                <Skeleton class="size-8 rounded-md ml-auto" />
+              </div>
+            {/each}
+          </div>
         </div>
       </div>
+    </div>
 
+    <div class="mt-4 border border-border rounded bg-card overflow-hidden">
       <!-- Parts section -->
-      <div class="p-4 pt-0">
-        <div class="flex flex-row items-center justify-between">
+      <div class="px-4 pb-2">
+        <div
+          class="flex min-h-12 flex-wrap items-center justify-between gap-3 mb-0.5"
+        >
           <div class="flex flex-row items-center gap-2">
             <Skeleton class="h-7 w-28" />
             <!-- Title -->
@@ -658,22 +640,26 @@
           <!-- Add link -->
         </div>
         <!-- Simulated DataTable -->
-        <div class="mt-4 border border-border rounded-md">
-          <div class="h-10 border-b border-border flex items-center px-4 gap-4">
-            <Skeleton class="h-4 w-1/2" />
-            <Skeleton class="h-4 w-20" />
-            <Skeleton class="h-4 w-20" />
-          </div>
-          {#each { length: 2 } as _, i (i)}
+        <div class="-mx-4 -mb-2 w-[calc(100%+2rem)] max-w-none">
+          <div class="border-t border-border">
             <div
-              class="h-12 border-b border-border last:border-0 flex items-center px-4 gap-4"
+              class="h-10 border-b border-border flex items-center px-4 gap-4"
             >
-              <Skeleton class="h-4 w-2/3" />
+              <Skeleton class="h-4 w-1/2" />
               <Skeleton class="h-4 w-20" />
               <Skeleton class="h-4 w-20" />
-              <Skeleton class="size-8 rounded-md ml-auto" />
             </div>
-          {/each}
+            {#each { length: 2 } as _, i (i)}
+              <div
+                class="h-12 border-b border-border last:border-0 flex items-center px-4 gap-4"
+              >
+                <Skeleton class="h-4 w-2/3" />
+                <Skeleton class="h-4 w-20" />
+                <Skeleton class="h-4 w-20" />
+                <Skeleton class="size-8 rounded-md ml-auto" />
+              </div>
+            {/each}
+          </div>
         </div>
       </div>
     </div>
@@ -688,6 +674,7 @@
       {isArchived}
       workOrderDetails={combinedQueries.workOrderDetails.data}
       clients={clients ?? []}
+      hideNotes={privacyState.hideNotes}
       onGenerate={openGenerate}
     />
 
@@ -701,37 +688,11 @@
       onRecorded={() => (isLocked = true)}
     />
 
-    {#if hasNotes}
-      <div
-        class="mt-4 grid grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] gap-4"
-      >
-        {#if workOrderDetails?.workOrder?.description}
-          {@render noteCard(
-            "Опис",
-            QuoteIcon,
-            workOrderDetails.workOrder.description,
-          )}
-        {/if}
-        {#if workOrderDetails?.workOrder?.conditionReport}
-          {@render noteCard(
-            "Огляд при прийнятті",
-            CarFrontIcon,
-            workOrderDetails.workOrder.conditionReport,
-          )}
-        {/if}
-        {#if !privacyState.hideNotes && workOrderDetails?.workOrder?.notes}
-          {@render noteCard(
-            "Нотатки",
-            StickyNoteIcon,
-            workOrderDetails.workOrder.notes,
-          )}
-        {/if}
-      </div>
-    {/if}
-
-    <div class="mt-4 border border-border rounded bg-card">
-      <div class="p-4">
-        <div class="flex flex-row items-center justify-between">
+    <div class="mt-4 border border-border rounded bg-card overflow-hidden">
+      <div class="px-4 pb-2">
+        <div
+          class="flex min-h-12 flex-wrap items-center justify-between gap-3 mb-0.5"
+        >
           <div class="flex flex-row items-baseline gap-2">
             <p class="text-xl font-medium">Робота</p>
             <CurrencyDisplay
@@ -750,7 +711,7 @@
               <Popover.Root bind:open={isPopoverOpen}>
                 <Popover.Trigger>
                   {#snippet child({ props })}
-                    <Button variant="link" {...props} class="text-base">
+                    <Button variant="link" {...props} class="pr-0 text-base">
                       Додати з бази
                       <ChevronDownIcon class="size-4" />
                     </Button>
@@ -786,19 +747,18 @@
         <DataTable
           table={laborTable}
           emptyMessage="Сервісів не знайдено..."
-          class="mt-4"
+          variant="embedded"
+          class="-mx-4 -mb-2 w-[calc(100%+2rem)] max-w-none"
           rowReorder={laborRowReorder}
           headerClasses={{
             name: "w-full",
-            drag: "w-8 p-0",
-            select: "w-10 p-0",
+            drag: "pl-1 pr-0",
+            select: "pl-1",
           }}
           cellClasses={{
-            drag: "p-0",
-            actions: "p-0",
-            discountedPrice: "p-0",
-            sum: "p-0",
-            select: "p-0",
+            drag: "pl-1 pr-0",
+            select: "pl-1",
+            actions: "p-0.5",
           }}
         >
           {#snippet selectionActions()}
@@ -810,20 +770,22 @@
           {/snippet}
         </DataTable>
       </div>
+    </div>
 
-      <div class="p-4 pt-0">
-        <div class="flex flex-row items-center justify-between">
-          <div class="flex flex-col gap-0.5">
-            <div class="flex flex-row items-baseline gap-2">
-              <p class="text-xl font-medium">Запчастини</p>
-              <CurrencyDisplay
-                amount={workOrderDetails?.totals?.partsTotal ?? "0"}
-                suffix="грн."
-                class="items-baseline text-base font-normal text-muted-foreground"
-              />
-            </div>
+    <div class="mt-4 border border-border rounded bg-card overflow-hidden">
+      <div class="px-4 pb-2">
+        <div
+          class="flex min-h-12 flex-wrap items-center justify-between gap-3 mb-0.5"
+        >
+          <div class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
+            <p class="text-xl font-medium">Запчастини</p>
+            <CurrencyDisplay
+              amount={workOrderDetails?.totals?.partsTotal ?? "0"}
+              suffix="грн."
+              class="items-baseline text-base font-normal text-muted-foreground"
+            />
             {#if hasPendingParts}
-              <p
+              <span
                 class="flex items-baseline gap-1 text-sm text-muted-foreground/70"
               >
                 <span>+</span>
@@ -833,14 +795,14 @@
                   class="items-baseline"
                 />
                 <span>очікують встановлення</span>
-              </p>
+              </span>
             {/if}
           </div>
           {#if !isReadOnly}
             <Button
               variant="link"
               onclick={partsTableActions.openCreate}
-              class="text-base">Додати +</Button
+              class="pr-0 text-base">Додати +</Button
             >
           {/if}
         </div>
@@ -851,20 +813,18 @@
         <DataTable
           table={partsTable}
           emptyMessage="Запчастин не знайдено..."
-          class="mt-4"
+          variant="embedded"
+          class="-mx-4 -mb-2 w-[calc(100%+2rem)] max-w-none"
           rowReorder={partRowReorder}
           headerClasses={{
             name: "w-full",
-            drag: "w-8 p-0",
-            select: "w-10 p-0",
+            drag: "pl-1 pr-0",
+            select: "pl-1",
           }}
           cellClasses={{
-            drag: "p-0",
-            status: "p-0",
-            actions: "p-0",
-            discountedPrice: "p-0",
-            sum: "p-0",
-            select: "p-0",
+            drag: "pl-1 pr-0",
+            select: "pl-1",
+            actions: "p-0.5",
           }}
         >
           {#snippet selectionActions()}

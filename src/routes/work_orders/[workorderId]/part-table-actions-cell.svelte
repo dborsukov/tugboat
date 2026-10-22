@@ -30,7 +30,12 @@
 <DropdownMenu.Root>
   <DropdownMenu.Trigger>
     {#snippet child({ props })}
-      <Button {...props} variant="ghost" class="h-full rounded-none">
+      <Button
+        {...props}
+        variant="ghost"
+        size="icon"
+        class="h-11 w-9 rounded-md text-muted-foreground"
+      >
         <EllipsisIcon />
       </Button>
     {/snippet}

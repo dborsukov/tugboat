@@ -21,6 +21,7 @@
     "@tauri-apps/plugin-log": "~2.8.0",
     "@tauri-apps/plugin-opener": "^2",
     "big.js": "^7.0.1",
+    "flag-icons": "^7.6.0",
     "svelte-number-format": "^2.0.0",
     "svelte-tel-input": "^4.3.2",
     "tailwindcss": "^4.3.0"

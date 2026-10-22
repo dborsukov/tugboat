@@ -43,6 +43,7 @@ export const columns: ColumnDef<Service>[] = [
   },
   {
     id: "code",
+    accessorFn: (row) => row.code ?? "",
     header: () => {
       return renderSnippet(
         createRawSnippet(() => {
