@@ -9,12 +9,15 @@
   import * as Item from "$lib/components/ui/item/index.js";
   import * as Select from "$lib/components/ui/select/index.js";
   import { Slider } from "$lib/components/ui/slider";
+  import { Switch } from "$lib/components/ui/switch";
 
   import PageLayout from "$lib/components/page-layout.svelte";
 
-  import { type ThemeMode } from "$lib/bindings";
+  import { type SidebarMetric, type ThemeMode } from "$lib/bindings";
 
   import {
+    createUpdateSidebarMetricMutation,
+    createUpdateSidebarRecentItemsMutation,
     createUpdateThemeMutation,
     createUpdateUiScaleMutation,
   } from "../queries";
@@ -28,6 +31,10 @@
 
   const updateThemeMutation = createUpdateThemeMutation(queryClient);
   const updateUiScaleMutation = createUpdateUiScaleMutation(queryClient);
+  const updateSidebarMetricMutation =
+    createUpdateSidebarMetricMutation(queryClient);
+  const updateSidebarRecentItemsMutation =
+    createUpdateSidebarRecentItemsMutation(queryClient);
 
   // ---------- Theme ----------
 
@@ -72,6 +79,33 @@
 
   function resetUiScale() {
     onUiScaleCommit(1.0);
+  }
+
+  // ---------- Sidebar ----------
+
+  const SIDEBAR_METRIC_OPTIONS: { value: SidebarMetric; label: string }[] = [
+    { value: "revenue", label: "Виручка" },
+    { value: "gross_income", label: "Валовий дохід" },
+    { value: "financial_result", label: "Фінансовий результат" },
+  ];
+
+  const sidebarMetricLabel = $derived(
+    SIDEBAR_METRIC_OPTIONS.find(
+      (option) => option.value === draft?.sidebarMetric,
+    )?.label ?? "Фінансовий результат",
+  );
+
+  function onSidebarMetricChange(value: string) {
+    if (!draft) return;
+    const metric = value as SidebarMetric;
+    draft.sidebarMetric = metric;
+    updateSidebarMetricMutation.mutate(metric);
+  }
+
+  function onShowRecentItemsChange(checked: boolean) {
+    if (!draft) return;
+    draft.showRecentItems = checked;
+    updateSidebarRecentItemsMutation.mutate(checked);
   }
 </script>
 
@@ -136,6 +170,64 @@
             class="w-40"
           />
         </div>
+      </Item.Actions>
+    </Item.Root>
+  </div>
+
+  <p class="my-4 px-4 text-lg font-semibold">Бічна панель</p>
+
+  <div class="overflow-hidden border border-border rounded bg-card">
+    <Item.Root id="settings-sidebar-metric">
+      <Item.Content>
+        <Item.Title>Метрика на кнопці головної сторінки</Item.Title>
+        <Item.Description
+          >Оберіть метрику що буде відображатись поруч з місяцем на кнопці
+          головної сторінки</Item.Description
+        >
+        {#if updateSidebarMetricMutation.isError}
+          <p class="text-xs text-destructive mt-1">
+            Не вдалося зберегти показник: {updateSidebarMetricMutation.error
+              ?.message}
+          </p>
+        {/if}
+      </Item.Content>
+      <Item.Actions>
+        <Select.Root
+          type="single"
+          value={draft?.sidebarMetric ?? "financial_result"}
+          onValueChange={onSidebarMetricChange}
+        >
+          <Select.Trigger class="w-48">{sidebarMetricLabel}</Select.Trigger>
+          <Select.Content>
+            {#each SIDEBAR_METRIC_OPTIONS as option (option.value)}
+              <Select.Item value={option.value} label={option.label}>
+                {option.label}
+              </Select.Item>
+            {/each}
+          </Select.Content>
+        </Select.Root>
+      </Item.Actions>
+    </Item.Root>
+
+    <Item.Root id="settings-sidebar-recents">
+      <Item.Content>
+        <Item.Title>Нещодавні</Item.Title>
+        <Item.Description
+          >Чи відображати в бічній панелі секцію нещодавно відвіданих сторінок</Item.Description
+        >
+        {#if updateSidebarRecentItemsMutation.isError}
+          <p class="text-xs text-destructive mt-1">
+            Не вдалося зберегти налаштування: {updateSidebarRecentItemsMutation
+              .error?.message}
+          </p>
+        {/if}
+      </Item.Content>
+      <Item.Actions>
+        <Switch
+          checked={draft?.showRecentItems ?? true}
+          onCheckedChange={onShowRecentItemsChange}
+          aria-label="Показувати нещодавні"
+        />
       </Item.Actions>
     </Item.Root>
   </div>

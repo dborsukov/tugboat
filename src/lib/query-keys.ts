@@ -79,6 +79,10 @@ export const keys = {
   settings: {
     all: ["settings"] as const,
   },
+  recent: {
+    all: ["recent"] as const,
+    list: () => [...keys.recent.all, "list"] as const,
+  },
   dashboard: {
     all: ["dashboard"] as const,
     module: (id: string, period?: unknown) =>

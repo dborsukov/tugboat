@@ -23,6 +23,7 @@
 
   import { isUnknownBrand } from "$lib/brands";
   import { copyValue } from "$lib/clipboard";
+  import { recordRecentItem } from "$lib/recent-items";
   import { prettifyIsoDateString } from "$lib/tools";
   import { cn } from "$lib/utils";
 
@@ -72,6 +73,11 @@
   let workOrderListItems = $derived(
     combinedQueries.workOrderDetailsDtoList.data ?? [],
   );
+
+  $effect(() => {
+    const id = carDetails?.carDto?.car?.id;
+    if (id != null) void recordRecentItem("car", id);
+  });
 
   let ordersCount = $derived(workOrderListItems.length);
   let totalSpent = $derived(

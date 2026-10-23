@@ -5,6 +5,7 @@ import {
   type CompanyInfo,
   type LicensePlateLookupTemplates,
   type RateVariants,
+  type SidebarMetric,
   type ThemeMode,
   type VinLookupTemplates,
 } from "$lib/bindings";
@@ -28,6 +29,26 @@ export function createUpdateUiScaleMutation(queryClient: QueryClient) {
     // Rust always returns f64 - ignoring for now
     async (uiScale: number) =>
       (await unwrap(commands.updateUiScale(uiScale))) ?? uiScale,
+  );
+}
+
+export function createUpdateSidebarMetricMutation(queryClient: QueryClient) {
+  return createSettingsFieldMutation(
+    queryClient,
+    "sidebarMetric",
+    (sidebarMetric: SidebarMetric) =>
+      unwrap(commands.updateSidebarMetric(sidebarMetric)),
+  );
+}
+
+export function createUpdateSidebarRecentItemsMutation(
+  queryClient: QueryClient,
+) {
+  return createSettingsFieldMutation(
+    queryClient,
+    "showRecentItems",
+    (showRecentItems: boolean) =>
+      unwrap(commands.updateSidebarRecentItems(showRecentItems)),
   );
 }
 

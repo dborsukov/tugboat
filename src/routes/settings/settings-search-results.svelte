@@ -13,7 +13,7 @@
         {#each settingsSearch.results as item (item.id)}
           <button
             type="button"
-            class="flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            class="flex w-full flex-col items-start gap-0.5 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:cursor-pointer hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
             onclick={() => settingsSearch.select(item)}
           >
             <span class="font-medium">{item.label}</span>

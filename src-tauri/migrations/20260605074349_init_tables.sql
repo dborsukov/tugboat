@@ -283,6 +283,8 @@ CREATE TABLE app_settings (
     id INTEGER PRIMARY KEY NOT NULL DEFAULT 1 CHECK (id = 1),
     theme TEXT NOT NULL DEFAULT 'system',
     ui_scale REAL NOT NULL DEFAULT 1.0,
+    sidebar_metric TEXT NOT NULL DEFAULT 'financial_result',
+    show_recent_items INTEGER NOT NULL DEFAULT 1,
     default_markup TEXT NOT NULL DEFAULT '0',
     default_vat_rate TEXT NOT NULL DEFAULT '0',
     default_prices_include_vat INTEGER NOT NULL DEFAULT 1,
@@ -300,6 +302,8 @@ OR IGNORE INTO app_settings (
     id,
     theme,
     ui_scale,
+    sidebar_metric,
+    show_recent_items,
     default_markup,
     default_vat_rate,
     default_prices_include_vat,
@@ -316,6 +320,8 @@ VALUES
         1,
         'system',
         1.0,
+        'financial_result',
+        1,
         '0',
         1,
         '0',
@@ -410,3 +416,184 @@ CREATE UNIQUE INDEX idx_vat_entries_live_source ON vat_entries (direction, sourc
 WHERE
     reverses_id IS NULL
     AND voided_at IS NULL;
+
+CREATE TABLE recent_items (
+    kind TEXT NOT NULL,
+    item_id TEXT NOT NULL,
+    viewed_at TEXT NOT NULL,
+    PRIMARY KEY (kind, item_id)
+);
+
+CREATE INDEX idx_recent_items_viewed_at ON recent_items (viewed_at DESC);
+
+CREATE TRIGGER recent_items_prune AFTER INSERT ON recent_items BEGIN
+DELETE FROM recent_items
+WHERE
+    rowid NOT IN (
+        SELECT
+            rowid
+        FROM
+            recent_items
+        ORDER BY
+            viewed_at DESC
+        LIMIT
+            20
+    );
+
+END;
+
+CREATE TRIGGER clients_touch_recent_insert AFTER INSERT ON clients BEGIN
+DELETE FROM recent_items
+WHERE
+    kind = 'client'
+    AND item_id = CAST(NEW.id AS TEXT);
+
+INSERT INTO
+    recent_items (kind, item_id, viewed_at)
+VALUES
+    (
+        'client',
+        CAST(NEW.id AS TEXT),
+        strftime ('%Y-%m-%dT%H:%M:%fZ', 'now')
+    );
+
+END;
+
+CREATE TRIGGER clients_touch_recent_update AFTER
+UPDATE ON clients WHEN NEW.archived_at IS NULL BEGIN
+DELETE FROM recent_items
+WHERE
+    kind = 'client'
+    AND item_id = CAST(NEW.id AS TEXT);
+
+INSERT INTO
+    recent_items (kind, item_id, viewed_at)
+VALUES
+    (
+        'client',
+        CAST(NEW.id AS TEXT),
+        strftime ('%Y-%m-%dT%H:%M:%fZ', 'now')
+    );
+
+END;
+
+CREATE TRIGGER clients_forget_recent_delete AFTER DELETE ON clients BEGIN
+DELETE FROM recent_items
+WHERE
+    kind = 'client'
+    AND item_id = CAST(OLD.id AS TEXT);
+
+END;
+
+CREATE TRIGGER clients_forget_recent_archive AFTER
+UPDATE ON clients WHEN NEW.archived_at IS NOT NULL BEGIN
+DELETE FROM recent_items
+WHERE
+    kind = 'client'
+    AND item_id = CAST(NEW.id AS TEXT);
+
+END;
+
+CREATE TRIGGER cars_touch_recent_insert AFTER INSERT ON cars BEGIN
+DELETE FROM recent_items
+WHERE
+    kind = 'car'
+    AND item_id = CAST(NEW.id AS TEXT);
+
+INSERT INTO
+    recent_items (kind, item_id, viewed_at)
+VALUES
+    (
+        'car',
+        CAST(NEW.id AS TEXT),
+        strftime ('%Y-%m-%dT%H:%M:%fZ', 'now')
+    );
+
+END;
+
+CREATE TRIGGER cars_touch_recent_update AFTER
+UPDATE ON cars WHEN NEW.archived_at IS NULL BEGIN
+DELETE FROM recent_items
+WHERE
+    kind = 'car'
+    AND item_id = CAST(NEW.id AS TEXT);
+
+INSERT INTO
+    recent_items (kind, item_id, viewed_at)
+VALUES
+    (
+        'car',
+        CAST(NEW.id AS TEXT),
+        strftime ('%Y-%m-%dT%H:%M:%fZ', 'now')
+    );
+
+END;
+
+CREATE TRIGGER cars_forget_recent_delete AFTER DELETE ON cars BEGIN
+DELETE FROM recent_items
+WHERE
+    kind = 'car'
+    AND item_id = CAST(OLD.id AS TEXT);
+
+END;
+
+CREATE TRIGGER cars_forget_recent_archive AFTER
+UPDATE ON cars WHEN NEW.archived_at IS NOT NULL BEGIN
+DELETE FROM recent_items
+WHERE
+    kind = 'car'
+    AND item_id = CAST(NEW.id AS TEXT);
+
+END;
+
+CREATE TRIGGER work_orders_touch_recent_insert AFTER INSERT ON work_orders BEGIN
+DELETE FROM recent_items
+WHERE
+    kind = 'work_order'
+    AND item_id = NEW.id;
+
+INSERT INTO
+    recent_items (kind, item_id, viewed_at)
+VALUES
+    (
+        'work_order',
+        NEW.id,
+        strftime ('%Y-%m-%dT%H:%M:%fZ', 'now')
+    );
+
+END;
+
+CREATE TRIGGER work_orders_touch_recent_update AFTER
+UPDATE ON work_orders WHEN NEW.archived_at IS NULL BEGIN
+DELETE FROM recent_items
+WHERE
+    kind = 'work_order'
+    AND item_id = NEW.id;
+
+INSERT INTO
+    recent_items (kind, item_id, viewed_at)
+VALUES
+    (
+        'work_order',
+        NEW.id,
+        strftime ('%Y-%m-%dT%H:%M:%fZ', 'now')
+    );
+
+END;
+
+CREATE TRIGGER work_orders_forget_recent_delete AFTER DELETE ON work_orders BEGIN
+DELETE FROM recent_items
+WHERE
+    kind = 'work_order'
+    AND item_id = OLD.id;
+
+END;
+
+CREATE TRIGGER work_orders_forget_recent_archive AFTER
+UPDATE ON work_orders WHEN NEW.archived_at IS NOT NULL BEGIN
+DELETE FROM recent_items
+WHERE
+    kind = 'work_order'
+    AND item_id = NEW.id;
+
+END;

@@ -28,6 +28,7 @@
 
   import { isUnknownBrand } from "$lib/brands";
   import { copyValue } from "$lib/clipboard";
+  import { recordRecentItem } from "$lib/recent-items";
   import { pluralizeUk, prettifyIsoDateString } from "$lib/tools";
   import { cn } from "$lib/utils";
 
@@ -96,6 +97,11 @@
   let workOrderListItems = $derived(
     combinedQueries.workOrderDetailsDtoList.data ?? [],
   );
+
+  $effect(() => {
+    const id = clientDetails?.client?.id;
+    if (id != null) void recordRecentItem("client", id);
+  });
 
   const clientsQuery = createClientsQuery();
   const clientsById = $derived(

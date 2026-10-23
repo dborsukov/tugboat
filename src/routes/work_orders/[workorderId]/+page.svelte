@@ -32,6 +32,7 @@
   } from "$lib/bindings";
   import { commands } from "$lib/bindings";
   import { keys } from "$lib/query-keys";
+  import { recordRecentItem } from "$lib/recent-items";
   import { privacyState } from "$lib/states/privacy.svelte";
   import { settingsState } from "$lib/states/settings.svelte";
   import { TableActionState } from "$lib/states/table-actions.svelte";
@@ -133,6 +134,11 @@
   let clients = $derived(combinedQueries.clients.data);
   let workOrderDetails = $derived(combinedQueries.workOrderDetails.data);
   let vatEntries = $derived(combinedQueries.vat.data);
+
+  $effect(() => {
+    const id = workOrderDetails?.workOrder?.id;
+    if (id) void recordRecentItem("work_order", id);
+  });
 
   const liveVat = $derived(liveVatEntry(vatEntries));
   const hasLiveVat = $derived(Boolean(liveVat));

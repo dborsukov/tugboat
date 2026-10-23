@@ -12,6 +12,8 @@ pub struct AppSettings {
     pub theme: ThemeMode,
     #[specta(type = specta_typescript::Number)]
     pub ui_scale: f64,
+    pub sidebar_metric: SidebarMetric,
+    pub show_recent_items: bool,
     pub default_markup: Decimal,
     pub default_vat_rate: Decimal,
     pub default_prices_include_vat: bool,
@@ -43,6 +45,8 @@ impl<'r> FromRow<'r, SqliteRow> for AppSettings {
         Ok(Self {
             theme: row.try_get("theme")?,
             ui_scale: row.try_get("ui_scale")?,
+            sidebar_metric: row.try_get("sidebar_metric")?,
+            show_recent_items: row.try_get("show_recent_items")?,
             default_markup: decimal_column(row, "default_markup")?,
             default_vat_rate: decimal_column(row, "default_vat_rate")?,
             default_prices_include_vat: row.try_get("default_prices_include_vat")?,
@@ -72,6 +76,15 @@ pub enum ThemeMode {
     Light,
     Dark,
     System,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
+#[serde(rename_all = "snake_case")]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+pub enum SidebarMetric {
+    Revenue,
+    GrossIncome,
+    FinancialResult,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]

@@ -95,6 +95,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         database::settings::fetch_settings,
         database::settings::update_theme,
         database::settings::update_ui_scale,
+        database::settings::update_sidebar_metric,
+        database::settings::update_sidebar_recent_items,
         database::settings::update_default_markup,
         database::settings::update_default_vat_rate,
         database::settings::update_default_prices_include_vat,
@@ -166,6 +168,9 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         database::vat::fetch_vat_periods,
         database::vat::close_vat_period,
         database::vat::reopen_vat_period,
+        database::recent::record_recent_item,
+        database::recent::fetch_recent_items,
+        database::recent::clear_recent_items,
         database::analytics::fetch_expense_summary,
         utils::get_app_version,
         window_geometry::reveal_window

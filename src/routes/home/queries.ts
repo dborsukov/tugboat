@@ -19,11 +19,22 @@ import type {
 } from "$lib/bindings";
 import { commands } from "$lib/bindings";
 import { keys } from "$lib/query-keys";
-import { createSettingsFieldMutation } from "$lib/states/settings.svelte";
+import {
+  createSettingsFieldMutation,
+  settingsState,
+} from "$lib/states/settings.svelte";
 import { unwrap } from "$lib/tools";
 
 import { booleanSetting } from "./dashboard-layout";
-import { monthDays, previousMonth, timeZoneOffsetMinutes } from "./period";
+import { GROSS_INCOME_ID } from "./module-ids";
+import {
+  analyticsPeriod,
+  calendarMonthOf,
+  monthDays,
+  monthName,
+  previousMonth,
+  timeZoneOffsetMinutes,
+} from "./period";
 import { dashboardPeriod } from "./state.svelte";
 
 const STALE_TIME = 30_000;
@@ -212,6 +223,26 @@ export function createExpenseSummaryQuery() {
 
     return expenseSummaryQueryOptions(month, previous);
   });
+}
+
+/** Current calendar month and the figures behind the sidebar's home line. */
+export function currentMonthFinancialSummaryQueryOptions() {
+  const now = new Date();
+  const timeZone = settingsState.settings?.timezone ?? null;
+  const anchor = calendarMonthOf(now, timeZone);
+  const period = analyticsPeriod(now, timeZone, anchor);
+
+  return {
+    month: monthName(anchor, timeZone),
+    queries: [
+      grossMarginQueryOptions(period, marginOptions(GROSS_INCOME_ID)),
+      expenseSummaryQueryOptions(
+        monthDays(anchor),
+        monthDays(previousMonth(anchor)),
+      ),
+      revenueSummaryQueryOptions(period),
+    ],
+  };
 }
 
 export function createDashboardLayoutMutation(queryClient: QueryClient) {

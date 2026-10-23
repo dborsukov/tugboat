@@ -69,6 +69,8 @@ export const commands = {
 	fetchSettings: () => typedError<AppSettings_Serialize, AppError>(__TAURI_INVOKE("fetch_settings")),
 	updateTheme: (theme: ThemeMode) => typedError<ThemeMode, AppError>(__TAURI_INVOKE("update_theme", { theme })),
 	updateUiScale: (uiScale: number | null) => typedError<number | null, AppError>(__TAURI_INVOKE("update_ui_scale", { uiScale })),
+	updateSidebarMetric: (sidebarMetric: SidebarMetric) => typedError<SidebarMetric, AppError>(__TAURI_INVOKE("update_sidebar_metric", { sidebarMetric })),
+	updateSidebarRecentItems: (showRecentItems: boolean) => typedError<boolean, AppError>(__TAURI_INVOKE("update_sidebar_recent_items", { showRecentItems })),
 	updateDefaultMarkup: (defaultMarkup: string) => typedError<string, AppError>(__TAURI_INVOKE("update_default_markup", { defaultMarkup })),
 	updateDefaultVatRate: (defaultVatRate: string) => typedError<string, AppError>(__TAURI_INVOKE("update_default_vat_rate", { defaultVatRate })),
 	updateDefaultPricesIncludeVat: (defaultPricesIncludeVat: boolean) => typedError<boolean, AppError>(__TAURI_INVOKE("update_default_prices_include_vat", { defaultPricesIncludeVat })),
@@ -173,6 +175,9 @@ export const commands = {
 	fetchVatPeriods: () => typedError<VatPeriod[], AppError>(__TAURI_INVOKE("fetch_vat_periods")),
 	closeVatPeriod: (month: string, note: string | null) => typedError<VatPeriod, AppError>(__TAURI_INVOKE("close_vat_period", { month, note })),
 	reopenVatPeriod: (month: string) => typedError<null, AppError>(__TAURI_INVOKE("reopen_vat_period", { month })),
+	recordRecentItem: (kind: RecentItemKind, id: string) => typedError<null, AppError>(__TAURI_INVOKE("record_recent_item", { kind, id })),
+	fetchRecentItems: () => typedError<RecentItem[], AppError>(__TAURI_INVOKE("fetch_recent_items")),
+	clearRecentItems: () => typedError<null, AppError>(__TAURI_INVOKE("clear_recent_items")),
 	/**  A month of expenses, and the month before it. */
 	fetchExpenseSummary: (month: DaySpan, previousMonth: DaySpan) => typedError<ExpenseSummary, AppError>(__TAURI_INVOKE("fetch_expense_summary", { month, previousMonth })),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
@@ -221,6 +226,8 @@ export type AppSettings = AppSettings_Serialize | AppSettings_Deserialize;
 export type AppSettings_Deserialize = {
 	theme: ThemeMode,
 	uiScale: number,
+	sidebarMetric: SidebarMetric,
+	showRecentItems: boolean,
 	defaultMarkup: string,
 	defaultVatRate: string,
 	defaultPricesIncludeVat: boolean,
@@ -236,6 +243,8 @@ export type AppSettings_Deserialize = {
 export type AppSettings_Serialize = {
 	theme: ThemeMode,
 	uiScale: number,
+	sidebarMetric: SidebarMetric,
+	showRecentItems: boolean,
 	defaultMarkup: string,
 	defaultVatRate: string,
 	defaultPricesIncludeVat: boolean,
@@ -944,6 +953,16 @@ export type RateVariants = {
 	isDefault?: boolean,
 };
 
+export type RecentItem = {
+	kind: RecentItemKind,
+	id: string,
+	label: string,
+	subtitle: string | null,
+	status: WorkOrderStatus | null,
+};
+
+export type RecentItemKind = "client" | "car" | "work_order";
+
 /**  A generated report as the list shows it. */
 export type Report = {
 	id: number,
@@ -1004,6 +1023,8 @@ export type Service = {
 	laborHours: string,
 	archivedAt: string | null,
 };
+
+export type SidebarMetric = "revenue" | "gross_income" | "financial_result";
 
 export type ThemeMode = "light" | "dark" | "system";
 

@@ -33,6 +33,8 @@ pub(crate) async fn fetch_settings_from_pool(
             id,
             theme,
             ui_scale,
+            sidebar_metric,
+            show_recent_items,
             default_markup,
             default_vat_rate,
             default_prices_include_vat,
@@ -95,6 +97,36 @@ pub async fn update_ui_scale(ui_scale: f64, state: State<'_, crate::AppState>) -
             .fetch_one(&state.db_pool)
             .await?;
     Ok(ui_scale)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_sidebar_metric(
+    sidebar_metric: SidebarMetric,
+    state: State<'_, crate::AppState>,
+) -> AppResult<SidebarMetric> {
+    let saved: SidebarMetric = sqlx::query_scalar(
+        "UPDATE app_settings SET sidebar_metric = $1 WHERE id = 1 RETURNING sidebar_metric",
+    )
+    .bind(sidebar_metric)
+    .fetch_one(&state.db_pool)
+    .await?;
+    Ok(saved)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn update_sidebar_recent_items(
+    show_recent_items: bool,
+    state: State<'_, crate::AppState>,
+) -> AppResult<bool> {
+    let saved: bool = sqlx::query_scalar(
+        "UPDATE app_settings SET show_recent_items = $1 WHERE id = 1 RETURNING show_recent_items",
+    )
+    .bind(show_recent_items)
+    .fetch_one(&state.db_pool)
+    .await?;
+    Ok(saved)
 }
 
 #[tauri::command]

@@ -66,6 +66,22 @@ export const settingsSearchIndex: SettingsSearchItem[] = [
     hint: "Зовнішній вигляд",
   },
   {
+    id: "settings-sidebar-metric",
+    route: "/settings/lookandfeel",
+    label: "Метрика на кнопці головної сторінки",
+    keywords:
+      "сайдбар бічна панель метрика показник кнопка головна сторінка місяць виручка валовий дохід фінансовий результат sidebar metric revenue income financial result",
+    hint: "Бічна панель",
+  },
+  {
+    id: "settings-sidebar-recents",
+    route: "/settings/lookandfeel",
+    label: "Нещодавні",
+    keywords:
+      "сайдбар бічна панель нещодавні історія нещодавно відвідані сторінки recent recent items sidebar",
+    hint: "Бічна панель",
+  },
+  {
     id: "settings-markup",
     route: "/settings/workorders",
     label: "Типова націнка",

@@ -1,7 +1,11 @@
 <script lang="ts">
   import "../app.css";
 
-  import { QueryClient, QueryClientProvider } from "@tanstack/svelte-query";
+  import {
+    MutationCache,
+    QueryClient,
+    QueryClientProvider,
+  } from "@tanstack/svelte-query";
   import { SvelteQueryDevtools } from "@tanstack/svelte-query-devtools";
   import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
   import { ModeWatcher } from "mode-watcher";
@@ -21,11 +25,17 @@
   import UiScaleApplier from "$lib/components/ui-scale-applier.svelte";
 
   import { commands } from "$lib/bindings";
+  import { recentItemsVersion } from "$lib/recent-items";
   import { navHistory } from "$lib/states/nav-history.svelte";
   import { settingsState } from "$lib/states/settings.svelte";
 
   let { children } = $props();
-  const queryClient = new QueryClient();
+  const queryClient = new QueryClient({
+    mutationCache: new MutationCache({
+      // tells persistent sidebar to rebuild recents
+      onSuccess: () => recentItemsVersion.update((version) => version + 1),
+    }),
+  });
 
   // Windows like the About dialog are standalone webviews: skip the app shell
   // (titlebar + sidebar) and render just the route content.
