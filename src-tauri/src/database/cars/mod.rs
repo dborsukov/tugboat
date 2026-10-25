@@ -1,6 +1,7 @@
 pub mod brands;
 pub mod dtos;
 pub mod models;
+pub mod plate;
 pub mod structs;
 
 use std::collections::HashMap;
@@ -41,6 +42,9 @@ pub async fn fetch_cars_list(state: State<'_, crate::AppState>) -> AppResult<Vec
             model,
             year,
             license_plate,
+            plate_type,
+            plate_country,
+            plate_search_key,
             vin,
             engine_code,
             engine_displacement,
@@ -73,6 +77,9 @@ pub async fn fetch_cars_list_by_client_id(
             model,
             year,
             license_plate,
+            plate_type,
+            plate_country,
+            plate_search_key,
             vin,
             engine_code,
             engine_displacement,
@@ -178,6 +185,9 @@ pub async fn fetch_car_by_id(state: State<'_, crate::AppState>, id: i32) -> AppR
             model,
             year,
             license_plate,
+            plate_type,
+            plate_country,
+            plate_search_key,
             vin,
             engine_code,
             engine_displacement,
@@ -216,6 +226,9 @@ pub(crate) async fn fetch_cars_by_ids(
             model,
             year,
             license_plate,
+            plate_type,
+            plate_country,
+            plate_search_key,
             vin,
             engine_code,
             engine_displacement,
@@ -278,6 +291,13 @@ pub async fn create_car(
 
     clients::ensure_client_active(&mut *tx, payload.client_id as i32).await?;
 
+    let (license_plate, plate_type, plate_country, plate_search_key) =
+        plate::normalize_plate_fields(
+            payload.plate_type,
+            payload.license_plate,
+            payload.plate_country,
+        )?;
+
     let car: Car = sqlx::query_as(
         r#"
         INSERT INTO cars (
@@ -286,6 +306,9 @@ pub async fn create_car(
             model,
             year,
             license_plate,
+            plate_type,
+            plate_country,
+            plate_search_key,
             vin,
             engine_code,
             engine_displacement,
@@ -293,7 +316,7 @@ pub async fn create_car(
             drive_type,
             notes
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING
             id,
             client_id,
@@ -301,6 +324,9 @@ pub async fn create_car(
             model,
             year,
             license_plate,
+            plate_type,
+            plate_country,
+            plate_search_key,
             vin,
             engine_code,
             engine_displacement,
@@ -315,7 +341,10 @@ pub async fn create_car(
     .bind(payload.brand_id)
     .bind(payload.model)
     .bind(payload.year)
-    .bind(payload.license_plate)
+    .bind(license_plate)
+    .bind(plate_type)
+    .bind(plate_country)
+    .bind(plate_search_key)
     .bind(payload.vin)
     .bind(payload.engine_code)
     .bind(payload.engine_displacement)
@@ -341,6 +370,13 @@ pub async fn update_car(
     ensure_car_active(&mut *tx, id).await?;
     clients::ensure_client_active(&mut *tx, payload.client_id as i32).await?;
 
+    let (license_plate, plate_type, plate_country, plate_search_key) =
+        plate::normalize_plate_fields(
+            payload.plate_type,
+            payload.license_plate,
+            payload.plate_country,
+        )?;
+
     let car: Car = sqlx::query_as(
         r#"
         UPDATE cars SET
@@ -349,12 +385,15 @@ pub async fn update_car(
             model = $4,
             year = $5,
             license_plate = $6,
-            vin = $7,
-            engine_code = $8,
-            engine_displacement = $9,
-            fuel_type = $10,
-            drive_type = $11,
-            notes = $12
+            plate_type = $7,
+            plate_country = $8,
+            plate_search_key = $9,
+            vin = $10,
+            engine_code = $11,
+            engine_displacement = $12,
+            fuel_type = $13,
+            drive_type = $14,
+            notes = $15
         WHERE id = $1
         RETURNING
             id,
@@ -363,6 +402,9 @@ pub async fn update_car(
             model,
             year,
             license_plate,
+            plate_type,
+            plate_country,
+            plate_search_key,
             vin,
             engine_code,
             engine_displacement,
@@ -378,7 +420,10 @@ pub async fn update_car(
     .bind(payload.brand_id)
     .bind(payload.model)
     .bind(payload.year)
-    .bind(payload.license_plate)
+    .bind(license_plate)
+    .bind(plate_type)
+    .bind(plate_country)
+    .bind(plate_search_key)
     .bind(payload.vin)
     .bind(payload.engine_code)
     .bind(payload.engine_displacement)

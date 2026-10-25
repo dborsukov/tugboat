@@ -244,7 +244,6 @@
       </Button>
       {#if !showArchived}
         <Button
-          variant="outline"
           disabled={!expensesQuery.isSuccess}
           onclick={tableActions.openCreate}
         >

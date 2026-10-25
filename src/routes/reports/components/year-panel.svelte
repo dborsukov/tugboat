@@ -16,8 +16,8 @@
     onYearChange?: (year: number) => void;
     /* Latest year the stepper reaches */
     maxYear?: number;
-    /* Rendered inside the panel, under the year stepper. */
-    children: Snippet;
+    /* Optional content rendered inside the panel, under the year stepper. */
+    children?: Snippet;
   } = $props();
 </script>
 
@@ -49,5 +49,7 @@
     </Button>
   </div>
 
-  {@render children()}
+  {#if children}
+    {@render children()}
+  {/if}
 </div>

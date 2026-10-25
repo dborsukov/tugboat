@@ -5,7 +5,6 @@
   import ChevronDownIcon from "@lucide/svelte/icons/chevron-down";
 
   import Button from "$lib/components/ui/button/button.svelte";
-  import * as Command from "$lib/components/ui/command/index.js";
   import * as Popover from "$lib/components/ui/popover/index.js";
   import { Skeleton } from "$lib/components/ui/skeleton";
 
@@ -18,6 +17,7 @@
   import FetchErrorDisplay from "$lib/components/fetch-error-display.svelte";
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
+  import ServicePicker from "$lib/components/sheet/service-picker.svelte";
 
   import type {
     DiscountType,
@@ -399,7 +399,10 @@
         } satisfies RowReorderOptions),
   );
 
-  async function createCreateLaborItemFromService(service: Service) {
+  async function createCreateLaborItemFromService(
+    service: Service,
+    keepPickerOpen = false,
+  ) {
     createLaborItemMutation.mutateAsync(
       {
         workOrderId: params.workorderId,
@@ -417,7 +420,7 @@
       },
       {
         onSuccess: () => {
-          isPopoverOpen = false;
+          if (!keepPickerOpen) isPopoverOpen = false;
         },
       },
     );
@@ -723,25 +726,14 @@
                     </Button>
                   {/snippet}
                 </Popover.Trigger>
-                <Popover.Content class="w-80 p-0">
-                  <Command.Root>
-                    <Command.Input placeholder="Пошук сервісів..." />
-                    <Command.List>
-                      <Command.Empty>Сервісів не знайдено...</Command.Empty>
-                      <Command.Group value="services">
-                        {#each services ?? [] as service (service.id)}
-                          <Command.Item
-                            value={service.name}
-                            class="hover:cursor-pointer"
-                            onSelect={async () =>
-                              await createCreateLaborItemFromService(service)}
-                          >
-                            {service.name}
-                          </Command.Item>
-                        {/each}
-                      </Command.Group>
-                    </Command.List>
-                  </Command.Root>
+                <Popover.Content
+                  class="w-[400px] overflow-hidden rounded-[12px] border border-border bg-popover p-0 shadow-xl ring-0"
+                >
+                  <ServicePicker
+                    services={services ?? []}
+                    onClose={() => (isPopoverOpen = false)}
+                    onSelect={createCreateLaborItemFromService}
+                  />
                 </Popover.Content>
               </Popover.Root>
             {/if}

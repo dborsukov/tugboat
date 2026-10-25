@@ -25,6 +25,7 @@
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
   import PhoneDisplay from "$lib/components/phone-display.svelte";
+  import OwnedCarPicker from "$lib/components/sheet/owned-car-picker.svelte";
 
   import { isUnknownBrand } from "$lib/brands";
   import { copyValue } from "$lib/clipboard";
@@ -718,7 +719,12 @@
                   >{cli.car?.year}</Badge
                 >
                 {#if cli.car?.licensePlate}
-                  <LicensePlate value={cli.car.licensePlate} size="sm" />
+                  <LicensePlate
+                    value={cli.car.licensePlate}
+                    plateType={cli.car.plateType}
+                    country={cli.car.plateCountry}
+                    size="sm"
+                  />
                 {/if}
                 {#if cli.car?.archivedAt}
                   <ArchivedBadge date={cli.car.archivedAt} />
@@ -772,31 +778,19 @@
                 </Button>
               {/snippet}
             </Popover.Trigger>
-            <Popover.Content class="w-72 p-2" align="end">
-              <p class="px-2 py-1.5 text-sm text-muted-foreground">
-                Оберіть автомобіль
-              </p>
-              {#each clientDetails?.cars ?? [] as cli (cli.car.id)}
-                <Button
-                  variant="ghost"
-                  class="w-full justify-start"
-                  onclick={() => {
-                    selectedWorkOrderCarId = cli.car.id;
-                    isWorkOrderSheetOpen = true;
-                    isWorkOrderCarPopoverOpen = false;
-                  }}
-                >
-                  {isUnknownBrand(cli.brand) ? "" : cli.brand?.name + " "}{cli
-                    .car?.model}
-                  {#if cli.car?.licensePlate}
-                    <LicensePlate
-                      value={cli.car.licensePlate}
-                      size="sm"
-                      class="ml-auto"
-                    />
-                  {/if}
-                </Button>
-              {/each}
+            <Popover.Content
+              class="w-[380px] overflow-hidden rounded-[12px] border border-border bg-popover p-0 shadow-xl ring-0"
+              align="end"
+            >
+              <OwnedCarPicker
+                cars={clientDetails?.cars ?? []}
+                onClose={() => (isWorkOrderCarPopoverOpen = false)}
+                onSelect={(carId) => {
+                  selectedWorkOrderCarId = carId;
+                  isWorkOrderSheetOpen = true;
+                  isWorkOrderCarPopoverOpen = false;
+                }}
+              />
             </Popover.Content>
           </Popover.Root>
         {/if}

@@ -16,7 +16,6 @@
   import { Skeleton } from "$lib/components/ui/skeleton";
 
   import LicensePlate from "$lib/components/license-plate.svelte";
-  import PhoneDisplay from "$lib/components/phone-display.svelte";
 
   import type {
     Client,
@@ -35,6 +34,7 @@
   import StatusSelector from "../work-order-status-selector.svelte";
   import WorkOrderTotalsPopover from "../work-order-totals-popover.svelte";
   import DropdownMenu from "./dropdown-menu.svelte";
+  import WorkOrderParties from "./work-order-parties.svelte";
 
   let {
     workOrderDetails = undefined,
@@ -100,23 +100,6 @@
       .join(" "),
   );
 
-  const datetimeLabel = $derived(
-    workOrder?.paidAt
-      ? "Сплачено"
-      : workOrder?.completedAt
-        ? "Завершено"
-        : workOrder?.startedAt
-          ? "Почато"
-          : "Створено",
-  );
-  const datetimeIsoString = $derived(
-    workOrder?.paidAt ??
-      workOrder?.completedAt ??
-      workOrder?.startedAt ??
-      workOrder?.createdAt ??
-      "",
-  );
-
   /**
    * How the order was paid, appended to the date so the header reads
    * "Сплачено 10 вересня 2026, 17:12 · Карткою". Gated on `paidAt` rather
@@ -161,6 +144,23 @@
       ("contactPhone" in item ? item.contactPhone : null) ?? item.phone ?? null
     );
   }
+
+  const datetimeLabel = $derived(
+    workOrder?.paidAt
+      ? "Сплачено"
+      : workOrder?.completedAt
+        ? "Завершено"
+        : workOrder?.startedAt
+          ? "Почато"
+          : "Створено",
+  );
+  const datetimeIsoString = $derived(
+    workOrder?.paidAt ??
+      workOrder?.completedAt ??
+      workOrder?.startedAt ??
+      workOrder?.createdAt ??
+      "",
+  );
 
   /**
    * The identity strip pins to the top of the page while the whole order is
@@ -236,58 +236,6 @@
       >
     </div>
   </div>
-{/snippet}
-
-{#snippet personContent(
-  label: string,
-  name: string | null | undefined,
-  phone: string | null | undefined,
-)}
-  <span class="truncate text-sm text-muted-foreground" title={label}
-    >{label}</span
-  >
-  <div class="flex min-w-0 items-start gap-2">
-    {#if name}
-      <ClientAvatar {name} class="size-6 shrink-0" />
-    {/if}
-    <div class="flex min-w-0 flex-1 flex-col gap-0.5">
-      <span class="truncate font-semibold" title={name ?? undefined}
-        >{name ?? "—"}</span
-      >
-      {#if phone}
-        <PhoneDisplay
-          value={phone}
-          class="block w-full truncate text-sm text-muted-foreground"
-        />
-      {/if}
-    </div>
-  </div>
-{/snippet}
-
-{#snippet personBox(
-  label: string,
-  name: string | null | undefined,
-  phone: string | null | undefined,
-  href: string | null = null,
-)}
-  {#if href}
-    <a
-      {href}
-      class="group flex min-w-0 items-center gap-3 bg-card px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none"
-    >
-      <span class="flex min-w-0 flex-1 flex-col gap-1">
-        {@render personContent(label, name, phone)}
-      </span>
-      <ChevronRightIcon
-        class="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground"
-        aria-hidden="true"
-      />
-    </a>
-  {:else}
-    <div class="flex min-w-0 flex-col gap-1 bg-card px-4 py-3">
-      {@render personContent(label, name, phone)}
-    </div>
-  {/if}
 {/snippet}
 
 {#snippet notesBox(label: string, value: string)}
@@ -567,7 +515,11 @@
           class="min-w-0 text-base [&>p]:min-w-0 [&>p]:truncate"
         />
         {#if carDto.car.licensePlate}
-          <LicensePlate value={carDto.car.licensePlate} />
+          <LicensePlate
+            value={carDto.car.licensePlate}
+            plateType={carDto.car.plateType}
+            country={carDto.car.plateCountry}
+          />
         {/if}
         <ChevronRightIcon
           class="ml-auto size-4 shrink-0 text-muted-foreground"
@@ -575,42 +527,29 @@
       </a>
     {/if}
 
-    <div
-      class="grid grid-cols-4 gap-px border-t border-border bg-border @max-[900px]:grid-cols-2 @max-[560px]:grid-cols-1"
-    >
-      {@render personBox(
-        "Власник",
-        client?.name,
-        phoneOf(ownerContact),
-        client ? `/clients/${client.id}` : null,
-      )}
-      {@render personBox(
-        "Замовник",
-        customer?.name,
-        phoneOf(customer),
-        workOrder.customerClientId != null
-          ? `/clients/${workOrder.customerClientId}`
-          : client
-            ? `/clients/${client.id}`
-            : null,
-      )}
-      {@render personBox(
-        "Водій / Представник",
-        driverName || null,
-        workOrder.driverPhone,
-        null,
-      )}
-      {@render personBox(
-        "Платник",
-        payer?.name,
-        phoneOf(payer),
-        workOrder.payerClientId != null
-          ? `/clients/${workOrder.payerClientId}`
-          : client
-            ? `/clients/${client.id}`
-            : null,
-      )}
-    </div>
+    <WorkOrderParties
+      owner={{
+        id: client?.id ?? null,
+        name: client?.name ?? "",
+        phone: phoneOf(ownerContact),
+      }}
+      customer={customer
+        ? {
+            id: customer.id,
+            name: customer.name,
+            phone: phoneOf(customer),
+          }
+        : null}
+      payer={payer
+        ? {
+            id: payer.id,
+            name: payer.name,
+            phone: phoneOf(payer),
+          }
+        : null}
+      driverName={driverName || null}
+      driverPhone={workOrder?.driverPhone ?? null}
+    />
 
     {#if workOrder?.description || workOrder?.conditionReport || (!hideNotes && workOrder?.notes)}
       <div

@@ -16,22 +16,22 @@
   } = $props();
 </script>
 
-<div
-  class={cn(
-    "flex items-center gap-1.5 border-b border-border/70 pb-1",
-    className,
-  )}
->
-  {#if icon}
-    {@const Icon = icon}
-    <Icon class="size-3.5 text-muted-foreground shrink-0" />
+<div class={cn("pt-5 first:pt-0", className)}>
+  <div class="flex items-center gap-2 pb-3">
+    {#if icon}
+      {@const Icon = icon}
+      <Icon class="size-3.5 shrink-0 text-muted-foreground/70" />
+    {/if}
+    <h3
+      class="shrink-0 text-[11.5px] font-bold tracking-[0.06em] whitespace-nowrap text-muted-foreground/80 uppercase"
+    >
+      {text}
+    </h3>
+    <span class="h-px min-w-4 flex-1 bg-border" aria-hidden="true"></span>
+  </div>
+  {#if hint}
+    <p class="-mt-1 pb-3 text-xs leading-relaxed text-muted-foreground">
+      {hint}
+    </p>
   {/if}
-  <h3
-    class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-  >
-    {text}
-  </h3>
 </div>
-{#if hint}
-  <p class="text-xs text-muted-foreground">{hint}</p>
-{/if}

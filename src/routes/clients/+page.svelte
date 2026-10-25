@@ -268,7 +268,6 @@
         {/if}
       </Button>
       <Button
-        variant="outline"
         onclick={() => (isSheetOpen = !isSheetOpen)}
         disabled={!clientsQuery.isSuccess || showArchived}
       >

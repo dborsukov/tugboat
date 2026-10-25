@@ -12,6 +12,7 @@
 
 <CalendarPrimitive.GridRow
   bind:ref
+  data-slot="calendar-grid-row"
   class={cn("flex", className)}
   {...restProps}
 />

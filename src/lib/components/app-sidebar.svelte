@@ -32,6 +32,7 @@
     createRecentItemsQuery,
     recentItemsVersion,
   } from "$lib/recent-items";
+  import { quickOrder } from "$lib/states/quick-order.svelte";
   import { settingsState } from "$lib/states/settings.svelte";
 
   import { carsCountQueryOptions } from "../../routes/cars/queries";
@@ -186,8 +187,13 @@
     }
   }
 
+  const isMac = $derived(
+    typeof navigator !== "undefined" &&
+      /Mac|iPhone|iPad|iPod/.test(navigator.platform),
+  );
+
   function handleNewOrder() {
-    // TODO
+    quickOrder.openFromCurrentRoute();
   }
 
   const homeMonth = $derived(
@@ -271,7 +277,7 @@
             <Sidebar.MenuButton
               isActive={isHomeActive}
               size="lg"
-              class="h-12 w-full min-w-0 bg-transparent dark:bg-slate-500/10 border border-sidebar-border px-1.5 py-2 hover:bg-sidebar-accent data-active:bg-sidebar-accent group-data-[collapsible=icon]:border-0"
+              class="h-12 w-full min-w-0 bg-transparent dark:bg-slate-600/10 border border-sidebar-border px-1.5 py-2 hover:bg-sidebar-accent dark:hover:bg-sidebar-accent/40 data-active:bg-sidebar-accent dark:data-active:bg-sidebar-accent/60 group-data-[collapsible=icon]:border-0"
             >
               {#snippet child({ props })}
                 <a href="/home" {...props}>
@@ -306,12 +312,18 @@
               variant="outline"
               size="lg"
               class="w-full justify-start gap-2 rounded-xl border-sidebar-border bg-transparent px-3 font-normal shadow-none hover:bg-slate-100 dark:bg-transparent dark:hover:bg-slate-800/60 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:shrink-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:p-0"
+              aria-keyshortcuts={isMac ? "Meta+N" : "Control+N"}
               onclick={handleNewOrder}
             >
               <PlusIcon />
               <span class="group-data-[collapsible=icon]:hidden"
                 >Швидке замовлення</span
               >
+              <kbd
+                class="ml-auto shrink-0 font-sans text-[10px] font-medium tracking-wide text-muted-foreground group-data-[collapsible=icon]:hidden"
+              >
+                {isMac ? "⌘N" : "Ctrl+N"}
+              </kbd>
             </Button>
           </Sidebar.MenuItem>
         </Sidebar.Menu>

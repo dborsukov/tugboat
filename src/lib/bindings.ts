@@ -268,6 +268,9 @@ export type Car = {
 	fuelType: FuelType | null,
 	driveType: DriveType | null,
 	licensePlate: string | null,
+	plateType: PlateType,
+	plateCountry: string | null,
+	plateSearchKey: string | null,
 	vin: string | null,
 	notes: string | null,
 	createdAt: string,
@@ -452,6 +455,8 @@ export type CreateCarPayload = {
 	fuelType: FuelType | null,
 	driveType: DriveType | null,
 	licensePlate: string | null,
+	plateType: PlateType,
+	plateCountry: string | null,
 	vin: string | null,
 	notes: string | null,
 };
@@ -878,6 +883,8 @@ export type PartStatus = "Quoted" | "Ordered" | "InStock" | "Installing" | "Inst
 
 export type PaymentMethod = "Cash" | "Card" | "BankTransfer" | "CardTransfer";
 
+export type PlateType = "ua" | "ua_old" | "military" | "temporary" | "foreign" | "other";
+
 export type PreviewLaborItemPayload = {
 	workOrderId: string,
 	priceType: LaborPriceType,
@@ -1061,6 +1068,8 @@ export type UpdateCarPayload = {
 	fuelType: FuelType | null,
 	driveType: DriveType | null,
 	licensePlate: string | null,
+	plateType: PlateType,
+	plateCountry: string | null,
 	vin: string | null,
 	notes: string | null,
 };

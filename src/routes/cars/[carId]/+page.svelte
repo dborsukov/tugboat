@@ -21,6 +21,7 @@
   import NotFound from "$lib/components/not-found.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
+  import type { PlateType } from "$lib/bindings";
   import { isUnknownBrand } from "$lib/brands";
   import { copyValue } from "$lib/clipboard";
   import { recordRecentItem } from "$lib/recent-items";
@@ -262,6 +263,8 @@
       value: string | null,
       mono: boolean = false,
       plate: boolean = false,
+      plateType: PlateType = "ua",
+      plateCountry: string | null = null,
     )}
       {#if value}
         <button
@@ -278,7 +281,13 @@
             />
           </span>
           {#if plate}
-            <LicensePlate {value} plain class="font-semibold" />
+            <LicensePlate
+              {value}
+              {plateType}
+              country={plateCountry}
+              plain
+              class="font-semibold"
+            />
           {:else}
             <span
               class="font-semibold {mono
@@ -488,6 +497,8 @@
           carDetails.carDto.car.licensePlate,
           false,
           true,
+          carDetails.carDto.car.plateType,
+          carDetails.carDto.car.plateCountry,
         )}
 
         {@render copyableDetailCell("VIN-код", carDetails.carDto.car.vin, true)}

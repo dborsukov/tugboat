@@ -58,6 +58,18 @@ CREATE TABLE cars (
     model TEXT NOT NULL,
     year INTEGER NOT NULL,
     license_plate TEXT,
+    plate_type TEXT NOT NULL DEFAULT 'ua' CHECK (
+        plate_type IN (
+            'ua',
+            'ua_old',
+            'military',
+            'temporary',
+            'foreign',
+            'other'
+        )
+    ),
+    plate_country TEXT,
+    plate_search_key TEXT,
     vin TEXT,
     engine_code TEXT,
     engine_displacement REAL,

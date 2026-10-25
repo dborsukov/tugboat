@@ -22,8 +22,9 @@
     country = $bindable<CountryCode | null>("UA"),
     options,
     class: className,
+    triggerClass,
     ...props
-  }: TelInputProps = $props();
+  }: TelInputProps & { triggerClass?: string } = $props();
 
   const settingsDefaultCountry = $derived(
     (settingsState.settings?.defaultPhoneCountryCode ?? "UA") as CountryCode,
@@ -61,7 +62,10 @@
 <div class="flex items-center gap-1.5">
   <Popover.Popover bind:open={popoverOpen}>
     <Popover.PopoverTrigger
-      class="flex h-8 items-center gap-1 rounded-2xl bg-input/50 px-2.5 text-foreground outline-none select-none hover:bg-muted/70 focus-visible:bg-muted/70 focus-visible:ring-3 focus-visible:ring-ring/30 aria-expanded:bg-muted/70"
+      class={cn(
+        "flex h-8 items-center gap-1 rounded-2xl bg-input/50 px-2.5 text-foreground outline-none select-none hover:bg-muted/70 focus-visible:bg-muted/70 focus-visible:ring-3 focus-visible:ring-ring/30 aria-expanded:bg-muted/70",
+        triggerClass,
+      )}
       aria-label="Оберіть країну"
     >
       <CountryFlag country={currentCountry?.iso2 ?? null} />

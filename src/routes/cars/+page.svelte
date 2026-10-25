@@ -22,6 +22,7 @@
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import { UseAutoPageSize } from "$lib/hooks/use-auto-page-size.svelte";
+  import { plateSearchKey } from "$lib/plate";
 
   import ClientAvatar from "../clients/client-avatar.svelte";
   import CarMutationSheet from "./car-mutation-sheet.svelte";
@@ -68,7 +69,10 @@
           `${cli.carDto?.brand?.name} ${cli.carDto?.car?.model}`,
           query,
         );
-        const plateRank = rankItem(cli.carDto?.car?.licensePlate ?? "", query);
+        const plateRank = rankItem(
+          cli.carDto?.car?.plateSearchKey ?? "",
+          plateSearchKey(query),
+        );
         const vinRank = rankItem(cli.carDto?.car?.vin ?? "", query);
         const clientRank = rankItem(cli.client?.name, query);
 
@@ -198,7 +202,6 @@
         {/if}
       </Button>
       <Button
-        variant="outline"
         onclick={() => (isSheetOpen = !isSheetOpen)}
         disabled={!carDetailsQuery.isSuccess || showArchived}
       >
@@ -283,6 +286,8 @@
                       {#if cli.carDto?.car?.licensePlate}
                         <LicensePlate
                           value={cli.carDto.car.licensePlate}
+                          plateType={cli.carDto.car.plateType}
+                          country={cli.carDto.car.plateCountry}
                           size="sm"
                         />
                       {/if}

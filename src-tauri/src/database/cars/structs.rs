@@ -2,6 +2,8 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
+use super::plate::PlateType;
+
 pub(crate) fn car_display_name(brand: Option<&str>, model: &str) -> String {
     match brand.map(str::trim) {
         Some(brand) if !brand.is_empty() => format!("{brand} {}", model.trim()),
@@ -46,6 +48,9 @@ pub struct Car {
     pub fuel_type: Option<FuelType>,
     pub drive_type: Option<DriveType>,
     pub license_plate: Option<String>,
+    pub plate_type: PlateType,
+    pub plate_country: Option<String>,
+    pub plate_search_key: Option<String>,
     pub vin: Option<String>,
     pub notes: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -68,6 +73,8 @@ pub struct CreateCarPayload {
     pub fuel_type: Option<FuelType>,
     pub drive_type: Option<DriveType>,
     pub license_plate: Option<String>,
+    pub plate_type: PlateType,
+    pub plate_country: Option<String>,
     pub vin: Option<String>,
     pub notes: Option<String>,
 }
@@ -88,6 +95,8 @@ pub struct UpdateCarPayload {
     pub fuel_type: Option<FuelType>,
     pub drive_type: Option<DriveType>,
     pub license_plate: Option<String>,
+    pub plate_type: PlateType,
+    pub plate_country: Option<String>,
     pub vin: Option<String>,
     pub notes: Option<String>,
 }

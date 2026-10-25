@@ -1,18 +1,27 @@
 <script lang="ts">
   import { useQueryClient } from "@tanstack/svelte-query";
   import Big from "big.js";
+  import { tick } from "svelte";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
 
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
-  import { Checkbox } from "$lib/components/ui/checkbox";
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
   import * as Select from "$lib/components/ui/select/index.js";
 
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
+  import {
+    sheetHint,
+    sheetInput,
+    sheetLabel,
+    sheetSelectTrigger,
+  } from "$lib/components/sheet/field-styles";
+  import RequiredMark from "$lib/components/sheet/required-mark.svelte";
+  import SheetSection from "$lib/components/sheet/sheet-section.svelte";
+  import SheetSwitchRow from "$lib/components/sheet/sheet-switch-row.svelte";
 
   import {
     commands,
@@ -36,6 +45,7 @@
   } from "$lib/schemas/zlaborprice";
   import { settingsState } from "$lib/states/settings.svelte";
   import { unwrap } from "$lib/tools";
+  import { cn } from "$lib/utils";
   import {
     schemeNeedsZeroRate,
     VAT_SCHEMES,
@@ -245,6 +255,8 @@
     cancel?.();
     open = false;
     form.reset();
+    baseline = null;
+    loadedKey = null;
   }
 
   async function confirmPriceAndSubmit() {
@@ -264,35 +276,63 @@
 
   const { form: formData, enhance, submitting } = form;
 
-  $effect(() => {
-    if (open) {
-      priceConfirmOpen = false;
-      pendingSubmitData = null;
-      pendingQuote = null;
+  let baseline = $state<string | null>(null);
+  let loadedKey = $state<string | null>(null);
+  const dirty = $derived(
+    baseline !== null && JSON.stringify($formData) !== baseline,
+  );
 
-      if (laborItem) {
-        $formData.code = laborItem.code;
-        $formData.name = laborItem.name;
-        $formData.isFree = laborItem.isFree;
-        $formData.vatRate = laborItem.vatRate ?? "";
-        $formData.vatScheme = laborItem.vatScheme ?? "standard";
-        $formData.laborPriceType = laborItem.priceType;
-        $formData.laborPrice = laborPriceFromEntity(laborItem);
-        $formData.discountType = laborItem.discountType;
-        $formData.discountValue = discountFromEntity(laborItem);
-      } else {
-        form.reset();
-        // Warranty work is free by default (most claims cover labor too);
-        // flip the checkbox when the client pays for the labor.
-        $formData.isFree = workOrderType === "Warranty";
-      }
+  function markBaseline() {
+    baseline = JSON.stringify($formData);
+  }
+
+  $effect(() => {
+    if (!open) {
+      baseline = null;
+      loadedKey = null;
+      return;
     }
+    const key = isEdit ? String(laborItemId) : "new";
+    if (loadedKey === key) return;
+    if (isEdit && !laborItem) return;
+    loadedKey = key;
+
+    priceConfirmOpen = false;
+    pendingSubmitData = null;
+    pendingQuote = null;
+
+    if (laborItem) {
+      $formData.code = laborItem.code;
+      $formData.name = laborItem.name;
+      $formData.isFree = laborItem.isFree;
+      $formData.vatRate = laborItem.vatRate ?? "";
+      $formData.vatScheme = laborItem.vatScheme ?? "standard";
+      $formData.laborPriceType = laborItem.priceType;
+      $formData.laborPrice = laborPriceFromEntity(laborItem);
+      $formData.discountType = laborItem.discountType;
+      $formData.discountValue = discountFromEntity(laborItem);
+    } else {
+      form.reset();
+      // Warranty work is free by default (most claims cover labor too);
+      // flip the switch when the client pays for the labor.
+      $formData.isFree = workOrderType === "Warranty";
+    }
+
+    void tick().then(() => {
+      if (!open || loadedKey !== key) return;
+      markBaseline();
+      setTimeout(() => {
+        if (open && loadedKey === key) markBaseline();
+      }, 150);
+    });
   });
 </script>
 
 <MutationSheetShell
   bind:open
   {formID}
+  {dirty}
+  bodyClass="gap-0"
   title={isEdit ? "Редагувати сервіс" : "Створити сервіс"}
   description={isEdit ? "Змініть дані сервісу" : "Внесіть дані нового сервісу"}
   submitLabel={isEdit ? "Зберегти зміни" : "Створити"}
@@ -300,154 +340,190 @@
   enhanceAction={enhance}
   onCancel={() => {
     form.reset();
+    baseline = null;
+    loadedKey = null;
     open = false;
   }}
 >
-  <Form.Field {form} name="code">
-    <Form.Control>
-      {#snippet children({ props })}
-        <Label>Код</Label>
-        <Input {...props} bind:value={$formData.code} />
-      {/snippet}
-    </Form.Control>
-    <Form.FieldErrors />
-  </Form.Field>
+  <div class="flex flex-col gap-4">
+    <div class="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3">
+      <Form.Field {form} name="code" class="space-y-1.5">
+        <Form.Control>
+          {#snippet children({ props })}
+            <Label class={sheetLabel}>Код</Label>
+            <Input
+              {...props}
+              data-sheet-autofocus
+              bind:value={$formData.code}
+              placeholder="LAB-001"
+              class={sheetInput}
+            />
+          {/snippet}
+        </Form.Control>
+        <Form.FieldErrors />
+      </Form.Field>
 
-  <Form.Field {form} name="name">
-    <Form.Control>
-      {#snippet children({ props })}
-        <Label>Назва</Label>
-        <Input {...props} bind:value={$formData.name} />
-      {/snippet}
-    </Form.Control>
-    <Form.FieldErrors />
-  </Form.Field>
+      <Form.Field {form} name="name" class="space-y-1.5">
+        <Form.Control>
+          {#snippet children({ props })}
+            <Label class={sheetLabel}>Назва<RequiredMark /></Label>
+            <Input
+              {...props}
+              bind:value={$formData.name}
+              placeholder="Наприклад: Заміна ременя ГРМ"
+              class={sheetInput}
+            />
+          {/snippet}
+        </Form.Control>
+        <Form.FieldErrors />
+      </Form.Field>
+    </div>
 
-  <Form.Field {form} name="laborPrice">
-    <Form.Control>
-      {#snippet children({ props })}
-        <Label>Вартість</Label>
-        <LaborPriceField
-          bind:type={$formData.laborPriceType}
-          bind:value={$formData.laborPrice}
-          inputProps={props}
-        />
-      {/snippet}
-    </Form.Control>
-    <Form.FieldErrors />
-  </Form.Field>
+    <div class="flex flex-col gap-4">
+      <Form.Field {form} name="laborPrice" class="space-y-1.5">
+        <Form.Control>
+          {#snippet children({ props })}
+            <Label class={sheetLabel}>Вартість<RequiredMark /></Label>
+            <LaborPriceField
+              bind:type={$formData.laborPriceType}
+              bind:value={$formData.laborPrice}
+              inputProps={props}
+            />
+          {/snippet}
+        </Form.Control>
+        <Form.FieldErrors />
+      </Form.Field>
 
-  <Form.Field {form} name="discountValue">
-    <Form.Control>
-      {#snippet children({ props })}
-        <Label>Знижка</Label>
-        <DiscountField
-          bind:type={$formData.discountType}
-          bind:value={$formData.discountValue}
-          inputProps={props}
-        />
-      {/snippet}
-    </Form.Control>
-    <Form.FieldErrors />
-    {#if liveWarning}
-      {#if liveWarning.kept !== liveWarning.total}
-        <p class="text-sm text-amber-600 dark:text-amber-500 mt-1.5">
-          Увага: після сплати ПДВ залишиться {fmt(liveWarning.kept)} грн. (ціна {fmt(
-            liveWarning.total,
-          )} грн.), що нижче за собівартість{" "}
-          {fmt(liveWarning.cost)} грн.
-        </p>
-      {:else}
-        <p class="text-sm text-amber-600 dark:text-amber-500 mt-1.5">
-          Увага: кінцева ціна {fmt(liveWarning.total)} грн. нижча за собівартість
-          {fmt(liveWarning.cost)} грн.
-        </p>
-      {/if}
-    {:else if liveQuote && !liveQuote.costBasisKnown}
-      <p class="text-sm text-muted-foreground mt-1.5">
-        Собівартість не відстежується для фіксованої ціни при погодинному типі
-        витрат на роботу — перевірка на ціну нижче собівартості не виконується.
-      </p>
-    {/if}
-  </Form.Field>
+      <Form.Field {form} name="discountValue" class="space-y-1.5">
+        <Form.Control>
+          {#snippet children({ props })}
+            <Label class={sheetLabel}>Знижка</Label>
+            <DiscountField
+              bind:type={$formData.discountType}
+              bind:value={$formData.discountValue}
+              inputProps={props}
+              variant="sheet"
+            />
+          {/snippet}
+        </Form.Control>
+        <Form.FieldErrors />
+        {#if liveWarning}
+          {#if liveWarning.kept !== liveWarning.total}
+            <p
+              class="text-xs leading-relaxed text-amber-600 dark:text-amber-500"
+            >
+              Увага: після сплати ПДВ залишиться {fmt(liveWarning.kept)} грн. (ціна
+              {fmt(liveWarning.total)} грн.), що нижче за собівартість{" "}
+              {fmt(liveWarning.cost)} грн.
+            </p>
+          {:else}
+            <p
+              class="text-xs leading-relaxed text-amber-600 dark:text-amber-500"
+            >
+              Увага: кінцева ціна {fmt(liveWarning.total)} грн. нижча за собівартість
+              {fmt(liveWarning.cost)} грн.
+            </p>
+          {/if}
+        {:else if liveQuote && !liveQuote.costBasisKnown}
+          <p class={sheetHint}>
+            Собівартість не відстежується для фіксованої ціни при погодинному
+            типі витрат на роботу — перевірка на ціну нижче собівартості не
+            виконується.
+          </p>
+        {/if}
+      </Form.Field>
+
+      <Form.Field {form} name="isFree">
+        <Form.Control>
+          {#snippet children({ props })}
+            <SheetSwitchRow
+              id="labor-is-free"
+              label="Безкоштовно — не входить у вартість"
+              checked={$formData.isFree}
+              onCheckedChange={(checked) => ($formData.isFree = checked)}
+              switchProps={props}
+            >
+              Коли клієнт не платить за позицію зовсім (гарантійна заміна,
+              подарунок). Позиція не входить у вартість замовлення, і збиток за
+              нею не фіксується. Якщо клієнт платить зі знижкою — використовуйте
+              поле «Знижка» вище.
+            </SheetSwitchRow>
+          {/snippet}
+        </Form.Control>
+        <Form.FieldErrors />
+      </Form.Field>
+    </div>
+  </div>
 
   {#if !businessIsNotVatPayer}
-    <div class="grid gap-2">
-      <Label>ПДВ цієї роботи</Label>
-      <div class="flex flex-wrap items-center gap-3">
-        <div class="flex items-baseline gap-2">
-          <Input
-            bind:value={$formData.vatRate}
-            type="text"
-            inputmode="decimal"
-            class="w-28 text-right"
-            aria-label="Ставка ПДВ для цієї роботи"
-          />
-          <p>%</p>
-        </div>
-        <div class="flex items-center gap-2">
-          <Label for="labor-vat-scheme" class="font-normal">Режим ПДВ</Label>
-          <Select.Root
-            type="single"
-            value={$formData.vatScheme}
-            onValueChange={(value) => {
-              if (!value) return;
-              $formData.vatScheme = value as VatScheme;
-              if (schemeNeedsZeroRate($formData.vatScheme)) {
-                $formData.vatRate = "0";
-              }
-            }}
-          >
-            <Select.Trigger id="labor-vat-scheme" class="w-40">
-              {vatSchemeLabels[$formData.vatScheme]}
-            </Select.Trigger>
-            <Select.Content>
-              {#each VAT_SCHEMES as scheme (scheme)}
-                <Select.Item value={scheme}
-                  >{vatSchemeLabels[scheme]}</Select.Item
-                >
-              {/each}
-            </Select.Content>
-          </Select.Root>
-        </div>
-      </div>
-      <p class="text-xs text-muted-foreground">
-        Порожньо — ставка й режим замовлення.
-      </p>
-      {#if zeroRateStandardWarning}
-        <p class="text-xs text-amber-600 dark:text-amber-500">
-          0 % зі стандартним режимом не потрапить у реєстр ПДВ. Для нульової або
-          пільгової позиції оберіть відповідний режим.
-        </p>
-      {/if}
-    </div>
-  {/if}
+    <SheetSection title="ПДВ">
+      <div class="flex flex-col gap-4">
+        <div class="grid grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)] gap-3">
+          <Form.Field {form} name="vatRate" class="space-y-1.5">
+            <Form.Control>
+              {#snippet children({ props })}
+                <Label class={sheetLabel}>Ставка ПДВ</Label>
+                <div class="relative">
+                  <Input
+                    {...props}
+                    bind:value={$formData.vatRate}
+                    type="text"
+                    inputmode="decimal"
+                    class={cn(sheetInput, "pr-8")}
+                  />
+                  <span
+                    class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground"
+                  >
+                    %
+                  </span>
+                </div>
+              {/snippet}
+            </Form.Control>
+            <Form.FieldErrors />
+          </Form.Field>
 
-  <Form.Field {form} name="isFree">
-    <Form.Control>
-      {#snippet children({ props })}
-        <div class="flex items-center gap-2" {...props}>
-          <Checkbox
-            id="labor-is-free"
-            checked={$formData.isFree}
-            onCheckedChange={(checked: boolean) =>
-              ($formData.isFree = checked === true)}
-            aria-label="Безкоштовно — не входить у вартість"
-          />
-          <Label for="labor-is-free">Безкоштовно — не входить у вартість</Label>
+          <Form.Field {form} name="vatScheme" class="space-y-1.5">
+            <Form.Control>
+              {#snippet children({ props })}
+                <Label class={sheetLabel}>Режим ПДВ</Label>
+                <Select.Root
+                  type="single"
+                  value={$formData.vatScheme}
+                  onValueChange={(value) => {
+                    if (!value) return;
+                    $formData.vatScheme = value as VatScheme;
+                    if (schemeNeedsZeroRate($formData.vatScheme)) {
+                      $formData.vatRate = "0";
+                    }
+                  }}
+                >
+                  <Select.Trigger {...props} class={sheetSelectTrigger}>
+                    {vatSchemeLabels[$formData.vatScheme]}
+                  </Select.Trigger>
+                  <Select.Content>
+                    {#each VAT_SCHEMES as scheme (scheme)}
+                      <Select.Item value={scheme}>
+                        {vatSchemeLabels[scheme]}
+                      </Select.Item>
+                    {/each}
+                  </Select.Content>
+                </Select.Root>
+              {/snippet}
+            </Form.Control>
+            <Form.FieldErrors />
+          </Form.Field>
         </div>
-      {/snippet}
-    </Form.Control>
-    <p class="text-xs text-muted-foreground mt-1.5">
-      Коли клієнт не платить за позицію зовсім (гарантійна заміна, подарунок).
-    </p>
-    <p class="text-xs text-muted-foreground">
-      Позиція не входить у вартість замовлення, і збиток за нею не фіксується —
-      попередження «ціна нижче собівартості» не спрацьовує. Якщо клієнт платить
-      зі знижкою — використовуйте поле «Знижка» вище.
-    </p>
-    <Form.FieldErrors />
-  </Form.Field>
+
+        <p class={sheetHint}>Порожньо — ставка й режим замовлення.</p>
+        {#if zeroRateStandardWarning}
+          <p class="text-xs leading-relaxed text-amber-600 dark:text-amber-500">
+            0 % зі стандартним режимом не потрапить у реєстр ПДВ. Для нульової
+            або пільгової позиції оберіть відповідний режим.
+          </p>
+        {/if}
+      </div>
+    </SheetSection>
+  {/if}
 </MutationSheetShell>
 
 <AlertDialog.Root bind:open={priceConfirmOpen}>

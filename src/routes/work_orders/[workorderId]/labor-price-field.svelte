@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { Button } from "$lib/components/ui/button";
   import { Input } from "$lib/components/ui/input";
 
   import CurrencyInput from "$lib/components/currency-input.svelte";
+  import { sheetInput } from "$lib/components/sheet/field-styles";
+  import SegmentedControl from "$lib/components/sheet/segmented-control.svelte";
 
   import type { LaborPriceType } from "$lib/bindings";
+  import { cn } from "$lib/utils";
 
   let {
     type = $bindable<LaborPriceType>("Hourly"),
@@ -15,44 +17,47 @@
     value: string;
     inputProps?: Record<string, unknown>;
   } = $props();
+
+  const options = [
+    { value: "Hourly", label: "По годинам" },
+    { value: "Fixed", label: "Фіксована" },
+  ] satisfies { value: LaborPriceType; label: string }[];
 </script>
 
 <div class="flex flex-col gap-2">
-  <div class="flex gap-2">
-    <Button
-      type="button"
-      variant={type === "Hourly" ? "default" : "outline"}
-      class="flex-1"
-      onclick={() => (type = "Hourly")}
-    >
-      По годинам
-    </Button>
-    <Button
-      type="button"
-      variant={type === "Fixed" ? "default" : "outline"}
-      class="flex-1"
-      onclick={() => (type = "Fixed")}
-    >
-      Фіксована
-    </Button>
-  </div>
-  <div class="flex gap-2 items-baseline">
+  <SegmentedControl
+    {options}
+    value={type}
+    clearable={false}
+    ariaLabel="Тип вартості"
+    onValueChange={(next) => next && (type = next as LaborPriceType)}
+  />
+  <div class="relative">
     {#if type === "Hourly"}
-      <Input bind:value class="flex-1" {...inputProps} />
-      <p>год.</p>
+      <Input bind:value class={cn(sheetInput, "pr-12")} {...inputProps} />
+      <span
+        class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground"
+      >
+        год.
+      </span>
     {:else}
       <CurrencyInput
         bind:value
-        onkeydown={(e: KeyboardEvent) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            const input = e.currentTarget as HTMLInputElement;
+        class={cn(sheetInput, "pr-14")}
+        onkeydown={(event: KeyboardEvent) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            const input = event.currentTarget as HTMLInputElement;
             input.blur();
             input.closest("form")?.requestSubmit();
           }
         }}
       />
-      <p>грн.</p>
+      <span
+        class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground"
+      >
+        грн.
+      </span>
     {/if}
   </div>
 </div>

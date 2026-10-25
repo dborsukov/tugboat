@@ -12,6 +12,7 @@
 
 <CalendarPrimitive.Grid
   bind:ref
+  data-slot="calendar-grid"
   class={cn("flex w-full border-collapse flex-col", className)}
   {...restProps}
 />

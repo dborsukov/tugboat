@@ -8,10 +8,10 @@
   } from "@internationalized/date";
   import type { RangeCalendar as RangeCalendarPrimitive } from "bits-ui";
 
-  import { Button } from "$lib/components/ui/button";
-  import { ButtonGroup } from "$lib/components/ui/button-group";
   import { Calendar } from "$lib/components/ui/calendar/index.js";
   import { RangeCalendar } from "$lib/components/ui/range-calendar/index.js";
+
+  import SegmentedControl from "$lib/components/sheet/segmented-control.svelte";
 
   import { pluralizeUk } from "$lib/tools";
   import { cn } from "$lib/utils";
@@ -35,19 +35,14 @@
     custom = $bindable<DayRange>({ from: "", to: "" }),
     /** How many months the custom range calendar shows at once. */
     rangeMonths = 2,
-    /** Extra classes for the day and range calendars, to size their cells. */
-    calendarClass = "",
     /** Prints the span in days. */
     showSummary = false,
-    class: className,
   }: {
     mode: PeriodMode;
     anchor: string;
     custom: DayRange;
     rangeMonths?: 1 | 2;
-    calendarClass?: string;
     showSummary?: boolean;
-    class?: string;
   } = $props();
 
   const maxDay = today(getLocalTimeZone());
@@ -106,20 +101,19 @@
   }
 </script>
 
-<div class={cn("flex w-full flex-col gap-3", className)}>
-  <ButtonGroup class="w-full" aria-label="Період">
-    {#each PERIOD_MODES as option (option)}
-      <Button
-        variant={mode === option ? "secondary" : "ghost"}
-        size="sm"
-        class="flex-1 px-1.5"
-        aria-pressed={mode === option}
-        onclick={() => (mode = option)}
-      >
-        {periodModeLabels[option]}
-      </Button>
-    {/each}
-  </ButtonGroup>
+<div class="flex w-full flex-col gap-3">
+  <SegmentedControl
+    options={PERIOD_MODES.map((option) => ({
+      value: option,
+      label: periodModeLabels[option],
+    }))}
+    value={mode}
+    clearable={false}
+    ariaLabel="Період"
+    class="w-full"
+    selectedClass="bg-slate-600 text-white hover:bg-slate-500 dark:bg-slate-700 dark:hover:bg-slate-600"
+    onValueChange={(next) => next && (mode = next)}
+  />
 
   <div class="flex w-full justify-center">
     {#if mode === "day"}
@@ -129,7 +123,13 @@
         onValueChange={setAnchor}
         maxValue={maxDay}
         locale="uk-UA"
-        class={cn("bg-transparent p-0", calendarClass)}
+        class={cn(
+          "w-full bg-transparent p-0",
+          "[&_[data-slot=calendar-head-cell]]:w-auto [&_[data-slot=calendar-head-cell]]:flex-1",
+          "[&_[data-slot=calendar-grid-row]]:w-full",
+          "[&_[data-slot=calendar-cell]]:w-auto [&_[data-slot=calendar-cell]]:flex-1 [&_[data-slot=calendar-cell]]:min-w-0",
+          "[&_[data-slot=calendar-day]]:w-full [&_[data-slot=calendar-day]]:min-w-0",
+        )}
       />
     {:else if mode === "month"}
       <div class="w-full">
@@ -155,11 +155,7 @@
           bind:year={browsedYear}
           maxYear={maxDay.year}
           onYearChange={(year) => (anchor = textOf(anchorDate.set({ year })))}
-        >
-          <p class="text-center text-sm text-muted-foreground">
-            Весь {browsedYear} рік
-          </p>
-        </YearPanel>
+        />
       </div>
     {:else}
       <RangeCalendar
@@ -168,7 +164,7 @@
         maxValue={maxDay}
         locale="uk-UA"
         numberOfMonths={rangeMonths}
-        class={cn("bg-transparent p-0", calendarClass)}
+        class="bg-transparent p-0"
       />
     {/if}
   </div>

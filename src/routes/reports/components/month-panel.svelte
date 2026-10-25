@@ -67,8 +67,9 @@
   >
     {#each options as name, index (name)}
       <Button
-        variant={selected === index + 1 ? "secondary" : "ghost"}
+        variant={selected === index + 1 ? "default" : "ghost"}
         size="sm"
+        class="h-8"
         disabled={isFuture(index + 1)}
         onclick={() => onSelect(index + 1)}
       >

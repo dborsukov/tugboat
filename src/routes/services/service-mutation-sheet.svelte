@@ -1,5 +1,6 @@
 <script lang="ts">
   import { useQueryClient } from "@tanstack/svelte-query";
+  import { tick } from "svelte";
   import { defaults, superForm } from "sveltekit-superforms";
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
@@ -9,6 +10,8 @@
   import { Label } from "$lib/components/ui/label";
 
   import MutationSheetShell from "$lib/components/mutation-sheet-shell.svelte";
+  import { sheetInput, sheetLabel } from "$lib/components/sheet/field-styles";
+  import RequiredMark from "$lib/components/sheet/required-mark.svelte";
 
   import {
     laborPriceFields,
@@ -27,19 +30,23 @@
   let {
     serviceId = null,
     open = $bindable(false),
-  }: { serviceId?: number | null; open: boolean } = $props();
+  }: {
+    serviceId?: number | null;
+    open: boolean;
+  } = $props();
 
   const formID = "service-mutation-form";
   const isEdit = $derived(serviceId != null);
 
   const queryClient = useQueryClient();
-
   const createServiceMutation = createCreateServiceMutation(queryClient);
   const updateServiceMutation = createUpdateServiceMutation(queryClient);
 
-  let servicesQuery = createServicesQuery();
-  let servicesList = $derived(servicesQuery.data ?? []);
-  let service = $derived(servicesList.find((s) => s.id === serviceId) ?? null);
+  const servicesQuery = createServicesQuery();
+  const servicesList = $derived(servicesQuery.data ?? []);
+  const service = $derived(
+    servicesList.find((s) => s.id === serviceId) ?? null,
+  );
 
   export const serviceSchema = z.object({
     code: z.string().nullable(),
@@ -59,10 +66,7 @@
         if (isEdit && duplicateService.id === service?.id) return true;
         return false;
       },
-      {
-        message: "Сервіс з таким кодом вже існує",
-        path: ["code"],
-      },
+      { message: "Сервіс з таким кодом вже існує", path: ["code"] },
     )
     .refine(
       (data) => {
@@ -73,10 +77,7 @@
         if (isEdit && duplicateService.id === service?.id) return true;
         return false;
       },
-      {
-        message: "Сервіс з такою назвою вже існує",
-        path: ["name"],
-      },
+      { message: "Сервіс з такою назвою вже існує", path: ["name"] },
     )
     .superRefine(refineLaborPrice);
 
@@ -89,18 +90,15 @@
     id: formID,
     async onUpdate({ form: nativeForm, cancel }) {
       if (!nativeForm.valid) return;
-
       const laborPricePayload = laborPriceToPayload(
         nativeForm.data.laborPriceType,
         nativeForm.data.laborPrice,
       );
-
       const payload = {
         code: nativeForm.data.code,
         name: nativeForm.data.name,
         ...laborPricePayload,
       };
-
       if (isEdit && serviceId) {
         await updateServiceMutation
           .mutateAsync({ id: serviceId, payload })
@@ -108,79 +106,129 @@
       } else {
         await createServiceMutation.mutateAsync(payload).catch(() => {});
       }
-      // Prevent superforms from re-applying the submitted data to the form
-      // after this handler, which would overwrite the reset below and leave
-      // stale values in the fields for the next time the sheet opens.
       cancel();
       open = false;
       form.reset();
+      baseline = null;
+      loadedKey = null;
     },
   });
 
   const { form: formData, enhance, submitting } = form;
 
+  let loadedKey = $state<string | null>(null);
+  let baseline = $state<string | null>(null);
+  const dirty = $derived(
+    baseline !== null && JSON.stringify($formData) !== baseline,
+  );
+
+  function markBaseline() {
+    baseline = JSON.stringify($formData);
+  }
+
   $effect(() => {
-    if (open) {
-      if (service) {
-        form.reset({
-          data: {
-            code: service.code,
-            name: service.name,
-            laborPriceType: service.priceType,
-            laborPrice: laborPriceFromEntity(service),
-          },
-        });
-      } else {
-        form.reset();
-      }
+    if (!open) {
+      loadedKey = null;
+      baseline = null;
+      return;
     }
+    const key = isEdit ? String(serviceId) : "new";
+    if (loadedKey === key) return;
+    if (isEdit && !service) return;
+    loadedKey = key;
+
+    if (service) {
+      form.reset({
+        data: {
+          code: service.code,
+          name: service.name,
+          laborPriceType: service.priceType,
+          laborPrice: laborPriceFromEntity(service),
+        },
+      });
+    } else {
+      form.reset();
+    }
+
+    void tick().then(() => {
+      if (!open || loadedKey !== key) return;
+      markBaseline();
+      setTimeout(() => {
+        if (open && loadedKey === key) markBaseline();
+      }, 150);
+    });
   });
 </script>
 
 <MutationSheetShell
   bind:open
   {formID}
+  {dirty}
+  bodyClass="gap-0"
   title={isEdit ? "Редагувати сервіс" : "Створити сервіс"}
-  description={isEdit ? "Змініть дані сервіса" : "Внесіть дані нового сервіса"}
+  description={isEdit ? "Змініть дані сервісу" : "Внесіть дані нового сервісу"}
   submitLabel={isEdit ? "Зберегти зміни" : "Створити"}
   submitting={$submitting}
   enhanceAction={enhance}
   onCancel={() => {
     form.reset();
+    baseline = null;
+    loadedKey = null;
     open = false;
   }}
 >
-  <Form.Field {form} name="code">
-    <Form.Control>
-      {#snippet children({ props })}
-        <Label>Код</Label>
-        <Input {...props} bind:value={$formData.code} />
-      {/snippet}
-    </Form.Control>
-    <Form.FieldErrors />
-  </Form.Field>
+  <div class="flex flex-col gap-4">
+    <div class="flex flex-col gap-4">
+      <div class="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-3">
+        <Form.Field {form} name="code" class="space-y-1.5">
+          <Form.Control>
+            {#snippet children({ props })}
+              <Label class={sheetLabel}>Код</Label>
+              <Input
+                {...props}
+                data-sheet-autofocus
+                bind:value={$formData.code}
+                placeholder="SRV-001"
+                class={sheetInput}
+              />
+            {/snippet}
+          </Form.Control>
+          <Form.FieldErrors />
+        </Form.Field>
 
-  <Form.Field {form} name="name">
-    <Form.Control>
-      {#snippet children({ props })}
-        <Label>Назва</Label>
-        <Input {...props} bind:value={$formData.name} />
-      {/snippet}
-    </Form.Control>
-    <Form.FieldErrors />
-  </Form.Field>
+        <Form.Field {form} name="name" class="space-y-1.5">
+          <Form.Control>
+            {#snippet children({ props })}
+              <Label class={sheetLabel}>Назва{@render requiredMark()}</Label>
+              <Input
+                {...props}
+                bind:value={$formData.name}
+                placeholder="Наприклад: Заміна масла"
+                class={sheetInput}
+              />
+            {/snippet}
+          </Form.Control>
+          <Form.FieldErrors />
+        </Form.Field>
+      </div>
+    </div>
 
-  <Form.Field {form} name="laborPrice">
-    <Form.Control>
-      {#snippet children({ props })}
-        <Label>Вартість</Label>
-        <LaborPriceField
-          bind:type={$formData.laborPriceType}
-          bind:value={$formData.laborPrice}
-          inputProps={props}
-        />
-      {/snippet}
-    </Form.Control>
-    <Form.FieldErrors />
-  </Form.Field>
+    <Form.Field {form} name="laborPrice" class="space-y-1.5">
+      <Form.Control>
+        {#snippet children({ props })}
+          <Label class={sheetLabel}>Вартість{@render requiredMark()}</Label>
+          <LaborPriceField
+            bind:type={$formData.laborPriceType}
+            bind:value={$formData.laborPrice}
+            inputProps={props}
+          />
+        {/snippet}
+      </Form.Control>
+      <Form.FieldErrors />
+    </Form.Field>
+  </div>
 </MutationSheetShell>
+
+{#snippet requiredMark()}
+  <RequiredMark />
+{/snippet}

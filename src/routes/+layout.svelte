@@ -20,6 +20,7 @@
   import * as Tooltip from "$lib/components/ui/tooltip/index.js";
 
   import AppSidebar from "$lib/components/app-sidebar.svelte";
+  import QuickOrderHost from "$lib/components/quick-order-host.svelte";
   import SettingsSync from "$lib/components/settings-sync.svelte";
   import TitleBar from "$lib/components/title-bar.svelte";
   import UiScaleApplier from "$lib/components/ui-scale-applier.svelte";
@@ -137,6 +138,7 @@
               </main>
             </SidebarInset>
           </div>
+          <QuickOrderHost />
         </div>
       </Sidebar.Provider>
     </Tooltip.Provider>

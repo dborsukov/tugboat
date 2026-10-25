@@ -100,7 +100,6 @@
         class="w-full"
       />
       <Button
-        variant="outline"
         disabled={!workersQuery.isSuccess}
         onclick={tableActions.openCreate}
       >

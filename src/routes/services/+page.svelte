@@ -179,7 +179,6 @@
       </Button>
       {#if !showArchived}
         <Button
-          variant="outline"
           disabled={!servicesQuery.isSuccess}
           onclick={tableActions.openCreate}
         >
