@@ -194,7 +194,11 @@ CREATE TABLE part_items (
     code TEXT,
     name TEXT NOT NULL,
     quantity TEXT NOT NULL DEFAULT "1.0",
-    unit_type TEXT NOT NULL DEFAULT "шт",
+    unit_type TEXT,
+    unit_key TEXT CHECK (
+        unit_key IS NULL
+        OR unit_key IN ('pcs', 'set', 'pair', 'l', 'kg', 'g', 'm', 'pack')
+    ),
     base_cost TEXT NOT NULL DEFAULT "0",
     markup TEXT NOT NULL DEFAULT "0",
     discount_type TEXT NOT NULL,
@@ -212,7 +216,12 @@ CREATE TABLE part_items (
     invoice_number TEXT,
     invoice_date TEXT,
     vat_credited INTEGER NOT NULL DEFAULT 0,
-    FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE
+    supplier TEXT,
+    supplier_order_id TEXT,
+    provided_by TEXT NOT NULL DEFAULT 'shop'
+    CHECK (provided_by IN ('shop', 'customer')),
+    FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE,
+    CHECK ((unit_type IS NULL) <> (unit_key IS NULL))
 );
 
 CREATE TABLE work_order_sequences (

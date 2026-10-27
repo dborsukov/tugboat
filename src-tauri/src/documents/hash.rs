@@ -71,6 +71,7 @@ fn hash_table(hasher: &mut Hasher, table: &DocTable) {
         hasher.text(&row.discount_text);
         hasher.decimal(row.discounted_price);
         hasher.decimal(row.sum);
+        hasher.text(&format!("{:?}", row.provided_by));
     }
     hasher.decimal(table.total);
 }
@@ -146,6 +147,7 @@ pub fn document_hash(data: &DocumentData) -> String {
 
     hash_table(&mut hasher, &data.labor);
     hash_table(&mut hasher, &data.parts);
+    hash_table(&mut hasher, &data.customer_parts);
     hash_totals(&mut hasher, &data.totals);
     hasher.text(&data.total_in_words);
 

@@ -24,21 +24,33 @@
     sheetHint,
     sheetInput,
     sheetLabel,
-    sheetPresetButton,
+    sheetSecondaryButton,
     sheetSelectTrigger,
   } from "$lib/components/sheet/field-styles";
   import RequiredMark from "$lib/components/sheet/required-mark.svelte";
+  import SegmentedControl from "$lib/components/sheet/segmented-control.svelte";
   import SheetSection from "$lib/components/sheet/sheet-section.svelte";
   import SheetSwitchRow from "$lib/components/sheet/sheet-switch-row.svelte";
+  import SuggestInput from "$lib/components/suggest-input.svelte";
 
   import {
     commands,
     type DiscountType,
     type PartStatus,
     type PreviewPartItemQuote,
+    type ProvidedBy,
     type VatScheme,
     type WorkOrderType,
   } from "$lib/bindings";
+  import {
+    CUSTOM_UNIT_MAX_LENGTH,
+    CUSTOM_UNIT_VALUE,
+    DEFAULT_UNIT_KEY,
+    PART_UNITS,
+    partUnitByKey,
+    unitAllowsDecimals,
+    unitOptionLabel,
+  } from "$lib/part-units";
   import { zBigString } from "$lib/schemas/zbig";
   import {
     discountFields,
@@ -64,6 +76,7 @@
     createVoidPartItemVatMutation,
     liveVatEntry,
   } from "../queries";
+  import { CUSTOMER_PART_STATUSES } from "./part-status";
   import PartStatusSelector from "./part-status-selector.svelte";
 
   let {
@@ -219,16 +232,33 @@
   let partItemsQuery = createPartItemByIdQuery(() => partItemId);
   let partItem = $derived(partItemsQuery.data);
 
+  let supplierSuggestions = $state<string[]>([]);
+
+  $effect(() => {
+    if (!open) return;
+    void commands.fetchPartSuppliers().then((result) => {
+      if (result.status === "ok") supplierSuggestions = result.data;
+    });
+  });
+
   const partItemSchema = z
     .object({
       status: z.string().default("Quoted"),
+      providedBy: z.enum(["shop", "customer"]).default("shop"),
       code: z.string().nullable(),
       name: z.string().min(1, { error: "Вкажіть назву" }),
       quantity: zBigString({
         requiredError: "Вкажіть кількість",
         min: { value: 0, message: "Кількість не може бути від'ємним числом" },
       }).default("1"),
-      unitType: z.string().min(1, { error: "Вкажіть одиницю вимірювання" }),
+      unitKey: z.string().nullable().default(DEFAULT_UNIT_KEY),
+      unitType: z
+        .string()
+        .trim()
+        .max(CUSTOM_UNIT_MAX_LENGTH, {
+          error: `Одиниця вимірювання має містити не більше ${CUSTOM_UNIT_MAX_LENGTH} символів`,
+        })
+        .default(""),
       isFree: z.boolean().default(false),
       cost: zBigString({
         requiredError: "Вкажіть ціну",
@@ -257,6 +287,8 @@
         >(["standard", "zero", "exempt", "not_object", "export"])
         .default("standard"),
       supplierName: z.string().trim().max(200).default(""),
+      supplier: z.string().trim().max(200).default(""),
+      supplierOrderId: z.string().trim().max(120).default(""),
       supplierCode: z.string().trim().max(20).default(""),
       invoiceNumber: z.string().trim().max(60).default(""),
       invoiceDate: z
@@ -302,6 +334,54 @@
           path: ["invoiceDate"],
         });
       }
+    })
+    .superRefine((data, ctx) => {
+      const preset = data.unitKey ? partUnitByKey(data.unitKey) : undefined;
+      if (data.unitKey && !preset) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Невідома одиниця вимірювання",
+          path: ["unitKey"],
+        });
+      }
+      if (!data.unitKey && !data.unitType.trim()) {
+        ctx.addIssue({
+          code: "custom",
+          message: "Вкажіть одиницю вимірювання",
+          path: ["unitType"],
+        });
+      }
+
+      let quantity: Big;
+      try {
+        quantity = new Big(data.quantity);
+      } catch {
+        return;
+      }
+
+      if (unitAllowsDecimals(data.unitKey)) {
+        if (quantity.lt(0.001)) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Кількість має бути не менше 0,001",
+            path: ["quantity"],
+          });
+        }
+        const fractionalDigits = quantity.toString().split(".")[1]?.length ?? 0;
+        if (fractionalDigits > 3) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Кількість може мати не більше 3 знаків після коми",
+            path: ["quantity"],
+          });
+        }
+      } else if (!quantity.mod(1).eq(0) || quantity.lt(1)) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Для одиниці «${preset?.display ?? ""}» кількість має бути цілим числом не менше 1`,
+          path: ["quantity"],
+        });
+      }
     });
 
   const form = superForm(defaults(zod4(partItemSchema)), {
@@ -340,10 +420,12 @@
     const saleRate = data.vatRate.trim().replace(",", ".");
     const payload = {
       status: data.status as PartStatus,
+      providedBy: data.providedBy as ProvidedBy,
       code: data.code,
       name: data.name,
       quantity: data.quantity,
-      unitType: data.unitType,
+      unitKey: data.unitKey,
+      unitType: data.unitKey ? null : data.unitType.trim() || null,
       baseCost: data.cost,
       markup: data.markup,
       ...discountPayload,
@@ -354,6 +436,8 @@
       purchasePriceIncludesVat: data.purchasePriceIncludesVat,
       purchaseScheme: data.purchaseScheme,
       supplierName: data.supplierName.trim() || null,
+      supplier: data.supplier.trim() || null,
+      supplierOrderId: data.supplierOrderId.trim() || null,
       supplierCode: data.supplierCode.trim() || null,
       invoiceNumber: data.invoiceNumber.trim() || null,
       invoiceDate: data.invoiceDate || null,
@@ -369,10 +453,12 @@
         .mutateAsync({
           workOrderId: workOrderId!,
           status: data.status as PartStatus,
+          providedBy: data.providedBy as ProvidedBy,
           code: data.code,
           name: data.name,
           quantity: data.quantity,
-          unitType: data.unitType,
+          unitKey: data.unitKey,
+          unitType: data.unitKey ? null : data.unitType.trim() || null,
           baseCost: data.cost,
           markup: data.markup,
           ...discountPayload,
@@ -383,6 +469,8 @@
           purchasePriceIncludesVat: data.purchasePriceIncludesVat,
           purchaseScheme: data.purchaseScheme,
           supplierName: data.supplierName.trim() || null,
+          supplier: data.supplier.trim() || null,
+          supplierOrderId: data.supplierOrderId.trim() || null,
           supplierCode: data.supplierCode.trim() || null,
           invoiceNumber: data.invoiceNumber.trim() || null,
           invoiceDate: data.invoiceDate || null,
@@ -417,6 +505,134 @@
 
   const { form: formData, enhance, submitting } = form;
 
+  let customUnitInput = $state<HTMLInputElement | null>(null);
+  const selectedUnit = $derived(partUnitByKey($formData.unitKey));
+  const isCustomUnit = $derived(!$formData.unitKey);
+  const unitSelectValue = $derived($formData.unitKey ?? CUSTOM_UNIT_VALUE);
+  const isShopProvided = $derived($formData.providedBy === "shop");
+  const providedByOptions: { value: ProvidedBy; label: string }[] = [
+    { value: "shop", label: "Сервіс" },
+    { value: "customer", label: "Клієнт" },
+  ];
+
+  let partyConfirmOpen = $state(false);
+  let pendingProvidedBy = $state<ProvidedBy | null>(null);
+
+  const hasEnteredShopValues = $derived.by(() => {
+    const positive = (value: string) => {
+      try {
+        return new Big(value || "0").gt(0);
+      } catch {
+        return false;
+      }
+    };
+    return (
+      positive($formData.cost) ||
+      positive($formData.markup) ||
+      positive($formData.discountValue) ||
+      $formData.discountType !== "None" ||
+      $formData.isFree ||
+      $formData.vatCredited ||
+      Boolean($formData.vatRate.trim()) ||
+      Boolean($formData.supplier.trim()) ||
+      Boolean($formData.supplierName.trim()) ||
+      Boolean($formData.supplierCode.trim()) ||
+      Boolean($formData.supplierOrderId.trim()) ||
+      Boolean($formData.invoiceNumber.trim())
+    );
+  });
+
+  function applyProvidedBy(next: ProvidedBy) {
+    $formData.providedBy = next;
+    if (next === "customer") {
+      if (!CUSTOMER_PART_STATUSES.includes($formData.status as PartStatus)) {
+        $formData.status = "Quoted";
+      }
+      $formData.cost = "0";
+      $formData.markup = "0";
+      $formData.discountType = "None";
+      $formData.discountValue = "0";
+      $formData.isFree = false;
+      $formData.vatRate = "";
+      $formData.vatScheme = "standard";
+      $formData.purchaseVatRate = "0";
+      $formData.purchasePriceIncludesVat = true;
+      $formData.purchaseScheme = "standard";
+      $formData.supplier = "";
+      $formData.supplierName = "";
+      $formData.supplierCode = "";
+      $formData.supplierOrderId = "";
+      $formData.invoiceNumber = "";
+      $formData.invoiceDate = "";
+      $formData.vatCredited = false;
+    } else {
+      $formData.cost = "";
+      $formData.markup = "";
+      $formData.discountType = "None";
+      $formData.discountValue = "0";
+      $formData.isFree = false;
+    }
+    void form.validateForm({ update: true });
+  }
+
+  function requestProvidedBy(next: ProvidedBy) {
+    if (next === $formData.providedBy) return;
+    if (next === "customer" && hasEnteredShopValues) {
+      pendingProvidedBy = next;
+      partyConfirmOpen = true;
+      return;
+    }
+    applyProvidedBy(next);
+  }
+
+  function confirmProvidedByChange() {
+    if (pendingProvidedBy) applyProvidedBy(pendingProvidedBy);
+    pendingProvidedBy = null;
+    partyConfirmOpen = false;
+  }
+
+  function cancelProvidedByChange() {
+    pendingProvidedBy = null;
+    partyConfirmOpen = false;
+  }
+
+  $effect(() => {
+    if (!partyConfirmOpen) return;
+    const onKeydown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      cancelProvidedByChange();
+    };
+    window.addEventListener("keydown", onKeydown, true);
+    return () => window.removeEventListener("keydown", onKeydown, true);
+  });
+  $effect(() => {
+    if (!priceConfirmOpen) return;
+    const onKeydown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      cancelPriceConfirm();
+    };
+    window.addEventListener("keydown", onKeydown, true);
+    return () => window.removeEventListener("keydown", onKeydown, true);
+  });
+
+  function selectUnit(value: string | undefined) {
+    if (!value) return;
+
+    if (value === CUSTOM_UNIT_VALUE) {
+      $formData.unitKey = null;
+      void tick().then(() => customUnitInput?.focus());
+    } else {
+      $formData.unitKey = value;
+      $formData.unitType = "";
+    }
+
+    // A fractional quantity can become invalid when the unit stops allowing
+    // decimals, so revalidate immediately rather than waiting for submit.
+    void form.validateForm({ update: true });
+  }
+
   let baseline = $state<string | null>(null);
   let loadedKey = $state<string | null>(null);
   const dirty = $derived(
@@ -444,10 +660,12 @@
 
     if (partItem) {
       $formData.status = partItem.status;
+      $formData.providedBy = partItem.providedBy;
       $formData.code = partItem.code;
       $formData.name = partItem.name;
       $formData.quantity = partItem.quantity;
-      $formData.unitType = partItem.unitType;
+      $formData.unitKey = partItem.unitKey;
+      $formData.unitType = partItem.unitKey ? "" : (partItem.unitType ?? "");
       $formData.isFree = partItem.isFree;
       $formData.cost = partItem.baseCost;
       $formData.markup = partItem.markup;
@@ -459,13 +677,17 @@
       $formData.purchasePriceIncludesVat = partItem.purchasePriceIncludesVat;
       $formData.purchaseScheme = partItem.purchaseScheme;
       $formData.supplierName = partItem.supplierName ?? "";
+      $formData.supplier = partItem.supplier ?? "";
+      $formData.supplierOrderId = partItem.supplierOrderId ?? "";
       $formData.supplierCode = partItem.supplierCode ?? "";
       $formData.invoiceNumber = partItem.invoiceNumber ?? "";
       $formData.invoiceDate = partItem.invoiceDate ?? "";
       $formData.vatCredited = partItem.vatCredited;
     } else {
       form.reset();
-      $formData.unitType = "штука";
+      $formData.providedBy = "shop";
+      $formData.unitKey = DEFAULT_UNIT_KEY;
+      $formData.unitType = "";
       $formData.markup = defaultMarkup;
       $formData.purchaseVatRate =
         settingsState.settings?.defaultVatRate ?? "20";
@@ -483,6 +705,120 @@
   });
 </script>
 
+{#snippet partyConfirmOverlay()}
+  {#if partyConfirmOpen}
+    <div
+      class="absolute inset-0 z-20 flex items-center justify-center bg-background/70 p-6 backdrop-blur-sm"
+      role="presentation"
+      data-sheet-escape-owner="true"
+      onclick={(event) => {
+        if (event.target === event.currentTarget) cancelProvidedByChange();
+      }}
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="part-party-confirm-title"
+        aria-describedby="part-party-confirm-description"
+        class="w-full max-w-sm rounded-[12px] border border-border bg-popover p-5 shadow-2xl"
+      >
+        <h2
+          id="part-party-confirm-title"
+          class="text-[15px] font-semibold tracking-[-0.01em]"
+        >
+          Позиція клієнта
+        </h2>
+        <p
+          id="part-party-confirm-description"
+          class="mt-1.5 text-[13px] leading-relaxed text-muted-foreground"
+        >
+          Ціни та дані закупівлі буде скинуто.
+        </p>
+        <div class="mt-5 flex items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            class="text-muted-foreground"
+            onclick={cancelProvidedByChange}
+          >
+            Скасувати
+          </Button>
+          <Button type="button" onclick={confirmProvidedByChange}>
+            Продовжити
+          </Button>
+        </div>
+      </div>
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet priceConfirmOverlay()}
+  {#if priceConfirmOpen}
+    <div
+      class="absolute inset-0 z-20 flex items-center justify-center bg-background/70 p-6 backdrop-blur-sm"
+      role="presentation"
+      data-sheet-escape-owner="true"
+      onclick={(event) => {
+        if (event.target === event.currentTarget) cancelPriceConfirm();
+      }}
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="part-price-confirm-title"
+        aria-describedby="part-price-confirm-description"
+        class="w-full max-w-sm rounded-[12px] border border-border bg-popover p-5 shadow-2xl"
+      >
+        <h2
+          id="part-price-confirm-title"
+          class="text-[15px] font-semibold tracking-[-0.01em]"
+        >
+          Ціна нижча за собівартість
+        </h2>
+        <p
+          id="part-price-confirm-description"
+          class="mt-1.5 text-[13px] leading-relaxed text-muted-foreground"
+        >
+          {#if pendingQuote && pendingQuote.belowCost}
+            {#if pendingQuote.kept !== pendingQuote.discountedPrice}
+              Після сплати ПДВ залишиться {fmt(pendingQuote.kept)} грн., що нижче
+              за собівартість {fmt(pendingQuote.cost)} грн. (клієнт заплатить{" "}
+              {fmt(pendingQuote.discountedPrice)} грн.). Зберегти?
+            {:else}
+              Кінцева ціна становить{" "}
+              {fmt(pendingQuote.discountedPrice)} грн., що нижче за собівартість{" "}
+              {fmt(pendingQuote.cost)} грн. Зберегти?
+            {/if}
+          {/if}
+        </p>
+        <div class="mt-5 flex items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            class={cn(sheetSecondaryButton, "text-muted-foreground")}
+            onclick={cancelPriceConfirm}
+          >
+            Скасувати
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            class={sheetSecondaryButton}
+            onclick={confirmPriceAndSubmit}
+          >
+            Зберегти
+          </Button>
+        </div>
+      </div>
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet sheetOverlay()}
+  {@render partyConfirmOverlay()}
+  {@render priceConfirmOverlay()}
+{/snippet}
+
 <MutationSheetShell
   bind:open
   {formID}
@@ -495,6 +831,7 @@
   submitLabel={isEdit ? "Зберегти зміни" : "Створити"}
   submitting={$submitting}
   enhanceAction={enhance}
+  overlay={sheetOverlay}
   onCancel={() => {
     form.reset();
     baseline = null;
@@ -503,12 +840,28 @@
   }}
 >
   <div class="flex flex-col gap-4">
+    <div class="space-y-1.5">
+      <Label class={sheetLabel}>Хто надав</Label>
+      <SegmentedControl
+        options={providedByOptions}
+        value={$formData.providedBy as ProvidedBy}
+        clearable={false}
+        ariaLabel="Хто надав запчастину"
+        onValueChange={(next) => next && requestProvidedBy(next)}
+      />
+    </div>
+
     <Form.Field {form} name="status" class="space-y-1.5">
       <Form.Control>
         {#snippet children({ props })}
           <Label class={sheetLabel}>Статус</Label>
           <div class="block" {...props}>
-            <PartStatusSelector bind:status={$formData.status as PartStatus} />
+            <PartStatusSelector
+              bind:status={$formData.status as PartStatus}
+              allowedStatuses={isShopProvided
+                ? undefined
+                : CUSTOMER_PART_STATUSES}
+            />
           </div>
         {/snippet}
       </Form.Control>
@@ -568,200 +921,334 @@
       </Form.Field>
 
       <div class="space-y-1.5">
-        <Form.Field {form} name="unitType" class="space-y-1.5">
+        <Label class={sheetLabel}>Одиниці вимірювання<RequiredMark /></Label>
+        <div class="flex items-start gap-1.5">
+          <Form.Field {form} name="unitKey" class="min-w-0 flex-1">
+            <Form.Control>
+              {#snippet children({ props })}
+                <Select.Root
+                  type="single"
+                  value={unitSelectValue}
+                  onValueChange={selectUnit}
+                >
+                  <Select.Trigger {...props} class={sheetSelectTrigger}>
+                    {selectedUnit ? unitOptionLabel(selectedUnit) : "Інше…"}
+                  </Select.Trigger>
+                  <Select.Content>
+                    {#each PART_UNITS as unit (unit.key)}
+                      <Select.Item value={unit.key}>
+                        {unitOptionLabel(unit)}
+                      </Select.Item>
+                    {/each}
+                    <Select.Item value={CUSTOM_UNIT_VALUE}>Інше…</Select.Item>
+                  </Select.Content>
+                </Select.Root>
+              {/snippet}
+            </Form.Control>
+            <Form.FieldErrors />
+          </Form.Field>
+
+          {#if isCustomUnit}
+            <Form.Field {form} name="unitType" class="w-[140px] shrink-0">
+              <Form.Control>
+                {#snippet children({ props })}
+                  <Input
+                    {...props}
+                    bind:ref={customUnitInput}
+                    bind:value={$formData.unitType}
+                    maxlength={CUSTOM_UNIT_MAX_LENGTH}
+                    placeholder="напр. банка"
+                    class={sheetInput}
+                  />
+                {/snippet}
+              </Form.Control>
+              <Form.FieldErrors />
+            </Form.Field>
+          {/if}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {#if isShopProvided}
+    <div class="flex flex-col gap-4">
+      <div class="grid grid-cols-2 items-start gap-3">
+        <Form.Field {form} name="cost" class="space-y-1.5">
           <Form.Control>
             {#snippet children({ props })}
-              <Label class={sheetLabel}>
-                Одиниці вимірювання<RequiredMark />
-              </Label>
-              <div class="flex items-center gap-1.5">
+              <Label class={sheetLabel}>Ціна<RequiredMark /></Label>
+              <div class="relative">
+                <CurrencyInput
+                  {...props}
+                  bind:value={$formData.cost}
+                  class={cn(sheetInput, "pr-14")}
+                  onkeydown={(event: KeyboardEvent) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      const input = event.currentTarget as HTMLInputElement;
+                      input.blur();
+                      input.closest("form")?.requestSubmit();
+                    }
+                  }}
+                />
+                <span
+                  class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground"
+                >
+                  грн.
+                </span>
+              </div>
+            {/snippet}
+          </Form.Control>
+          <Form.FieldErrors />
+        </Form.Field>
+
+        <Form.Field {form} name="markup" class="space-y-1.5">
+          <Form.Control>
+            {#snippet children({ props })}
+              <Label class={sheetLabel}>Націнка<RequiredMark /></Label>
+              <div class="relative">
                 <Input
                   {...props}
-                  bind:value={$formData.unitType}
-                  placeholder="штука"
-                  class={cn(sheetInput, "min-w-0 flex-1")}
+                  bind:value={$formData.markup}
+                  type="text"
+                  inputmode="decimal"
+                  class={cn(sheetInput, "pr-8")}
                 />
-                <div class="flex shrink-0 items-center gap-1.5">
-                  {#each ["штука", "літр"] as unit (unit)}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="xs"
-                      class={sheetPresetButton}
-                      onclick={() => ($formData.unitType = unit)}
-                    >
-                      {unit}
-                    </Button>
-                  {/each}
-                </div>
+                <span
+                  class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground"
+                >
+                  %
+                </span>
               </div>
             {/snippet}
           </Form.Control>
           <Form.FieldErrors />
         </Form.Field>
       </div>
-    </div>
 
-    <div class="grid grid-cols-2 items-start gap-3">
-      <Form.Field {form} name="cost" class="space-y-1.5">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Label class={sheetLabel}>Ціна<RequiredMark /></Label>
-            <div class="relative">
-              <CurrencyInput
-                {...props}
-                bind:value={$formData.cost}
-                class={cn(sheetInput, "pr-14")}
-                onkeydown={(event: KeyboardEvent) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    const input = event.currentTarget as HTMLInputElement;
-                    input.blur();
-                    input.closest("form")?.requestSubmit();
-                  }
-                }}
+      <div class="grid grid-cols-2 items-start gap-3">
+        <Form.Field {form} name="supplier" class="space-y-1.5">
+          <Form.Control>
+            {#snippet children({ props })}
+              <Label class={sheetLabel}>Постачальник</Label>
+              <SuggestInput
+                formProps={props}
+                bind:value={$formData.supplier}
+                items={supplierSuggestions}
+                placeholder="Назва постачальника"
+                class={sheetInput}
               />
-              <span
-                class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground"
-              >
-                грн.
-              </span>
-            </div>
-          {/snippet}
-        </Form.Control>
-        <Form.FieldErrors />
-      </Form.Field>
+            {/snippet}
+          </Form.Control>
+          <Form.FieldErrors />
+        </Form.Field>
 
-      <Form.Field {form} name="markup" class="space-y-1.5">
-        <Form.Control>
-          {#snippet children({ props })}
-            <Label class={sheetLabel}>Націнка<RequiredMark /></Label>
-            <div class="relative">
+        <Form.Field {form} name="supplierOrderId" class="space-y-1.5">
+          <Form.Control>
+            {#snippet children({ props })}
+              <Label class={sheetLabel}>№ замовлення у постачальника</Label>
               <Input
                 {...props}
-                bind:value={$formData.markup}
-                type="text"
-                inputmode="decimal"
-                class={cn(sheetInput, "pr-8")}
+                bind:value={$formData.supplierOrderId}
+                placeholder="Наприклад, 4821"
+                class={sheetInput}
               />
-              <span
-                class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground"
+            {/snippet}
+          </Form.Control>
+          <Form.FieldErrors />
+        </Form.Field>
+      </div>
+
+      <Form.Field {form} name="discountValue" class="space-y-1.5">
+        <Form.Control>
+          {#snippet children({ props })}
+            <Label class={sheetLabel}>Знижка</Label>
+            <DiscountField
+              bind:type={$formData.discountType}
+              bind:value={$formData.discountValue}
+              inputProps={props}
+              variant="sheet"
+            />
+          {/snippet}
+        </Form.Control>
+        <Form.FieldErrors />
+        {#if liveWarning}
+          <div
+            class="rounded-[8px] border border-rose-500/35 bg-rose-500/10 px-3 py-2.5"
+          >
+            {#if liveWarning.kept !== liveWarning.discountedPrice}
+              <p
+                class="text-xs leading-relaxed text-rose-700 dark:text-rose-400"
               >
-                %
-              </span>
-            </div>
+                Після сплати ПДВ залишиться {fmt(liveWarning.kept)} грн. (ціна
+                {fmt(liveWarning.discountedPrice)} грн.), що нижче за собівартість
+                {fmt(liveWarning.cost)} грн.
+              </p>
+            {:else}
+              <p
+                class="text-xs leading-relaxed text-rose-700 dark:text-rose-400"
+              >
+                Кінцева ціна {fmt(liveWarning.discountedPrice)} грн. нижча за собівартість
+                {fmt(liveWarning.cost)} грн.
+              </p>
+            {/if}
+          </div>
+        {/if}
+      </Form.Field>
+
+      <Form.Field {form} name="isFree">
+        <Form.Control>
+          {#snippet children({ props })}
+            <SheetSwitchRow
+              id="part-is-free"
+              label="Безкоштовно — не входить у вартість"
+              checked={$formData.isFree}
+              onCheckedChange={(checked) => ($formData.isFree = checked)}
+              switchProps={props}
+            >
+              Коли клієнт не платить за позицію зовсім (гарантійна заміна,
+              подарунок). Позиція не входить у вартість замовлення, і збиток за
+              нею не фіксується. Якщо клієнт платить зі знижкою — використовуйте
+              поле «Знижка» вище.
+            </SheetSwitchRow>
           {/snippet}
         </Form.Control>
         <Form.FieldErrors />
       </Form.Field>
     </div>
 
-    <Form.Field {form} name="discountValue" class="space-y-1.5">
-      <Form.Control>
-        {#snippet children({ props })}
-          <Label class={sheetLabel}>Знижка</Label>
-          <DiscountField
-            bind:type={$formData.discountType}
-            bind:value={$formData.discountValue}
-            inputProps={props}
-            variant="sheet"
-          />
-        {/snippet}
-      </Form.Control>
-      <Form.FieldErrors />
-      {#if liveWarning}
-        {#if liveWarning.kept !== liveWarning.discountedPrice}
-          <p class="text-xs leading-relaxed text-amber-600 dark:text-amber-500">
-            Увага: після сплати ПДВ залишиться {fmt(liveWarning.kept)} грн. (ціна
-            {fmt(liveWarning.discountedPrice)} грн.), що нижче за собівартість {fmt(
-              liveWarning.cost,
-            )} грн.
-          </p>
-        {:else}
-          <p class="text-xs leading-relaxed text-amber-600 dark:text-amber-500">
-            Увага: кінцева ціна {fmt(liveWarning.discountedPrice)} грн. нижча за собівартість
-            {fmt(liveWarning.cost)} грн.
-          </p>
-        {/if}
-      {/if}
-    </Form.Field>
-
-    <Form.Field {form} name="isFree">
-      <Form.Control>
-        {#snippet children({ props })}
-          <SheetSwitchRow
-            id="part-is-free"
-            label="Безкоштовно — не входить у вартість"
-            checked={$formData.isFree}
-            onCheckedChange={(checked) => ($formData.isFree = checked)}
-            switchProps={props}
-          >
-            Коли клієнт не платить за позицію зовсім (гарантійна заміна,
-            подарунок). Позиція не входить у вартість замовлення, і збиток за
-            нею не фіксується. Якщо клієнт платить зі знижкою — використовуйте
-            поле «Знижка» вище.
-          </SheetSwitchRow>
-        {/snippet}
-      </Form.Control>
-      <Form.FieldErrors />
-    </Form.Field>
-  </div>
-
-  {#if businessIsVatPayer || livePartVat}
-    <SheetSection title="ПДВ продажу">
-      {#if livePartVat}
-        <div class="mb-4 rounded-[10px] border border-border bg-card p-3">
-          <div class="flex items-start justify-between gap-3">
-            <div class="flex items-start gap-2">
-              <ShieldCheckIcon
-                class="mt-0.5 size-4 shrink-0 text-emerald-600"
-              />
-              <div class="space-y-0.5">
-                <p class="text-sm font-medium">ПДВ закупівлі зафіксовано</p>
-                <p class="text-xs text-muted-foreground">
-                  {livePartVat.taxPoint} · ПН {livePartVat.documentNumber ??
-                    "—"}
-                </p>
-                <p class="text-xs text-muted-foreground">
-                  База {Big(livePartVat.base).toFixed(2)} грн · ПДВ {Big(
-                    livePartVat.amount,
-                  ).toFixed(2)} грн
-                </p>
+    {#if businessIsVatPayer || livePartVat}
+      <SheetSection title="ПДВ продажу">
+        {#if livePartVat}
+          <div class="mb-4 rounded-[10px] border border-border bg-card p-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-start gap-2">
+                <ShieldCheckIcon
+                  class="mt-0.5 size-4 shrink-0 text-emerald-600"
+                />
+                <div class="space-y-0.5">
+                  <p class="text-sm font-medium">ПДВ закупівлі зафіксовано</p>
+                  <p class="text-xs text-muted-foreground">
+                    {livePartVat.taxPoint} · ПН {livePartVat.documentNumber ??
+                      "—"}
+                  </p>
+                  <p class="text-xs text-muted-foreground">
+                    База {Big(livePartVat.base).toFixed(2)} грн · ПДВ {Big(
+                      livePartVat.amount,
+                    ).toFixed(2)} грн
+                  </p>
+                </div>
               </div>
+              {#if businessIsVatPayer}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onclick={() => (partVoidOpen = true)}
+                  disabled={voidPartVatMutation.isPending}
+                >
+                  <RotateCcwIcon class="size-4" />
+                  Сторнувати
+                </Button>
+              {/if}
             </div>
-            {#if businessIsVatPayer}
-              <Button
-                variant="secondary"
-                size="sm"
-                onclick={() => (partVoidOpen = true)}
-                disabled={voidPartVatMutation.isPending}
-              >
-                <RotateCcwIcon class="size-4" />
-                Сторнувати
-              </Button>
+            {#if !businessIsVatPayer}
+              <p class="mt-2 text-xs text-muted-foreground">
+                Історичний запис ПДВ. Бізнес зараз не є платником ПДВ, тому
+                запис доступний лише для перегляду.
+              </p>
             {/if}
           </div>
-          {#if !businessIsVatPayer}
-            <p class="mt-2 text-xs text-muted-foreground">
-              Історичний запис ПДВ. Бізнес зараз не є платником ПДВ, тому запис
-              доступний лише для перегляду.
-            </p>
-          {/if}
-        </div>
-      {/if}
+        {/if}
 
-      {#if businessIsVatPayer}
+        {#if businessIsVatPayer}
+          <fieldset disabled={partVatLocked} class="contents">
+            <div class="flex flex-col gap-4">
+              <div
+                class="grid grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)] gap-3"
+              >
+                <Form.Field {form} name="vatRate" class="space-y-1.5">
+                  <Form.Control>
+                    {#snippet children({ props })}
+                      <Label class={sheetLabel}>Ставка ПДВ</Label>
+                      <div class="relative">
+                        <Input
+                          {...props}
+                          bind:value={$formData.vatRate}
+                          type="text"
+                          inputmode="decimal"
+                          class={cn(sheetInput, "pr-8")}
+                        />
+                        <span
+                          class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground"
+                        >
+                          %
+                        </span>
+                      </div>
+                    {/snippet}
+                  </Form.Control>
+                  <Form.FieldErrors />
+                </Form.Field>
+
+                <Form.Field {form} name="vatScheme" class="space-y-1.5">
+                  <Form.Control>
+                    {#snippet children({ props })}
+                      <Label class={sheetLabel}>Режим ПДВ</Label>
+                      <Select.Root
+                        type="single"
+                        value={$formData.vatScheme}
+                        onValueChange={(value) => {
+                          if (!value) return;
+                          $formData.vatScheme = value as VatScheme;
+                          if (schemeNeedsZeroRate($formData.vatScheme)) {
+                            $formData.vatRate = "0";
+                          }
+                        }}
+                      >
+                        <Select.Trigger {...props} class={sheetSelectTrigger}>
+                          {vatSchemeLabels[$formData.vatScheme]}
+                        </Select.Trigger>
+                        <Select.Content>
+                          {#each VAT_SCHEMES as scheme (scheme)}
+                            <Select.Item value={scheme}>
+                              {vatSchemeLabels[scheme]}
+                            </Select.Item>
+                          {/each}
+                        </Select.Content>
+                      </Select.Root>
+                    {/snippet}
+                  </Form.Control>
+                  <Form.FieldErrors />
+                </Form.Field>
+              </div>
+
+              <p class={sheetHint}>Порожньо — ставка й режим замовлення.</p>
+              {#if zeroRateStandardWarning}
+                <p
+                  class="text-xs leading-relaxed text-amber-600 dark:text-amber-500"
+                >
+                  0 % зі стандартним режимом не потрапить у реєстр ПДВ. Для
+                  нульової або пільгової позиції оберіть відповідний режим.
+                </p>
+              {/if}
+            </div>
+          </fieldset>
+        {/if}
+      </SheetSection>
+    {/if}
+
+    {#if businessIsVatPayer}
+      <SheetSection title="ПДВ закупівлі">
         <fieldset disabled={partVatLocked} class="contents">
           <div class="flex flex-col gap-4">
             <div class="grid grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)] gap-3">
-              <Form.Field {form} name="vatRate" class="space-y-1.5">
+              <Form.Field {form} name="purchaseVatRate" class="space-y-1.5">
                 <Form.Control>
                   {#snippet children({ props })}
-                    <Label class={sheetLabel}>Ставка ПДВ</Label>
+                    <Label class={sheetLabel}>Ставка ПДВ закупівлі</Label>
                     <div class="relative">
                       <Input
                         {...props}
-                        bind:value={$formData.vatRate}
+                        bind:value={$formData.purchaseVatRate}
                         type="text"
                         inputmode="decimal"
                         class={cn(sheetInput, "pr-8")}
@@ -777,23 +1264,24 @@
                 <Form.FieldErrors />
               </Form.Field>
 
-              <Form.Field {form} name="vatScheme" class="space-y-1.5">
+              <Form.Field {form} name="purchaseScheme" class="space-y-1.5">
                 <Form.Control>
                   {#snippet children({ props })}
                     <Label class={sheetLabel}>Режим ПДВ</Label>
                     <Select.Root
                       type="single"
-                      value={$formData.vatScheme}
+                      value={$formData.purchaseScheme}
                       onValueChange={(value) => {
                         if (!value) return;
-                        $formData.vatScheme = value as VatScheme;
-                        if (schemeNeedsZeroRate($formData.vatScheme)) {
-                          $formData.vatRate = "0";
+                        $formData.purchaseScheme = value as VatScheme;
+                        if (schemeNeedsZeroRate($formData.purchaseScheme)) {
+                          $formData.purchaseVatRate = "0";
+                          $formData.vatCredited = false;
                         }
                       }}
                     >
                       <Select.Trigger {...props} class={sheetSelectTrigger}>
-                        {vatSchemeLabels[$formData.vatScheme]}
+                        {vatSchemeLabels[$formData.purchaseScheme]}
                       </Select.Trigger>
                       <Select.Content>
                         {#each VAT_SCHEMES as scheme (scheme)}
@@ -809,190 +1297,117 @@
               </Form.Field>
             </div>
 
-            <p class={sheetHint}>Порожньо — ставка й режим замовлення.</p>
-            {#if zeroRateStandardWarning}
-              <p
-                class="text-xs leading-relaxed text-amber-600 dark:text-amber-500"
-              >
-                0 % зі стандартним режимом не потрапить у реєстр ПДВ. Для
-                нульової або пільгової позиції оберіть відповідний режим.
+            <Form.Field {form} name="purchasePriceIncludesVat">
+              <Form.Control>
+                {#snippet children({ props })}
+                  <SheetSwitchRow
+                    id="part-purchase-includes-vat"
+                    label="Закупівельна ціна вже включає ПДВ"
+                    checked={$formData.purchasePriceIncludesVat}
+                    onCheckedChange={(checked) =>
+                      ($formData.purchasePriceIncludesVat = checked)}
+                    switchProps={props}
+                  />
+                {/snippet}
+              </Form.Control>
+              <Form.FieldErrors />
+            </Form.Field>
+
+            <div class="grid grid-cols-2 gap-3">
+              <Form.Field {form} name="supplierName" class="space-y-1.5">
+                <Form.Control>
+                  {#snippet children({ props })}
+                    <Label class={sheetLabel}>Постачальник для ПДВ</Label>
+                    <Input
+                      {...props}
+                      bind:value={$formData.supplierName}
+                      class={sheetInput}
+                    />
+                  {/snippet}
+                </Form.Control>
+                <Form.FieldErrors />
+              </Form.Field>
+
+              <Form.Field {form} name="supplierCode" class="space-y-1.5">
+                <Form.Control>
+                  {#snippet children({ props })}
+                    <Label class={sheetLabel}>Код (ЄДРПОУ / РНОКПП)</Label>
+                    <Input
+                      {...props}
+                      bind:value={$formData.supplierCode}
+                      class={sheetInput}
+                    />
+                  {/snippet}
+                </Form.Control>
+                <Form.FieldErrors />
+              </Form.Field>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <Form.Field {form} name="invoiceNumber" class="space-y-1.5">
+                <Form.Control>
+                  {#snippet children({ props })}
+                    <Label class={sheetLabel}>Номер податкової накладної</Label>
+                    <Input
+                      {...props}
+                      bind:value={$formData.invoiceNumber}
+                      class={sheetInput}
+                    />
+                  {/snippet}
+                </Form.Control>
+                <Form.FieldErrors />
+              </Form.Field>
+
+              <Form.Field {form} name="invoiceDate" class="space-y-1.5">
+                <Form.Control>
+                  {#snippet children({ props })}
+                    <Label class={sheetLabel}>Дата податкової накладної</Label>
+                    <DateTimePicker
+                      bind:value={$formData.invoiceDate}
+                      class={sheetInput}
+                      {...props}
+                    />
+                  {/snippet}
+                </Form.Control>
+                <Form.FieldErrors />
+              </Form.Field>
+            </div>
+
+            <Form.Field {form} name="vatCredited">
+              <Form.Control>
+                {#snippet children({ props })}
+                  <SheetSwitchRow
+                    id="part-vat-credited"
+                    label="Включити ПДВ закупівлі до податкового кредиту"
+                    checked={$formData.vatCredited}
+                    onCheckedChange={(checked) =>
+                      ($formData.vatCredited = checked)}
+                    switchProps={props}
+                  >
+                    {#if $formData.vatCredited}
+                      До кредиту: {creditPreview.vat.toFixed(2)} грн (база {creditPreview.base.toFixed(
+                        2,
+                      )} грн)
+                    {/if}
+                  </SheetSwitchRow>
+                {/snippet}
+              </Form.Control>
+              <Form.FieldErrors />
+            </Form.Field>
+
+            {#if $formData.vatCredited && !$formData.purchasePriceIncludesVat}
+              <p class={sheetHint}>
+                Закупівельна ціна без ПДВ: до кредиту додається {creditPreview.vat.toFixed(
+                  2,
+                )} грн, а собівартість запчастини — це вказана ціна.
               </p>
             {/if}
           </div>
         </fieldset>
-      {/if}
-    </SheetSection>
-  {/if}
-
-  {#if businessIsVatPayer}
-    <SheetSection title="ПДВ закупівлі">
-      <fieldset disabled={partVatLocked} class="contents">
-        <div class="flex flex-col gap-4">
-          <div class="grid grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)] gap-3">
-            <Form.Field {form} name="purchaseVatRate" class="space-y-1.5">
-              <Form.Control>
-                {#snippet children({ props })}
-                  <Label class={sheetLabel}>Ставка ПДВ закупівлі</Label>
-                  <div class="relative">
-                    <Input
-                      {...props}
-                      bind:value={$formData.purchaseVatRate}
-                      type="text"
-                      inputmode="decimal"
-                      class={cn(sheetInput, "pr-8")}
-                    />
-                    <span
-                      class="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-xs text-muted-foreground"
-                    >
-                      %
-                    </span>
-                  </div>
-                {/snippet}
-              </Form.Control>
-              <Form.FieldErrors />
-            </Form.Field>
-
-            <Form.Field {form} name="purchaseScheme" class="space-y-1.5">
-              <Form.Control>
-                {#snippet children({ props })}
-                  <Label class={sheetLabel}>Режим ПДВ</Label>
-                  <Select.Root
-                    type="single"
-                    value={$formData.purchaseScheme}
-                    onValueChange={(value) => {
-                      if (!value) return;
-                      $formData.purchaseScheme = value as VatScheme;
-                      if (schemeNeedsZeroRate($formData.purchaseScheme)) {
-                        $formData.purchaseVatRate = "0";
-                        $formData.vatCredited = false;
-                      }
-                    }}
-                  >
-                    <Select.Trigger {...props} class={sheetSelectTrigger}>
-                      {vatSchemeLabels[$formData.purchaseScheme]}
-                    </Select.Trigger>
-                    <Select.Content>
-                      {#each VAT_SCHEMES as scheme (scheme)}
-                        <Select.Item value={scheme}>
-                          {vatSchemeLabels[scheme]}
-                        </Select.Item>
-                      {/each}
-                    </Select.Content>
-                  </Select.Root>
-                {/snippet}
-              </Form.Control>
-              <Form.FieldErrors />
-            </Form.Field>
-          </div>
-
-          <Form.Field {form} name="purchasePriceIncludesVat">
-            <Form.Control>
-              {#snippet children({ props })}
-                <SheetSwitchRow
-                  id="part-purchase-includes-vat"
-                  label="Закупівельна ціна вже включає ПДВ"
-                  checked={$formData.purchasePriceIncludesVat}
-                  onCheckedChange={(checked) =>
-                    ($formData.purchasePriceIncludesVat = checked)}
-                  switchProps={props}
-                />
-              {/snippet}
-            </Form.Control>
-            <Form.FieldErrors />
-          </Form.Field>
-
-          <div class="grid grid-cols-2 gap-3">
-            <Form.Field {form} name="supplierName" class="space-y-1.5">
-              <Form.Control>
-                {#snippet children({ props })}
-                  <Label class={sheetLabel}>Постачальник</Label>
-                  <Input
-                    {...props}
-                    bind:value={$formData.supplierName}
-                    class={sheetInput}
-                  />
-                {/snippet}
-              </Form.Control>
-              <Form.FieldErrors />
-            </Form.Field>
-
-            <Form.Field {form} name="supplierCode" class="space-y-1.5">
-              <Form.Control>
-                {#snippet children({ props })}
-                  <Label class={sheetLabel}>Код (ЄДРПОУ / РНОКПП)</Label>
-                  <Input
-                    {...props}
-                    bind:value={$formData.supplierCode}
-                    class={sheetInput}
-                  />
-                {/snippet}
-              </Form.Control>
-              <Form.FieldErrors />
-            </Form.Field>
-          </div>
-
-          <div class="grid grid-cols-2 gap-3">
-            <Form.Field {form} name="invoiceNumber" class="space-y-1.5">
-              <Form.Control>
-                {#snippet children({ props })}
-                  <Label class={sheetLabel}>Номер податкової накладної</Label>
-                  <Input
-                    {...props}
-                    bind:value={$formData.invoiceNumber}
-                    class={sheetInput}
-                  />
-                {/snippet}
-              </Form.Control>
-              <Form.FieldErrors />
-            </Form.Field>
-
-            <Form.Field {form} name="invoiceDate" class="space-y-1.5">
-              <Form.Control>
-                {#snippet children({ props })}
-                  <Label class={sheetLabel}>Дата податкової накладної</Label>
-                  <DateTimePicker
-                    bind:value={$formData.invoiceDate}
-                    class={sheetInput}
-                    {...props}
-                  />
-                {/snippet}
-              </Form.Control>
-              <Form.FieldErrors />
-            </Form.Field>
-          </div>
-
-          <Form.Field {form} name="vatCredited">
-            <Form.Control>
-              {#snippet children({ props })}
-                <SheetSwitchRow
-                  id="part-vat-credited"
-                  label="Включити ПДВ закупівлі до податкового кредиту"
-                  checked={$formData.vatCredited}
-                  onCheckedChange={(checked) =>
-                    ($formData.vatCredited = checked)}
-                  switchProps={props}
-                >
-                  {#if $formData.vatCredited}
-                    До кредиту: {creditPreview.vat.toFixed(2)} грн (база {creditPreview.base.toFixed(
-                      2,
-                    )} грн)
-                  {/if}
-                </SheetSwitchRow>
-              {/snippet}
-            </Form.Control>
-            <Form.FieldErrors />
-          </Form.Field>
-
-          {#if $formData.vatCredited && !$formData.purchasePriceIncludesVat}
-            <p class={sheetHint}>
-              Закупівельна ціна без ПДВ: до кредиту додається {creditPreview.vat.toFixed(
-                2,
-              )} грн, а собівартість запчастини — це вказана ціна.
-            </p>
-          {/if}
-        </div>
-      </fieldset>
-    </SheetSection>
+      </SheetSection>
+    {/if}
+  {:else}
+    <p class={sheetHint}>Позиція не входить у суму та податки</p>
   {/if}
 </MutationSheetShell>
 
@@ -1022,36 +1437,6 @@
     <AlertDialog.Footer>
       <AlertDialog.Cancel>Скасувати</AlertDialog.Cancel>
       <AlertDialog.Action onclick={voidPartVat}>Сторнувати</AlertDialog.Action>
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>
-
-<AlertDialog.Root bind:open={priceConfirmOpen}>
-  <AlertDialog.Content>
-    <AlertDialog.Header>
-      <AlertDialog.Title>Ціна нижча за собівартість</AlertDialog.Title>
-      <AlertDialog.Description>
-        {#if pendingQuote && pendingQuote.belowCost}
-          {#if pendingQuote.kept !== pendingQuote.discountedPrice}
-            Після сплати ПДВ залишиться {fmt(pendingQuote.kept)} грн., що нижче за
-            собівартість {fmt(pendingQuote.cost)} грн. (клієнт заплатить {fmt(
-              pendingQuote.discountedPrice,
-            )} грн.). Зберегти?
-          {:else}
-            Кінцева ціна становить{" "}
-            {fmt(pendingQuote.discountedPrice)} грн., що нижче за собівартість{" "}
-            {fmt(pendingQuote.cost)} грн. Зберегти?
-          {/if}
-        {/if}
-      </AlertDialog.Description>
-    </AlertDialog.Header>
-    <AlertDialog.Footer>
-      <AlertDialog.Cancel onclick={cancelPriceConfirm}>
-        Скасувати
-      </AlertDialog.Cancel>
-      <AlertDialog.Action onclick={confirmPriceAndSubmit}>
-        Зберегти
-      </AlertDialog.Action>
     </AlertDialog.Footer>
   </AlertDialog.Content>
 </AlertDialog.Root>

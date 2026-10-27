@@ -25,6 +25,7 @@
     type WorkOrder,
     type WorkOrderStatus,
   } from "$lib/bindings";
+  import { formatQty } from "$lib/part-units";
   import { prettifyIsoDateString } from "$lib/tools";
   import { cn } from "$lib/utils";
 
@@ -91,7 +92,11 @@
   const selectedStyles = $derived(workOrderStatusStylesRecord[selectedStatus]);
   const hasChanges = $derived(selectedStatus !== localStatus);
   const statusEffect = $derived(statusEffects[selectedStatus]);
-  const affectedParts = $derived(getAffectedParts(partItems, statusEffect));
+  const affectedParts = $derived(
+    getAffectedParts(partItems, statusEffect).filter(
+      (part) => part.providedBy === "shop",
+    ),
+  );
   const includedParts = $derived(
     affectedParts.filter((part) => !excludedPartIds.has(part.id)),
   );
@@ -154,10 +159,12 @@
           id: part.id,
           payload: {
             status: statusEffect.parts.to,
+            providedBy: part.providedBy,
             code: part.code,
             name: part.name,
             quantity: part.quantity,
             unitType: part.unitType,
+            unitKey: part.unitKey,
             baseCost: part.baseCost,
             markup: part.markup,
             discountType: part.discountType,
@@ -170,6 +177,8 @@
             purchaseScheme: part.purchaseScheme,
             supplierName: part.supplierName,
             supplierCode: part.supplierCode,
+            supplier: part.supplier,
+            supplierOrderId: part.supplierOrderId,
             invoiceNumber: part.invoiceNumber,
             invoiceDate: part.invoiceDate,
             vatCredited: part.vatCredited,
@@ -456,6 +465,12 @@
                         />
                         <span class="min-w-0 flex-1 truncate text-[13px]">
                           {part.name}
+                        </span>
+                        <span
+                          class="shrink-0 text-[11px] text-muted-foreground tabular-nums"
+                          title={formatQty(part.quantity, part)}
+                        >
+                          {formatQty(part.quantity, part)}
                         </span>
                         <span
                           class="flex shrink-0 items-center gap-1.5 text-[11px]"

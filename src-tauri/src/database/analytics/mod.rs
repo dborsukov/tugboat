@@ -998,7 +998,13 @@ pub async fn fetch_margin_services(
                 priced
                     .part_items
                     .iter()
-                    .filter(|dto| pricing::part_is_billed(dto.item.status, dto.item.is_free))
+                    .filter(|dto| {
+                        pricing::part_is_billed(
+                            dto.item.status,
+                            dto.item.is_free,
+                            dto.item.provided_by,
+                        )
+                    })
                     .map(|dto| MarginLine {
                         name: dto.item.name.trim().to_string(),
                         billed: dto.totals.total,

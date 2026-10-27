@@ -11,8 +11,8 @@
   import * as AlertDialog from "$lib/components/ui/alert-dialog";
   import { Button } from "$lib/components/ui/button";
   import { Spinner } from "$lib/components/ui/spinner/index.js";
-  import * as Tooltip from "$lib/components/ui/tooltip";
 
+  import AppTooltip from "$lib/components/app-tooltip.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
   import type {
@@ -137,75 +137,70 @@
       <MonthPicker />
 
       <div class="absolute top-0 left-0 flex h-full items-center">
-        <Tooltip.Root>
-          <Tooltip.Trigger>
-            {#snippet child({ props })}
-              <Button
-                {...props}
-                variant="outline"
-                size="icon-lg"
-                class="lg:w-auto lg:gap-2.5 lg:px-4"
-                aria-label={reportsLabel}
-                onclick={() =>
-                  goto(`/reports?period=${monthKey(dashboardPeriod.anchor)}`)}
+        <AppTooltip content={reportsLabel} side="bottom">
+          {#snippet trigger({ props })}
+            <Button
+              {...props}
+              variant="outline"
+              size="icon-lg"
+              class="lg:w-auto lg:gap-2.5 lg:px-4"
+              aria-label={reportsLabel}
+              onclick={() =>
+                goto(`/reports?period=${monthKey(dashboardPeriod.anchor)}`)}
+            >
+              <FileSpreadsheetIcon />
+              <span class="hidden whitespace-nowrap lg:inline"
+                >{reportsLabel}</span
               >
-                <FileSpreadsheetIcon />
-                <span class="hidden whitespace-nowrap lg:inline"
-                  >{reportsLabel}</span
-                >
-              </Button>
-            {/snippet}
-          </Tooltip.Trigger>
-          <Tooltip.Content side="bottom">{reportsLabel}</Tooltip.Content>
-        </Tooltip.Root>
+            </Button>
+          {/snippet}
+        </AppTooltip>
       </div>
 
       <div class="absolute top-0 right-0 flex h-full items-center gap-2">
         {#if editing}
-          <Tooltip.Root>
-            <Tooltip.Trigger>
-              {#snippet child({ props })}
-                <Button
-                  {...props}
-                  variant="outline"
-                  size="icon-lg"
-                  disabled={defaultLayout}
-                  aria-label="Скинути розташування"
-                  onclick={() => (confirmResetDialogOpen = true)}
-                >
-                  <UndoIcon />
-                </Button>
-              {/snippet}
-            </Tooltip.Trigger>
-            <Tooltip.Content side="bottom">
-              {defaultLayout
-                ? "Розташування вже стандартне"
-                : "Скинути розташування"}
-            </Tooltip.Content>
-          </Tooltip.Root>
-        {/if}
-
-        <Tooltip.Root>
-          <Tooltip.Trigger>
-            {#snippet child({ props })}
+          <AppTooltip
+            content={defaultLayout
+              ? "Розташування вже стандартне"
+              : "Скинути розташування"}
+            side="bottom"
+          >
+            {#snippet trigger({ props })}
               <Button
                 {...props}
-                variant={editing ? "default" : "outline"}
+                variant="outline"
                 size="icon-lg"
-                aria-pressed={editing}
-                aria-label={editing
-                  ? "Завершити редагування розташування"
-                  : "Редагувати розташування"}
-                onclick={() => (editing = !editing)}
+                disabled={defaultLayout}
+                aria-label="Скинути розташування"
+                onclick={() => (confirmResetDialogOpen = true)}
               >
-                {#if editing}<CheckIcon />{:else}<PencilIcon />{/if}
+                <UndoIcon />
               </Button>
             {/snippet}
-          </Tooltip.Trigger>
-          <Tooltip.Content side="bottom">
-            {editing ? "Завершити редагування" : "Редагувати розташування"}
-          </Tooltip.Content>
-        </Tooltip.Root>
+          </AppTooltip>
+        {/if}
+
+        <AppTooltip
+          content={editing
+            ? "Завершити редагування"
+            : "Редагувати розташування"}
+          side="bottom"
+        >
+          {#snippet trigger({ props })}
+            <Button
+              {...props}
+              variant={editing ? "default" : "outline"}
+              size="icon-lg"
+              aria-pressed={editing}
+              aria-label={editing
+                ? "Завершити редагування розташування"
+                : "Редагувати розташування"}
+              onclick={() => (editing = !editing)}
+            >
+              {#if editing}<CheckIcon />{:else}<PencilIcon />{/if}
+            </Button>
+          {/snippet}
+        </AppTooltip>
 
         <ModulesSheet />
       </div>

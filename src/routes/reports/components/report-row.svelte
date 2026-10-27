@@ -7,7 +7,8 @@
 
   import { Badge } from "$lib/components/ui/badge";
   import { Button } from "$lib/components/ui/button";
-  import * as Tooltip from "$lib/components/ui/tooltip/index.js";
+
+  import AppTooltip from "$lib/components/app-tooltip.svelte";
 
   import type { Report } from "$lib/bindings";
   import { isoDayOf, pluralizeUk, prettifyIsoDateString } from "$lib/tools";
@@ -110,24 +111,30 @@
 
     <div class="flex min-w-0 flex-1 flex-col gap-1">
       <div class="flex min-h-6 min-w-0 flex-wrap items-center gap-2">
-        <Tooltip.Root>
-          <Tooltip.Trigger
-            class="min-w-0 cursor-default truncate text-left font-medium"
-          >
-            {title}
-          </Tooltip.Trigger>
-          <Tooltip.Content>{preciseRange}</Tooltip.Content>
-        </Tooltip.Root>
+        <AppTooltip content={preciseRange}>
+          {#snippet trigger({ props })}
+            <button
+              {...props}
+              type="button"
+              class="min-w-0 cursor-default truncate border-0 bg-transparent p-0 text-left font-medium"
+            >
+              {title}
+            </button>
+          {/snippet}
+        </AppTooltip>
 
         {#if unfinished}
-          <Tooltip.Root>
-            <Tooltip.Trigger
-              class="cursor-default text-left text-sm text-muted-foreground"
-            >
-              (період триває)
-            </Tooltip.Trigger>
-            <Tooltip.Content>Дані станом на {dayLabel(madeOn)}</Tooltip.Content>
-          </Tooltip.Root>
+          <AppTooltip content={`Дані станом на ${dayLabel(madeOn)}`}>
+            {#snippet trigger({ props })}
+              <button
+                {...props}
+                type="button"
+                class="cursor-default border-0 bg-transparent p-0 text-left text-sm text-muted-foreground"
+              >
+                (період триває)
+              </button>
+            {/snippet}
+          </AppTooltip>
         {/if}
 
         {#if report.reportType !== DEFAULT_REPORT_KIND}

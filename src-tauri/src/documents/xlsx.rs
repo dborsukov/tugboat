@@ -1,4 +1,4 @@
-use rust_xlsxwriter::{Format, FormatAlign, FormatBorder, Workbook, Worksheet};
+use rust_xlsxwriter::{Color, Format, FormatAlign, FormatBorder, Workbook, Worksheet};
 
 use super::model::{
     client_tax_code_line, company_code_parts, company_name_line, DocumentData, DocumentKind,
@@ -87,12 +87,11 @@ fn act_basis_line(data: &DocumentData) -> String {
     )
 }
 
-const TABLE_HEADERS: [&str; 9] = [
+const TABLE_HEADERS: [&str; 8] = [
     "№",
     "Код",
     "Найменування",
     "Кількість",
-    "Од. вим.",
     "Ціна",
     "Знижка",
     "Відпускна ціна",
@@ -101,10 +100,6 @@ const TABLE_HEADERS: [&str; 9] = [
 
 fn money_f64(v: rust_decimal::Decimal) -> f64 {
     v.round_dp(2).to_string().parse().unwrap_or(0.0)
-}
-
-fn qty_f64(v: rust_decimal::Decimal) -> f64 {
-    v.to_string().parse().unwrap_or(0.0)
 }
 
 fn write_item_table(
@@ -117,7 +112,7 @@ fn write_item_table(
     money: &Format,
 ) -> Result<(), AppError> {
     // Title row (merged)
-    worksheet.merge_range(*start_row, 0, *start_row, 8, &table.title, header)?;
+    worksheet.merge_range(*start_row, 0, *start_row, 7, &table.title, header)?;
     *start_row += 1;
 
     // Header row
@@ -131,19 +126,52 @@ fn write_item_table(
         worksheet.write_number_with_format(r, 0, (i + 1) as f64, cell_number)?;
         worksheet.write_string_with_format(r, 1, &row.code, cell_text)?;
         worksheet.write_string_with_format(r, 2, &row.name, cell_text)?;
-        worksheet.write_number_with_format(r, 3, qty_f64(row.quantity), cell_number)?;
-        worksheet.write_string_with_format(r, 4, &row.unit, cell_text)?;
-        worksheet.write_number_with_format(r, 5, money_f64(row.price), money)?;
-        worksheet.write_string_with_format(r, 6, &row.discount_text, cell_text)?;
-        worksheet.write_number_with_format(r, 7, money_f64(row.discounted_price), money)?;
-        worksheet.write_number_with_format(r, 8, money_f64(row.sum), money)?;
+        worksheet.write_string_with_format(r, 3, &row.quantity_text, cell_number)?;
+        worksheet.write_number_with_format(r, 4, money_f64(row.price), money)?;
+        worksheet.write_string_with_format(r, 5, &row.discount_text, cell_text)?;
+        worksheet.write_number_with_format(r, 6, money_f64(row.discounted_price), money)?;
+        worksheet.write_number_with_format(r, 7, money_f64(row.sum), money)?;
         *start_row += 1;
     }
 
     // Total
-    worksheet.merge_range(*start_row, 0, *start_row, 7, "Всього", header)?;
-    worksheet.write_number_with_format(*start_row, 8, money_f64(table.total), header)?;
+    worksheet.merge_range(*start_row, 0, *start_row, 6, "Всього", header)?;
+    worksheet.write_number_with_format(*start_row, 7, money_f64(table.total), header)?;
     *start_row += 1;
+
+    Ok(())
+}
+
+fn write_customer_parts_table(
+    worksheet: &mut Worksheet,
+    start_row: &mut u32,
+    table: &super::model::DocTable,
+    header: &Format,
+    cell_text: &Format,
+    cell_number: &Format,
+) -> Result<(), AppError> {
+    worksheet.merge_range(*start_row, 0, *start_row, 7, &table.title, header)?;
+    *start_row += 1;
+
+    for (col, h) in TABLE_HEADERS.iter().enumerate() {
+        worksheet.write_string_with_format(*start_row, col as u16, *h, header)?;
+    }
+    *start_row += 1;
+
+    let muted_format = Format::new()
+        .set_border(FormatBorder::Thin)
+        .set_align(FormatAlign::Center)
+        .set_font_color(Color::RGB(0x5B6772));
+
+    for (i, row) in table.rows.iter().enumerate() {
+        let r = *start_row;
+        worksheet.write_number_with_format(r, 0, (i + 1) as f64, cell_number)?;
+        worksheet.write_string_with_format(r, 1, &row.code, cell_text)?;
+        worksheet.write_string_with_format(r, 2, &row.name, cell_text)?;
+        worksheet.write_string_with_format(r, 3, &row.quantity_text, cell_number)?;
+        worksheet.merge_range(r, 4, r, 7, "—", &muted_format)?;
+        *start_row += 1;
+    }
 
     Ok(())
 }
@@ -177,18 +205,17 @@ pub fn render(data: &DocumentData) -> AppResult<Vec<u8>> {
     worksheet.set_column_width(0, 4.0)?;
     worksheet.set_column_width(1, 12.0)?;
     worksheet.set_column_width(2, 48.0)?;
-    worksheet.set_column_width(3, 10.0)?;
-    worksheet.set_column_width(4, 9.0)?;
-    worksheet.set_column_width(5, 12.0)?;
-    worksheet.set_column_width(6, 10.0)?;
-    worksheet.set_column_width(7, 14.0)?;
-    worksheet.set_column_width(8, 12.0)?;
+    worksheet.set_column_width(3, 14.0)?;
+    worksheet.set_column_width(4, 12.0)?;
+    worksheet.set_column_width(5, 10.0)?;
+    worksheet.set_column_width(6, 14.0)?;
+    worksheet.set_column_width(7, 12.0)?;
 
     let mut row: u32 = 0;
 
-    worksheet.merge_range(row, 0, row, 8, &data.title, &title_format)?;
+    worksheet.merge_range(row, 0, row, 7, &data.title, &title_format)?;
     row += 1;
-    worksheet.merge_range(row, 0, row, 8, &data.subtitle, &subtitle_format)?;
+    worksheet.merge_range(row, 0, row, 7, &data.subtitle, &subtitle_format)?;
     row += 2;
 
     // Business info
@@ -281,6 +308,18 @@ pub fn render(data: &DocumentData) -> AppResult<Vec<u8>> {
     )?;
     row += 1;
 
+    if !data.customer_parts.rows.is_empty() {
+        write_customer_parts_table(
+            worksheet,
+            &mut row,
+            &data.customer_parts,
+            &header_format,
+            &cell_text_format,
+            &cell_number_format,
+        )?;
+        row += 1;
+    }
+
     // Grand totals
     let t = &data.totals;
     let mut totals: Vec<(String, f64)> = vec![
@@ -319,7 +358,7 @@ pub fn render(data: &DocumentData) -> AppResult<Vec<u8>> {
     row += 1;
     for (label, value) in totals {
         worksheet.write_string_with_format(row, 0, label, &label_format)?;
-        worksheet.write_number_with_format(row, 8, value, &money_format)?;
+        worksheet.write_number_with_format(row, 7, value, &money_format)?;
         row += 1;
     }
 

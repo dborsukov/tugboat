@@ -119,7 +119,7 @@ const FIT_LIMIT_WIDE: &str = "220pt";
 /// — otherwise a long token widens the `auto`/`1fr` column and the table runs
 /// off the page.
 const FIT_LIMIT_CODE: &str = "80pt";
-const FIT_LIMIT_UNIT: &str = "70pt";
+const FIT_LIMIT_UNIT: &str = "90pt";
 const FIT_LIMIT_NAME: &str = "200pt";
 
 /// Escape user-provided text for inclusion in Typst markup.
@@ -714,26 +714,25 @@ fn info_grid_markup(data: &DocumentData) -> String {
 enum TableSection {
     Labor,
     Parts,
+    CustomerParts,
 }
 
-const NARYAD_HEADERS: [&str; 9] = [
+const NARYAD_HEADERS: [&str; 8] = [
     "№",
     "Код",
     "Назва",
     "Кількість",
-    "Од.\\ вим.",
     "Ціна,\\ грн.",
     "Знижка",
     "Відпускна\\ ціна, грн.",
     "Сума,\\ грн.",
 ];
 
-const AKT_HEADERS: [&str; 9] = [
+const AKT_HEADERS: [&str; 8] = [
     "№",
     "Код",
     "Назва",
     "Кіль-\\ кість",
-    "Од.\\ вим.",
     "Ціна,\\ грн.",
     "Знижка",
     "Відпускна\\ ціна, грн.",
@@ -746,6 +745,7 @@ fn table_labels(kind: DocumentKind, section: TableSection) -> (&'static str, &'s
     match (kind, section) {
         (_, TableSection::Labor) => ("Послуги / роботи", "Всього"),
         (_, TableSection::Parts) => ("Запчастини та витратні матеріали", "Всього"),
+        (_, TableSection::CustomerParts) => ("Запчастини та матеріали надані замовником", "Всього"),
     }
 }
 
@@ -764,37 +764,48 @@ fn table_section_rows(kind: DocumentKind, table: &DocTable, section: TableSectio
 
     // Section separator.
     out.push_str(&format!(
-        "  table.cell(colspan: 9, fill: {CLR_ACC_SOFT}, inset: (x: 8pt, y: 6pt))[#text(weight: \"bold\", size: 9.5pt, fill: {CLR_ACCENT})[{}]],\n",
+        "  table.cell(colspan: 8, fill: {CLR_ACC_SOFT}, inset: (x: 8pt, y: 6pt))[#text(weight: \"bold\", size: 9.5pt, fill: {CLR_ACCENT})[{}]],\n",
         esc(section_title)
     ));
 
     for (i, row) in table.rows.iter().enumerate() {
         let fill = if i % 2 == 0 { "white" } else { CLR_ZEBRA };
-        let cells = [
-            format!("[{}]", esc(&(i + 1).to_string())),
-            format!("[{}]", esc_limited(&row.code, FIT_LIMIT_CODE)),
-            format!("[{}]", esc_limited(&row.name, FIT_LIMIT_NAME)),
-            format!("[{}]", esc(&super::model::format_qty(row.quantity))),
-            format!("[{}]", esc_limited(&row.unit, FIT_LIMIT_UNIT)),
-            format!("[{}]", money(row.price)),
-            format!("[{}]", esc(&row.discount_text)),
-            format!("[{}]", money(row.discounted_price)),
-            format!("[*{}*]", money(row.sum)),
-        ];
-        for cell in cells {
-            out.push_str(&format!("  table.cell(fill: {fill}){cell},\n"));
+        if section == TableSection::CustomerParts {
+            out.push_str(&format!(
+                "  table.cell(fill: {fill})[{}],\n  table.cell(fill: {fill})[{}],\n  table.cell(fill: {fill})[{}],\n  table.cell(fill: {fill})[{}],\n  table.cell(colspan: 4, fill: {fill}, align: center)[#text(fill: {CLR_MUTED})[—]],\n",
+                esc(&(i + 1).to_string()),
+                esc_limited(&row.code, FIT_LIMIT_CODE),
+                esc_limited(&row.name, FIT_LIMIT_NAME),
+                esc_limited(&row.quantity_text, FIT_LIMIT_UNIT),
+            ));
+        } else {
+            let cells = [
+                format!("[{}]", esc(&(i + 1).to_string())),
+                format!("[{}]", esc_limited(&row.code, FIT_LIMIT_CODE)),
+                format!("[{}]", esc_limited(&row.name, FIT_LIMIT_NAME)),
+                format!("[{}]", esc_limited(&row.quantity_text, FIT_LIMIT_UNIT)),
+                format!("[{}]", money(row.price)),
+                format!("[{}]", esc(&row.discount_text)),
+                format!("[{}]", money(row.discounted_price)),
+                format!("[*{}*]", money(row.sum)),
+            ];
+            for cell in cells {
+                out.push_str(&format!("  table.cell(fill: {fill}){cell},\n"));
+            }
         }
     }
 
-    // Section total.
-    out.push_str(&format!(
-        "  table.cell(colspan: 8, align: right, inset: (x: 5pt, y: 6pt), stroke: (top: {STROKE_REG}))[#text(weight: \"bold\", size: 9pt, fill: {CLR_ACCENT})[{}]],\n",
-        esc(total_label)
-    ));
-    out.push_str(&format!(
-        "  table.cell(align: right, inset: (x: 5pt, y: 6pt), stroke: (top: {STROKE_REG}))[#text(weight: \"bold\")[{}]],\n",
-        money(table.total)
-    ));
+    if section != TableSection::CustomerParts {
+        // Section total.
+        out.push_str(&format!(
+            "  table.cell(colspan: 7, align: right, inset: (x: 5pt, y: 6pt), stroke: (top: {STROKE_REG}))[#text(weight: \"bold\", size: 9pt, fill: {CLR_ACCENT})[{}]],\n",
+            esc(total_label)
+        ));
+        out.push_str(&format!(
+            "  table.cell(align: right, inset: (x: 5pt, y: 6pt), stroke: (top: {STROKE_REG}))[#text(weight: \"bold\")[{}]],\n",
+            money(table.total)
+        ));
+    }
 
     out
 }
@@ -804,12 +815,17 @@ fn table_section_rows(kind: DocumentKind, table: &DocTable, section: TableSectio
 ///
 /// The table only exists when at least one section has items: a header with no
 /// rows under it says nothing about the order.
-fn items_table_markup(kind: DocumentKind, labor: &DocTable, parts: &DocTable) -> Option<String> {
-    if labor.rows.is_empty() && parts.rows.is_empty() {
+fn items_table_markup(
+    kind: DocumentKind,
+    labor: &DocTable,
+    parts: &DocTable,
+    customer_parts: &DocTable,
+) -> Option<String> {
+    if labor.rows.is_empty() && parts.rows.is_empty() && customer_parts.rows.is_empty() {
         return None;
     }
 
-    let headers: &[&str; 9] = if kind == DocumentKind::AktVykonanykhRobit {
+    let headers: &[&str; 8] = if kind == DocumentKind::AktVykonanykhRobit {
         &AKT_HEADERS
     } else {
         &NARYAD_HEADERS
@@ -820,10 +836,10 @@ fn items_table_markup(kind: DocumentKind, labor: &DocTable, parts: &DocTable) ->
     // beyond the page; `clip` is extra protection against clipping what has
     // already been drawn.
     out.push_str("#block(\n  radius: 2pt,\n  clip: true,\n)[#table(\n");
-    out.push_str("  columns: (auto, auto, 1fr, auto, auto, auto, auto, auto, auto),\n");
+    out.push_str("  columns: (auto, auto, 1fr, auto, auto, auto, auto, auto),\n");
     out.push_str(&format!("  stroke: {STROKE_THIN},\n"));
     out.push_str("  inset: (x: 5pt, y: 4.5pt),\n");
-    out.push_str("  align: (center, center, left, center, center, right, right, right, right),\n");
+    out.push_str("  align: (center, center, left, center, right, right, right, right),\n");
 
     // A shared header for both sections.
     out.push_str("  table.header(");
@@ -842,6 +858,11 @@ fn items_table_markup(kind: DocumentKind, labor: &DocTable, parts: &DocTable) ->
     // adds no rows at all, so the next one follows the header directly.
     out.push_str(&table_section_rows(kind, labor, TableSection::Labor));
     out.push_str(&table_section_rows(kind, parts, TableSection::Parts));
+    out.push_str(&table_section_rows(
+        kind,
+        customer_parts,
+        TableSection::CustomerParts,
+    ));
 
     out.push_str(")]\n");
     Some(out)
@@ -1220,7 +1241,9 @@ fn build_markup(data: &DocumentData) -> String {
 
     // Services and parts table: only the sections that have items. An order
     // without labour and without parts has no table at all.
-    if let Some(items) = items_table_markup(data.kind, &data.labor, &data.parts) {
+    if let Some(items) =
+        items_table_markup(data.kind, &data.labor, &data.parts, &data.customer_parts)
+    {
         out.push_str("#set text(size: 8pt)\n");
         out.push_str(&items);
         out.push_str("#v(0.8em)\n");

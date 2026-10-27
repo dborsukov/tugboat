@@ -9,7 +9,8 @@
   import * as Select from "$lib/components/ui/select";
   import * as Sheet from "$lib/components/ui/sheet";
   import { Switch } from "$lib/components/ui/switch";
-  import * as Tooltip from "$lib/components/ui/tooltip";
+
+  import AppTooltip from "$lib/components/app-tooltip.svelte";
 
   import { settingsState } from "$lib/states/settings.svelte";
 
@@ -65,22 +66,19 @@
   }
 </script>
 
-<Tooltip.Root>
-  <Tooltip.Trigger>
-    {#snippet child({ props })}
-      <Button
-        {...props}
-        variant="outline"
-        size="icon-lg"
-        aria-label="Модулі головної сторінки"
-        onclick={() => (open = true)}
-      >
-        <SlidersHorizontalIcon />
-      </Button>
-    {/snippet}
-  </Tooltip.Trigger>
-  <Tooltip.Content side="bottom">Модулі головної сторінки</Tooltip.Content>
-</Tooltip.Root>
+<AppTooltip content="Модулі головної сторінки" side="bottom">
+  {#snippet trigger({ props })}
+    <Button
+      {...props}
+      variant="outline"
+      size="icon-lg"
+      aria-label="Модулі головної сторінки"
+      onclick={() => (open = true)}
+    >
+      <SlidersHorizontalIcon />
+    </Button>
+  {/snippet}
+</AppTooltip>
 
 <Sheet.Root bind:open>
   <Sheet.Content side="right">
@@ -105,22 +103,19 @@
           </label>
 
           {#if entry.module.settings?.length}
-            <Tooltip.Root>
-              <Tooltip.Trigger>
-                {#snippet child({ props })}
-                  <Button
-                    {...props}
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Налаштування: {entry.module.title}"
-                    onclick={() => (settingsFor = entry.id)}
-                  >
-                    <SettingsIcon class="text-muted-foreground" />
-                  </Button>
-                {/snippet}
-              </Tooltip.Trigger>
-              <Tooltip.Content side="bottom">Налаштування</Tooltip.Content>
-            </Tooltip.Root>
+            <AppTooltip content="Налаштування" side="bottom">
+              {#snippet trigger({ props })}
+                <Button
+                  {...props}
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Налаштування: {entry.module.title}"
+                  onclick={() => (settingsFor = entry.id)}
+                >
+                  <SettingsIcon class="text-muted-foreground" />
+                </Button>
+              {/snippet}
+            </AppTooltip>
           {/if}
 
           <Switch

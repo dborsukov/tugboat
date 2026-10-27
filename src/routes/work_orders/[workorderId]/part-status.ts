@@ -20,6 +20,8 @@ export const statuses: PartStatus[] = [
   "Returned",
 ];
 
+export const CUSTOMER_PART_STATUSES: PartStatus[] = ["Quoted", "Installed"];
+
 export type PartStatusColor =
   | "slate"
   | "sky"
@@ -112,7 +114,12 @@ export const partStatusConfig: Record<
     color: "slate",
     rounding: "rounded-t-xl",
   },
-  Ordered: { text: "Замовлено", icon: OrderedIcon, color: "sky", rounding: "" },
+  Ordered: {
+    text: "Замовлено",
+    icon: OrderedIcon,
+    color: "amber",
+    rounding: "",
+  },
   InStock: {
     text: "В наявності",
     icon: InStockIcon,

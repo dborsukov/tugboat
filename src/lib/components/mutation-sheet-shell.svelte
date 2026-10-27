@@ -17,6 +17,7 @@
     dirty = false,
     bodyClass,
     class: className,
+    overlay,
     children,
   }: {
     open: boolean;
@@ -33,6 +34,8 @@
     bodyClass?: string;
     /** Extra classes for the sheet panel, e.g. a wider `sm:max-w-*` cap. */
     class?: string;
+    /** Optional in-sheet overlay, rendered above the whole panel. */
+    overlay?: Snippet;
     children: Snippet;
   } = $props();
 
@@ -54,6 +57,7 @@
     {shortcutLabel}
     onRequestClose={onCancel}
     class={bodyClass}
+    {overlay}
   >
     {@render children()}
   </SheetFrame>

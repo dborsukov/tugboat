@@ -28,7 +28,7 @@ use crate::{
             self,
             dtos::{LaborItemDto, PartItemDto},
             pricing,
-            structs::{LaborItem, PartItem, WorkOrder, WorkOrderStatus},
+            structs::{LaborItem, PartItem, ProvidedBy, WorkOrder, WorkOrderStatus},
         },
     },
     error::{AppError, AppResult},
@@ -386,6 +386,7 @@ async fn items_for_order(
             name,
             quantity,
             unit_type,
+            unit_key,
             base_cost,
             markup,
             discount_type,
@@ -397,11 +398,14 @@ async fn items_for_order(
             purchase_vat_rate,
             purchase_price_includes_vat,
             purchase_scheme,
+            provided_by,
             supplier_name,
             supplier_code,
             invoice_number,
             invoice_date,
-            vat_credited
+            vat_credited,
+            supplier,
+            supplier_order_id
         FROM part_items
         WHERE work_order_id = $1
         ORDER BY position, id
@@ -545,7 +549,10 @@ pub(crate) fn build_expense_entry(expense: &Expense) -> Option<NewVatEntry> {
 }
 
 pub(crate) fn build_part_entry(part: &PartItem) -> Option<NewVatEntry> {
-    if !part.vat_credited || part.purchase_vat_rate.is_zero() {
+    if part.provided_by == ProvidedBy::Customer
+        || !part.vat_credited
+        || part.purchase_vat_rate.is_zero()
+    {
         return None;
     }
 

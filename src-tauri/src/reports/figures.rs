@@ -207,7 +207,7 @@ impl ReportFigures {
             let has_billed_parts = priced_order
                 .part_items
                 .iter()
-                .any(|dto| part_is_billed(dto.item.status, dto.item.is_free));
+                .any(|dto| part_is_billed(dto.item.status, dto.item.is_free, dto.item.provided_by));
 
             // Hourly cost tracking has no hours to measure a flat-fee item by,
             // so such an order's labor cost is only partly known.

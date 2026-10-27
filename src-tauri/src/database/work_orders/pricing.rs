@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use rust_decimal::Decimal;
 
-use super::structs::{DiscountType, LaborItem, PartItem, PartStatus, WorkOrder};
+use super::structs::{DiscountType, LaborItem, PartItem, PartStatus, ProvidedBy, WorkOrder};
 use crate::database::{
     vat::structs::VatScheme,
     work_orders::{
@@ -15,20 +15,25 @@ use crate::database::{
 
 /// A part counts toward the current order total only once it is actually
 /// installed and billed: status `Installed` and not marked free.
-pub fn part_is_billed(status: PartStatus, is_free: bool) -> bool {
-    !is_free && status == PartStatus::Installed
+pub fn part_is_billed(status: PartStatus, is_free: bool, provided_by: ProvidedBy) -> bool {
+    provided_by == ProvidedBy::Shop && !is_free && status == PartStatus::Installed
 }
 
-pub fn part_is_pending(status: PartStatus, is_free: bool) -> bool {
-    !is_free
+pub fn part_is_pending(status: PartStatus, is_free: bool, provided_by: ProvidedBy) -> bool {
+    provided_by == ProvidedBy::Shop
+        && !is_free
         && matches!(
             status,
             PartStatus::Quoted | PartStatus::Ordered | PartStatus::InStock | PartStatus::Installing
         )
 }
 
-pub fn part_is_projected_billed(status: PartStatus, is_free: bool) -> bool {
-    part_is_billed(status, is_free) || part_is_pending(status, is_free)
+pub fn part_is_projected_billed(
+    status: PartStatus,
+    is_free: bool,
+    provided_by: ProvidedBy,
+) -> bool {
+    part_is_billed(status, is_free, provided_by) || part_is_pending(status, is_free, provided_by)
 }
 
 pub fn labor_is_billed(is_free: bool) -> bool {
@@ -369,7 +374,7 @@ pub fn calculate_order_totals(
     let billed_parts = || {
         part_items
             .iter()
-            .filter(|dto| part_is_billed(dto.item.status, dto.item.is_free))
+            .filter(|dto| part_is_billed(dto.item.status, dto.item.is_free, dto.item.provided_by))
     };
 
     let labor_total: Decimal = billed_labor().map(|dto| dto.totals.total).sum();
@@ -380,7 +385,7 @@ pub fn calculate_order_totals(
     let parts_discount: Decimal = billed_parts().map(|dto| dto.totals.discount).sum();
     let parts_pending_total: Decimal = part_items
         .iter()
-        .filter(|dto| part_is_pending(dto.item.status, dto.item.is_free))
+        .filter(|dto| part_is_pending(dto.item.status, dto.item.is_free, dto.item.provided_by))
         .map(|dto| dto.totals.total)
         .sum();
 

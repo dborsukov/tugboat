@@ -34,9 +34,9 @@
         {...props}
         variant="ghost"
         size="icon"
-        class="h-11 w-9 rounded-md text-muted-foreground"
+        class="size-6 rounded text-muted-foreground hover:bg-muted"
       >
-        <EllipsisIcon />
+        <EllipsisIcon class="size-4" />
       </Button>
     {/snippet}
   </DropdownMenu.Trigger>

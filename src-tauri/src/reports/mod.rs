@@ -254,6 +254,7 @@ async fn part_items_for_orders(
             name,
             quantity,
             unit_type,
+            unit_key,
             base_cost,
             markup,
             discount_type,
@@ -265,11 +266,14 @@ async fn part_items_for_orders(
             purchase_vat_rate,
             purchase_price_includes_vat,
             purchase_scheme,
+            provided_by,
             supplier_name,
             supplier_code,
             invoice_number,
             invoice_date,
-            vat_credited
+            vat_credited,
+            supplier,
+            supplier_order_id
         FROM part_items"#,
     )
     .await

@@ -10,8 +10,8 @@
   import { Label } from "$lib/components/ui/label";
   import Spinner from "$lib/components/ui/spinner/spinner.svelte";
   import { Textarea } from "$lib/components/ui/textarea";
-  import * as Tooltip from "$lib/components/ui/tooltip/index.js";
 
+  import AppTooltip from "$lib/components/app-tooltip.svelte";
   import ComboSelect from "$lib/components/combo-select.svelte";
   import DateTimePicker from "$lib/components/date-time-picker.svelte";
 
@@ -278,24 +278,21 @@
   field: string;
   onclick: () => void;
 })}
-  <Tooltip.Root>
-    <Tooltip.Trigger>
-      {#snippet child({ props })}
-        <Button
-          {...props}
-          variant={options.pressed ? "default" : "outline"}
-          size="icon"
-          class="shrink-0"
-          aria-pressed={options.pressed}
-          aria-label={`${options.field}: ${MANUAL_TOGGLE_TOOLTIP}`}
-          onclick={options.onclick}
-        >
-          <PenLineIcon />
-        </Button>
-      {/snippet}
-    </Tooltip.Trigger>
-    <Tooltip.Content>{MANUAL_TOGGLE_TOOLTIP}</Tooltip.Content>
-  </Tooltip.Root>
+  <AppTooltip content={MANUAL_TOGGLE_TOOLTIP}>
+    {#snippet trigger({ props })}
+      <Button
+        {...props}
+        variant={options.pressed ? "default" : "outline"}
+        size="icon"
+        class="shrink-0"
+        aria-pressed={options.pressed}
+        aria-label={`${options.field}: ${MANUAL_TOGGLE_TOOLTIP}`}
+        onclick={options.onclick}
+      >
+        <PenLineIcon />
+      </Button>
+    {/snippet}
+  </AppTooltip>
 {/snippet}
 
 <Dialog.Root bind:open>

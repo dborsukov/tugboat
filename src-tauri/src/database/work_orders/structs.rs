@@ -35,6 +35,14 @@ pub enum PartStatus {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
 #[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
+pub enum ProvidedBy {
+    Shop,
+    Customer,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, sqlx::Type, specta::Type)]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
 pub enum WorkOrderType {
     Regular,
     Warranty,
@@ -311,12 +319,14 @@ pub struct PartItem {
     pub code: Option<String>,
     pub name: String,
     pub quantity: Decimal,
-    pub unit_type: String,
+    pub unit_type: Option<String>,
+    pub unit_key: Option<String>,
     pub base_cost: Decimal,
     pub markup: Decimal,
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
     pub is_free: bool,
+    pub provided_by: ProvidedBy,
     pub position: i32,
     pub vat_rate: Option<Decimal>,
     pub vat_scheme: Option<VatScheme>,
@@ -328,6 +338,8 @@ pub struct PartItem {
     pub invoice_number: Option<String>,
     pub invoice_date: Option<String>,
     pub vat_credited: bool,
+    pub supplier: Option<String>,
+    pub supplier_order_id: Option<String>,
 }
 
 impl<'r> FromRow<'r, SqliteRow> for PartItem {
@@ -340,11 +352,13 @@ impl<'r> FromRow<'r, SqliteRow> for PartItem {
             name: row.try_get("name")?,
             quantity: decimal_column(row, "quantity")?,
             unit_type: row.try_get("unit_type")?,
+            unit_key: row.try_get("unit_key")?,
             base_cost: decimal_column(row, "base_cost")?,
             markup: decimal_column(row, "markup")?,
             discount_type: row.try_get("discount_type")?,
             discount_value: decimal_column(row, "discount_value")?,
             is_free: row.try_get("is_free")?,
+            provided_by: row.try_get("provided_by")?,
             position: row.try_get("position")?,
             vat_rate: row
                 .try_get::<Option<String>, _>("vat_rate")?
@@ -361,6 +375,8 @@ impl<'r> FromRow<'r, SqliteRow> for PartItem {
             invoice_number: row.try_get("invoice_number")?,
             invoice_date: row.try_get("invoice_date")?,
             vat_credited: row.try_get("vat_credited")?,
+            supplier: row.try_get("supplier")?,
+            supplier_order_id: row.try_get("supplier_order_id")?,
         })
     }
 }
@@ -373,12 +389,14 @@ pub struct CreatePartItemPayload {
     pub code: Option<String>,
     pub name: String,
     pub quantity: Decimal,
-    pub unit_type: String,
+    pub unit_type: Option<String>,
+    pub unit_key: Option<String>,
     pub base_cost: Decimal,
     pub markup: Decimal,
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
     pub is_free: bool,
+    pub provided_by: ProvidedBy,
     pub vat_rate: Option<Decimal>,
     pub vat_scheme: Option<VatScheme>,
     pub purchase_vat_rate: Decimal,
@@ -389,6 +407,8 @@ pub struct CreatePartItemPayload {
     pub invoice_number: Option<String>,
     pub invoice_date: Option<String>,
     pub vat_credited: bool,
+    pub supplier: Option<String>,
+    pub supplier_order_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -398,12 +418,14 @@ pub struct UpdatePartItemPayload {
     pub code: Option<String>,
     pub name: String,
     pub quantity: Decimal,
-    pub unit_type: String,
+    pub unit_type: Option<String>,
+    pub unit_key: Option<String>,
     pub base_cost: Decimal,
     pub markup: Decimal,
     pub discount_type: DiscountType,
     pub discount_value: Decimal,
     pub is_free: bool,
+    pub provided_by: ProvidedBy,
     pub vat_rate: Option<Decimal>,
     pub vat_scheme: Option<VatScheme>,
     pub purchase_vat_rate: Decimal,
@@ -414,4 +436,6 @@ pub struct UpdatePartItemPayload {
     pub invoice_number: Option<String>,
     pub invoice_date: Option<String>,
     pub vat_credited: bool,
+    pub supplier: Option<String>,
+    pub supplier_order_id: Option<String>,
 }

@@ -3,7 +3,7 @@
  * everything resets when the app restarts.
  */
 class PrivacyState {
-  /** Hides the "Ціна закупівлі" (baseCost) and "Націнка" (markup) columns in the parts table. */
+  /** Hides the purchase column (base cost and markup) in the work order parts table. */
   hidePricing = $state(false);
   /** Hides the work order notes block. */
   hideNotes = $state(false);

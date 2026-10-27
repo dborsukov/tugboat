@@ -11,7 +11,8 @@ use crate::{
         work_orders::{
             dtos::{VatBucket, WorkOrderDetailsDto},
             pricing::{self, calculate_work_order_totals},
-            structs::{DiscountType, LaborPriceType},
+            structs::{DiscountType, LaborPriceType, ProvidedBy},
+            units,
         },
         workers::structs::Worker,
     },
@@ -249,6 +250,7 @@ pub struct DocumentData {
     pub additional_recommendations: Option<String>,
     pub labor: DocTable,
     pub parts: DocTable,
+    pub customer_parts: DocTable,
     pub totals: DocTotals,
     pub total_in_words: String,
 }
@@ -281,10 +283,13 @@ pub struct DocTableRow {
     pub name: String,
     pub quantity: Decimal,
     pub unit: String,
+    /// `formatQty` output: the quantity and its unit in one cell.
+    pub quantity_text: String,
     pub price: Decimal,
     pub discount_text: String,
     pub discounted_price: Decimal,
     pub sum: Decimal,
+    pub provided_by: ProvidedBy,
 }
 
 #[derive(Debug, Clone)]
@@ -553,19 +558,29 @@ fn build_labor_table(details: &WorkOrderDetailsDto) -> DocTable {
             continue;
         }
         let (quantity, unit, price) = match dto.item.price_type {
-            LaborPriceType::Hourly => (dto.item.labor_hours, "год.", dto.totals.price.round_dp(2)),
-            LaborPriceType::Fixed => (Decimal::ONE, "штука", dto.totals.price.round_dp(2)),
+            LaborPriceType::Hourly => (
+                dto.item.labor_hours,
+                "год.".to_string(),
+                dto.totals.price.round_dp(2),
+            ),
+            LaborPriceType::Fixed => (
+                Decimal::ONE,
+                units::display_unit(Some(units::DEFAULT_UNIT_KEY), None),
+                dto.totals.price.round_dp(2),
+            ),
         };
         let discounted_price = dto.totals.discounted_price.round_dp(2);
         rows.push(DocTableRow {
             code: dto.item.code.clone().unwrap_or_default(),
             name: dto.item.name.clone(),
             quantity,
-            unit: unit.to_string(),
+            unit: unit.clone(),
+            quantity_text: units::format_quantity_with_unit(quantity, &unit),
             price,
             discount_text: discount_text(dto.item.discount_type, dto.item.discount_value),
             discounted_price,
             sum: dto.totals.total,
+            provided_by: ProvidedBy::Shop,
         });
     }
 
@@ -582,11 +597,13 @@ fn build_parts_table(details: &WorkOrderDetailsDto, kind: DocumentKind) -> DocTa
     let mut rows = Vec::new();
     for dto in &details.part_items {
         let billed = match kind {
-            DocumentKind::NaryadZamovlennya => {
-                pricing::part_is_projected_billed(dto.item.status, dto.item.is_free)
-            }
+            DocumentKind::NaryadZamovlennya => pricing::part_is_projected_billed(
+                dto.item.status,
+                dto.item.is_free,
+                dto.item.provided_by,
+            ),
             DocumentKind::AktVykonanykhRobit => {
-                pricing::part_is_billed(dto.item.status, dto.item.is_free)
+                pricing::part_is_billed(dto.item.status, dto.item.is_free, dto.item.provided_by)
             }
         };
         if !billed {
@@ -596,11 +613,17 @@ fn build_parts_table(details: &WorkOrderDetailsDto, kind: DocumentKind) -> DocTa
             code: dto.item.code.clone().unwrap_or_default(),
             name: dto.item.name.clone(),
             quantity: dto.item.quantity,
-            unit: dto.item.unit_type.clone(),
+            unit: units::display_unit(dto.item.unit_key.as_deref(), dto.item.unit_type.as_deref()),
+            quantity_text: units::format_qty(
+                dto.item.quantity,
+                dto.item.unit_key.as_deref(),
+                dto.item.unit_type.as_deref(),
+            ),
             price: dto.totals.retail_price,
             discount_text: discount_text(dto.item.discount_type, dto.item.discount_value),
             discounted_price: dto.totals.discounted_price,
             sum: dto.totals.total,
+            provided_by: dto.item.provided_by,
         });
     }
 
@@ -610,6 +633,40 @@ fn build_parts_table(details: &WorkOrderDetailsDto, kind: DocumentKind) -> DocTa
         title: "Запчастини та витратні матеріали".to_string(),
         rows,
         total,
+    }
+}
+
+fn build_customer_parts_table(details: &WorkOrderDetailsDto) -> DocTable {
+    let rows = details
+        .part_items
+        .iter()
+        .filter(|dto| dto.item.provided_by == ProvidedBy::Customer)
+        .map(|dto| {
+            let unit =
+                units::display_unit(dto.item.unit_key.as_deref(), dto.item.unit_type.as_deref());
+            DocTableRow {
+                code: dto.item.code.clone().unwrap_or_default(),
+                name: dto.item.name.clone(),
+                quantity: dto.item.quantity,
+                unit: unit.clone(),
+                quantity_text: units::format_qty(
+                    dto.item.quantity,
+                    dto.item.unit_key.as_deref(),
+                    dto.item.unit_type.as_deref(),
+                ),
+                price: Decimal::ZERO,
+                discount_text: String::new(),
+                discounted_price: Decimal::ZERO,
+                sum: Decimal::ZERO,
+                provided_by: ProvidedBy::Customer,
+            }
+        })
+        .collect();
+
+    DocTable {
+        title: "Запчастини та матеріали надані замовником".to_string(),
+        rows,
+        total: Decimal::ZERO,
     }
 }
 
@@ -632,6 +689,7 @@ pub fn build_document_data(
 
     let labor = build_labor_table(details);
     let parts = build_parts_table(details, kind);
+    let customer_parts = build_customer_parts_table(details);
 
     // The lines the VAT is allocated over, in the same set the printed tables show.
     let lines: Vec<pricing::PricedLine> = details
@@ -658,12 +716,16 @@ pub fn build_document_data(
                 .part_items
                 .iter()
                 .filter(|dto| match kind {
-                    DocumentKind::NaryadZamovlennya => {
-                        pricing::part_is_projected_billed(dto.item.status, dto.item.is_free)
-                    }
-                    DocumentKind::AktVykonanykhRobit => {
-                        pricing::part_is_billed(dto.item.status, dto.item.is_free)
-                    }
+                    DocumentKind::NaryadZamovlennya => pricing::part_is_projected_billed(
+                        dto.item.status,
+                        dto.item.is_free,
+                        dto.item.provided_by,
+                    ),
+                    DocumentKind::AktVykonanykhRobit => pricing::part_is_billed(
+                        dto.item.status,
+                        dto.item.is_free,
+                        dto.item.provided_by,
+                    ),
                 })
                 .map(|dto| {
                     let (rate, scheme) = pricing::line_vat(
@@ -790,6 +852,7 @@ pub fn build_document_data(
         additional_recommendations: trim(&options.additional_recommendations),
         labor,
         parts,
+        customer_parts,
         totals,
         total_in_words,
     };

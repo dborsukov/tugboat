@@ -1,0 +1,10 @@
+[
+  { "key": "pcs", "name": "Штука", "display": "шт", "decimals": false },
+  { "key": "set", "name": "Комплект", "display": "компл.", "decimals": false },
+  { "key": "pair", "name": "Пара", "display": "пар.", "decimals": false },
+  { "key": "l", "name": "Літр", "display": "л", "decimals": true },
+  { "key": "kg", "name": "Кілограм", "display": "кг", "decimals": true },
+  { "key": "g", "name": "Грам", "display": "г", "decimals": true },
+  { "key": "m", "name": "Метр", "display": "м", "decimals": true },
+  { "key": "pack", "name": "Упаковка", "display": "упак.", "decimals": false }
+]

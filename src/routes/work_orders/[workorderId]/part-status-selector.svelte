@@ -10,7 +10,13 @@
 
   import { partStatusStylesRecord, statuses } from "./part-status";
 
-  let { status = $bindable() }: { status: PartStatus } = $props();
+  let {
+    status = $bindable(),
+    allowedStatuses = statuses,
+  }: {
+    status: PartStatus;
+    allowedStatuses?: PartStatus[];
+  } = $props();
 
   let loading = $state(false);
 
@@ -42,7 +48,7 @@
   </DropdownMenu.Trigger>
   <DropdownMenu.Content class="w-max whitespace-nowrap" align="end">
     <DropdownMenu.RadioGroup bind:value={status}>
-      {#each statuses as s}
+      {#each allowedStatuses as s}
         {@const localStyles = partStatusStylesRecord[s]}
         <DropdownMenu.RadioItem
           value={s}

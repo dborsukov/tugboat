@@ -103,10 +103,13 @@ export const commands = {
 	deleteLaborItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_labor_item", { id })),
 	deleteLaborItems: (ids: number[]) => typedError<null, AppError>(__TAURI_INVOKE("delete_labor_items", { ids })),
 	fetchPartItemById: (id: number) => typedError<PartItem, AppError>(__TAURI_INVOKE("fetch_part_item_by_id", { id })),
+	/**  Distinct supplier names already used on parts */
+	fetchPartSuppliers: () => typedError<string[], AppError>(__TAURI_INVOKE("fetch_part_suppliers")),
 	fetchPartItemsList: () => typedError<PartItem[], AppError>(__TAURI_INVOKE("fetch_part_items_list")),
 	createPartItem: (payload: CreatePartItemPayload) => typedError<PartItem, AppError>(__TAURI_INVOKE("create_part_item", { payload })),
 	updatePartItem: (id: number, payload: UpdatePartItemPayload) => typedError<PartItem, AppError>(__TAURI_INVOKE("update_part_item", { id, payload })),
 	updatePartItemsStatus: (ids: number[], status: PartStatus) => typedError<null, AppError>(__TAURI_INVOKE("update_part_items_status", { ids, status })),
+	updatePartItemsSupplier: (ids: number[], supplier: string | null, supplierOrderId: string | null) => typedError<null, AppError>(__TAURI_INVOKE("update_part_items_supplier", { ids, supplier, supplierOrderId })),
 	updatePartItemsDiscount: (ids: number[], discountType: DiscountType, discountValue: string) => typedError<null, AppError>(__TAURI_INVOKE("update_part_items_discount", { ids, discountType, discountValue })),
 	reorderPartItems: (workOrderId: string, orderedIds: number[]) => typedError<null, AppError>(__TAURI_INVOKE("reorder_part_items", { workOrderId, orderedIds })),
 	deletePartItem: (id: number) => typedError<null, AppError>(__TAURI_INVOKE("delete_part_item", { id })),
@@ -503,12 +506,14 @@ export type CreatePartItemPayload = {
 	code: string | null,
 	name: string,
 	quantity: string,
-	unitType: string,
+	unitType: string | null,
+	unitKey: string | null,
 	baseCost: string,
 	markup: string,
 	discountType: DiscountType,
 	discountValue: string,
 	isFree: boolean,
+	providedBy: ProvidedBy,
 	vatRate: string | null,
 	vatScheme: VatScheme | null,
 	purchaseVatRate: string,
@@ -519,6 +524,8 @@ export type CreatePartItemPayload = {
 	invoiceNumber: string | null,
 	invoiceDate: string | null,
 	vatCredited: boolean,
+	supplier: string | null,
+	supplierOrderId: string | null,
 };
 
 export type CreateServicePayload = {
@@ -847,12 +854,14 @@ export type PartItem = {
 	code: string | null,
 	name: string,
 	quantity: string,
-	unitType: string,
+	unitType: string | null,
+	unitKey: string | null,
 	baseCost: string,
 	markup: string,
 	discountType: DiscountType,
 	discountValue: string,
 	isFree: boolean,
+	providedBy: ProvidedBy,
 	position: number,
 	vatRate: string | null,
 	vatScheme: VatScheme | null,
@@ -864,6 +873,8 @@ export type PartItem = {
 	invoiceNumber: string | null,
 	invoiceDate: string | null,
 	vatCredited: boolean,
+	supplier: string | null,
+	supplierOrderId: string | null,
 };
 
 export type PartItemDto = {
@@ -953,6 +964,8 @@ export type PreviewWorkOrderQuote = {
 	totalWithVat: string,
 	belowCost: boolean,
 };
+
+export type ProvidedBy = "shop" | "customer";
 
 export type RateVariants = {
 	name: string,
@@ -1114,12 +1127,14 @@ export type UpdatePartItemPayload = {
 	code: string | null,
 	name: string,
 	quantity: string,
-	unitType: string,
+	unitType: string | null,
+	unitKey: string | null,
 	baseCost: string,
 	markup: string,
 	discountType: DiscountType,
 	discountValue: string,
 	isFree: boolean,
+	providedBy: ProvidedBy,
 	vatRate: string | null,
 	vatScheme: VatScheme | null,
 	purchaseVatRate: string,
@@ -1130,6 +1145,8 @@ export type UpdatePartItemPayload = {
 	invoiceNumber: string | null,
 	invoiceDate: string | null,
 	vatCredited: boolean,
+	supplier: string | null,
+	supplierOrderId: string | null,
 };
 
 export type UpdateServicePayload = {

@@ -1,6 +1,7 @@
 pub mod dtos;
 pub mod pricing;
 pub mod structs;
+pub mod units;
 
 use std::collections::HashMap;
 
@@ -253,6 +254,7 @@ pub(crate) async fn fetch_part_items_by_work_order_ids(
             name,
             quantity,
             unit_type,
+            unit_key,
             base_cost,
             markup,
             discount_type,
@@ -264,11 +266,14 @@ pub(crate) async fn fetch_part_items_by_work_order_ids(
             purchase_vat_rate,
             purchase_price_includes_vat,
             purchase_scheme,
+            provided_by,
             supplier_name,
             supplier_code,
             invoice_number,
             invoice_date,
-            vat_credited
+            vat_credited,
+            supplier,
+            supplier_order_id
         FROM part_items
         WHERE work_order_id IN ("#,
     );
@@ -1242,8 +1247,64 @@ fn validate_part_credit(
     Ok(())
 }
 
+fn customer_part_status_allowed(status: PartStatus) -> bool {
+    matches!(status, PartStatus::Quoted | PartStatus::Installed)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn normalize_customer_part_fields(
+    provided_by: ProvidedBy,
+    status: &mut PartStatus,
+    base_cost: &mut Decimal,
+    markup: &mut Decimal,
+    discount_type: &mut DiscountType,
+    discount_value: &mut Decimal,
+    is_free: &mut bool,
+    vat_rate: &mut Option<Decimal>,
+    vat_scheme: &mut Option<VatScheme>,
+    purchase_vat_rate: &mut Decimal,
+    purchase_price_includes_vat: &mut bool,
+    purchase_scheme: &mut VatScheme,
+    supplier_name: &mut Option<String>,
+    supplier_code: &mut Option<String>,
+    invoice_number: &mut Option<String>,
+    invoice_date: &mut Option<String>,
+    vat_credited: &mut bool,
+    supplier: &mut Option<String>,
+    supplier_order_id: &mut Option<String>,
+) -> AppResult<()> {
+    if provided_by != ProvidedBy::Customer {
+        return Ok(());
+    }
+    if !customer_part_status_allowed(*status) {
+        return Err(AppError::validation(
+            "Для позиції клієнта доступні лише статуси «Підбір» і «Встановлено»",
+        ));
+    }
+
+    *base_cost = Decimal::ZERO;
+    *markup = Decimal::ZERO;
+    *discount_type = DiscountType::None;
+    *discount_value = Decimal::ZERO;
+    *is_free = false;
+    *vat_rate = None;
+    *vat_scheme = None;
+    *purchase_vat_rate = Decimal::ZERO;
+    *purchase_price_includes_vat = true;
+    *purchase_scheme = VatScheme::Standard;
+    *supplier_name = None;
+    *supplier_code = None;
+    *invoice_number = None;
+    *invoice_date = None;
+    *vat_credited = false;
+    *supplier = None;
+    *supplier_order_id = None;
+    Ok(())
+}
+
 fn part_purchase_fields_changed(current: &PartItem, payload: &UpdatePartItemPayload) -> bool {
-    current.base_cost != payload.base_cost
+    current.provided_by != payload.provided_by
+        || current.base_cost != payload.base_cost
         || current.quantity != payload.quantity
         || current.purchase_vat_rate != payload.purchase_vat_rate
         || current.purchase_price_includes_vat != payload.purchase_price_includes_vat
@@ -1653,6 +1714,7 @@ pub async fn fetch_part_items_list(state: State<'_, crate::AppState>) -> AppResu
             name,
             quantity,
             unit_type,
+            unit_key,
             base_cost,
             markup,
             discount_type,
@@ -1664,11 +1726,14 @@ pub async fn fetch_part_items_list(state: State<'_, crate::AppState>) -> AppResu
             purchase_vat_rate,
             purchase_price_includes_vat,
             purchase_scheme,
+            provided_by,
             supplier_name,
             supplier_code,
             invoice_number,
             invoice_date,
-            vat_credited
+            vat_credited,
+            supplier,
+            supplier_order_id
         FROM part_items
         "#,
     )
@@ -1693,6 +1758,7 @@ pub async fn fetch_part_item_by_id(
             name,
             quantity,
             unit_type,
+            unit_key,
             base_cost,
             markup,
             discount_type,
@@ -1704,11 +1770,14 @@ pub async fn fetch_part_item_by_id(
             purchase_vat_rate,
             purchase_price_includes_vat,
             purchase_scheme,
+            provided_by,
             supplier_name,
             supplier_code,
             invoice_number,
             invoice_date,
-            vat_credited
+            vat_credited,
+            supplier,
+            supplier_order_id
         FROM part_items
         WHERE id = $1
         "#,
@@ -1719,12 +1788,59 @@ pub async fn fetch_part_item_by_id(
     Ok(part_item)
 }
 
+/// Distinct supplier names already used on parts
+#[tauri::command]
+#[specta::specta]
+pub async fn fetch_part_suppliers(state: State<'_, crate::AppState>) -> AppResult<Vec<String>> {
+    Ok(sqlx::query_scalar(
+        r#"
+        SELECT supplier
+        FROM (
+            SELECT TRIM(supplier) AS supplier
+            FROM part_items
+            WHERE supplier IS NOT NULL AND TRIM(supplier) <> ''
+
+            UNION
+
+            SELECT TRIM(supplier_name) AS supplier
+            FROM part_items
+            WHERE supplier_name IS NOT NULL AND TRIM(supplier_name) <> ''
+        )
+        GROUP BY supplier
+        ORDER BY supplier COLLATE NOCASE
+        "#,
+    )
+    .fetch_all(&state.db_pool)
+    .await?)
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn create_part_item(
     state: State<'_, crate::AppState>,
-    payload: CreatePartItemPayload,
+    mut payload: CreatePartItemPayload,
 ) -> AppResult<PartItem> {
+    normalize_customer_part_fields(
+        payload.provided_by,
+        &mut payload.status,
+        &mut payload.base_cost,
+        &mut payload.markup,
+        &mut payload.discount_type,
+        &mut payload.discount_value,
+        &mut payload.is_free,
+        &mut payload.vat_rate,
+        &mut payload.vat_scheme,
+        &mut payload.purchase_vat_rate,
+        &mut payload.purchase_price_includes_vat,
+        &mut payload.purchase_scheme,
+        &mut payload.supplier_name,
+        &mut payload.supplier_code,
+        &mut payload.invoice_number,
+        &mut payload.invoice_date,
+        &mut payload.vat_credited,
+        &mut payload.supplier,
+        &mut payload.supplier_order_id,
+    )?;
     let mut tx = begin_immediate(&state.db_pool).await?;
 
     ensure_work_order_active(&mut *tx, &payload.work_order_id).await?;
@@ -1745,6 +1861,9 @@ pub async fn create_part_item(
         &payload.invoice_number,
         &payload.invoice_date,
     )?;
+    let (unit_key, unit_type) =
+        units::normalize_unit(payload.unit_key.clone(), payload.unit_type.clone())?;
+    units::validate_quantity(payload.quantity, unit_key.as_deref(), unit_type.as_deref())?;
 
     let part_item: PartItem = sqlx::query_as(
         r#"
@@ -1766,18 +1885,22 @@ pub async fn create_part_item(
             purchase_vat_rate,
             purchase_price_includes_vat,
             purchase_scheme,
+            provided_by,
             supplier_name,
             supplier_code,
             invoice_number,
             invoice_date,
-            vat_credited
+            vat_credited,
+            supplier,
+            supplier_order_id,
+            unit_key
         )
         VALUES (
             $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
             (SELECT COALESCE(MAX(position), -1) + 1
              FROM part_items
              WHERE work_order_id = $1),
-            $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
+            $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25
         )
         RETURNING
             id,
@@ -1787,6 +1910,7 @@ pub async fn create_part_item(
             name,
             quantity,
             unit_type,
+            unit_key,
             base_cost,
             markup,
             discount_type,
@@ -1798,11 +1922,14 @@ pub async fn create_part_item(
             purchase_vat_rate,
             purchase_price_includes_vat,
             purchase_scheme,
+            provided_by,
             supplier_name,
             supplier_code,
             invoice_number,
             invoice_date,
-            vat_credited
+            vat_credited,
+            supplier,
+            supplier_order_id
         "#,
     )
     .bind(payload.work_order_id)
@@ -1810,7 +1937,7 @@ pub async fn create_part_item(
     .bind(payload.code)
     .bind(payload.name)
     .bind(payload.quantity.to_string())
-    .bind(payload.unit_type)
+    .bind(unit_type)
     .bind(payload.base_cost.to_string())
     .bind(payload.markup.to_string())
     .bind(payload.discount_type)
@@ -1821,11 +1948,15 @@ pub async fn create_part_item(
     .bind(payload.purchase_vat_rate.to_string())
     .bind(payload.purchase_price_includes_vat)
     .bind(payload.purchase_scheme)
+    .bind(payload.provided_by)
     .bind(payload.supplier_name)
     .bind(payload.supplier_code)
     .bind(payload.invoice_number)
     .bind(payload.invoice_date)
     .bind(payload.vat_credited)
+    .bind(payload.supplier)
+    .bind(payload.supplier_order_id)
+    .bind(unit_key)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -1840,8 +1971,29 @@ pub async fn create_part_item(
 pub async fn update_part_item(
     state: State<'_, crate::AppState>,
     id: i32,
-    payload: UpdatePartItemPayload,
+    mut payload: UpdatePartItemPayload,
 ) -> AppResult<PartItem> {
+    normalize_customer_part_fields(
+        payload.provided_by,
+        &mut payload.status,
+        &mut payload.base_cost,
+        &mut payload.markup,
+        &mut payload.discount_type,
+        &mut payload.discount_value,
+        &mut payload.is_free,
+        &mut payload.vat_rate,
+        &mut payload.vat_scheme,
+        &mut payload.purchase_vat_rate,
+        &mut payload.purchase_price_includes_vat,
+        &mut payload.purchase_scheme,
+        &mut payload.supplier_name,
+        &mut payload.supplier_code,
+        &mut payload.invoice_number,
+        &mut payload.invoice_date,
+        &mut payload.vat_credited,
+        &mut payload.supplier,
+        &mut payload.supplier_order_id,
+    )?;
     let mut tx = begin_immediate(&state.db_pool).await?;
 
     ensure_item_work_order_active(&mut *tx, ItemTable::Part, id).await?;
@@ -1856,6 +2008,9 @@ pub async fn update_part_item(
         &payload.invoice_number,
         &payload.invoice_date,
     )?;
+    let (unit_key, unit_type) =
+        units::normalize_unit(payload.unit_key.clone(), payload.unit_type.clone())?;
+    units::validate_quantity(payload.quantity, unit_key.as_deref(), unit_type.as_deref())?;
 
     let current = fetch_part_item_in_tx(&mut *tx, id).await?;
     let live_vat = vat::live_entry_for_part(&mut *tx, i64::from(id)).await?;
@@ -1886,11 +2041,15 @@ pub async fn update_part_item(
             purchase_vat_rate = $14,
             purchase_price_includes_vat = $15,
             purchase_scheme = $16,
-            supplier_name = $17,
-            supplier_code = $18,
-            invoice_number = $19,
-            invoice_date = $20,
-            vat_credited = $21
+            provided_by = $17,
+            supplier_name = $18,
+            supplier_code = $19,
+            invoice_number = $20,
+            invoice_date = $21,
+            vat_credited = $22,
+            supplier = $23,
+            supplier_order_id = $24,
+            unit_key = $25
         WHERE id = $1
         RETURNING
             id,
@@ -1900,6 +2059,7 @@ pub async fn update_part_item(
             name,
             quantity,
             unit_type,
+            unit_key,
             base_cost,
             markup,
             discount_type,
@@ -1911,11 +2071,14 @@ pub async fn update_part_item(
             purchase_vat_rate,
             purchase_price_includes_vat,
             purchase_scheme,
+            provided_by,
             supplier_name,
             supplier_code,
             invoice_number,
             invoice_date,
-            vat_credited
+            vat_credited,
+            supplier,
+            supplier_order_id
         "#,
     )
     .bind(id)
@@ -1923,7 +2086,7 @@ pub async fn update_part_item(
     .bind(payload.code)
     .bind(payload.name)
     .bind(payload.quantity.to_string())
-    .bind(payload.unit_type)
+    .bind(unit_type)
     .bind(payload.base_cost.to_string())
     .bind(payload.markup.to_string())
     .bind(payload.discount_type)
@@ -1934,11 +2097,15 @@ pub async fn update_part_item(
     .bind(payload.purchase_vat_rate.to_string())
     .bind(payload.purchase_price_includes_vat)
     .bind(payload.purchase_scheme)
+    .bind(payload.provided_by)
     .bind(payload.supplier_name)
     .bind(payload.supplier_code)
     .bind(payload.invoice_number)
     .bind(payload.invoice_date)
     .bind(payload.vat_credited)
+    .bind(payload.supplier)
+    .bind(payload.supplier_order_id)
+    .bind(unit_key)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -1964,6 +2131,7 @@ where
             name,
             quantity,
             unit_type,
+            unit_key,
             base_cost,
             markup,
             discount_type,
@@ -1975,11 +2143,14 @@ where
             purchase_vat_rate,
             purchase_price_includes_vat,
             purchase_scheme,
+            provided_by,
             supplier_name,
             supplier_code,
             invoice_number,
             invoice_date,
-            vat_credited
+            vat_credited,
+            supplier,
+            supplier_order_id
         FROM part_items
         WHERE id = $1
         "#,
@@ -2152,12 +2323,14 @@ pub async fn preview_part_item(
         code: None,
         name: String::new(),
         quantity: Decimal::ONE,
-        unit_type: String::new(),
+        unit_type: None,
+        unit_key: None,
         base_cost: payload.base_cost,
         markup: payload.markup,
         discount_type: payload.discount_type,
         discount_value: payload.discount_value,
         is_free: payload.is_free,
+        provided_by: ProvidedBy::Shop,
         // Quotes never touch the database, so the order is irrelevant here.
         position: 0,
         vat_rate: None,
@@ -2170,6 +2343,8 @@ pub async fn preview_part_item(
         invoice_number: None,
         invoice_date: None,
         vat_credited: false,
+        supplier: None,
+        supplier_order_id: None,
     };
 
     let totals = pricing::calculate_part_item_totals(
@@ -2304,22 +2479,42 @@ pub async fn preview_work_order(
     // parts are still staged. Returned parts never count.
     let parts_sum: Decimal = part_item_dtos
         .iter()
-        .filter(|dto| pricing::part_is_projected_billed(dto.item.status, dto.item.is_free))
+        .filter(|dto| {
+            pricing::part_is_projected_billed(
+                dto.item.status,
+                dto.item.is_free,
+                dto.item.provided_by,
+            )
+        })
         .map(|dto| dto.totals.total)
         .sum();
     let parts_cost_sum: Decimal = part_item_dtos
         .iter()
-        .filter(|dto| pricing::part_is_projected_billed(dto.item.status, dto.item.is_free))
+        .filter(|dto| {
+            pricing::part_is_projected_billed(
+                dto.item.status,
+                dto.item.is_free,
+                dto.item.provided_by,
+            )
+        })
         .map(|dto| dto.totals.cost)
         .sum();
     let parts_discount_sum: Decimal = part_item_dtos
         .iter()
-        .filter(|dto| pricing::part_is_projected_billed(dto.item.status, dto.item.is_free))
+        .filter(|dto| {
+            pricing::part_is_projected_billed(
+                dto.item.status,
+                dto.item.is_free,
+                dto.item.provided_by,
+            )
+        })
         .map(|dto| dto.totals.discount)
         .sum();
     let parts_pending_sum: Decimal = part_item_dtos
         .iter()
-        .filter(|dto| pricing::part_is_pending(dto.item.status, dto.item.is_free))
+        .filter(|dto| {
+            pricing::part_is_pending(dto.item.status, dto.item.is_free, dto.item.provided_by)
+        })
         .map(|dto| dto.totals.total)
         .sum();
 
@@ -2344,7 +2539,13 @@ pub async fn preview_work_order(
         .chain(
             part_item_dtos
                 .iter()
-                .filter(|dto| pricing::part_is_projected_billed(dto.item.status, dto.item.is_free))
+                .filter(|dto| {
+                    pricing::part_is_projected_billed(
+                        dto.item.status,
+                        dto.item.is_free,
+                        dto.item.provided_by,
+                    )
+                })
                 .map(|dto| {
                     let (rate, scheme) = pricing::line_vat(
                         dto.item.vat_rate,
@@ -2408,6 +2609,17 @@ pub async fn update_part_items_status(
     let mut tx = begin_immediate(&state.db_pool).await?;
     for id in &ids {
         ensure_item_work_order_active(&mut *tx, ItemTable::Part, *id).await?;
+        let provided_by: ProvidedBy =
+            sqlx::query_scalar("SELECT provided_by FROM part_items WHERE id = $1")
+                .bind(id)
+                .fetch_one(&mut *tx)
+                .await?;
+        if provided_by == ProvidedBy::Customer && !customer_part_status_allowed(status) {
+            tx.rollback().await?;
+            return Err(AppError::validation(
+                "Для позиції клієнта доступні лише статуси «Підбір» і «Встановлено»",
+            ));
+        }
         let result = sqlx::query("UPDATE part_items SET status = $2 WHERE id = $1")
             .bind(id)
             .bind(status)
@@ -2455,6 +2667,73 @@ pub async fn update_labor_items_discount(
 
 #[tauri::command]
 #[specta::specta]
+pub async fn update_part_items_supplier(
+    state: State<'_, crate::AppState>,
+    ids: Vec<i32>,
+    supplier: Option<String>,
+    supplier_order_id: Option<String>,
+) -> AppResult<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+
+    let supplier = supplier
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+    let supplier_order_id = supplier_order_id
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
+    if supplier
+        .as_ref()
+        .is_some_and(|value| value.chars().count() > 200)
+    {
+        return Err(AppError::validation(
+            "Назва постачальника має містити не більше 200 символів",
+        ));
+    }
+    if supplier_order_id
+        .as_ref()
+        .is_some_and(|value| value.chars().count() > 120)
+    {
+        return Err(AppError::validation(
+            "Номер замовлення має містити не більше 120 символів",
+        ));
+    }
+
+    let mut tx = begin_immediate(&state.db_pool).await?;
+    for id in &ids {
+        ensure_item_work_order_active(&mut *tx, ItemTable::Part, *id).await?;
+        let provided_by: ProvidedBy =
+            sqlx::query_scalar("SELECT provided_by FROM part_items WHERE id = $1")
+                .bind(id)
+                .fetch_one(&mut *tx)
+                .await?;
+        if provided_by == ProvidedBy::Customer {
+            tx.rollback().await?;
+            return Err(AppError::validation(
+                "Постачальника можна змінити лише для запчастин сервісу",
+            ));
+        }
+        let result = sqlx::query(
+            "UPDATE part_items SET supplier = $2, supplier_order_id = $3 WHERE id = $1",
+        )
+        .bind(id)
+        .bind(&supplier)
+        .bind(&supplier_order_id)
+        .execute(&mut *tx)
+        .await?;
+        if result.rows_affected() == 0 {
+            tx.rollback().await?;
+            return Err(AppError::part_item_not_found());
+        }
+    }
+    tx.commit().await?;
+    Ok(())
+}
+
+#[tauri::command]
+#[specta::specta]
 pub async fn update_part_items_discount(
     state: State<'_, crate::AppState>,
     ids: Vec<i32>,
@@ -2467,6 +2746,17 @@ pub async fn update_part_items_discount(
     let mut tx = begin_immediate(&state.db_pool).await?;
     for id in &ids {
         ensure_item_work_order_active(&mut *tx, ItemTable::Part, *id).await?;
+        let provided_by: ProvidedBy =
+            sqlx::query_scalar("SELECT provided_by FROM part_items WHERE id = $1")
+                .bind(id)
+                .fetch_one(&mut *tx)
+                .await?;
+        if provided_by == ProvidedBy::Customer {
+            tx.rollback().await?;
+            return Err(AppError::validation(
+                "Для позиції клієнта знижка недоступна",
+            ));
+        }
         let result = sqlx::query(
             "UPDATE part_items SET discount_type = $2, discount_value = $3 WHERE id = $1",
         )

@@ -102,12 +102,14 @@ fn hash_part_item(hasher: &mut Hasher, item: &PartItem) {
     hasher.optional_text(item.code.as_deref());
     hasher.text(&item.name);
     hasher.decimal(item.quantity);
-    hasher.text(&item.unit_type);
+    hasher.optional_text(item.unit_type.as_deref());
+    hasher.optional_text(item.unit_key.as_deref());
     hasher.decimal(item.base_cost);
     hasher.decimal(item.markup);
     hasher.text(&format!("{:?}", item.discount_type));
     hasher.decimal(item.discount_value);
     hasher.flag(item.is_free);
+    hasher.text(&format!("{:?}", item.provided_by));
     hasher.number(i64::from(item.position));
 }
 

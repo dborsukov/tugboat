@@ -355,18 +355,22 @@
         </div>
       {/if}
       {#if belowCost}
-        {#if hasVat}
-          <span class={cn("text-sm text-rose-700 dark:text-rose-300")}>
-            Після сплати ПДВ залишиться {vatBase.toString()} грн., що нижче за собівартість
-            робіт і запчастин {totalCost.toString()} грн. (клієнт заплатить {totalWithVat.toString()}
-            грн.)
-          </span>
-        {:else}
-          <span class={cn("text-sm text-rose-700 dark:text-rose-300")}>
-            Кінцева сума зі знижкою становить {totalWithVat.toString()} грн., що нижче
-            за собівартість робіт і запчастин {totalCost.toString()} грн.
-          </span>
-        {/if}
+        <div
+          class="rounded-[8px] border border-rose-500/35 bg-rose-500/10 px-3 py-2.5"
+        >
+          {#if hasVat}
+            <p class="text-xs leading-relaxed text-rose-700 dark:text-rose-400">
+              Після сплати ПДВ залишиться {vatBase.toString()} грн., що нижче за собівартість
+              робіт і запчастин {totalCost.toString()} грн. (клієнт заплатить {totalWithVat.toString()}
+              грн.)
+            </p>
+          {:else}
+            <p class="text-xs leading-relaxed text-rose-700 dark:text-rose-400">
+              Кінцева сума зі знижкою становить {totalWithVat.toString()} грн., що
+              нижче за собівартість робіт і запчастин {totalCost.toString()} грн.
+            </p>
+          {/if}
+        </div>
       {/if}
     </div>
   </Popover.Content>

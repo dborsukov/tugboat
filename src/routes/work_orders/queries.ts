@@ -438,6 +438,32 @@ export function createUpdatePartItemsStatusMutation(queryClient: QueryClient) {
   );
 }
 
+export function createUpdatePartItemsSupplierMutation(
+  queryClient: QueryClient,
+) {
+  return createMutation(
+    () => ({
+      mutationFn: (variables: {
+        ids: number[];
+        supplier: string | null;
+        supplierOrderId: string | null;
+      }) =>
+        unwrap(
+          commands.updatePartItemsSupplier(
+            variables.ids,
+            variables.supplier,
+            variables.supplierOrderId,
+          ),
+        ),
+      onSuccess: () => {
+        invalidateWorkOrderLists(queryClient);
+      },
+      onError: showMutationErrorToast,
+    }),
+    () => queryClient,
+  );
+}
+
 export function createUpdatePartItemsDiscountMutation(
   queryClient: QueryClient,
 ) {

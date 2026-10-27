@@ -6,7 +6,7 @@
   import { zod4, zod4Client } from "sveltekit-superforms/adapters";
   import z from "zod";
 
-  import * as AlertDialog from "$lib/components/ui/alert-dialog";
+  import { Button } from "$lib/components/ui/button";
   import * as Form from "$lib/components/ui/form";
   import { Input } from "$lib/components/ui/input";
   import { Label } from "$lib/components/ui/label";
@@ -17,6 +17,7 @@
     sheetHint,
     sheetInput,
     sheetLabel,
+    sheetSecondaryButton,
     sheetSelectTrigger,
   } from "$lib/components/sheet/field-styles";
   import RequiredMark from "$lib/components/sheet/required-mark.svelte";
@@ -326,7 +327,79 @@
       }, 150);
     });
   });
+
+  $effect(() => {
+    if (!priceConfirmOpen) return;
+    const onKeydown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      cancelPriceConfirm();
+    };
+    window.addEventListener("keydown", onKeydown, true);
+    return () => window.removeEventListener("keydown", onKeydown, true);
+  });
 </script>
+
+{#snippet priceConfirmOverlay()}
+  {#if priceConfirmOpen}
+    <div
+      class="absolute inset-0 z-20 flex items-center justify-center bg-background/70 p-6 backdrop-blur-sm"
+      role="presentation"
+      data-sheet-escape-owner="true"
+      onclick={(event) => {
+        if (event.target === event.currentTarget) cancelPriceConfirm();
+      }}
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="labor-price-confirm-title"
+        aria-describedby="labor-price-confirm-description"
+        class="w-full max-w-sm rounded-[12px] border border-border bg-popover p-5 shadow-2xl"
+      >
+        <h2
+          id="labor-price-confirm-title"
+          class="text-[15px] font-semibold tracking-[-0.01em]"
+        >
+          Ціна нижча за собівартість
+        </h2>
+        <p
+          id="labor-price-confirm-description"
+          class="mt-1.5 text-[13px] leading-relaxed text-muted-foreground"
+        >
+          {#if pendingQuote && pendingQuote.belowCost}
+            {#if pendingQuote.kept !== pendingQuote.total}
+              Після сплати ПДВ залишиться {fmt(pendingQuote.kept)} грн., що нижче
+              за собівартість {fmt(pendingQuote.cost)} грн. (клієнт заплатить{" "}
+              {fmt(pendingQuote.total)} грн.). Зберегти?
+            {:else}
+              Кінцева ціна становить {fmt(pendingQuote.total)} грн., що нижче за собівартість
+              {fmt(pendingQuote.cost)} грн. Зберегти?
+            {/if}
+          {/if}
+        </p>
+        <div class="mt-5 flex items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            class={cn(sheetSecondaryButton, "text-muted-foreground")}
+            onclick={cancelPriceConfirm}
+          >
+            Скасувати
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            class={sheetSecondaryButton}
+            onclick={confirmPriceAndSubmit}
+          >
+            Зберегти
+          </Button>
+        </div>
+      </div>
+    </div>
+  {/if}
+{/snippet}
 
 <MutationSheetShell
   bind:open
@@ -338,6 +411,7 @@
   submitLabel={isEdit ? "Зберегти зміни" : "Створити"}
   submitting={$submitting}
   enhanceAction={enhance}
+  overlay={priceConfirmOverlay}
   onCancel={() => {
     form.reset();
     baseline = null;
@@ -408,22 +482,26 @@
         </Form.Control>
         <Form.FieldErrors />
         {#if liveWarning}
-          {#if liveWarning.kept !== liveWarning.total}
-            <p
-              class="text-xs leading-relaxed text-amber-600 dark:text-amber-500"
-            >
-              Увага: після сплати ПДВ залишиться {fmt(liveWarning.kept)} грн. (ціна
-              {fmt(liveWarning.total)} грн.), що нижче за собівартість{" "}
-              {fmt(liveWarning.cost)} грн.
-            </p>
-          {:else}
-            <p
-              class="text-xs leading-relaxed text-amber-600 dark:text-amber-500"
-            >
-              Увага: кінцева ціна {fmt(liveWarning.total)} грн. нижча за собівартість
-              {fmt(liveWarning.cost)} грн.
-            </p>
-          {/if}
+          <div
+            class="rounded-[8px] border border-rose-500/35 bg-rose-500/10 px-3 py-2.5"
+          >
+            {#if liveWarning.kept !== liveWarning.total}
+              <p
+                class="text-xs leading-relaxed text-rose-700 dark:text-rose-400"
+              >
+                Після сплати ПДВ залишиться {fmt(liveWarning.kept)} грн. (ціна
+                {fmt(liveWarning.total)} грн.), що нижче за собівартість{" "}
+                {fmt(liveWarning.cost)} грн.
+              </p>
+            {:else}
+              <p
+                class="text-xs leading-relaxed text-rose-700 dark:text-rose-400"
+              >
+                Кінцева ціна {fmt(liveWarning.total)} грн. нижча за собівартість
+                {fmt(liveWarning.cost)} грн.
+              </p>
+            {/if}
+          </div>
         {:else if liveQuote && !liveQuote.costBasisKnown}
           <p class={sheetHint}>
             Собівартість не відстежується для фіксованої ціни при погодинному
@@ -525,31 +603,3 @@
     </SheetSection>
   {/if}
 </MutationSheetShell>
-
-<AlertDialog.Root bind:open={priceConfirmOpen}>
-  <AlertDialog.Content>
-    <AlertDialog.Header>
-      <AlertDialog.Title>Ціна нижча за собівартість</AlertDialog.Title>
-      <AlertDialog.Description>
-        {#if pendingQuote && pendingQuote.belowCost}
-          {#if pendingQuote.kept !== pendingQuote.total}
-            Після сплати ПДВ залишиться {fmt(pendingQuote.kept)} грн., що нижче за
-            собівартість {fmt(pendingQuote.cost)} грн. (клієнт заплатить{" "}
-            {fmt(pendingQuote.total)} грн.). Зберегти?
-          {:else}
-            Кінцева ціна становить {fmt(pendingQuote.total)} грн., що нижче за собівартість
-            {fmt(pendingQuote.cost)} грн. Зберегти?
-          {/if}
-        {/if}
-      </AlertDialog.Description>
-    </AlertDialog.Header>
-    <AlertDialog.Footer>
-      <AlertDialog.Cancel onclick={cancelPriceConfirm}>
-        Скасувати
-      </AlertDialog.Cancel>
-      <AlertDialog.Action onclick={confirmPriceAndSubmit}>
-        Зберегти
-      </AlertDialog.Action>
-    </AlertDialog.Footer>
-  </AlertDialog.Content>
-</AlertDialog.Root>

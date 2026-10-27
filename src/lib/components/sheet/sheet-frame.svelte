@@ -30,6 +30,7 @@
     backLabel,
     stepLabel,
     footerExtra,
+    overlay,
     enhanceAction,
     shortcutLabel = "створити",
     class: className,
@@ -50,6 +51,8 @@
     backLabel?: string;
     stepLabel?: string;
     footerExtra?: Snippet;
+    /** Optional in-sheet overlay, rendered above the whole panel. */
+    overlay?: Snippet;
     enhanceAction: Action<HTMLFormElement>;
     shortcutLabel?: string;
     class?: string;
@@ -254,6 +257,10 @@
       </Button>
     </div>
   </footer>
+
+  {#if overlay}
+    {@render overlay()}
+  {/if}
 
   {#if discardOpen}
     <div

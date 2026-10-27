@@ -358,7 +358,7 @@
               onCheckedChange={() =>
                 (privacyState.hidePricing = !privacyState.hidePricing)}
             >
-              Приховати ціни запчастин
+              Приховати закупівельні ціни
             </DropdownMenu.CheckboxItem>
             <DropdownMenu.CheckboxItem
               checked={privacyState.hideNotes}

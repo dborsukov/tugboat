@@ -29,7 +29,6 @@
     sheetInput,
     sheetLabel,
     sheetPresetButton,
-    sheetPrimaryButton,
     sheetSecondaryButton,
     sheetSelectTrigger,
     sheetTextarea,
@@ -1380,13 +1379,13 @@
               <Form.FieldErrors />
               {#if liveWarning}
                 <div
-                  class="rounded-[8px] border border-amber-500/35 bg-amber-500/10 px-3 py-2.5"
+                  class="rounded-[8px] border border-rose-500/35 bg-rose-500/10 px-3 py-2.5"
                 >
                   {#if Big(liveWarning.vatAmount).gt(0)}
                     <p
-                      class="text-xs leading-relaxed text-amber-700 dark:text-amber-400"
+                      class="text-xs leading-relaxed text-rose-700 dark:text-rose-400"
                     >
-                      Увага: після сплати ПДВ залишиться {fmt(
+                      Після сплати ПДВ залишиться {fmt(
                         liveWarning.vatBase,
                       )}{" "}
                       грн., що нижче за собівартість робіт і запчастин{" "}
@@ -1394,10 +1393,10 @@
                     </p>
                   {:else}
                     <p
-                      class="text-xs leading-relaxed text-amber-700 dark:text-amber-400"
+                      class="text-xs leading-relaxed text-rose-700 dark:text-rose-400"
                     >
-                      Увага: кінцева сума {fmt(liveWarning.totalWithVat)} грн. нижча
-                      за собівартість робіт і запчастин{" "}
+                      Кінцева сума {fmt(liveWarning.totalWithVat)} грн. нижча за собівартість
+                      робіт і запчастин{" "}
                       {fmt(liveWarning.combinedCost)} грн.
                     </p>
                   {/if}
@@ -1435,7 +1434,7 @@
 
   {#if priceConfirmOpen}
     <div
-      class="absolute inset-0 z-30 flex items-center justify-center bg-background/70 p-6 backdrop-blur-sm"
+      class="absolute inset-0 z-20 flex items-center justify-center bg-background/70 p-6 backdrop-blur-sm"
       role="presentation"
       onclick={(event) => {
         if (event.target === event.currentTarget) cancelPriceConfirm();
@@ -1456,6 +1455,7 @@
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="price-confirm-title"
+        aria-describedby="price-confirm-description"
         class="w-full max-w-sm rounded-[12px] border border-border bg-popover p-5 shadow-2xl"
       >
         <h2
@@ -1464,7 +1464,10 @@
         >
           Ціна нижча за собівартість
         </h2>
-        <p class="mt-1.5 text-[13px] leading-relaxed text-muted-foreground">
+        <p
+          id="price-confirm-description"
+          class="mt-1.5 text-[13px] leading-relaxed text-muted-foreground"
+        >
           {#if pendingQuote && pendingQuote.belowCost}
             {#if Big(pendingQuote.vatAmount).gt(0)}
               Після сплати ПДВ у вас залишиться {fmt(pendingQuote.vatBase)} грн.,
@@ -1484,15 +1487,15 @@
             bind:ref={priceCancelButton}
             type="button"
             variant="ghost"
-            class={sheetSecondaryButton}
+            class={cn(sheetSecondaryButton, "text-muted-foreground")}
             onclick={cancelPriceConfirm}
           >
             Скасувати
           </Button>
           <Button
             type="button"
-            variant="brand"
-            class={sheetPrimaryButton}
+            variant="destructive"
+            class={sheetSecondaryButton}
             onclick={confirmPriceAndSubmit}
           >
             Зберегти
