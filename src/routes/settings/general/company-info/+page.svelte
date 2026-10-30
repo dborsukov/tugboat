@@ -116,6 +116,14 @@
   type CompanyInfoFormData = z.infer<typeof companyInfoSchema>;
   type TextField = Exclude<keyof CompanyInfoFormData, "kind">;
 
+  /** Stable DOM id, used by the setup dialog to focus the missing field. */
+  function fieldDomId(field: TextField): string {
+    return `company-info-${field.replace(
+      /[A-Z]/g,
+      (char) => `-${char.toLowerCase()}`,
+    )}`;
+  }
+
   function trimToNull(value: string): string | null {
     const trimmed = value.trim();
     return trimmed === "" ? null : trimmed;
@@ -353,7 +361,7 @@
   fieldClass = "",
 )}
   <Form.Field {form} name={field} class={fieldClass}>
-    <Form.Control>
+    <Form.Control id={fieldDomId(field)}>
       {#snippet children({ props })}
         <Label>{label}</Label>
         <Input
@@ -375,7 +383,7 @@
   fieldClass = "",
 )}
   <Form.Field {form} name={field} class={fieldClass}>
-    <Form.Control>
+    <Form.Control id={fieldDomId(field)}>
       {#snippet children({ props })}
         <Label>{label}</Label>
         <Textarea
@@ -427,7 +435,7 @@
       >
         <div class="flex flex-wrap items-center justify-between gap-3">
           <Form.Field {form} name="kind" class="w-full sm:w-64">
-            <Form.Control>
+            <Form.Control id="company-info-kind">
               {#snippet children({ props })}
                 <Label>Форма ведення бізнесу</Label>
                 <Select.Root

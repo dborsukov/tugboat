@@ -26,6 +26,10 @@ import type {
   WorkOrderDocuments,
 } from "$lib/bindings";
 import { keys } from "$lib/query-keys";
+import {
+  blockDocumentGeneration,
+  SetupBlockedError,
+} from "$lib/states/setup-attention.svelte";
 import { unwrap } from "$lib/tools";
 
 function showMutationErrorToast(error: Error) {
@@ -638,18 +642,26 @@ export function createGenerateDocumentMutation(queryClient: QueryClient) {
         workOrderId: string;
         kind: DocumentKind;
         options: GenerateDocumentOptions;
-      }) =>
-        unwrap(
+      }) => {
+        // Guards background generation too: no entry point can write a
+        // document while the seller's details are incomplete.
+        if (blockDocumentGeneration()) throw new SetupBlockedError();
+
+        return unwrap(
           commands.generateDocument(
             variables.workOrderId,
             variables.kind,
             variables.options,
           ),
-        ),
+        );
+      },
       onSuccess: () => {
         invalidateWorkOrderLists(queryClient);
       },
-      onError: showMutationErrorToast,
+      onError: (error) => {
+        if (error instanceof SetupBlockedError) return;
+        showMutationErrorToast(error);
+      },
     }),
     () => queryClient,
   );

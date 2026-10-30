@@ -22,6 +22,7 @@
   import AppSidebar from "$lib/components/app-sidebar.svelte";
   import QuickOrderHost from "$lib/components/quick-order-host.svelte";
   import SettingsSync from "$lib/components/settings-sync.svelte";
+  import SetupIssueDialog from "$lib/components/setup-issue-dialog.svelte";
   import TitleBar from "$lib/components/title-bar.svelte";
   import UiScaleApplier from "$lib/components/ui-scale-applier.svelte";
 
@@ -119,6 +120,7 @@
   <SettingsSync />
   <UiScaleApplier />
   <Toaster position="bottom-center" richColors />
+  <SetupIssueDialog />
 
   {#if isStandaloneWindow}
     <!-- No titlebar in standalone windows, set overlay inset to zero -->

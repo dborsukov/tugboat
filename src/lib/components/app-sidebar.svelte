@@ -19,6 +19,8 @@
   import Button from "$lib/components/ui/button/button.svelte";
   import * as Sidebar from "$lib/components/ui/sidebar/index.js";
 
+  import SetupDot from "$lib/components/setup-dot.svelte";
+
   import type {
     ExpenseSummary,
     MarginSummary,
@@ -34,6 +36,7 @@
   } from "$lib/recent-items";
   import { quickOrder } from "$lib/states/quick-order.svelte";
   import { settingsState } from "$lib/states/settings.svelte";
+  import { getSetupIssues } from "$lib/states/setup-issues";
 
   import { carsCountQueryOptions } from "../../routes/cars/queries";
   import { clientsCountQueryOptions } from "../../routes/clients/queries";
@@ -218,6 +221,8 @@
   const showRecentItems = $derived(
     settingsState.settings?.showRecentItems ?? true,
   );
+  const setupIssues = $derived(getSetupIssues());
+  const hasSetupIssues = $derived(setupIssues.length > 0);
   const isHomeActive = $derived(page.url.pathname === "/home");
 
   const RECENT_BOTTOM_GAP = 12;
@@ -493,12 +498,20 @@
   <SidebarFooter>
     <Sidebar.Menu>
       {#each footer_menu as item (item.title)}
+        {@const active = page.url.pathname.startsWith(item.url)}
         <Sidebar.MenuItem>
-          <Sidebar.MenuButton isActive={page.url.pathname.startsWith(item.url)}>
+          <Sidebar.MenuButton isActive={active}>
             {#snippet child({ props })}
               <a href={item.url} {...props}>
                 <item.icon />
                 <span>{item.title}</span>
+                {#if item.url === "/settings" && hasSetupIssues}
+                  <SetupDot
+                    class="ml-auto ring-2 {active
+                      ? 'ring-sidebar-accent'
+                      : 'ring-sidebar group-hover/menu-button:ring-sidebar-accent'} group-data-[collapsible=icon]:hidden"
+                  />
+                {/if}
               </a>
             {/snippet}
           </Sidebar.MenuButton>

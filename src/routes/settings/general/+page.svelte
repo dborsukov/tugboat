@@ -14,6 +14,7 @@
   import CountryFlag from "$lib/components/country-flag.svelte";
   import PageLayout from "$lib/components/page-layout.svelte";
 
+  import { getSetupIssues } from "$lib/states/setup-issues";
   import { getCountryNameUk } from "$lib/tools";
 
   import {
@@ -31,6 +32,10 @@
   const updateTimezoneMutation = createUpdateTimezoneMutation(queryClient);
   const updateDefaultPhoneCountryCodeMutation =
     createUpdateDefaultPhoneCountryCodeMutation(queryClient);
+
+  const businessInfoIssue = $derived(
+    getSetupIssues().find((issue) => issue.key === "business_info") ?? null,
+  );
 
   // ---------- Timezone ----------
 
@@ -258,14 +263,25 @@
     >
       <Item.Content>
         <Item.Title>Дані бізнесу</Item.Title>
-        <Item.Description
-          >Дані вашого бізнесу для використання в документах</Item.Description
-        >
+        <Item.Description>
+          {#if businessInfoIssue}
+            Потрібні для документів: наряд-замовлення та акт
+          {:else}
+            Дані вашого бізнесу для використання в документах
+          {/if}
+        </Item.Description>
       </Item.Content>
       <Item.Actions>
-        <Badge variant={draft?.companyInfo?.isComplete ? "success" : "warning"}>
-          {draft?.companyInfo?.isComplete ? "Заповнено" : "Не заповнено"}
-        </Badge>
+        {#if businessInfoIssue}
+          <Badge
+            variant="warning"
+            class="dark:bg-[#3a301a] dark:text-[#f0c05a]"
+          >
+            Потрібно заповнити
+          </Badge>
+        {:else if draft?.companyInfo?.isComplete}
+          <Badge variant="success">Заповнено</Badge>
+        {/if}
         <ChevronRightIcon class="size-4 shrink-0 text-muted-foreground" />
       </Item.Actions>
     </Item.Root>

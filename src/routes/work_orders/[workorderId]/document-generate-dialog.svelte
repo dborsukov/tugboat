@@ -24,6 +24,7 @@
   } from "$lib/bindings";
   import { pibInitials } from "$lib/names";
   import { settingsState } from "$lib/states/settings.svelte";
+  import { blockDocumentGeneration } from "$lib/states/setup-attention.svelte";
 
   import { createClientDetailsQuery } from "../../clients/queries";
   import { workerFullName, workerShortName } from "../../workers/labels";
@@ -231,6 +232,13 @@
   }
 
   async function submit() {
+    // The business data can change while the dialog is open; check again so
+    // this entry point can never produce a document without a seller.
+    if (blockDocumentGeneration()) {
+      open = false;
+      return;
+    }
+
     const validationError = validate();
     if (validationError) {
       error = validationError;

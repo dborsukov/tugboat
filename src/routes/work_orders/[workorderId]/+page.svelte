@@ -32,6 +32,7 @@
   import { recordRecentItem } from "$lib/recent-items";
   import { privacyState } from "$lib/states/privacy.svelte";
   import { settingsState } from "$lib/states/settings.svelte";
+  import { blockDocumentGeneration } from "$lib/states/setup-attention.svelte";
   import { TableActionState } from "$lib/states/table-actions.svelte";
   import { pluralizeUk, unwrap } from "$lib/tools";
 
@@ -84,6 +85,9 @@
     kind: DocumentKind,
     seed: GenerateDocumentOptions | null = null,
   ) {
+    // Every generate/regenerate entry point passes through here.
+    if (blockDocumentGeneration()) return;
+
     generateRequest = { kind, seed };
     isGenerateDialogOpen = true;
   }
