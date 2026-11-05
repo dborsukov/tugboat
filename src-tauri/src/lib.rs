@@ -214,6 +214,16 @@ pub fn run() {
     export_bindings(&specta_builder);
 
     tauri::Builder::default()
+        // Must be registered first
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            log::info!("Запущено другий екземпляр, показую вже відкрите вікно");
+            // Bring the running window forward instead of opening a second one.
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(specta_builder.invoke_handler())
