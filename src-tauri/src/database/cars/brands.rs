@@ -10,6 +10,7 @@ use tauri::State;
 use crate::{
     database::{cars::structs::CarBrand, utils::begin_immediate},
     error::{AppError, AppResult},
+    logging::Event,
 };
 
 const CATALOG_JSON: &str = include_str!("../../../data/car_brands.json");
@@ -164,10 +165,7 @@ pub(crate) async fn sync_catalog(pool: &Pool<Sqlite>) -> AppResult<()> {
 
     tx.commit().await?;
 
-    log::info!(
-        "Каталог марок: синхронізовано {synced} з {} записів",
-        catalog.len()
-    );
+    log::info!("Каталог марок: синхронізовано {synced} з {}", catalog.len());
 
     Ok(())
 }
@@ -299,7 +297,10 @@ pub(crate) async fn create_brand(pool: &Pool<Sqlite>, name: &str) -> AppResult<C
         .await?;
 
     tx.commit().await?;
-    log::info!("Створено марку автомобіля «{name}» ({slug})");
+    Event::new("car_brand.create")
+        .id(brand.id)
+        .text("name", &name)
+        .ok();
 
     Ok(brand)
 }
@@ -335,7 +336,10 @@ pub(crate) async fn update_brand(pool: &Pool<Sqlite>, id: i64, name: &str) -> Ap
         .await?;
 
     tx.commit().await?;
-    log::info!("Марку автомобіля перейменовано на «{name}»");
+    Event::new("car_brand.update")
+        .id(brand.id)
+        .text("name", &name)
+        .ok();
 
     Ok(brand)
 }
@@ -370,6 +374,15 @@ pub(crate) async fn set_brand_archived(
     .await?;
 
     tx.commit().await?;
+
+    Event::new(if archived {
+        "car_brand.archive"
+    } else {
+        "car_brand.restore"
+    })
+    .id(id)
+    .ok();
+
     Ok(())
 }
 

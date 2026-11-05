@@ -7,12 +7,12 @@ use rust_xlsxwriter::{
 use tauri::State;
 
 use super::{
-    figures::{plural, ReportContext},
+    figures::ReportContext,
     structs::DayRange,
     vat_figures::VatReportFigures,
     xlsx::{excel_day, fraction, money},
 };
-use crate::{database::vat::structs::VatEntry, error::AppResult, AppState};
+use crate::{database::vat::structs::VatEntry, error::AppResult, utils::plural, AppState};
 
 const SHEET_SUMMARY: &str = "Зведення";
 const SHEET_REGISTER: &str = "Реєстр";

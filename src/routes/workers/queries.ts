@@ -58,6 +58,7 @@ export function createWorkerByIdQuery(getId: () => number | null) {
 export function createCreateWorkerMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workers", "createWorker"],
       mutationFn: (payload: CreateWorkerPayload) =>
         unwrap(commands.createWorker(payload)),
       onSuccess: () => {
@@ -72,6 +73,7 @@ export function createCreateWorkerMutation(queryClient: QueryClient) {
 export function createUpdateWorkerMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workers", "updateWorker"],
       mutationFn: (variables: { id: number; payload: UpdateWorkerPayload }) =>
         unwrap(commands.updateWorker(variables.id, variables.payload)),
       onSuccess: () => {
@@ -86,6 +88,7 @@ export function createUpdateWorkerMutation(queryClient: QueryClient) {
 export function createDeleteWorkerMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workers", "deleteWorker"],
       mutationFn: (id: number) => unwrap(commands.deleteWorker(id)),
       onSuccess: () => {
         invalidateWorkerLists(queryClient);
@@ -99,6 +102,7 @@ export function createDeleteWorkerMutation(queryClient: QueryClient) {
 export function createDeleteWorkersMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workers", "deleteWorkers"],
       mutationFn: (ids: number[]) => unwrap(commands.deleteWorkers(ids)),
       onSuccess: () => {
         invalidateWorkerLists(queryClient);

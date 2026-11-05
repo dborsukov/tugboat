@@ -32,6 +32,7 @@ use crate::{
         },
     },
     error::{AppError, AppResult},
+    logging::Event,
     AppState,
 };
 
@@ -725,6 +726,9 @@ pub async fn void_work_order_vat(
 
     let originals = live_entries_for_order(&mut *tx, &work_order_id).await?;
     if originals.is_empty() {
+        Event::new("vat.void_work_order")
+            .id(&work_order_id)
+            .denied("no_entries");
         return Err(AppError::vat_entry_not_found());
     }
 
@@ -763,7 +767,10 @@ pub async fn void_work_order_vat(
     }
 
     tx.commit().await?;
-    log::info!("Сторновано ПДВ за замовленням {work_order_id}");
+    Event::new("vat.void_work_order")
+        .id(&work_order_id)
+        .field("reversals", reversals.len())
+        .ok();
 
     Ok(reversals)
 }
@@ -788,6 +795,9 @@ pub async fn record_work_order_vat(
     let order = order.ok_or_else(AppError::work_order_not_found)?;
 
     if order.archived_at.is_some() {
+        Event::new("vat.record_work_order")
+            .id(&work_order_id)
+            .denied("archived");
         return Err(AppError::work_order_archived());
     }
 
@@ -797,20 +807,32 @@ pub async fn record_work_order_vat(
     }
 
     if !status_is_supplied(order.status) {
+        Event::new("vat.record_work_order")
+            .id(&work_order_id)
+            .denied("not_completed");
         return Err(AppError::validation(
             "ПДВ фіксується, коли замовлення виконано або оплачено",
         ));
     }
 
-    let entries = record_supply(state.inner(), &mut tx, &order).await?;
+    let entries = Event::new("vat.record_work_order")
+        .id(&work_order_id)
+        .on_error(record_supply(state.inner(), &mut tx, &order).await)?;
+
     if entries.is_empty() {
+        Event::new("vat.record_work_order")
+            .id(&work_order_id)
+            .denied("nothing_to_record");
         return Err(AppError::validation(
             "У цьому замовленні немає ПДВ для фіксації",
         ));
     }
 
     tx.commit().await?;
-    log::info!("Зафіксовано ПДВ за замовленням {work_order_id}");
+    Event::new("vat.record_work_order")
+        .id(&work_order_id)
+        .field("entries", entries.len())
+        .ok();
 
     Ok(entries)
 }
@@ -886,7 +908,7 @@ pub async fn void_expense_vat(
         .await?;
 
     tx.commit().await?;
-    log::info!("Сторновано ПДВ за витратою {expense_id}");
+    Event::new("vat.void_expense").id(expense_id).ok();
 
     Ok(entry)
 }
@@ -962,7 +984,7 @@ pub async fn void_part_item_vat(
         .await?;
 
     tx.commit().await?;
-    log::info!("Сторновано ПДВ за запчастиною {part_item_id}");
+    Event::new("vat.void_part_item").id(part_item_id).ok();
 
     Ok(entry)
 }
@@ -1017,7 +1039,7 @@ pub async fn close_vat_period(
             .await?;
 
     tx.commit().await?;
-    log::info!("Закрито період ПДВ {month}");
+    Event::new("vat.close_period").id(&month).ok();
 
     Ok(period)
 }
@@ -1033,6 +1055,6 @@ pub async fn reopen_vat_period(state: State<'_, AppState>, month: String) -> App
     if result.rows_affected() == 0 {
         return Err(AppError::NotFound("Період ПДВ не знайдено".to_string()));
     }
-    log::info!("Відкрито період ПДВ {month}");
+    Event::new("vat.reopen_period").id(&month).ok();
     Ok(())
 }

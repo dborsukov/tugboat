@@ -15,6 +15,7 @@ use crate::{
         utils::begin_immediate,
     },
     error::{AppError, AppResult},
+    logging::Event,
 };
 
 struct ClientBase {
@@ -373,6 +374,9 @@ pub async fn create_client(
     insert_client_details(&mut *tx, client.id, &payload).await?;
 
     tx.commit().await?;
+
+    Event::new("client.create").id(client.id).ok();
+
     Ok(client)
 }
 
@@ -440,6 +444,9 @@ pub async fn update_client(
     }
 
     tx.commit().await?;
+
+    Event::new("client.update").id(id).ok();
+
     Ok(client)
 }
 
@@ -453,6 +460,9 @@ pub async fn delete_client(state: State<'_, crate::AppState>, id: i32) -> AppRes
     if result.rows_affected() == 0 {
         return Err(AppError::client_not_found());
     }
+
+    Event::new("client.delete").id(id).ok();
+
     Ok(())
 }
 
@@ -575,6 +585,9 @@ pub async fn archive_client(state: State<'_, crate::AppState>, id: i32) -> AppRe
     .await?;
 
     tx.commit().await?;
+
+    Event::new("client.archive").id(id).ok();
+
     Ok(())
 }
 
@@ -611,6 +624,9 @@ pub async fn restore_client(state: State<'_, crate::AppState>, id: i32) -> AppRe
     .await?;
 
     tx.commit().await?;
+
+    Event::new("client.restore").id(id).ok();
+
     Ok(())
 }
 

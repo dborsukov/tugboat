@@ -8,6 +8,7 @@ use tauri::State;
 use crate::{
     database::{utils::begin_immediate, vat, work_orders::structs::PaymentMethod},
     error::{AppError, AppResult},
+    logging::Event,
 };
 
 /// Shared with the reports module, which reads expenses for a period
@@ -294,9 +295,17 @@ pub async fn create_expense(
 
     let expense = fetch_expense(&mut *tx, id as i32).await?;
 
-    vat::record_expense_credit(&mut tx, &expense).await?;
+    Event::new("expense.create")
+        .id(expense.id)
+        .on_error(vat::record_expense_credit(&mut tx, &expense).await)?;
 
     tx.commit().await?;
+
+    Event::new("expense.create")
+        .id(expense.id)
+        .field("amount", expense.amount)
+        .ok();
+
     Ok(expense)
 }
 
@@ -368,10 +377,18 @@ pub async fn update_expense(
 
     // A corrected expense that now claims VAT
     if live_vat.is_none() {
-        vat::record_expense_credit(&mut tx, &expense).await?;
+        Event::new("expense.update")
+            .id(expense.id)
+            .on_error(vat::record_expense_credit(&mut tx, &expense).await)?;
     }
 
     tx.commit().await?;
+
+    Event::new("expense.update")
+        .id(expense.id)
+        .field("amount", expense.amount)
+        .ok();
+
     Ok(expense)
 }
 
@@ -391,6 +408,9 @@ pub async fn delete_expense(state: State<'_, crate::AppState>, id: i32) -> AppRe
     }
 
     tx.commit().await?;
+
+    Event::new("expense.delete").id(id).ok();
+
     Ok(())
 }
 
@@ -413,6 +433,11 @@ pub async fn delete_expenses(state: State<'_, crate::AppState>, ids: Vec<i32>) -
         }
     }
     tx.commit().await?;
+
+    Event::new("expense.delete_many")
+        .field("count", ids.len())
+        .ok();
+
     Ok(())
 }
 
@@ -432,6 +457,9 @@ pub async fn archive_expense(state: State<'_, crate::AppState>, id: i32) -> AppR
     if result.rows_affected() == 0 {
         return Err(AppError::expense_not_found());
     }
+
+    Event::new("expense.archive").id(id).ok();
+
     Ok(())
 }
 
@@ -459,6 +487,11 @@ pub async fn archive_expenses(state: State<'_, crate::AppState>, ids: Vec<i32>) 
         }
     }
     tx.commit().await?;
+
+    Event::new("expense.archive_many")
+        .field("count", ids.len())
+        .ok();
+
     Ok(())
 }
 
@@ -472,6 +505,9 @@ pub async fn restore_expense(state: State<'_, crate::AppState>, id: i32) -> AppR
     if result.rows_affected() == 0 {
         return Err(AppError::expense_not_found());
     }
+
+    Event::new("expense.restore").id(id).ok();
+
     Ok(())
 }
 
@@ -493,6 +529,11 @@ pub async fn restore_expenses(state: State<'_, crate::AppState>, ids: Vec<i32>) 
         }
     }
     tx.commit().await?;
+
+    Event::new("expense.restore_many")
+        .field("count", ids.len())
+        .ok();
+
     Ok(())
 }
 
@@ -541,6 +582,8 @@ pub async fn create_expense_category(
     tx.commit().await?;
     log::info!("Створено категорію витрат «{name}»");
 
+    Event::new("expense_category.create").id(category.id).ok();
+
     Ok(category)
 }
 
@@ -577,6 +620,9 @@ pub async fn update_expense_category(
     .await?;
 
     tx.commit().await?;
+
+    Event::new("expense_category.update").id(category.id).ok();
+
     Ok(category)
 }
 
@@ -596,6 +642,9 @@ pub async fn archive_expense_category(state: State<'_, crate::AppState>, id: i32
     if result.rows_affected() == 0 {
         return Err(AppError::expense_category_not_found());
     }
+
+    Event::new("expense_category.archive").id(id).ok();
+
     Ok(())
 }
 
@@ -622,6 +671,9 @@ pub async fn restore_expense_category(state: State<'_, crate::AppState>, id: i32
         .await?;
 
     tx.commit().await?;
+
+    Event::new("expense_category.restore").id(id).ok();
+
     Ok(())
 }
 /// The payload after validation, nothing here can be blank

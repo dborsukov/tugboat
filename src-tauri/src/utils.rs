@@ -28,3 +28,21 @@ pub(crate) fn suggested_file_name(proposed: &str, fallback: &str) -> String {
         trimmed.to_string()
     }
 }
+
+pub(crate) fn plural(
+    count: usize,
+    one: &'static str,
+    few: &'static str,
+    many: &'static str,
+) -> &'static str {
+    let last = count % 10;
+    let last_two = count % 100;
+
+    if last == 1 && last_two != 11 {
+        one
+    } else if (2..=4).contains(&last) && !(12..=14).contains(&last_two) {
+        few
+    } else {
+        many
+    }
+}

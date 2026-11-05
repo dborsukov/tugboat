@@ -95,6 +95,7 @@ export function createCarDeleteImpactQuery(
 export function createCreateCarMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["cars", "createCar"],
       mutationFn: async (payload: CreateCarPayload) =>
         unwrap(commands.createCar(payload)),
       onSuccess: () => {
@@ -110,6 +111,7 @@ export function createCreateCarMutation(queryClient: QueryClient) {
 export function createUpdateCarMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["cars", "updateCar"],
       mutationFn: async (variables: {
         id: number;
         payload: UpdateCarPayload;
@@ -127,6 +129,7 @@ export function createUpdateCarMutation(queryClient: QueryClient) {
 export function createDeleteCarMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["cars", "deleteCar"],
       mutationFn: (id: number) => unwrap(commands.deleteCar(id)),
       onSuccess: async () => {
         invalidateCars(queryClient);
@@ -141,6 +144,7 @@ export function createDeleteCarMutation(queryClient: QueryClient) {
 export function createArchiveCarMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["cars", "archiveCar"],
       mutationFn: (id: number) => unwrap(commands.archiveCar(id)),
       onSuccess: () => {
         invalidateCars(queryClient);
@@ -155,6 +159,7 @@ export function createArchiveCarMutation(queryClient: QueryClient) {
 export function createRestoreCarMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["cars", "restoreCar"],
       mutationFn: (id: number) => unwrap(commands.restoreCar(id)),
       onSuccess: () => {
         invalidateCars(queryClient);
@@ -205,6 +210,7 @@ export function createCarModelsQuery(getBrandId: () => number) {
 export function createCreateCarBrandMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["cars", "createCarBrand"],
       mutationFn: async (name: string) => unwrap(commands.createCarBrand(name)),
       onSuccess: (brand) => {
         invalidateCarBrands(queryClient);
@@ -221,6 +227,7 @@ export function createCreateCarBrandMutation(queryClient: QueryClient) {
 export function createUpdateCarBrandMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["cars", "updateCarBrand"],
       mutationFn: async (variables: { id: number; name: string }) =>
         unwrap(commands.updateCarBrand(variables.id, variables.name)),
       onSuccess: () => {
@@ -236,6 +243,7 @@ export function createUpdateCarBrandMutation(queryClient: QueryClient) {
 export function createArchiveCarBrandMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["cars", "archiveCarBrand"],
       mutationFn: (id: number) => unwrap(commands.archiveCarBrand(id)),
       onSuccess: () => {
         invalidateCarBrands(queryClient);
@@ -250,6 +258,7 @@ export function createArchiveCarBrandMutation(queryClient: QueryClient) {
 export function createRestoreCarBrandMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["cars", "restoreCarBrand"],
       mutationFn: (id: number) => unwrap(commands.restoreCarBrand(id)),
       onSuccess: () => {
         invalidateCarBrands(queryClient);

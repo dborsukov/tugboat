@@ -10,15 +10,18 @@ use super::{
     hash::{OrderParty, ReportSources},
     structs::DayRange,
 };
-use crate::database::{
-    cars::structs::car_display_name,
-    clients::structs::client_display_name,
-    settings::structs::{AppSettings, CompanyInfo, CompanyKind},
-    work_orders::{
-        dtos::{LaborItemDto, PartItemDto, WorkOrderTotals},
-        pricing::{self, labor_cost_basis_known, labor_is_billed, part_is_billed},
-        structs::{LaborItem, PartItem, PaymentMethod, WorkOrder},
+use crate::{
+    database::{
+        cars::structs::car_display_name,
+        clients::structs::client_display_name,
+        settings::structs::{AppSettings, CompanyInfo, CompanyKind},
+        work_orders::{
+            dtos::{LaborItemDto, PartItemDto, WorkOrderTotals},
+            pricing::{self, labor_cost_basis_known, labor_is_billed, part_is_billed},
+            structs::{LaborItem, PartItem, PaymentMethod, WorkOrder},
+        },
     },
+    utils::plural,
 };
 
 pub(crate) struct ReportContext {
@@ -607,25 +610,6 @@ fn ratio(part: Decimal, whole: Decimal) -> Decimal {
         Decimal::ZERO
     } else {
         part / whole
-    }
-}
-
-/// The Ukrainian form that fits a count, e.g. "8 оплачених замовлень" or
-/// "3 записи".
-pub(crate) fn plural(
-    count: usize,
-    one: &'static str,
-    few: &'static str,
-    many: &'static str,
-) -> &'static str {
-    let last = count % 10;
-    let last_two = count % 100;
-    if last == 1 && last_two != 11 {
-        one
-    } else if (2..=4).contains(&last) && !(12..=14).contains(&last_two) {
-        few
-    } else {
-        many
     }
 }
 

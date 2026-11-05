@@ -62,6 +62,7 @@ export function createExpenseByIdQuery(getId: () => number | null) {
 export function createCreateExpenseMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["expenses", "createExpense"],
       mutationFn: (payload: CreateExpensePayload) =>
         unwrap(commands.createExpense(payload)),
       onSuccess: () => {
@@ -76,6 +77,7 @@ export function createCreateExpenseMutation(queryClient: QueryClient) {
 export function createUpdateExpenseMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["expenses", "updateExpense"],
       mutationFn: (variables: { id: number; payload: UpdateExpensePayload }) =>
         unwrap(commands.updateExpense(variables.id, variables.payload)),
       onSuccess: () => {
@@ -90,6 +92,7 @@ export function createUpdateExpenseMutation(queryClient: QueryClient) {
 export function createDeleteExpenseMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["expenses", "deleteExpense"],
       mutationFn: (id: number) => unwrap(commands.deleteExpense(id)),
       onSuccess: () => {
         invalidateExpenseLists(queryClient);
@@ -103,6 +106,7 @@ export function createDeleteExpenseMutation(queryClient: QueryClient) {
 export function createDeleteExpensesMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["expenses", "deleteExpenses"],
       mutationFn: (ids: number[]) => unwrap(commands.deleteExpenses(ids)),
       onSuccess: () => {
         invalidateExpenseLists(queryClient);
@@ -116,6 +120,7 @@ export function createDeleteExpensesMutation(queryClient: QueryClient) {
 export function createArchiveExpenseMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["expenses", "archiveExpense"],
       mutationFn: (id: number) => unwrap(commands.archiveExpense(id)),
       onSuccess: () => {
         invalidateExpenseLists(queryClient);
@@ -129,6 +134,7 @@ export function createArchiveExpenseMutation(queryClient: QueryClient) {
 export function createArchiveExpensesMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["expenses", "archiveExpenses"],
       mutationFn: (ids: number[]) => unwrap(commands.archiveExpenses(ids)),
       onSuccess: () => {
         invalidateExpenseLists(queryClient);
@@ -142,6 +148,7 @@ export function createArchiveExpensesMutation(queryClient: QueryClient) {
 export function createRestoreExpenseMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["expenses", "restoreExpense"],
       mutationFn: (id: number) => unwrap(commands.restoreExpense(id)),
       onSuccess: () => {
         invalidateExpenseLists(queryClient);
@@ -155,6 +162,7 @@ export function createRestoreExpenseMutation(queryClient: QueryClient) {
 export function createRestoreExpensesMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["expenses", "restoreExpenses"],
       mutationFn: (ids: number[]) => unwrap(commands.restoreExpenses(ids)),
       onSuccess: () => {
         invalidateExpenseLists(queryClient);
@@ -196,6 +204,7 @@ export function liveExpenseVatEntry(entries: VatEntry[] | undefined) {
 export function createVoidExpenseVatMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["expenses", "voidExpenseVat"],
       mutationFn: (variables: {
         id: number;
         creditNoteNumber: string | null;
@@ -231,6 +240,7 @@ export function createExpenseCategoriesQuery() {
 export function createCreateExpenseCategoryMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["expenses", "createExpenseCategory"],
       mutationFn: (payload: CreateExpenseCategoryPayload) =>
         unwrap(commands.createExpenseCategory(payload)),
       onSuccess: () => {
@@ -245,6 +255,7 @@ export function createCreateExpenseCategoryMutation(queryClient: QueryClient) {
 export function createUpdateExpenseCategoryMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["expenses", "updateExpenseCategory"],
       mutationFn: (variables: {
         id: number;
         payload: UpdateExpenseCategoryPayload;
@@ -262,6 +273,7 @@ export function createUpdateExpenseCategoryMutation(queryClient: QueryClient) {
 export function createArchiveExpenseCategoryMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["expenses", "archiveExpenseCategory"],
       mutationFn: (id: number) => unwrap(commands.archiveExpenseCategory(id)),
       onSuccess: () => {
         invalidateExpenseCategoryLists(queryClient);
@@ -275,6 +287,7 @@ export function createArchiveExpenseCategoryMutation(queryClient: QueryClient) {
 export function createRestoreExpenseCategoryMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["expenses", "restoreExpenseCategory"],
       mutationFn: (id: number) => unwrap(commands.restoreExpenseCategory(id)),
       onSuccess: () => {
         invalidateExpenseCategoryLists(queryClient);

@@ -17,6 +17,7 @@ use std::{
     collections::{HashMap, HashSet},
     fs,
     path::{Path, PathBuf},
+    time::Instant,
 };
 
 use chrono::{DateTime, NaiveDate, Utc};
@@ -36,6 +37,7 @@ use crate::{
         },
     },
     error::{AppError, AppResult},
+    logging::Event,
     AppState,
 };
 
@@ -491,6 +493,7 @@ pub async fn generate_report(
 ) -> AppResult<structs::GenerateReportOutcome> {
     let range = day_range(&period_start, &period_end)?;
 
+    let started = Instant::now();
     let data = report_data(&state, report_type, range).await?;
     let source_hash = data.hash();
 
@@ -498,7 +501,7 @@ pub async fn generate_report(
         let path = PathBuf::from(&previous.file_path);
         // A file that has been deleted is not current regardless of hash
         if previous.source_hash == source_hash && path.is_file() {
-            log::info!(
+            log::debug!(
                 "Звіт {} за {} не змінився, нову версію не створено",
                 report_type.as_str(),
                 range.folder_name()
@@ -510,11 +513,16 @@ pub async fn generate_report(
         }
     }
 
-    let bytes = data.render(&state, report_type, range).await?;
+    let bytes = Event::new("report.generate")
+        .text("kind", report_type.as_str())
+        .text("period", &range.folder_name())
+        .on_error(data.render(&state, report_type, range).await)?;
 
     let folder = report_folder(&state, report_type, range)?;
     let generated_at = Utc::now();
     let path = folder.join(timestamp_file_name(generated_at));
+
+    let bytes_len = bytes.len();
 
     fs::write(&path, bytes).map_err(|e| {
         AppError::Generic(format!("Не вдалося зберегти звіт {}: {e}", path.display()))
@@ -543,12 +551,13 @@ pub async fn generate_report(
     .fetch_one(&state.db_pool)
     .await?;
 
-    log::info!(
-        "Звіт {} за {} збережено до {}",
-        report_type.as_str(),
-        range.folder_name(),
-        path.display()
-    );
+    Event::new("report.generate")
+        .id(report.id)
+        .text("kind", report_type.as_str())
+        .text("period", &range.folder_name())
+        .field("bytes", bytes_len)
+        .field("ms", started.elapsed().as_millis())
+        .ok();
 
     Ok(structs::GenerateReportOutcome {
         created: true,
@@ -674,6 +683,11 @@ pub async fn download_report(
         ))
     })?;
 
+    Event::new("report.download")
+        .id(id)
+        .text("kind", row.report.report_type.as_str())
+        .ok();
+
     Ok(Some(destination.to_string_lossy().into_owned()))
 }
 
@@ -695,5 +709,14 @@ pub async fn open_report_copy(app: tauri::AppHandle, path: String) -> AppResult<
 
     app.opener()
         .open_path(path, None::<&str>)
-        .map_err(|e| AppError::Generic(format!("Не вдалося відкрити файл: {e}")))
+        .map_err(|e| AppError::Generic(format!("Не вдалося відкрити файл: {e}")))?;
+
+    Event::new("report.open")
+        .text(
+            "file",
+            &file.file_name().unwrap_or_default().to_string_lossy(),
+        )
+        .ok();
+
+    Ok(())
 }

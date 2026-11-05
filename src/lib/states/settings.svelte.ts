@@ -44,6 +44,7 @@ export function createSettingsFieldMutation<K extends keyof AppSettings>(
 ) {
   return createMutation(
     () => ({
+      mutationKey: ["settings", key],
       mutationFn,
       onMutate: async (next) => {
         await queryClient.cancelQueries({ queryKey: keys.settings.all });

@@ -126,7 +126,11 @@ impl AppError {
 
 impl From<sqlx::Error> for AppError {
     fn from(error: sqlx::Error) -> Self {
-        log::error!("Database failure: {:?}", error.to_string());
+        // `RowNotFound` is mapped to `NotFound` below
+        if !matches!(error, sqlx::Error::RowNotFound) {
+            log::debug!("sqlx: {error}");
+        }
+
         match error {
             sqlx::Error::RowNotFound => {
                 AppError::NotFound("Помилка БД: Запис не знайдено в базі даних".to_string())
@@ -175,7 +179,8 @@ impl From<tauri::Error> for AppError {
 
 impl From<std::io::Error> for AppError {
     fn from(error: std::io::Error) -> Self {
-        log::error!("I/O failure: {error}");
+        // A degraded path, not a crash
+        log::warn!("I/O failure: {error}");
         AppError::Generic(format!("Помилка читання або запису файлу: {error}"))
     }
 }

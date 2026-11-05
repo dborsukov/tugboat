@@ -81,6 +81,7 @@ export function createClientDeleteImpactQuery(
 export function createCreateClientMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["clients", "createClient"],
       mutationFn: (payload: ClientPayload) =>
         unwrap(commands.createClient(payload)),
       onSuccess: () => {
@@ -95,6 +96,7 @@ export function createCreateClientMutation(queryClient: QueryClient) {
 export function createUpdateClientMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["clients", "updateClient"],
       mutationFn: (variables: { id: number; payload: ClientPayload }) =>
         unwrap(commands.updateClient(variables.id, variables.payload)),
       onSuccess: () => {
@@ -109,6 +111,7 @@ export function createUpdateClientMutation(queryClient: QueryClient) {
 export function createDeleteClientMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["clients", "deleteClient"],
       mutationFn: (id: number) => unwrap(commands.deleteClient(id)),
       onSuccess: async () => {
         invalidateClients(queryClient);
@@ -122,6 +125,7 @@ export function createDeleteClientMutation(queryClient: QueryClient) {
 export function createArchiveClientMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["clients", "archiveClient"],
       mutationFn: (id: number) => unwrap(commands.archiveClient(id)),
       onSuccess: () => {
         invalidateClients(queryClient);
@@ -135,6 +139,7 @@ export function createArchiveClientMutation(queryClient: QueryClient) {
 export function createRestoreClientMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["clients", "restoreClient"],
       mutationFn: (id: number) => unwrap(commands.restoreClient(id)),
       onSuccess: () => {
         invalidateClients(queryClient);

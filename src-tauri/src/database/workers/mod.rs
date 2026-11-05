@@ -9,6 +9,7 @@ use tauri::State;
 use crate::{
     database::utils::begin_immediate,
     error::{AppError, AppResult},
+    logging::Event,
 };
 
 const WORKER_COLUMNS: &str = r#"
@@ -121,6 +122,9 @@ pub async fn create_worker(
     .await?;
 
     tx.commit().await?;
+
+    Event::new("worker.create").id(worker.id).ok();
+
     Ok(worker)
 }
 
@@ -164,6 +168,9 @@ pub async fn update_worker(
     .await?;
 
     tx.commit().await?;
+
+    Event::new("worker.update").id(id).ok();
+
     Ok(worker)
 }
 
@@ -177,6 +184,9 @@ pub async fn delete_worker(state: State<'_, crate::AppState>, id: i32) -> AppRes
     if result.rows_affected() == 0 {
         return Err(AppError::worker_not_found());
     }
+
+    Event::new("worker.delete").id(id).ok();
+
     Ok(())
 }
 
@@ -198,6 +208,11 @@ pub async fn delete_workers(state: State<'_, crate::AppState>, ids: Vec<i32>) ->
         }
     }
     tx.commit().await?;
+
+    Event::new("worker.delete_many")
+        .field("count", ids.len())
+        .ok();
+
     Ok(())
 }
 

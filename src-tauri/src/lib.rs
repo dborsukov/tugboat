@@ -1,4 +1,8 @@
-use std::{fs, path::PathBuf, time::Duration};
+use std::{
+    fs,
+    path::PathBuf,
+    time::{Duration, Instant},
+};
 
 use sqlx::{
     sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePoolOptions, SqliteSynchronous},
@@ -6,13 +10,13 @@ use sqlx::{
 };
 use tauri::{utils::config::Color, AppHandle, Manager, WebviewWindowBuilder};
 use tauri_plugin_dialog::DialogExt;
-use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
 use tauri_specta::{collect_commands, Builder};
 
 pub mod database;
 pub mod documents;
 pub mod error;
 pub mod hashing;
+pub mod logging;
 pub mod reports;
 pub mod utils;
 pub mod window_geometry;
@@ -175,6 +179,8 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         database::recent::clear_recent_items,
         database::analytics::fetch_expense_summary,
         utils::get_app_version,
+        logging::open_logs_dir,
+        logging::log_diagnostics,
         window_geometry::reveal_window
     ])
 }
@@ -199,6 +205,9 @@ fn export_bindings(specta_builder: &tauri_specta::Builder<tauri::Wry>) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    logging::install_panic_hook();
+
+    let started = Instant::now();
     let specta_builder = specta_builder();
 
     #[cfg(debug_assertions)]
@@ -211,32 +220,37 @@ pub fn run() {
         .setup(move |app| {
             specta_builder.mount_events(app);
 
-            let app_dir = app.path().app_data_dir().unwrap();
-            fs::create_dir_all(&app_dir).unwrap();
+            let app_dir = app.path().app_data_dir().map_err(|error| {
+                eprintln!("Не вдалося визначити теку даних: {error}");
+                error
+            })?;
+            fs::create_dir_all(&app_dir).map_err(|error| {
+                eprintln!("Не вдалося створити теку {}: {error}", app_dir.display());
+                error
+            })?;
 
-            let log_level = if cfg!(debug_assertions) {
-                log::LevelFilter::Debug
-            } else {
-                log::LevelFilter::Info
-            };
+            let log_dir = logging::log_dir();
+            logging::init(app.handle(), &log_dir)?;
 
-            app.handle().plugin(
-                tauri_plugin_log::Builder::new()
-                    .level(log_level)
-                    .target(Target::new(TargetKind::Folder {
-                        path: app_dir.join("logs"),
-                        file_name: None,
-                    }))
-                    .rotation_strategy(RotationStrategy::KeepSome(50))
-                    .max_file_size(500_000 /* bytes */)
-                    .build(),
-            )?;
+            log::info!(
+                "Запуск PopeyeCRM {} | build={} | os={} arch={} | дані={} | журнали={}",
+                env!("CARGO_PKG_VERSION"),
+                if cfg!(debug_assertions) {
+                    "debug"
+                } else {
+                    "release"
+                },
+                std::env::consts::OS,
+                std::env::consts::ARCH,
+                app_dir.display(),
+                log_dir.display(),
+            );
 
             // Nothing slow may run on this thread. The splash screen window
             // already exists at this point, but it can only paint once setup returns.
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                if let Err(error) = start(&handle, app_dir).await {
+                if let Err(error) = start(&handle, app_dir, started).await {
                     log::error!("Не вдалося запустити застосунок: {error}");
                     handle
                         .dialog()
@@ -255,12 +269,13 @@ pub fn run() {
         .run(|handle, event| {
             if let tauri::RunEvent::Exit = event {
                 window_geometry::save_geometry(handle);
+                log::info!("Застосунок завершує роботу");
             }
         });
 }
 
 /// Runs slow startup code, then opens the main window.
-async fn start(handle: &AppHandle, app_dir: PathBuf) -> AppResult<()> {
+async fn start(handle: &AppHandle, app_dir: PathBuf, started: Instant) -> AppResult<()> {
     open_splash_window(handle)?;
 
     let db_path = app_dir.join("main.db");
@@ -286,6 +301,17 @@ async fn start(handle: &AppHandle, app_dir: PathBuf) -> AppResult<()> {
             AppError::Migration(format!("Не вдалося застосувати міграції бази даних: {e}"))
         })?;
 
+    let applied: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM _sqlx_migrations")
+        .fetch_one(&db_pool)
+        .await
+        .unwrap_or(0);
+
+    log::info!(
+        "Базу даних готово за {:?}: застосовано {applied} {}",
+        started.elapsed(),
+        utils::plural(applied.max(0) as usize, "міграцію", "міграції", "міграцій")
+    );
+
     database::cars::brands::sync_catalog(&db_pool).await?;
 
     let (ui_scale, theme) = match database::settings::fetch_settings_from_pool(&db_pool).await {
@@ -303,13 +329,14 @@ async fn start(handle: &AppHandle, app_dir: PathBuf) -> AppResult<()> {
     });
 
     let appstate = handle.state::<AppState>();
-    print!("{:#?}", appstate);
 
     open_main_window(handle, ui_scale, theme)?;
 
     if let Err(error) = documents::invoices_dir(&appstate) {
         log::warn!("Не вдалося підготувати теку рахунків: {error}");
     }
+
+    log::info!("Вікно відкрито за {:?}", started.elapsed());
 
     Ok(())
 }

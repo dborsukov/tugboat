@@ -7,6 +7,7 @@ use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
+    time::Instant,
 };
 
 use chrono::{DateTime, Utc};
@@ -27,6 +28,7 @@ use crate::{
         workers::structs::Worker,
     },
     error::{AppError, AppResult},
+    logging::Event,
     AppState,
 };
 
@@ -364,12 +366,13 @@ pub async fn generate_document(
         }
     }
 
+    let started = Instant::now();
     let data = context.data(kind, &options)?;
     let source_hash = hash::document_hash(&data);
 
     if let Some(latest) = latest_version(&state.db_pool, &work_order_id, kind).await? {
         if latest.source_hash == source_hash && version_files_present(&latest) {
-            log::info!(
+            log::debug!(
                 "Документ {} {} не змінився, нову версію не створено",
                 kind.title(),
                 work_order_id
@@ -381,8 +384,14 @@ pub async fn generate_document(
         }
     }
 
-    let pdf_bytes = pdf::render(&data)?;
-    let xlsx_bytes = xlsx::render(&data)?;
+    let pdf_bytes = Event::new("document.generate")
+        .id(&work_order_id)
+        .text("kind", kind.as_str())
+        .on_error(pdf::render(&data))?;
+    let xlsx_bytes = Event::new("document.generate")
+        .id(&work_order_id)
+        .text("kind", kind.as_str())
+        .on_error(xlsx::render(&data))?;
 
     let folder = kind_documents_dir(&invoices_dir(&state)?, &work_order_id, kind);
     fs::create_dir_all(&folder).map_err(|e| {
@@ -433,12 +442,13 @@ pub async fn generate_document(
         }
     };
 
-    log::info!(
-        "Документ {} {} збережено до {}",
-        kind.title(),
-        work_order_id,
-        folder.display()
-    );
+    Event::new("document.generate")
+        .id(&work_order_id)
+        .text("kind", kind.as_str())
+        .field("version", row.id)
+        .field("bytes", pdf_bytes.len() + xlsx_bytes.len())
+        .field("ms", started.elapsed().as_millis())
+        .ok();
 
     Ok(GenerateDocumentOutcome {
         created: true,
@@ -502,11 +512,10 @@ pub async fn download_work_order_document(
         ))
     })?;
 
-    log::info!(
-        "Документ {} збережено до {}",
-        source.display(),
-        destination.display()
-    );
+    Event::new("document.download")
+        .id(id)
+        .text("format", format.extension())
+        .ok();
 
     Ok(Some(destination.to_string_lossy().into_owned()))
 }
@@ -536,5 +545,9 @@ pub async fn open_work_order_document(
 
     app.opener()
         .open_path(path.to_string_lossy().into_owned(), None::<&str>)
-        .map_err(|e| AppError::Generic(format!("Не вдалося відкрити файл: {e}")))
+        .map_err(|e| AppError::Generic(format!("Не вдалося відкрити файл: {e}")))?;
+
+    Event::new("document.open").id(id).ok();
+
+    Ok(())
 }

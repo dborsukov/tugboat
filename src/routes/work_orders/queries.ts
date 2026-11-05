@@ -132,6 +132,7 @@ export function createWorkOrderDeleteImpactQuery(
 export function createCreateWorkOrderMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "createWorkOrder"],
       mutationFn: (payload: CreateWorkOrderPayload) =>
         unwrap(commands.createWorkOrder(payload)),
       onSuccess: () => {
@@ -148,6 +149,7 @@ export function createCreateWarrantyWorkOrderMutation(
 ) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "createWarrantyWorkOrder"],
       mutationFn: (variables: {
         sourceWorkOrderId: string;
         odometerIn: number;
@@ -174,6 +176,7 @@ export function createCreateWarrantyWorkOrderMutation(
 export function createUpdateWorkOrderMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "updateWorkOrder"],
       mutationFn: (payload: UpdateWorkOrderPayload) =>
         unwrap(commands.updateWorkOrder(payload)),
       onSuccess: () => {
@@ -188,6 +191,7 @@ export function createUpdateWorkOrderMutation(queryClient: QueryClient) {
 export function createDeleteWorkOrderMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "deleteWorkOrder"],
       mutationFn: (id: string) => unwrap(commands.deleteWorkOrder(id)),
       onSuccess: async () => {
         invalidateWorkOrderLists(queryClient);
@@ -201,6 +205,7 @@ export function createDeleteWorkOrderMutation(queryClient: QueryClient) {
 export function createArchiveWorkOrderMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "archiveWorkOrder"],
       mutationFn: (id: string) => unwrap(commands.archiveWorkOrder(id)),
       onSuccess: () => {
         invalidateWorkOrderLists(queryClient);
@@ -214,6 +219,7 @@ export function createArchiveWorkOrderMutation(queryClient: QueryClient) {
 export function createRestoreWorkOrderMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "restoreWorkOrder"],
       mutationFn: (id: string) => unwrap(commands.restoreWorkOrder(id)),
       onSuccess: () => {
         invalidateWorkOrderLists(queryClient);
@@ -250,6 +256,7 @@ export function createLaborItemsQuery() {
 export function createCreateLaborItemMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "createLaborItem"],
       mutationFn: async (payload: CreateLaborItemPayload) =>
         unwrap(commands.createLaborItem(payload)),
       onSuccess: () => {
@@ -264,6 +271,7 @@ export function createCreateLaborItemMutation(queryClient: QueryClient) {
 export function createUpdateLaborItemMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "updateLaborItem"],
       mutationFn: async (variables: {
         id: number;
         payload: UpdateLaborItemPayload;
@@ -280,6 +288,7 @@ export function createUpdateLaborItemMutation(queryClient: QueryClient) {
 export function createDeleteLaborItemMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "deleteLaborItem"],
       mutationFn: (id: number) => unwrap(commands.deleteLaborItem(id)),
       onSuccess: () => {
         invalidateWorkOrderLists(queryClient);
@@ -293,6 +302,7 @@ export function createDeleteLaborItemMutation(queryClient: QueryClient) {
 export function createDeleteLaborItemsMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "deleteLaborItems"],
       mutationFn: (ids: number[]) => unwrap(commands.deleteLaborItems(ids)),
       onSuccess: () => {
         invalidateWorkOrderLists(queryClient);
@@ -308,6 +318,7 @@ export function createUpdateLaborItemsDiscountMutation(
 ) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "updateLaborItemsDiscount"],
       mutationFn: (variables: {
         ids: number[];
         discountType: DiscountType;
@@ -332,6 +343,7 @@ export function createUpdateLaborItemsDiscountMutation(
 export function createReorderLaborItemsMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "reorderLaborItems"],
       mutationFn: (variables: { workOrderId: string; orderedIds: number[] }) =>
         unwrap(
           commands.reorderLaborItems(
@@ -377,6 +389,7 @@ export function createPartItemsQuery() {
 export function createCreatePartItemMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "createPartItem"],
       mutationFn: (payload: CreatePartItemPayload) =>
         unwrap(commands.createPartItem(payload)),
       onSuccess: () => {
@@ -391,6 +404,7 @@ export function createCreatePartItemMutation(queryClient: QueryClient) {
 export function createUpdatePartItemMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "updatePartItem"],
       mutationFn: (variables: { id: number; payload: UpdatePartItemPayload }) =>
         unwrap(commands.updatePartItem(variables.id, variables.payload)),
       onSuccess: () => {
@@ -405,6 +419,7 @@ export function createUpdatePartItemMutation(queryClient: QueryClient) {
 export function createDeletePartItemMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "deletePartItem"],
       mutationFn: (id: number) => unwrap(commands.deletePartItem(id)),
       onSuccess: () => {
         invalidateWorkOrderLists(queryClient);
@@ -418,6 +433,7 @@ export function createDeletePartItemMutation(queryClient: QueryClient) {
 export function createDeletePartItemsMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "deletePartItems"],
       mutationFn: (ids: number[]) => unwrap(commands.deletePartItems(ids)),
       onSuccess: () => {
         invalidateWorkOrderLists(queryClient);
@@ -431,6 +447,7 @@ export function createDeletePartItemsMutation(queryClient: QueryClient) {
 export function createUpdatePartItemsStatusMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "updatePartItemsStatus"],
       mutationFn: (variables: { ids: number[]; status: PartStatus }) =>
         unwrap(commands.updatePartItemsStatus(variables.ids, variables.status)),
       onSuccess: () => {
@@ -447,6 +464,7 @@ export function createUpdatePartItemsSupplierMutation(
 ) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "updatePartItemsSupplier"],
       mutationFn: (variables: {
         ids: number[];
         supplier: string | null;
@@ -473,6 +491,7 @@ export function createUpdatePartItemsDiscountMutation(
 ) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "updatePartItemsDiscount"],
       mutationFn: (variables: {
         ids: number[];
         discountType: DiscountType;
@@ -497,6 +516,7 @@ export function createUpdatePartItemsDiscountMutation(
 export function createReorderPartItemsMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "reorderPartItems"],
       mutationFn: (variables: { workOrderId: string; orderedIds: number[] }) =>
         unwrap(
           commands.reorderPartItems(
@@ -547,6 +567,7 @@ export function liveVatEntry(entries: VatEntry[] | undefined) {
 export function createVoidWorkOrderVatMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "voidWorkOrderVat"],
       mutationFn: (variables: {
         id: string;
         creditNoteNumber: string | null;
@@ -571,6 +592,7 @@ export function createVoidWorkOrderVatMutation(queryClient: QueryClient) {
 export function createVoidPartItemVatMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "voidPartItemVat"],
       mutationFn: (variables: {
         id: number;
         creditNoteNumber: string | null;
@@ -607,6 +629,7 @@ export function createPartItemVatQuery(getId: () => number | null) {
 export function createRecordWorkOrderVatMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "recordWorkOrderVat"],
       mutationFn: (id: string) => unwrap(commands.recordWorkOrderVat(id)),
       onSuccess: () => {
         invalidateWorkOrderLists(queryClient);
@@ -638,6 +661,7 @@ export function createWorkOrderDocumentsQuery(getId: () => string | null) {
 export function createGenerateDocumentMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "generateDocument"],
       mutationFn: (variables: {
         workOrderId: string;
         kind: DocumentKind;
@@ -670,6 +694,7 @@ export function createGenerateDocumentMutation(queryClient: QueryClient) {
 export function createOpenWorkOrderDocumentMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "openWorkOrderDocument"],
       mutationFn: (variables: { id: number; format: DocumentFormat }) =>
         unwrap(commands.openWorkOrderDocument(variables.id, variables.format)),
       onError: showMutationErrorToast,
@@ -683,6 +708,7 @@ export function createDownloadWorkOrderDocumentMutation(
 ) {
   return createMutation(
     () => ({
+      mutationKey: ["workOrders", "downloadWorkOrderDocument"],
       mutationFn: (variables: {
         id: number;
         format: DocumentFormat;

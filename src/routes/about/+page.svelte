@@ -1,16 +1,44 @@
 <script lang="ts">
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { onMount } from "svelte";
+  import { toast } from "svelte-sonner";
 
   import XIcon from "@lucide/svelte/icons/x";
 
+  import { Button } from "$lib/components/ui/button";
+
   import PopeyeIcon from "$lib/components/icons/popeye.svelte";
+
+  import { commands } from "$lib/bindings";
+  import { copyValue } from "$lib/clipboard";
 
   import { createVersionQuery } from "./queries";
 
   const appWindow = getCurrentWindow();
 
   const versionQuery = createVersionQuery();
+
+  async function openLogs() {
+    const result = await commands.openLogsDir();
+    if (result.status === "error") {
+      toast.error("Не вдалося відкрити теку журналів", {
+        description: result.error.message,
+        position: "bottom-left",
+      });
+    }
+  }
+
+  async function copyDiagnostics() {
+    const result = await commands.logDiagnostics();
+    if (result.status === "error") {
+      toast.error("Не вдалося зібрати діагностику", {
+        description: result.error.message,
+        position: "bottom-left",
+      });
+      return;
+    }
+    await copyValue(result.data, "Діагностику");
+  }
 
   onMount(() => {
     requestAnimationFrame(() =>
@@ -61,6 +89,15 @@
       <p class="text-sm text-muted-foreground">
         Версія {versionQuery.isError ? "?" : (versionQuery.data ?? "…")}
       </p>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <Button variant="outline" size="sm" onclick={openLogs}>
+        Відкрити журнали
+      </Button>
+      <Button variant="outline" size="sm" onclick={copyDiagnostics}>
+        Скопіювати діагностику
+      </Button>
     </div>
   </main>
 </div>

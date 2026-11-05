@@ -58,6 +58,7 @@ export function createServiceByIdQuery(getId: () => number | null) {
 export function createCreateServiceMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["services", "createService"],
       mutationFn: (payload: CreateServicePayload) =>
         unwrap(commands.createService(payload)),
       onSuccess: () => {
@@ -72,6 +73,7 @@ export function createCreateServiceMutation(queryClient: QueryClient) {
 export function createUpdateServiceMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["services", "updateService"],
       mutationFn: (variables: { id: number; payload: UpdateServicePayload }) =>
         unwrap(commands.updateService(variables.id, variables.payload)),
       onSuccess: () => {
@@ -86,6 +88,7 @@ export function createUpdateServiceMutation(queryClient: QueryClient) {
 export function createDeleteServiceMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["services", "deleteService"],
       mutationFn: (id: number) => unwrap(commands.deleteService(id)),
       onSuccess: () => {
         invalidateServiceLists(queryClient);
@@ -99,6 +102,7 @@ export function createDeleteServiceMutation(queryClient: QueryClient) {
 export function createDeleteServicesMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["services", "deleteServices"],
       mutationFn: (ids: number[]) => unwrap(commands.deleteServices(ids)),
       onSuccess: () => {
         invalidateServiceLists(queryClient);
@@ -112,6 +116,7 @@ export function createDeleteServicesMutation(queryClient: QueryClient) {
 export function createArchiveServiceMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["services", "archiveService"],
       mutationFn: (id: number) => unwrap(commands.archiveService(id)),
       onSuccess: () => {
         invalidateServiceLists(queryClient);
@@ -125,6 +130,7 @@ export function createArchiveServiceMutation(queryClient: QueryClient) {
 export function createArchiveServicesMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["services", "archiveServices"],
       mutationFn: (ids: number[]) => unwrap(commands.archiveServices(ids)),
       onSuccess: () => {
         invalidateServiceLists(queryClient);
@@ -138,6 +144,7 @@ export function createArchiveServicesMutation(queryClient: QueryClient) {
 export function createRestoreServiceMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["services", "restoreService"],
       mutationFn: (id: number) => unwrap(commands.restoreService(id)),
       onSuccess: () => {
         invalidateServiceLists(queryClient);
@@ -151,6 +158,7 @@ export function createRestoreServiceMutation(queryClient: QueryClient) {
 export function createRestoreServicesMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["services", "restoreServices"],
       mutationFn: (ids: number[]) => unwrap(commands.restoreServices(ids)),
       onSuccess: () => {
         invalidateServiceLists(queryClient);

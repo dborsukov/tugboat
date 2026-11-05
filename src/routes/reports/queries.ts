@@ -35,6 +35,7 @@ export function createReportsQuery() {
 export function createGenerateReportMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["reports", "generateReport"],
       mutationFn: (variables: {
         reportType: ReportKind;
         periodStart: string;
@@ -59,6 +60,7 @@ export function createGenerateReportMutation(queryClient: QueryClient) {
 export function createDownloadReportMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["reports", "downloadReport"],
       mutationFn: (variables: { id: number; fileName: string }) =>
         unwrap(commands.downloadReport(variables.id, variables.fileName)),
       onError: showMutationErrorToast,
@@ -70,6 +72,7 @@ export function createDownloadReportMutation(queryClient: QueryClient) {
 export function createOpenReportCopyMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["reports", "openReportCopy"],
       mutationFn: (path: string) => unwrap(commands.openReportCopy(path)),
       onError: showMutationErrorToast,
     }),
@@ -97,6 +100,7 @@ export function createVatPeriodsQuery() {
 export function createCloseVatPeriodMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["reports", "closeVatPeriod"],
       mutationFn: (variables: { month: string; note: string | null }) =>
         unwrap(commands.closeVatPeriod(variables.month, variables.note)),
       onSuccess: () => {
@@ -111,6 +115,7 @@ export function createCloseVatPeriodMutation(queryClient: QueryClient) {
 export function createReopenVatPeriodMutation(queryClient: QueryClient) {
   return createMutation(
     () => ({
+      mutationKey: ["reports", "reopenVatPeriod"],
       mutationFn: (month: string) => unwrap(commands.reopenVatPeriod(month)),
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: VAT_PERIODS_KEY });

@@ -10,6 +10,7 @@ use tauri::{Manager, State};
 use crate::{
     database::utils::decimal_column,
     error::{AppError, AppResult},
+    logging::Event,
 };
 
 const UI_SCALE_MIN: f64 = 0.5;
@@ -79,6 +80,10 @@ pub async fn update_theme(
         let _ = window.set_background_color(Some(crate::background_color(theme, os_theme)));
     }
 
+    Event::new("settings.theme")
+        .text("value", &format!("{theme:?}"))
+        .ok();
+
     Ok(theme)
 }
 
@@ -96,6 +101,11 @@ pub async fn update_ui_scale(ui_scale: f64, state: State<'_, crate::AppState>) -
             .bind(ui_scale)
             .fetch_one(&state.db_pool)
             .await?;
+
+    Event::new("settings.ui_scale")
+        .field("value", ui_scale)
+        .ok();
+
     Ok(ui_scale)
 }
 
@@ -111,6 +121,11 @@ pub async fn update_sidebar_metric(
     .bind(sidebar_metric)
     .fetch_one(&state.db_pool)
     .await?;
+
+    Event::new("settings.sidebar_metric")
+        .text("value", &format!("{saved:?}"))
+        .ok();
+
     Ok(saved)
 }
 
@@ -126,6 +141,11 @@ pub async fn update_sidebar_recent_items(
     .bind(show_recent_items)
     .fetch_one(&state.db_pool)
     .await?;
+
+    Event::new("settings.sidebar_recent_items")
+        .field("value", saved)
+        .ok();
+
     Ok(saved)
 }
 
@@ -147,6 +167,11 @@ pub async fn update_default_markup(
     .fetch_one(&state.db_pool)
     .await?;
     let default_markup = decimal_column(&row, "default_markup")?;
+
+    Event::new("settings.default_markup")
+        .field("value", default_markup)
+        .ok();
+
     Ok(default_markup)
 }
 
@@ -175,6 +200,11 @@ pub async fn update_default_vat_rate(
     .fetch_one(&state.db_pool)
     .await?;
     let default_vat_rate = decimal_column(&row, "default_vat_rate")?;
+
+    Event::new("settings.default_vat_rate")
+        .field("value", default_vat_rate)
+        .ok();
+
     Ok(default_vat_rate)
 }
 
@@ -190,6 +220,11 @@ pub async fn update_default_prices_include_vat(
     .bind(default_prices_include_vat)
     .fetch_one(&state.db_pool)
     .await?;
+
+    Event::new("settings.default_prices_include_vat")
+        .field("value", saved)
+        .ok();
+
     Ok(saved)
 }
 
@@ -206,6 +241,11 @@ pub async fn update_rate_variants(
     .bind(Json(rate_variants))
     .fetch_one(&state.db_pool)
     .await?;
+
+    Event::new("settings.rate_variants")
+        .field("count", saved.0.len())
+        .ok();
+
     Ok(saved.0)
 }
 
@@ -315,6 +355,11 @@ pub async fn update_vin_lookup_templates(
     .bind(Json(&templates))
     .fetch_one(&state.db_pool)
     .await?;
+
+    Event::new("settings.vin_lookup_templates")
+        .field("count", saved.0.len())
+        .ok();
+
     Ok(saved.0)
 }
 
@@ -348,6 +393,11 @@ pub async fn update_license_plate_lookup_templates(
     .bind(Json(&templates))
     .fetch_one(&state.db_pool)
     .await?;
+
+    Event::new("settings.license_plate_lookup_templates")
+        .field("count", saved.0.len())
+        .ok();
+
     Ok(saved.0)
 }
 
@@ -375,6 +425,9 @@ pub async fn update_timezone(
             .bind(timezone)
             .fetch_one(&state.db_pool)
             .await?;
+
+    Event::new("settings.timezone").text("value", &saved).ok();
+
     Ok(saved)
 }
 
@@ -397,6 +450,11 @@ pub async fn update_default_phone_country_code(
     .bind(code)
     .fetch_one(&state.db_pool)
     .await?;
+
+    Event::new("settings.default_phone_country_code")
+        .text("value", &saved)
+        .ok();
+
     Ok(saved)
 }
 
@@ -448,6 +506,12 @@ pub async fn update_company_info(
     .bind(Json(&company_info))
     .fetch_one(&state.db_pool)
     .await?;
+
+    Event::new("settings.company_info")
+        .field("vat_payer", saved.0.vat_payer)
+        .field("complete", saved.0.is_complete)
+        .ok();
+
     Ok(saved.0)
 }
 
@@ -519,6 +583,9 @@ pub async fn update_dashboard_layout(
     .bind(Json(&layout))
     .fetch_one(&state.db_pool)
     .await?;
+
+    Event::new("settings.dashboard_layout").ok();
+
     Ok(saved.0)
 }
 

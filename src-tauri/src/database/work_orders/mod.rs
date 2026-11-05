@@ -22,6 +22,7 @@ use crate::{
         workers,
     },
     error::{AppError, AppResult},
+    logging::Event,
 };
 
 /// Item table bulk operation targets, so table names stay
@@ -760,9 +761,14 @@ pub async fn create_work_order(
 
     // An order created directly as supplied (the payload allows it) still has
     // to leave a VAT record behind.
-    vat::record_supply(state.inner(), &mut tx, &work_order).await?;
+    Event::new("work_order.create")
+        .id(&work_order.id)
+        .on_error(vat::record_supply(state.inner(), &mut tx, &work_order).await)?;
 
     tx.commit().await?;
+
+    Event::new("work_order.create").id(&work_order.id).ok();
+
     Ok(work_order)
 }
 
@@ -938,6 +944,11 @@ pub async fn create_warranty_work_order(
     .await?;
 
     tx.commit().await?;
+
+    Event::new("work_order.create_warranty")
+        .id(&work_order.id)
+        .ok();
+
     Ok(work_order)
 }
 
@@ -1089,10 +1100,15 @@ pub async fn update_work_order(
     .await?;
 
     if live_vat.is_none() {
-        vat::record_supply(state.inner(), &mut tx, &work_order).await?;
+        Event::new("work_order.update")
+            .id(&work_order.id)
+            .on_error(vat::record_supply(state.inner(), &mut tx, &work_order).await)?;
     }
 
     tx.commit().await?;
+
+    Event::new("work_order.update").id(&work_order.id).ok();
+
     Ok(work_order)
 }
 
@@ -1112,10 +1128,12 @@ pub async fn delete_work_order(state: State<'_, crate::AppState>, id: String) ->
         )));
     }
 
-    vat::ensure_vat_unlocked(&mut *tx, &id).await?;
+    Event::new("work_order.delete")
+        .id(&id)
+        .on_error(vat::ensure_vat_unlocked(&mut *tx, &id).await)?;
 
     let result = sqlx::query("DELETE FROM work_orders WHERE id = $1")
-        .bind(id)
+        .bind(&id)
         .execute(&mut *tx)
         .await?;
     if result.rows_affected() == 0 {
@@ -1123,6 +1141,9 @@ pub async fn delete_work_order(state: State<'_, crate::AppState>, id: String) ->
     }
 
     tx.commit().await?;
+
+    Event::new("work_order.delete").id(&id).ok();
+
     Ok(())
 }
 
@@ -1182,12 +1203,15 @@ pub async fn archive_work_order(state: State<'_, crate::AppState>, id: String) -
           AND archived_at IS NULL
         "#,
     )
-    .bind(id)
+    .bind(&id)
     .execute(&state.db_pool)
     .await?;
     if result.rows_affected() == 0 {
         return Err(AppError::work_order_not_found());
     }
+
+    Event::new("work_order.archive").id(&id).ok();
+
     Ok(())
 }
 
@@ -1195,12 +1219,15 @@ pub async fn archive_work_order(state: State<'_, crate::AppState>, id: String) -
 #[specta::specta]
 pub async fn restore_work_order(state: State<'_, crate::AppState>, id: String) -> AppResult<()> {
     let result = sqlx::query("UPDATE work_orders SET archived_at = NULL WHERE id = $1")
-        .bind(id)
+        .bind(&id)
         .execute(&state.db_pool)
         .await?;
     if result.rows_affected() == 0 {
         return Err(AppError::work_order_not_found());
     }
+
+    Event::new("work_order.restore").id(&id).ok();
+
     Ok(())
 }
 
@@ -1593,6 +1620,9 @@ pub async fn create_labor_item(
     .await?;
 
     tx.commit().await?;
+
+    Event::new("labor_item.create").id(labor_item.id).ok();
+
     Ok(labor_item)
 }
 
@@ -1656,6 +1686,9 @@ pub async fn update_labor_item(
     .await?;
 
     tx.commit().await?;
+
+    Event::new("labor_item.update").id(labor_item.id).ok();
+
     Ok(labor_item)
 }
 
@@ -1676,6 +1709,9 @@ pub async fn delete_labor_item(state: State<'_, crate::AppState>, id: i32) -> Ap
     }
 
     tx.commit().await?;
+
+    Event::new("labor_item.delete").id(id).ok();
+
     Ok(())
 }
 
@@ -1698,6 +1734,11 @@ pub async fn delete_labor_items(state: State<'_, crate::AppState>, ids: Vec<i32>
         }
     }
     tx.commit().await?;
+
+    Event::new("labor_item.delete_many")
+        .field("count", ids.len())
+        .ok();
+
     Ok(())
 }
 
@@ -1963,6 +2004,9 @@ pub async fn create_part_item(
     vat::record_part_credit(&mut tx, &part_item).await?;
 
     tx.commit().await?;
+
+    Event::new("part_item.create").id(part_item.id).ok();
+
     Ok(part_item)
 }
 
@@ -2114,6 +2158,9 @@ pub async fn update_part_item(
     }
 
     tx.commit().await?;
+
+    Event::new("part_item.update").id(part_item.id).ok();
+
     Ok(part_item)
 }
 
@@ -2179,6 +2226,9 @@ pub async fn delete_part_item(state: State<'_, crate::AppState>, id: i32) -> App
     }
 
     tx.commit().await?;
+
+    Event::new("part_item.delete").id(id).ok();
+
     Ok(())
 }
 
@@ -2202,6 +2252,11 @@ pub async fn delete_part_items(state: State<'_, crate::AppState>, ids: Vec<i32>)
         }
     }
     tx.commit().await?;
+
+    Event::new("part_item.delete_many")
+        .field("count", ids.len())
+        .ok();
+
     Ok(())
 }
 
@@ -2631,6 +2686,12 @@ pub async fn update_part_items_status(
         }
     }
     tx.commit().await?;
+
+    Event::new("part_item.status")
+        .field("count", ids.len())
+        .field("status", format!("{status:?}"))
+        .ok();
+
     Ok(())
 }
 
@@ -2662,6 +2723,13 @@ pub async fn update_labor_items_discount(
         }
     }
     tx.commit().await?;
+
+    Event::new("labor_item.discount")
+        .field("count", ids.len())
+        .field("type", format!("{discount_type:?}"))
+        .field("value", discount_value)
+        .ok();
+
     Ok(())
 }
 
@@ -2729,6 +2797,11 @@ pub async fn update_part_items_supplier(
         }
     }
     tx.commit().await?;
+
+    Event::new("part_item.supplier")
+        .field("count", ids.len())
+        .ok();
+
     Ok(())
 }
 
@@ -2771,6 +2844,13 @@ pub async fn update_part_items_discount(
         }
     }
     tx.commit().await?;
+
+    Event::new("part_item.discount")
+        .field("count", ids.len())
+        .field("type", format!("{discount_type:?}"))
+        .field("value", discount_value)
+        .ok();
+
     Ok(())
 }
 
@@ -2816,6 +2896,13 @@ async fn reorder_items(
     }
 
     tx.commit().await?;
+
+    Event::new("work_order.items_reorder")
+        .id(work_order_id)
+        .field("table", table_name)
+        .field("count", ordered_ids.len())
+        .ok();
+
     Ok(())
 }
 

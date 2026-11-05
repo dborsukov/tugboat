@@ -7,6 +7,7 @@ use tauri::State;
 use crate::{
     database::utils::begin_immediate,
     error::{AppError, AppResult},
+    logging::Event,
 };
 
 #[tauri::command]
@@ -95,6 +96,9 @@ pub async fn create_service(
     .bind(payload.labor_hours.to_string())
     .fetch_one(&state.db_pool)
     .await?;
+
+    Event::new("service.create").id(service.id).ok();
+
     Ok(service)
 }
 
@@ -138,6 +142,9 @@ pub async fn update_service(
     .await?;
 
     tx.commit().await?;
+
+    Event::new("service.update").id(id).ok();
+
     Ok(service)
 }
 
@@ -151,6 +158,9 @@ pub async fn delete_service(state: State<'_, crate::AppState>, id: i32) -> AppRe
     if result.rows_affected() == 0 {
         return Err(AppError::service_not_found());
     }
+
+    Event::new("service.delete").id(id).ok();
+
     Ok(())
 }
 
@@ -172,6 +182,11 @@ pub async fn delete_services(state: State<'_, crate::AppState>, ids: Vec<i32>) -
         }
     }
     tx.commit().await?;
+
+    Event::new("service.delete_many")
+        .field("count", ids.len())
+        .ok();
+
     Ok(())
 }
 
@@ -191,6 +206,9 @@ pub async fn archive_service(state: State<'_, crate::AppState>, id: i32) -> AppR
     if result.rows_affected() == 0 {
         return Err(AppError::service_not_found());
     }
+
+    Event::new("service.archive").id(id).ok();
+
     Ok(())
 }
 
@@ -218,6 +236,11 @@ pub async fn archive_services(state: State<'_, crate::AppState>, ids: Vec<i32>) 
         }
     }
     tx.commit().await?;
+
+    Event::new("service.archive_many")
+        .field("count", ids.len())
+        .ok();
+
     Ok(())
 }
 
@@ -231,6 +254,9 @@ pub async fn restore_service(state: State<'_, crate::AppState>, id: i32) -> AppR
     if result.rows_affected() == 0 {
         return Err(AppError::service_not_found());
     }
+
+    Event::new("service.restore").id(id).ok();
+
     Ok(())
 }
 
@@ -252,6 +278,11 @@ pub async fn restore_services(state: State<'_, crate::AppState>, ids: Vec<i32>) 
         }
     }
     tx.commit().await?;
+
+    Event::new("service.restore_many")
+        .field("count", ids.len())
+        .ok();
+
     Ok(())
 }
 

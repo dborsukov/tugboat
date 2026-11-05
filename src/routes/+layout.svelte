@@ -3,6 +3,7 @@
 
   import {
     MutationCache,
+    QueryCache,
     QueryClient,
     QueryClientProvider,
   } from "@tanstack/svelte-query";
@@ -27,13 +28,30 @@
   import UiScaleApplier from "$lib/components/ui-scale-applier.svelte";
 
   import { commands } from "$lib/bindings";
+  import { logAppEvent, logCommandFailure } from "$lib/log";
   import { recentItemsVersion } from "$lib/recent-items";
   import { navHistory } from "$lib/states/nav-history.svelte";
   import { settingsState } from "$lib/states/settings.svelte";
 
   let { children } = $props();
   const queryClient = new QueryClient({
+    // Every read and write goes through these two caches, so this is the one
+    // place that can log a rejected command together with its name.
+    queryCache: new QueryCache({
+      onError: (error, query) =>
+        logCommandFailure(
+          "query",
+          error,
+          `key=${JSON.stringify(query.queryKey)}`,
+        ),
+    }),
     mutationCache: new MutationCache({
+      onError: (error, _variables, _context, mutation) =>
+        logCommandFailure(
+          (mutation.options.mutationKey as string[] | undefined)?.join(".") ??
+            "mutation",
+          error,
+        ),
       // tells persistent sidebar to rebuild recents
       onSuccess: () => recentItemsVersion.update((version) => version + 1),
     }),
@@ -83,7 +101,14 @@
 
     const deadline = Date.now() + BOOT_LOADER_TIMEOUT_MS;
     const waitForSettings = () => {
-      if (settingsState.settings !== null || Date.now() > deadline) {
+      if (settingsState.settings !== null) {
+        void startHandOff();
+        return;
+      }
+      if (Date.now() > deadline) {
+        logAppEvent("boot.settings_timeout", {
+          waited_ms: BOOT_LOADER_TIMEOUT_MS,
+        });
         void startHandOff();
         return;
       }
@@ -105,8 +130,10 @@
       // splash screen in one go. The restore has to happen after the window is
       // visible, so it cannot be done from here directly.
       await commands.revealWindow();
-    } catch {
-      // Skip. App still works if the hand-off fails.
+    } catch (error) {
+      // Skip. App still works if the hand-off fails, but if it does, the window
+      // can stay behind the splash screen, so leave a trace.
+      logCommandFailure("boot.revealWindow", error);
     }
   }
 </script>

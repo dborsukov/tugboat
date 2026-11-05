@@ -19,6 +19,7 @@ use crate::{
         utils::begin_immediate,
     },
     error::{AppError, AppResult},
+    logging::Event,
 };
 
 #[tauri::command]
@@ -355,6 +356,9 @@ pub async fn create_car(
     .await?;
 
     tx.commit().await?;
+
+    Event::new("car.create").id(car.id).ok();
+
     Ok(car)
 }
 
@@ -434,6 +438,9 @@ pub async fn update_car(
     .await?;
 
     tx.commit().await?;
+
+    Event::new("car.update").id(id).ok();
+
     Ok(car)
 }
 
@@ -447,6 +454,9 @@ pub async fn delete_car(state: State<'_, crate::AppState>, id: i32) -> AppResult
     if result.rows_affected() == 0 {
         return Err(AppError::car_not_found());
     }
+
+    Event::new("car.delete").id(id).ok();
+
     Ok(())
 }
 
@@ -534,6 +544,9 @@ pub async fn archive_car(state: State<'_, crate::AppState>, id: i32) -> AppResul
     .await?;
 
     tx.commit().await?;
+
+    Event::new("car.archive").id(id).ok();
+
     Ok(())
 }
 
@@ -557,6 +570,9 @@ pub async fn restore_car(state: State<'_, crate::AppState>, id: i32) -> AppResul
         .await?;
 
     tx.commit().await?;
+
+    Event::new("car.restore").id(id).ok();
+
     Ok(())
 }
 
