@@ -63,12 +63,17 @@
         position: nativeForm.data.position.trim() || null,
         isActive: nativeForm.data.isActive,
       };
-      if (isEdit && workerId) {
-        await updateWorkerMutation
-          .mutateAsync({ id: workerId, payload })
-          .catch(() => {});
-      } else {
-        await createWorkerMutation.mutateAsync(payload).catch(() => {});
+      submitError = null;
+      try {
+        if (isEdit && workerId) {
+          await updateWorkerMutation.mutateAsync({ id: workerId, payload });
+        } else {
+          await createWorkerMutation.mutateAsync(payload);
+        }
+      } catch (error) {
+        submitError =
+          error instanceof Error ? error.message : "Не вдалося зберегти";
+        return;
       }
       cancel();
       open = false;
@@ -82,6 +87,7 @@
 
   let loadedKey = $state<string | null>(null);
   let baseline = $state<string | null>(null);
+  let submitError = $state<string | null>(null);
   const dirty = $derived(
     baseline !== null && JSON.stringify($formData) !== baseline,
   );
@@ -94,6 +100,7 @@
     if (!open) {
       loadedKey = null;
       baseline = null;
+      submitError = null;
       return;
     }
     const key = isEdit ? String(workerId) : "new";
@@ -136,11 +143,13 @@
     : "Внесіть дані нового працівника"}
   submitLabel={isEdit ? "Зберегти зміни" : "Створити"}
   submitting={$submitting}
+  error={submitError}
   enhanceAction={enhance}
   onCancel={() => {
     form.reset();
     baseline = null;
     loadedKey = null;
+    submitError = null;
     open = false;
   }}
 >

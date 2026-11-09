@@ -221,9 +221,10 @@
       vatScheme: vatRate ? data.vatScheme : null,
     };
 
-    if (isEdit && laborItem) {
-      await updatLaborItemMutation
-        .mutateAsync({
+    submitError = null;
+    try {
+      if (isEdit && laborItem) {
+        await updatLaborItemMutation.mutateAsync({
           id: laborItem.id,
           payload: {
             serviceId: null,
@@ -234,11 +235,9 @@
             ...vatPayload,
             isFree: data.isFree,
           },
-        })
-        .catch(() => {});
-    } else {
-      await createLaborItemMutation
-        .mutateAsync({
+        });
+      } else {
+        await createLaborItemMutation.mutateAsync({
           workOrderId: workOrderId!,
           serviceId: null,
           code: data.code,
@@ -247,8 +246,12 @@
           ...discountPayload,
           ...vatPayload,
           isFree: data.isFree,
-        })
-        .catch(() => {});
+        });
+      }
+    } catch (error) {
+      submitError =
+        error instanceof Error ? error.message : "Не вдалося зберегти";
+      return;
     }
     // Prevent superforms from re-applying the submitted data to the form
     // after the handler, which would overwrite the reset below and leave
@@ -279,6 +282,7 @@
 
   let baseline = $state<string | null>(null);
   let loadedKey = $state<string | null>(null);
+  let submitError = $state<string | null>(null);
   const dirty = $derived(
     baseline !== null && JSON.stringify($formData) !== baseline,
   );
@@ -291,6 +295,7 @@
     if (!open) {
       baseline = null;
       loadedKey = null;
+      submitError = null;
       return;
     }
     const key = isEdit ? String(laborItemId) : "new";
@@ -410,12 +415,14 @@
   description={isEdit ? "Змініть дані сервісу" : "Внесіть дані нового сервісу"}
   submitLabel={isEdit ? "Зберегти зміни" : "Створити"}
   submitting={$submitting}
+  error={submitError}
   enhanceAction={enhance}
   overlay={priceConfirmOverlay}
   onCancel={() => {
     form.reset();
     baseline = null;
     loadedKey = null;
+    submitError = null;
     open = false;
   }}
 >

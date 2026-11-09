@@ -32,7 +32,7 @@
   import { partStatusStylesRecord } from "./[workorderId]/part-status";
   import { paymentMethodLabels } from "./payment-method";
   import {
-    createUpdatePartItemMutation,
+    createUpdatePartItemsStatusMutation,
     createUpdateWorkOrderMutation,
   } from "./queries";
   import {
@@ -62,12 +62,14 @@
 
   const queryClient = useQueryClient();
   const updateWorkOrderMutation = createUpdateWorkOrderMutation(queryClient);
-  const updatePartItemMutation = createUpdatePartItemMutation(queryClient);
+  const updatePartItemsStatusMutation =
+    createUpdatePartItemsStatusMutation(queryClient);
 
   let dialogOpen = $state(false);
 
   const isProcessing = $derived(
-    updateWorkOrderMutation.isPending || updatePartItemMutation.isPending,
+    updateWorkOrderMutation.isPending ||
+      updatePartItemsStatusMutation.isPending,
   );
 
   // svelte-ignore state_referenced_locally
@@ -152,39 +154,10 @@
     const affected = includedParts;
 
     if (statusEffect?.parts && affected.length > 0) {
-      // Sequential on purpose to get reliable .isPending
-      // TODO: add dedicated bulk update mutation for parts
-      for (const part of affected) {
-        await updatePartItemMutation.mutateAsync({
-          id: part.id,
-          payload: {
-            status: statusEffect.parts.to,
-            providedBy: part.providedBy,
-            code: part.code,
-            name: part.name,
-            quantity: part.quantity,
-            unitType: part.unitType,
-            unitKey: part.unitKey,
-            baseCost: part.baseCost,
-            markup: part.markup,
-            discountType: part.discountType,
-            discountValue: part.discountValue,
-            isFree: part.isFree,
-            vatRate: part.vatRate,
-            vatScheme: part.vatScheme,
-            purchaseVatRate: part.purchaseVatRate,
-            purchasePriceIncludesVat: part.purchasePriceIncludesVat,
-            purchaseScheme: part.purchaseScheme,
-            supplierName: part.supplierName,
-            supplierCode: part.supplierCode,
-            supplier: part.supplier,
-            supplierOrderId: part.supplierOrderId,
-            invoiceNumber: part.invoiceNumber,
-            invoiceDate: part.invoiceDate,
-            vatCredited: part.vatCredited,
-          },
-        });
-      }
+      await updatePartItemsStatusMutation.mutateAsync({
+        ids: affected.map((part) => part.id),
+        status: statusEffect.parts.to,
+      });
     }
 
     const fieldUpdates = statusEffect?.workOrderFields?.(workOrder) ?? {};

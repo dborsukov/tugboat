@@ -444,13 +444,12 @@
       vatCredited: data.vatCredited,
     };
 
-    if (isEdit && partItemId) {
-      await updatePartItemMutation
-        .mutateAsync({ id: partItemId, payload })
-        .catch(() => {});
-    } else {
-      await createPartItemMutation
-        .mutateAsync({
+    submitError = null;
+    try {
+      if (isEdit && partItemId) {
+        await updatePartItemMutation.mutateAsync({ id: partItemId, payload });
+      } else {
+        await createPartItemMutation.mutateAsync({
           workOrderId: workOrderId!,
           status: data.status as PartStatus,
           providedBy: data.providedBy as ProvidedBy,
@@ -475,8 +474,12 @@
           invoiceNumber: data.invoiceNumber.trim() || null,
           invoiceDate: data.invoiceDate || null,
           vatCredited: data.vatCredited,
-        })
-        .catch(() => {});
+        });
+      }
+    } catch (error) {
+      submitError =
+        error instanceof Error ? error.message : "Не вдалося зберегти";
+      return;
     }
     // Prevent superforms from re-applying the submitted data to the form
     // after the handler, which would overwrite the reset below and leave
@@ -635,6 +638,7 @@
 
   let baseline = $state<string | null>(null);
   let loadedKey = $state<string | null>(null);
+  let submitError = $state<string | null>(null);
   const dirty = $derived(
     baseline !== null && JSON.stringify($formData) !== baseline,
   );
@@ -647,6 +651,7 @@
     if (!open) {
       baseline = null;
       loadedKey = null;
+      submitError = null;
       return;
     }
     const key = isEdit ? String(partItemId) : "new";
@@ -830,12 +835,14 @@
     : "Внесіть дані нової запчастини"}
   submitLabel={isEdit ? "Зберегти зміни" : "Створити"}
   submitting={$submitting}
+  error={submitError}
   enhanceAction={enhance}
   overlay={sheetOverlay}
   onCancel={() => {
     form.reset();
     baseline = null;
     loadedKey = null;
+    submitError = null;
     open = false;
   }}
 >

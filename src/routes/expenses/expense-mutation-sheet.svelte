@@ -147,12 +147,17 @@
 
       const payload = expenseToPayload(nativeForm.data);
 
-      if (isEdit && expenseId) {
-        await updateExpenseMutation
-          .mutateAsync({ id: expenseId, payload })
-          .catch(() => {});
-      } else {
-        await createExpenseMutation.mutateAsync(payload).catch(() => {});
+      submitError = null;
+      try {
+        if (isEdit && expenseId) {
+          await updateExpenseMutation.mutateAsync({ id: expenseId, payload });
+        } else {
+          await createExpenseMutation.mutateAsync(payload);
+        }
+      } catch (error) {
+        submitError =
+          error instanceof Error ? error.message : "Не вдалося зберегти";
+        return;
       }
       // Prevent superforms from re-applying the submitted data to the form
       // after this handler, which would overwrite the reset below and leave
@@ -169,6 +174,7 @@
 
   let baseline = $state<string | null>(null);
   let loadedKey = $state<string | null>(null);
+  let submitError = $state<string | null>(null);
   const dirty = $derived(
     baseline !== null && JSON.stringify($formData) !== baseline,
   );
@@ -181,6 +187,7 @@
     if (!open) {
       baseline = null;
       loadedKey = null;
+      submitError = null;
       return;
     }
     const key = isEdit ? String(expenseId) : "new";
@@ -222,11 +229,13 @@
   description={isEdit ? "Змініть дані витрати" : "Внесіть дані нової витрати"}
   submitLabel={isEdit ? "Зберегти зміни" : "Створити"}
   submitting={$submitting}
+  error={submitError}
   enhanceAction={enhance}
   onCancel={() => {
     form.reset();
     baseline = null;
     loadedKey = null;
+    submitError = null;
     open = false;
   }}
 >

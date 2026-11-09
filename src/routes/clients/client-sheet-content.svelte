@@ -442,6 +442,13 @@
   let notesOpen = $state(false);
   let baseline = $state<string | null>(null);
   let loadedKey = $state<string | null>(null);
+  let submitError = $state<string | null>(null);
+
+  function captureSubmitError(error: unknown) {
+    submitError =
+      error instanceof Error ? error.message : "Не вдалося зберегти";
+    return null;
+  }
 
   function markBaseline() {
     baseline = JSON.stringify($formData);
@@ -462,12 +469,15 @@
       if (!nativeForm.valid) return;
 
       const payload = buildPayload(nativeForm.data);
+      submitError = null;
       const result =
         isEdit && clientId != null
           ? await updateClientMutation
               .mutateAsync({ id: clientId, payload })
-              .catch(() => null)
-          : await createClientMutation.mutateAsync(payload).catch(() => null);
+              .catch(captureSubmitError)
+          : await createClientMutation
+              .mutateAsync(payload)
+              .catch(captureSubmitError);
 
       if (!result) return;
       cancel();
@@ -496,6 +506,7 @@
   $effect(() => {
     if (!active) {
       loadedKey = null;
+      submitError = null;
       return;
     }
 
@@ -551,6 +562,7 @@
     form.reset();
     baseline = null;
     loadedKey = null;
+    submitError = null;
     onCancel();
   }
 </script>
@@ -621,6 +633,7 @@
   submitLabel={isEdit ? "Зберегти" : "Створити"}
   shortcutLabel={isEdit ? "зберегти" : "створити"}
   submitting={$submitting}
+  error={submitError}
   enhanceAction={enhance}
   onRequestClose={handleCancel}
   {onBack}

@@ -12,6 +12,7 @@
     description,
     submitting,
     submitLabel,
+    error = null,
     onCancel,
     enhanceAction,
     dirty = false,
@@ -26,6 +27,8 @@
     description: string;
     submitting: boolean;
     submitLabel: string;
+    /** Message from the failed save, rendered above the footer. */
+    error?: string | null;
     onCancel: () => void;
     enhanceAction: Action<HTMLFormElement>;
     /** True when the form differs from its initial snapshot. */
@@ -52,6 +55,7 @@
     subtitle={description}
     {submitLabel}
     {submitting}
+    {error}
     {dirty}
     {enhanceAction}
     {shortcutLabel}

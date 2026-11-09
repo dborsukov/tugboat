@@ -267,12 +267,15 @@
         notes: nativeForm.data.notes?.trim() || null,
       };
 
+      submitError = null;
       const result =
         isEdit && carId
           ? await updateCarMutation
               .mutateAsync({ id: carId, payload })
-              .catch(() => null)
-          : await createCarMutation.mutateAsync(payload).catch(() => null);
+              .catch(captureSubmitError)
+          : await createCarMutation
+              .mutateAsync(payload)
+              .catch(captureSubmitError);
 
       if (!result) {
         addAnother = false;
@@ -361,6 +364,13 @@
   let baseline = $state<string | null>(null);
   let loadedKey = $state<string | null>(null);
   let addAnother = $state(false);
+  let submitError = $state<string | null>(null);
+
+  function captureSubmitError(error: unknown) {
+    submitError =
+      error instanceof Error ? error.message : "Не вдалося зберегти";
+    return null;
+  }
 
   const dirty = $derived(
     baseline !== null && JSON.stringify($formData) !== baseline,
@@ -410,6 +420,7 @@
   $effect(() => {
     if (!active) {
       loadedKey = null;
+      submitError = null;
       return;
     }
 
@@ -464,6 +475,7 @@
     form.reset();
     baseline = null;
     loadedKey = null;
+    submitError = null;
     onCancel();
   }
 
@@ -504,6 +516,7 @@
   submitLabel={isEdit ? "Зберегти" : "Створити"}
   shortcutLabel={isEdit ? "зберегти" : "створити"}
   submitting={$submitting}
+  error={submitError}
   enhanceAction={enhance}
   onRequestClose={handleCancel}
   {onBack}

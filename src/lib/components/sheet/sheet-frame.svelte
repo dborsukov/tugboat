@@ -23,6 +23,7 @@
     submitLabel,
     submitting = false,
     submitDisabled = false,
+    error = null,
     dirty = false,
     active = true,
     onRequestClose,
@@ -42,6 +43,11 @@
     submitLabel: string;
     submitting?: boolean;
     submitDisabled?: boolean;
+    /**
+     * A message from the failed save.
+     * Shown above the footer so it stays visible when the body is scrolled.
+     */
+    error?: string | null;
     /** When true, leaving asks before throwing the form away. */
     dirty?: boolean;
     /** Only the sheet currently in the foreground listens to Esc / Cmd+Enter. */
@@ -220,6 +226,15 @@
   >
     {@render children()}
   </form>
+
+  {#if error}
+    <div
+      role="alert"
+      class="shrink-0 border-t border-destructive/30 bg-destructive/10 px-6 py-2.5 text-[13px] leading-snug text-destructive"
+    >
+      {error}
+    </div>
+  {/if}
 
   <footer class="shrink-0 border-t border-border px-6 py-3.5">
     <div class="flex items-center gap-2">

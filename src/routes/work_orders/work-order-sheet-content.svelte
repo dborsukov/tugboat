@@ -356,6 +356,13 @@
 
   let baseline = $state<string | null>(null);
   let loadedKey = $state<string | null>(null);
+  let submitError = $state<string | null>(null);
+
+  function captureSubmitError(error: unknown) {
+    submitError =
+      error instanceof Error ? error.message : "Не вдалося зберегти";
+    return null;
+  }
   let appliedCarId = $state<number | null>(null);
   let hasSelectedCar = $state(false);
   let pickerOpen = $state(false);
@@ -418,6 +425,7 @@
     if (!isEdit && clientsQuery.isLoading) return;
 
     loadedKey = key;
+    submitError = null;
     partiesOpen = false;
     carSelectionDirty = false;
     priceConfirmOpen = false;
@@ -566,6 +574,8 @@
       return;
     }
 
+    submitError = null;
+
     const laborCostPayload = laborCostToPayload(
       data.laborCostType,
       data.laborCost,
@@ -616,7 +626,7 @@
               paidAt: workOrderDetails!.workOrder.paidAt,
               paymentMethod: workOrderDetails!.workOrder.paymentMethod,
             })
-            .catch(() => null)
+            .catch(captureSubmitError)
         : await createWorkOrderMutation
             .mutateAsync({
               carId: selectedCarId,
@@ -643,7 +653,7 @@
               ...laborCostPayload,
               ...discountPayload,
             })
-            .catch(() => null);
+            .catch(captureSubmitError);
 
     if (!result) return;
 
@@ -673,6 +683,7 @@
     form.reset();
     baseline = null;
     loadedKey = null;
+    submitError = null;
     onCancel();
   }
 
@@ -700,6 +711,7 @@
     shortcutLabel={isEdit ? "зберегти" : "створити"}
     submitting={$submitting}
     submitDisabled={isLocked || selectedCarDetails == null}
+    error={submitError}
     enhanceAction={enhance}
     onRequestClose={handleCancel}
     {onBack}

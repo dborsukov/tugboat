@@ -99,12 +99,17 @@
         name: nativeForm.data.name,
         ...laborPricePayload,
       };
-      if (isEdit && serviceId) {
-        await updateServiceMutation
-          .mutateAsync({ id: serviceId, payload })
-          .catch(() => {});
-      } else {
-        await createServiceMutation.mutateAsync(payload).catch(() => {});
+      submitError = null;
+      try {
+        if (isEdit && serviceId) {
+          await updateServiceMutation.mutateAsync({ id: serviceId, payload });
+        } else {
+          await createServiceMutation.mutateAsync(payload);
+        }
+      } catch (error) {
+        submitError =
+          error instanceof Error ? error.message : "Не вдалося зберегти";
+        return;
       }
       cancel();
       open = false;
@@ -118,6 +123,7 @@
 
   let loadedKey = $state<string | null>(null);
   let baseline = $state<string | null>(null);
+  let submitError = $state<string | null>(null);
   const dirty = $derived(
     baseline !== null && JSON.stringify($formData) !== baseline,
   );
@@ -130,6 +136,7 @@
     if (!open) {
       loadedKey = null;
       baseline = null;
+      submitError = null;
       return;
     }
     const key = isEdit ? String(serviceId) : "new";
@@ -169,11 +176,13 @@
   description={isEdit ? "Змініть дані сервісу" : "Внесіть дані нового сервісу"}
   submitLabel={isEdit ? "Зберегти зміни" : "Створити"}
   submitting={$submitting}
+  error={submitError}
   enhanceAction={enhance}
   onCancel={() => {
     form.reset();
     baseline = null;
     loadedKey = null;
+    submitError = null;
     open = false;
   }}
 >
