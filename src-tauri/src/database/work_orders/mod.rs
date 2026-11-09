@@ -1,3 +1,4 @@
+pub mod amounts;
 pub mod dtos;
 pub mod pricing;
 pub mod structs;
@@ -8,7 +9,7 @@ use std::collections::HashMap;
 use chrono::Utc;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use sqlx::{Executor, QueryBuilder, Sqlite};
+use sqlx::{Executor, Pool, QueryBuilder, Sqlite};
 use structs::*;
 use tauri::State;
 
@@ -16,11 +17,12 @@ use crate::{
     database::{
         cars, clients,
         settings::{fetch_settings_from_pool, structs::decode_company_info},
-        utils::begin_immediate,
+        utils::{begin_immediate, optional_text, required_text},
         vat::{self, structs::VatScheme},
         work_orders::dtos::{LaborItemDto, PartItemDto, WorkOrderDetailsDto},
         workers,
     },
+    documents,
     error::{AppError, AppResult},
     logging::Event,
 };
@@ -628,22 +630,93 @@ where
     Ok(())
 }
 
+const MAX_DRIVER_NAME_LENGTH: usize = 100;
+const MAX_DRIVER_PHONE_LENGTH: usize = 40;
+const MAX_DESCRIPTION_LENGTH: usize = 2000;
+const MAX_NOTES_LENGTH: usize = 2000;
+const MAX_CONDITION_REPORT_LENGTH: usize = 4000;
+const MAX_ITEM_NAME_LENGTH: usize = 200;
+const MAX_ITEM_CODE_LENGTH: usize = 32;
+const MAX_SUPPLIER_NAME_LENGTH: usize = 200;
+const MAX_SUPPLIER_CODE_LENGTH: usize = 20;
+const MAX_INVOICE_NUMBER_LENGTH: usize = 60;
+const MAX_SUPPLIER_ORDER_ID_LENGTH: usize = 120;
+
+struct WorkOrderText {
+    driver_surname: Option<String>,
+    driver_first_name: Option<String>,
+    driver_patronymic: Option<String>,
+    driver_phone: Option<String>,
+    description: Option<String>,
+    notes: Option<String>,
+    condition_report: Option<String>,
+}
+
+impl WorkOrderText {
+    #[allow(clippy::too_many_arguments)]
+    fn clean(
+        driver_surname: Option<String>,
+        driver_first_name: Option<String>,
+        driver_patronymic: Option<String>,
+        driver_phone: Option<String>,
+        description: Option<String>,
+        notes: Option<String>,
+        condition_report: Option<String>,
+    ) -> AppResult<Self> {
+        Ok(Self {
+            driver_surname: optional_text(
+                driver_surname,
+                MAX_DRIVER_NAME_LENGTH,
+                "Прізвище водія",
+            )?,
+            driver_first_name: optional_text(
+                driver_first_name,
+                MAX_DRIVER_NAME_LENGTH,
+                "Ім'я водія",
+            )?,
+            driver_patronymic: optional_text(
+                driver_patronymic,
+                MAX_DRIVER_NAME_LENGTH,
+                "По батькові водія",
+            )?,
+            driver_phone: optional_text(driver_phone, MAX_DRIVER_PHONE_LENGTH, "Телефон водія")?,
+            description: optional_text(description, MAX_DESCRIPTION_LENGTH, "Опис робіт")?,
+            notes: optional_text(notes, MAX_NOTES_LENGTH, "Нотатки")?,
+            condition_report: optional_text(
+                condition_report,
+                MAX_CONDITION_REPORT_LENGTH,
+                "Стан автомобіля",
+            )?,
+        })
+    }
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn create_work_order(
     state: State<'_, crate::AppState>,
     payload: CreateWorkOrderPayload,
 ) -> AppResult<WorkOrder> {
+    let text = WorkOrderText::clean(
+        payload.driver_surname,
+        payload.driver_first_name,
+        payload.driver_patronymic,
+        payload.driver_phone,
+        payload.description,
+        payload.notes,
+        payload.condition_report,
+    )?;
+
     let mut tx = begin_immediate(&state.db_pool).await?;
 
     cars::ensure_car_active(&mut *tx, payload.car_id as i32).await?;
     ensure_driver_info_allowed(
         &mut *tx,
         payload.car_id,
-        &payload.driver_surname,
-        &payload.driver_first_name,
-        &payload.driver_patronymic,
-        &payload.driver_phone,
+        &text.driver_surname,
+        &text.driver_first_name,
+        &text.driver_patronymic,
+        &text.driver_phone,
     )
     .await?;
     if let Some(worker_id) = payload.worker_id {
@@ -659,6 +732,15 @@ pub async fn create_work_order(
     validate_tax_invoice(&payload.tax_invoice_number, &payload.tax_invoice_date)?;
     let exemption_code = clean_exemption_code(payload.exemption_code.clone());
     validate_exemption_code(&exemption_code, vat_scheme)?;
+
+    let rate = amounts::amount(payload.rate, "Тариф")?;
+    let labor_cost_value = amounts::labor_cost(payload.labor_cost_type, payload.labor_cost_value)?;
+    let discount_value = amounts::discount(payload.discount_type, payload.discount_value)?;
+    let odometer_in = amounts::odometer(payload.odometer_in, "Пробіг")?;
+    let odometer_out = match payload.odometer_out {
+        Some(value) => Some(amounts::odometer(value, "Пробіг")?),
+        None => None,
+    };
 
     let id = generate_work_order_id(&mut tx).await?;
 
@@ -732,21 +814,21 @@ pub async fn create_work_order(
     )
     .bind(id)
     .bind(payload.car_id)
-    .bind(payload.odometer_in)
-    .bind(payload.odometer_out)
-    .bind(payload.driver_surname)
-    .bind(payload.driver_first_name)
-    .bind(payload.driver_patronymic)
-    .bind(payload.driver_phone)
-    .bind(payload.description)
-    .bind(payload.notes)
-    .bind(payload.condition_report)
+    .bind(odometer_in)
+    .bind(odometer_out)
+    .bind(text.driver_surname)
+    .bind(text.driver_first_name)
+    .bind(text.driver_patronymic)
+    .bind(text.driver_phone)
+    .bind(text.description)
+    .bind(text.notes)
+    .bind(text.condition_report)
     .bind(payload.status)
-    .bind(payload.rate.to_string())
+    .bind(rate.to_string())
     .bind(payload.labor_cost_type)
-    .bind(payload.labor_cost_value.to_string())
+    .bind(labor_cost_value.to_string())
     .bind(payload.discount_type)
-    .bind(payload.discount_value.to_string())
+    .bind(discount_value.to_string())
     .bind(vat_rate.to_string())
     .bind(payload.prices_include_vat)
     .bind(payload.payer_client_id)
@@ -781,6 +863,7 @@ pub async fn create_warranty_work_order(
     description: Option<String>,
     notes: Option<String>,
 ) -> AppResult<WorkOrder> {
+    let odometer_in = amounts::odometer(odometer_in, "Пробіг")?;
     let mut tx = begin_immediate(&state.db_pool).await?;
 
     let source: WorkOrder = sqlx::query_as(
@@ -958,6 +1041,17 @@ pub async fn update_work_order(
     state: State<'_, crate::AppState>,
     payload: UpdateWorkOrderPayload,
 ) -> AppResult<WorkOrder> {
+    // Cloned rather than moved: the VAT-lock check below still reads `payload`.
+    let text = WorkOrderText::clean(
+        payload.driver_surname.clone(),
+        payload.driver_first_name.clone(),
+        payload.driver_patronymic.clone(),
+        payload.driver_phone.clone(),
+        payload.description.clone(),
+        payload.notes.clone(),
+        payload.condition_report.clone(),
+    )?;
+
     let mut tx = begin_immediate(&state.db_pool).await?;
 
     let current = fetch_work_order_in_tx(&mut *tx, &payload.id).await?;
@@ -982,14 +1076,23 @@ pub async fn update_work_order(
     let exemption_code = clean_exemption_code(payload.exemption_code.clone());
     validate_exemption_code(&exemption_code, payload.vat_scheme)?;
 
+    let rate = amounts::amount(payload.rate, "Тариф")?;
+    let labor_cost_value = amounts::labor_cost(payload.labor_cost_type, payload.labor_cost_value)?;
+    let discount_value = amounts::discount(payload.discount_type, payload.discount_value)?;
+    let odometer_in = amounts::odometer(payload.odometer_in, "Пробіг")?;
+    let odometer_out = match payload.odometer_out {
+        Some(value) => Some(amounts::odometer(value, "Пробіг")?),
+        None => None,
+    };
+
     cars::ensure_car_active(&mut *tx, payload.car_id as i32).await?;
     ensure_driver_info_allowed(
         &mut *tx,
         payload.car_id,
-        &payload.driver_surname,
-        &payload.driver_first_name,
-        &payload.driver_patronymic,
-        &payload.driver_phone,
+        &text.driver_surname,
+        &text.driver_first_name,
+        &text.driver_patronymic,
+        &text.driver_phone,
     )
     .await?;
     if let Some(worker_id) = payload.worker_id {
@@ -1068,17 +1171,17 @@ pub async fn update_work_order(
     )
     .bind(payload.id)
     .bind(payload.car_id)
-    .bind(payload.odometer_in)
-    .bind(payload.odometer_out)
-    .bind(payload.description)
-    .bind(payload.notes)
-    .bind(payload.condition_report)
+    .bind(odometer_in)
+    .bind(odometer_out)
+    .bind(text.description)
+    .bind(text.notes)
+    .bind(text.condition_report)
     .bind(payload.status)
-    .bind(payload.rate.to_string())
+    .bind(rate.to_string())
     .bind(payload.labor_cost_type)
-    .bind(payload.labor_cost_value.to_string())
+    .bind(labor_cost_value.to_string())
     .bind(payload.discount_type)
-    .bind(payload.discount_value.to_string())
+    .bind(discount_value.to_string())
     .bind(payload.vat_rate.to_string())
     .bind(payload.prices_include_vat)
     .bind(payload.started_at)
@@ -1086,10 +1189,10 @@ pub async fn update_work_order(
     .bind(payload.paid_at)
     .bind(payload.payment_method)
     .bind(payload.payer_client_id)
-    .bind(payload.driver_surname)
-    .bind(payload.driver_first_name)
-    .bind(payload.driver_patronymic)
-    .bind(payload.driver_phone)
+    .bind(text.driver_surname)
+    .bind(text.driver_first_name)
+    .bind(text.driver_patronymic)
+    .bind(text.driver_phone)
     .bind(payload.customer_client_id)
     .bind(payload.worker_id)
     .bind(payload.vat_scheme)
@@ -1115,11 +1218,22 @@ pub async fn update_work_order(
 #[tauri::command]
 #[specta::specta]
 pub async fn delete_work_order(state: State<'_, crate::AppState>, id: String) -> AppResult<()> {
-    let mut tx = begin_immediate(&state.db_pool).await?;
+    delete_work_order_guarded(&state.db_pool, &id).await?;
+
+    // Files can outlive their version rows (an interrupted generation), so the
+    // folder is removed by the id rather than from the rows that just went.
+    documents::remove_work_order_documents(state.inner(), &id);
+
+    Ok(())
+}
+
+/// Refuses the deletes that would destroy financial history.
+pub(crate) async fn delete_work_order_guarded(pool: &Pool<Sqlite>, id: &str) -> AppResult<()> {
+    let mut tx = begin_immediate(pool).await?;
 
     let warranty_claim_count: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM work_orders WHERE warranty_of = $1")
-            .bind(&id)
+            .bind(id)
             .fetch_one(&mut *tx)
             .await?;
     if warranty_claim_count > 0 {
@@ -1129,20 +1243,66 @@ pub async fn delete_work_order(state: State<'_, crate::AppState>, id: String) ->
     }
 
     Event::new("work_order.delete")
-        .id(&id)
-        .on_error(vat::ensure_vat_unlocked(&mut *tx, &id).await)?;
+        .id(id)
+        .on_error(vat::ensure_vat_unlocked(&mut *tx, id).await)?;
+
+    let document_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM work_order_document_versions WHERE work_order_id = $1",
+    )
+    .bind(id)
+    .fetch_one(&mut *tx)
+    .await?;
+    if document_count > 0 {
+        Event::new("work_order.delete")
+            .id(id)
+            .field("documents", document_count)
+            .denied("has_documents");
+        tx.rollback().await?;
+        return Err(AppError::validation(format!(
+            "За замовленням створено {} {}. Архівуйте замовлення, щоб зберегти документи.",
+            document_count,
+            crate::utils::plural(
+                document_count as usize,
+                "документ",
+                "документи",
+                "документів"
+            ),
+        )));
+    }
+
+    let paid_at: Option<Option<String>> =
+        sqlx::query_scalar("SELECT paid_at FROM work_orders WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+    match paid_at {
+        None => {
+            tx.rollback().await?;
+            return Err(AppError::work_order_not_found());
+        }
+        Some(Some(_)) => {
+            Event::new("work_order.delete").id(id).denied("is_paid");
+            tx.rollback().await?;
+            return Err(AppError::validation(
+                "Замовлення оплачене. Архівуйте його, щоб зберегти історію.",
+            ));
+        }
+        Some(None) => {}
+    }
 
     let result = sqlx::query("DELETE FROM work_orders WHERE id = $1")
-        .bind(&id)
+        .bind(id)
         .execute(&mut *tx)
         .await?;
     if result.rows_affected() == 0 {
+        tx.rollback().await?;
         return Err(AppError::work_order_not_found());
     }
 
     tx.commit().await?;
 
-    Event::new("work_order.delete").id(&id).ok();
+    Event::new("work_order.delete").id(id).ok();
 
     Ok(())
 }
@@ -1156,6 +1316,11 @@ pub struct WorkOrderDeleteImpact {
     pub part_item_count: i64,
     #[specta(type = specta_typescript::Number)]
     pub warranty_claim_count: i64,
+    /// Documents block the delete: their versions would go with it.
+    #[specta(type = specta_typescript::Number)]
+    pub document_count: i64,
+    /// A paid order is revenue history, so it may only be archived.
+    pub is_paid: bool,
 }
 
 #[tauri::command]
@@ -1184,12 +1349,27 @@ pub async fn fetch_work_order_delete_impact(
             .fetch_one(&mut *tx)
             .await?;
 
+    let document_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM work_order_document_versions WHERE work_order_id = $1",
+    )
+    .bind(&id)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    let paid_at: Option<Option<String>> =
+        sqlx::query_scalar("SELECT paid_at FROM work_orders WHERE id = $1")
+            .bind(&id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
     tx.commit().await?;
 
     Ok(WorkOrderDeleteImpact {
         labor_item_count,
         part_item_count,
         warranty_claim_count,
+        document_count,
+        is_paid: paid_at.flatten().is_some(),
     })
 }
 
@@ -1562,6 +1742,11 @@ pub async fn create_labor_item(
     ensure_work_order_active(&mut *tx, &payload.work_order_id).await?;
     vat::ensure_vat_unlocked(&mut *tx, &payload.work_order_id).await?;
     validate_line_vat(payload.vat_rate, payload.vat_scheme)?;
+    let name = required_text(&payload.name, MAX_ITEM_NAME_LENGTH, "Назва позиції")?;
+    let code = optional_text(payload.code.clone(), MAX_ITEM_CODE_LENGTH, "Код позиції")?;
+    let fixed_price = amounts::amount(payload.fixed_price, "Ціна")?;
+    let labor_hours = amounts::labor_hours(payload.labor_hours)?;
+    let discount_value = amounts::discount(payload.discount_type, payload.discount_value)?;
 
     let labor_item: LaborItem = sqlx::query_as(
         r#"
@@ -1606,13 +1791,13 @@ pub async fn create_labor_item(
     )
     .bind(payload.service_id)
     .bind(payload.work_order_id)
-    .bind(payload.code)
-    .bind(payload.name)
+    .bind(code)
+    .bind(name)
     .bind(payload.price_type)
-    .bind(payload.fixed_price.to_string())
-    .bind(payload.labor_hours.to_string())
+    .bind(fixed_price.to_string())
+    .bind(labor_hours.to_string())
     .bind(payload.discount_type)
-    .bind(payload.discount_value.to_string())
+    .bind(discount_value.to_string())
     .bind(payload.is_free)
     .bind(payload.vat_rate.map(|rate| rate.to_string()))
     .bind(payload.vat_scheme)
@@ -1637,6 +1822,11 @@ pub async fn update_labor_item(
 
     ensure_item_work_order_active(&mut *tx, ItemTable::Labor, id).await?;
     validate_line_vat(payload.vat_rate, payload.vat_scheme)?;
+    let name = required_text(&payload.name, MAX_ITEM_NAME_LENGTH, "Назва позиції")?;
+    let code = optional_text(payload.code.clone(), MAX_ITEM_CODE_LENGTH, "Код позиції")?;
+    let fixed_price = amounts::amount(payload.fixed_price, "Ціна")?;
+    let labor_hours = amounts::labor_hours(payload.labor_hours)?;
+    let discount_value = amounts::discount(payload.discount_type, payload.discount_value)?;
 
     let labor_item: LaborItem = sqlx::query_as(
         r#"
@@ -1672,13 +1862,13 @@ pub async fn update_labor_item(
     )
     .bind(id)
     .bind(payload.service_id)
-    .bind(payload.code)
-    .bind(payload.name)
+    .bind(code)
+    .bind(name)
     .bind(payload.price_type)
-    .bind(payload.fixed_price.to_string())
-    .bind(payload.labor_hours.to_string())
+    .bind(fixed_price.to_string())
+    .bind(labor_hours.to_string())
     .bind(payload.discount_type)
-    .bind(payload.discount_value.to_string())
+    .bind(discount_value.to_string())
     .bind(payload.is_free)
     .bind(payload.vat_rate.map(|rate| rate.to_string()))
     .bind(payload.vat_scheme)
@@ -1893,18 +2083,50 @@ pub async fn create_part_item(
     }
     validate_line_vat(payload.vat_rate, payload.vat_scheme)?;
     vat::validate_rate_and_scheme(payload.purchase_vat_rate, payload.purchase_scheme)?;
+    let name = required_text(&payload.name, MAX_ITEM_NAME_LENGTH, "Назва позиції")?;
+    let code = optional_text(payload.code.clone(), MAX_ITEM_CODE_LENGTH, "Код позиції")?;
+    let supplier_name = optional_text(
+        payload.supplier_name.clone(),
+        MAX_SUPPLIER_NAME_LENGTH,
+        "Назва постачальника",
+    )?;
+    let supplier_code = optional_text(
+        payload.supplier_code.clone(),
+        MAX_SUPPLIER_CODE_LENGTH,
+        "Код постачальника",
+    )?;
+    let invoice_number = optional_text(
+        payload.invoice_number.clone(),
+        MAX_INVOICE_NUMBER_LENGTH,
+        "Номер накладної",
+    )?;
+    let supplier = optional_text(
+        payload.supplier.clone(),
+        MAX_SUPPLIER_NAME_LENGTH,
+        "Постачальник",
+    )?;
+    let supplier_order_id = optional_text(
+        payload.supplier_order_id.clone(),
+        MAX_SUPPLIER_ORDER_ID_LENGTH,
+        "Номер замовлення",
+    )?;
+
+    // The credit rules check presence, so they must see the cleaned values.
     validate_part_credit(
         payload.vat_credited,
         payload.base_cost,
         payload.quantity,
         payload.purchase_vat_rate,
-        &payload.supplier_name,
-        &payload.invoice_number,
+        &supplier_name,
+        &invoice_number,
         &payload.invoice_date,
     )?;
     let (unit_key, unit_type) =
         units::normalize_unit(payload.unit_key.clone(), payload.unit_type.clone())?;
     units::validate_quantity(payload.quantity, unit_key.as_deref(), unit_type.as_deref())?;
+    let base_cost = amounts::amount(payload.base_cost, "Собівартість")?;
+    let markup = amounts::markup(payload.markup)?;
+    let discount_value = amounts::discount(payload.discount_type, payload.discount_value)?;
 
     let part_item: PartItem = sqlx::query_as(
         r#"
@@ -1975,14 +2197,14 @@ pub async fn create_part_item(
     )
     .bind(payload.work_order_id)
     .bind(payload.status)
-    .bind(payload.code)
-    .bind(payload.name)
+    .bind(code)
+    .bind(name)
     .bind(payload.quantity.to_string())
     .bind(unit_type)
-    .bind(payload.base_cost.to_string())
-    .bind(payload.markup.to_string())
+    .bind(base_cost.to_string())
+    .bind(markup.to_string())
     .bind(payload.discount_type)
-    .bind(payload.discount_value.to_string())
+    .bind(discount_value.to_string())
     .bind(payload.is_free)
     .bind(payload.vat_rate.map(|rate| rate.to_string()))
     .bind(payload.vat_scheme)
@@ -1990,13 +2212,13 @@ pub async fn create_part_item(
     .bind(payload.purchase_price_includes_vat)
     .bind(payload.purchase_scheme)
     .bind(payload.provided_by)
-    .bind(payload.supplier_name)
-    .bind(payload.supplier_code)
-    .bind(payload.invoice_number)
+    .bind(supplier_name)
+    .bind(supplier_code)
+    .bind(invoice_number)
     .bind(payload.invoice_date)
     .bind(payload.vat_credited)
-    .bind(payload.supplier)
-    .bind(payload.supplier_order_id)
+    .bind(supplier)
+    .bind(supplier_order_id)
     .bind(unit_key)
     .fetch_one(&mut *tx)
     .await?;
@@ -2043,18 +2265,50 @@ pub async fn update_part_item(
     ensure_item_work_order_active(&mut *tx, ItemTable::Part, id).await?;
     validate_line_vat(payload.vat_rate, payload.vat_scheme)?;
     vat::validate_rate_and_scheme(payload.purchase_vat_rate, payload.purchase_scheme)?;
+    let name = required_text(&payload.name, MAX_ITEM_NAME_LENGTH, "Назва позиції")?;
+    let code = optional_text(payload.code.clone(), MAX_ITEM_CODE_LENGTH, "Код позиції")?;
+    let supplier_name = optional_text(
+        payload.supplier_name.clone(),
+        MAX_SUPPLIER_NAME_LENGTH,
+        "Назва постачальника",
+    )?;
+    let supplier_code = optional_text(
+        payload.supplier_code.clone(),
+        MAX_SUPPLIER_CODE_LENGTH,
+        "Код постачальника",
+    )?;
+    let invoice_number = optional_text(
+        payload.invoice_number.clone(),
+        MAX_INVOICE_NUMBER_LENGTH,
+        "Номер накладної",
+    )?;
+    let supplier = optional_text(
+        payload.supplier.clone(),
+        MAX_SUPPLIER_NAME_LENGTH,
+        "Постачальник",
+    )?;
+    let supplier_order_id = optional_text(
+        payload.supplier_order_id.clone(),
+        MAX_SUPPLIER_ORDER_ID_LENGTH,
+        "Номер замовлення",
+    )?;
+
+    // The credit rules check presence, so they must see the cleaned values.
     validate_part_credit(
         payload.vat_credited,
         payload.base_cost,
         payload.quantity,
         payload.purchase_vat_rate,
-        &payload.supplier_name,
-        &payload.invoice_number,
+        &supplier_name,
+        &invoice_number,
         &payload.invoice_date,
     )?;
     let (unit_key, unit_type) =
         units::normalize_unit(payload.unit_key.clone(), payload.unit_type.clone())?;
     units::validate_quantity(payload.quantity, unit_key.as_deref(), unit_type.as_deref())?;
+    let base_cost = amounts::amount(payload.base_cost, "Собівартість")?;
+    let markup = amounts::markup(payload.markup)?;
+    let discount_value = amounts::discount(payload.discount_type, payload.discount_value)?;
 
     let current = fetch_part_item_in_tx(&mut *tx, id).await?;
     let live_vat = vat::live_entry_for_part(&mut *tx, i64::from(id)).await?;
@@ -2127,14 +2381,14 @@ pub async fn update_part_item(
     )
     .bind(id)
     .bind(payload.status)
-    .bind(payload.code)
-    .bind(payload.name)
+    .bind(code)
+    .bind(name)
     .bind(payload.quantity.to_string())
     .bind(unit_type)
-    .bind(payload.base_cost.to_string())
-    .bind(payload.markup.to_string())
+    .bind(base_cost.to_string())
+    .bind(markup.to_string())
     .bind(payload.discount_type)
-    .bind(payload.discount_value.to_string())
+    .bind(discount_value.to_string())
     .bind(payload.is_free)
     .bind(payload.vat_rate.map(|rate| rate.to_string()))
     .bind(payload.vat_scheme)
@@ -2142,13 +2396,13 @@ pub async fn update_part_item(
     .bind(payload.purchase_price_includes_vat)
     .bind(payload.purchase_scheme)
     .bind(payload.provided_by)
-    .bind(payload.supplier_name)
-    .bind(payload.supplier_code)
-    .bind(payload.invoice_number)
+    .bind(supplier_name)
+    .bind(supplier_code)
+    .bind(invoice_number)
     .bind(payload.invoice_date)
     .bind(payload.vat_credited)
-    .bind(payload.supplier)
-    .bind(payload.supplier_order_id)
+    .bind(supplier)
+    .bind(supplier_order_id)
     .bind(unit_key)
     .fetch_one(&mut *tx)
     .await?;
@@ -2706,6 +2960,7 @@ pub async fn update_labor_items_discount(
     if ids.is_empty() {
         return Ok(());
     }
+    let discount_value = amounts::discount(discount_type, discount_value)?;
     let mut tx = begin_immediate(&state.db_pool).await?;
     for id in &ids {
         ensure_item_work_order_active(&mut *tx, ItemTable::Labor, *id).await?;
@@ -2816,6 +3071,7 @@ pub async fn update_part_items_discount(
     if ids.is_empty() {
         return Ok(());
     }
+    let discount_value = amounts::discount(discount_type, discount_value)?;
     let mut tx = begin_immediate(&state.db_pool).await?;
     for id in &ids {
         ensure_item_work_order_active(&mut *tx, ItemTable::Part, *id).await?;
@@ -2924,4 +3180,104 @@ pub async fn reorder_part_items(
     ordered_ids: Vec<i32>,
 ) -> AppResult<()> {
     reorder_items(&state, ItemTable::Part, &work_order_id, &ordered_ids).await
+}
+
+#[cfg(test)]
+mod text_tests {
+    use super::*;
+
+    #[test]
+    fn work_order_text_is_trimmed_and_capped() {
+        let text = WorkOrderText::clean(
+            Some("  Петренко ".into()),
+            None,
+            None,
+            Some("   ".into()),
+            Some("  Заміна оливи  ".into()),
+            None,
+            None,
+        )
+        .expect("valid text");
+
+        assert_eq!(text.driver_surname.as_deref(), Some("Петренко"));
+        assert_eq!(text.driver_phone, None);
+        assert_eq!(text.description.as_deref(), Some("Заміна оливи"));
+
+        let too_long = "я".repeat(MAX_DESCRIPTION_LENGTH + 1);
+        assert!(WorkOrderText::clean(None, None, None, None, Some(too_long), None, None).is_err());
+    }
+}
+
+#[cfg(test)]
+mod delete_tests {
+    use super::*;
+    use crate::database::test_support::{count, pool, seed_client_with_order};
+
+    async fn add_document(pool: &Pool<Sqlite>) {
+        sqlx::query(
+            "INSERT INTO work_order_document_versions
+                (work_order_id, document_kind, pdf_path, xlsx_path, source_hash, options)
+             VALUES ('A-1', 'naryad_zamovlennya', '/tmp/a.pdf', '/tmp/a.xlsx', 'hash', '{}')",
+        )
+        .execute(pool)
+        .await
+        .expect("document row");
+    }
+
+    #[test]
+    fn refuses_to_delete_an_order_with_documents() {
+        tauri::async_runtime::block_on(async {
+            let pool = pool().await;
+            seed_client_with_order(&pool).await;
+            add_document(&pool).await;
+
+            let error = delete_work_order_guarded(&pool, "A-1")
+                .await
+                .expect_err("documents block the delete");
+            assert!(error.to_string().contains("документ"));
+            assert_eq!(count(&pool, "work_orders").await, 1);
+        });
+    }
+
+    #[test]
+    fn refuses_to_delete_a_paid_order() {
+        tauri::async_runtime::block_on(async {
+            let pool = pool().await;
+            seed_client_with_order(&pool).await;
+            sqlx::query("UPDATE work_orders SET paid_at = '2026-01-01T00:00:00Z' WHERE id = 'A-1'")
+                .execute(&pool)
+                .await
+                .expect("mark paid");
+
+            let error = delete_work_order_guarded(&pool, "A-1")
+                .await
+                .expect_err("a paid order is guarded");
+            assert!(error.to_string().contains("оплачене"));
+            assert_eq!(count(&pool, "work_orders").await, 1);
+        });
+    }
+
+    #[test]
+    fn deletes_an_unpaid_order_without_documents() {
+        tauri::async_runtime::block_on(async {
+            let pool = pool().await;
+            seed_client_with_order(&pool).await;
+
+            delete_work_order_guarded(&pool, "A-1")
+                .await
+                .expect("nothing worth keeping yet");
+            assert_eq!(count(&pool, "work_orders").await, 0);
+        });
+    }
+
+    #[test]
+    fn reports_a_missing_order() {
+        tauri::async_runtime::block_on(async {
+            let pool = pool().await;
+            let error = delete_work_order_guarded(&pool, "missing")
+                .await
+                .expect_err("nothing to delete");
+            assert!(matches!(error, AppError::NotFound(_)));
+        });
+    }
 }

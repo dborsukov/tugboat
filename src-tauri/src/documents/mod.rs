@@ -63,8 +63,28 @@ fn work_order_documents_dir(documents_dir: &Path, work_order_id: &str) -> PathBu
     documents_dir.join(work_order_id)
 }
 
-/// Versions of one kind share a folder, so a single document's history is
-/// together and a file name only has to be unique within it.
+pub(crate) fn remove_work_order_documents(state: &AppState, work_order_id: &str) {
+    if validate_work_order_id(work_order_id).is_err() {
+        return;
+    }
+
+    let Ok(root) = invoices_dir(state) else {
+        return;
+    };
+
+    let folder = work_order_documents_dir(&root, work_order_id);
+    if !folder.exists() {
+        return;
+    }
+
+    if let Err(error) = fs::remove_dir_all(&folder) {
+        log::warn!(
+            "Не вдалося прибрати документи {}: {error}",
+            folder.display()
+        );
+    }
+}
+
 fn kind_documents_dir(documents_dir: &Path, work_order_id: &str, kind: DocumentKind) -> PathBuf {
     work_order_documents_dir(documents_dir, work_order_id).join(kind.as_str())
 }

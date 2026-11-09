@@ -489,3 +489,76 @@ pub(crate) fn calculate_work_order_totals(
         below_cost,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn net_kept_amount_strips_vat_only_when_prices_include_it() {
+        assert_eq!(
+            net_kept_amount(Decimal::from(120), Decimal::from(20), true),
+            Decimal::from(100)
+        );
+        assert_eq!(
+            net_kept_amount(Decimal::from(120), Decimal::from(20), false),
+            Decimal::from(120)
+        );
+        assert_eq!(
+            net_kept_amount(Decimal::from(120), Decimal::ZERO, true),
+            Decimal::from(120)
+        );
+    }
+
+    #[test]
+    fn calculate_vat_splits_an_inclusive_total() {
+        let (base, vat, total) = calculate_vat(Decimal::from(120), Decimal::from(20), true);
+        assert_eq!(base, Decimal::from(100));
+        assert_eq!(vat, Decimal::from(20));
+        assert_eq!(total, Decimal::from(120));
+    }
+
+    #[test]
+    fn calculate_vat_adds_vat_to_an_exclusive_total() {
+        let (base, vat, total) = calculate_vat(Decimal::from(100), Decimal::from(20), false);
+        assert_eq!(base, Decimal::from(100));
+        assert_eq!(vat, Decimal::from(20));
+        assert_eq!(total, Decimal::from(120));
+    }
+
+    #[test]
+    fn zero_rate_yields_no_vat_on_either_path() {
+        for prices_include_vat in [true, false] {
+            let (_, vat, total) =
+                calculate_vat(Decimal::from(100), Decimal::ZERO, prices_include_vat);
+            assert!(vat.is_zero());
+            assert_eq!(total, Decimal::from(100));
+        }
+    }
+
+    #[test]
+    fn only_installed_shop_parts_are_billed() {
+        assert!(part_is_billed(
+            PartStatus::Installed,
+            false,
+            ProvidedBy::Shop
+        ));
+        assert!(!part_is_billed(PartStatus::Quoted, false, ProvidedBy::Shop));
+        assert!(!part_is_billed(
+            PartStatus::Installed,
+            true,
+            ProvidedBy::Shop
+        ));
+        assert!(!part_is_billed(
+            PartStatus::Installed,
+            false,
+            ProvidedBy::Customer
+        ));
+    }
+
+    #[test]
+    fn free_labor_is_not_billed() {
+        assert!(labor_is_billed(false));
+        assert!(!labor_is_billed(true));
+    }
+}

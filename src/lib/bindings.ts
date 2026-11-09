@@ -1331,6 +1331,10 @@ export type WorkOrderDeleteImpact = {
 	laborItemCount: number,
 	partItemCount: number,
 	warrantyClaimCount: number,
+	/**  Documents block the delete: their versions would go with it. */
+	documentCount: number,
+	/**  A paid order is revenue history, so it may only be archived. */
+	isPaid: boolean,
 };
 
 export type WorkOrderDetailsDto = {

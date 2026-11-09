@@ -86,17 +86,38 @@
   }
 
   function describeDeleteBlocked(impact: WorkOrderDeleteImpact | undefined) {
-    const count = impact?.warrantyClaimCount ?? 0;
-    if (count === 0) return null;
-    return `Видалення неможливе: із замовленням пов'язано ${count} ${pluralizeUk(
-      count,
-      [
-        "гарантійне замовлення",
-        "гарантійні замовлення",
-        "гарантійних замовлень",
-      ],
-    )}. Спочатку видаліть їх.`;
+    const claims = impact?.warrantyClaimCount ?? 0;
+    if (claims > 0) {
+      return `Видалення неможливе: із замовленням пов'язано ${claims} ${pluralizeUk(
+        claims,
+        [
+          "гарантійне замовлення",
+          "гарантійні замовлення",
+          "гарантійних замовлень",
+        ],
+      )}. Спочатку видаліть їх.`;
+    }
+
+    const documents = impact?.documentCount ?? 0;
+    if (documents > 0) {
+      return `Видалення неможливе: за замовленням створено ${documents} ${pluralizeUk(
+        documents,
+        ["документ", "документи", "документів"],
+      )}. Архівуйте замовлення, щоб зберегти їх.`;
+    }
+
+    if (impact?.isPaid) {
+      return "Видалення неможливе: замовлення оплачене. Архівуйте його, щоб зберегти історію.";
+    }
+
+    return null;
   }
+
+  const deleteBlocked = $derived(
+    (deleteImpactQuery.data?.warrantyClaimCount ?? 0) > 0 ||
+      (deleteImpactQuery.data?.documentCount ?? 0) > 0 ||
+      (deleteImpactQuery.data?.isPaid ?? false),
+  );
 
   function handleDelete() {
     deleteWorkOrderMutation.mutate(workOrderId, {
@@ -194,6 +215,7 @@
   bind:open={isDeleteDialogOpen}
   onDelete={handleDelete}
   title="Видалити назавжди"
+  confirmDisabled={deleteBlocked || deleteImpactQuery.isPending}
   description={deleteImpactQuery.isPending
     ? "Підрахунок пов'язаних даних…"
     : (describeDeleteBlocked(deleteImpactQuery.data) ??
