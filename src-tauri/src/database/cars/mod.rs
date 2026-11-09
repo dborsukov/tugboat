@@ -6,6 +6,7 @@ pub mod structs;
 
 use std::collections::HashMap;
 
+use chrono::{Datelike, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{Executor, Pool, QueryBuilder, Sqlite};
 use structs::*;
@@ -16,7 +17,7 @@ use crate::{
         cars::dtos::{CarDetailsDto, CarDto},
         clients,
         clients::{fetch_client_by_id, fetch_clients_list, structs::Client},
-        utils::begin_immediate,
+        utils::{begin_immediate, optional_text},
     },
     error::{AppError, AppResult},
     logging::Event,
@@ -282,12 +283,110 @@ pub(crate) async fn fetch_cars_by_ids(
         .collect())
 }
 
+const MAX_MODEL_LENGTH: usize = 100;
+const MAX_VIN_LENGTH: usize = 32;
+const MAX_ENGINE_CODE_LENGTH: usize = 60;
+const MAX_NOTES_LENGTH: usize = 2000;
+const MIN_YEAR: i64 = 1950;
+
+/// The car fields the plate helpers do not cover. Values are normalized so a
+/// stored row is comparable: `vin` is upper-cased and stripped of separators,
+/// because the unique index on `cars.vin` compares raw strings.
+#[derive(Debug)]
+struct CarFields {
+    model: String,
+    year: i64,
+    vin: Option<String>,
+    engine_code: Option<String>,
+    engine_displacement: Option<f64>,
+    notes: Option<String>,
+}
+
+impl CarFields {
+    fn validate(
+        model: String,
+        year: i64,
+        vin: Option<String>,
+        engine_code: Option<String>,
+        engine_displacement: Option<f64>,
+        notes: Option<String>,
+    ) -> AppResult<Self> {
+        let model = model.trim();
+        if model.is_empty() {
+            return Err(AppError::validation("Вкажіть модель автомобіля"));
+        }
+        if model.chars().count() > MAX_MODEL_LENGTH {
+            return Err(AppError::validation(format!(
+                "Модель не може бути довшою за {MAX_MODEL_LENGTH} символів"
+            )));
+        }
+
+        let max_year = i64::from(Utc::now().year()) + 1;
+        if !(MIN_YEAR..=max_year).contains(&year) {
+            return Err(AppError::validation(format!(
+                "Рік випуску має бути в межах {MIN_YEAR}–{max_year}"
+            )));
+        }
+
+        if let Some(value) = engine_displacement {
+            if !value.is_finite() || value <= 0.0 {
+                return Err(AppError::validation(
+                    "Об'єм двигуна має бути більшим за нуль",
+                ));
+            }
+        }
+
+        let engine_code = optional_text(engine_code, MAX_ENGINE_CODE_LENGTH, "Код двигуна")?;
+
+        Ok(Self {
+            model: model.to_string(),
+            year,
+            vin: normalize_vin(vin)?,
+            engine_code,
+            engine_displacement,
+            notes: optional_text(notes, MAX_NOTES_LENGTH, "Нотатки")?,
+        })
+    }
+}
+
+fn normalize_vin(raw: Option<String>) -> AppResult<Option<String>> {
+    let Some(vin) = raw else {
+        return Ok(None);
+    };
+
+    let normalized: String = vin
+        .chars()
+        .filter(|ch| !ch.is_whitespace() && *ch != '-')
+        .flat_map(char::to_uppercase)
+        .collect();
+
+    if normalized.is_empty() {
+        return Ok(None);
+    }
+    if normalized.chars().count() > MAX_VIN_LENGTH {
+        return Err(AppError::validation(format!(
+            "VIN не може бути довшим за {MAX_VIN_LENGTH} символів"
+        )));
+    }
+
+    Ok(Some(normalized))
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn create_car(
     state: State<'_, crate::AppState>,
     payload: CreateCarPayload,
 ) -> AppResult<Car> {
+    let fields = CarFields::validate(
+        payload.model,
+        payload.year,
+        payload.vin,
+        payload.engine_code,
+        payload.engine_displacement,
+        payload.notes,
+    )?;
+
     let mut tx = begin_immediate(&state.db_pool).await?;
 
     clients::ensure_client_active(&mut *tx, payload.client_id as i32).await?;
@@ -340,18 +439,18 @@ pub async fn create_car(
     )
     .bind(payload.client_id)
     .bind(payload.brand_id)
-    .bind(payload.model)
-    .bind(payload.year)
+    .bind(fields.model)
+    .bind(fields.year)
     .bind(license_plate)
     .bind(plate_type)
     .bind(plate_country)
     .bind(plate_search_key)
-    .bind(payload.vin)
-    .bind(payload.engine_code)
-    .bind(payload.engine_displacement)
+    .bind(fields.vin)
+    .bind(fields.engine_code)
+    .bind(fields.engine_displacement)
     .bind(payload.fuel_type)
     .bind(payload.drive_type)
-    .bind(payload.notes)
+    .bind(fields.notes)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -369,6 +468,15 @@ pub async fn update_car(
     id: i32,
     payload: UpdateCarPayload,
 ) -> AppResult<Car> {
+    let fields = CarFields::validate(
+        payload.model,
+        payload.year,
+        payload.vin,
+        payload.engine_code,
+        payload.engine_displacement,
+        payload.notes,
+    )?;
+
     let mut tx = begin_immediate(&state.db_pool).await?;
 
     ensure_car_active(&mut *tx, id).await?;
@@ -422,18 +530,18 @@ pub async fn update_car(
     .bind(id)
     .bind(payload.client_id)
     .bind(payload.brand_id)
-    .bind(payload.model)
-    .bind(payload.year)
+    .bind(fields.model)
+    .bind(fields.year)
     .bind(license_plate)
     .bind(plate_type)
     .bind(plate_country)
     .bind(plate_search_key)
-    .bind(payload.vin)
-    .bind(payload.engine_code)
-    .bind(payload.engine_displacement)
+    .bind(fields.vin)
+    .bind(fields.engine_code)
+    .bind(fields.engine_displacement)
     .bind(payload.fuel_type)
     .bind(payload.drive_type)
-    .bind(payload.notes)
+    .bind(fields.notes)
     .fetch_one(&mut *tx)
     .await?;
 
@@ -447,13 +555,45 @@ pub async fn update_car(
 #[tauri::command]
 #[specta::specta]
 pub async fn delete_car(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
+    delete_car_guarded(&state.db_pool, id).await
+}
+
+pub(crate) async fn delete_car_guarded(pool: &sqlx::Pool<Sqlite>, id: i32) -> AppResult<()> {
+    let mut tx = begin_immediate(pool).await?;
+
+    let work_orders: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM work_orders WHERE car_id = $1")
+        .bind(id)
+        .fetch_one(&mut *tx)
+        .await?;
+
+    if work_orders > 0 {
+        Event::new("car.delete")
+            .id(id)
+            .field("work_orders", work_orders)
+            .denied("has_work_orders");
+        tx.rollback().await?;
+        return Err(AppError::validation(format!(
+            "В автомобіля {} {}. Архівуйте автомобіль, щоб зберегти історію замовлень.",
+            work_orders,
+            crate::utils::plural(
+                work_orders as usize,
+                "замовлення",
+                "замовлення",
+                "замовлень"
+            ),
+        )));
+    }
+
     let result = sqlx::query("DELETE FROM cars WHERE id = $1")
         .bind(id)
-        .execute(&state.db_pool)
+        .execute(&mut *tx)
         .await?;
     if result.rows_affected() == 0 {
+        tx.rollback().await?;
         return Err(AppError::car_not_found());
     }
+
+    tx.commit().await?;
 
     Event::new("car.delete").id(id).ok();
 
@@ -589,5 +729,105 @@ where
         None => Err(AppError::car_not_found()),
         Some(Some(_)) => Err(AppError::car_archived()),
         Some(None) => Ok(()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn car(model: &str, year: i64) -> AppResult<CarFields> {
+        CarFields::validate(model.to_string(), year, None, None, None, None)
+    }
+
+    #[test]
+    fn trims_model_and_blanks_empty_optional_fields() {
+        let fields = CarFields::validate(
+            "  Octavia  ".to_string(),
+            Utc::now().year() as i64,
+            Some("   ".to_string()),
+            Some("  CJSA  ".to_string()),
+            Some(1.8),
+            Some("  нотатка  ".to_string()),
+        )
+        .expect("valid car");
+
+        assert_eq!(fields.model, "Octavia");
+        assert_eq!(fields.vin, None);
+        assert_eq!(fields.engine_code.as_deref(), Some("CJSA"));
+        assert_eq!(fields.notes.as_deref(), Some("нотатка"));
+    }
+
+    #[test]
+    fn rejects_blank_model() {
+        assert!(car("   ", 2020).is_err());
+    }
+
+    #[test]
+    fn rejects_year_outside_range() {
+        assert!(car("Octavia", MIN_YEAR - 1).is_err());
+        assert!(car("Octavia", i64::from(Utc::now().year()) + 2).is_err());
+    }
+
+    #[test]
+    fn accepts_current_year_and_next_year() {
+        let current = i64::from(Utc::now().year());
+        assert!(car("Octavia", current).is_ok());
+        assert!(car("Octavia", current + 1).is_ok());
+    }
+
+    #[test]
+    fn normalizes_vin() {
+        let fields = CarFields::validate(
+            "Octavia".to_string(),
+            2020,
+            Some("wbx-123 456".to_string()),
+            None,
+            None,
+            None,
+        )
+        .expect("valid car");
+
+        assert_eq!(fields.vin.as_deref(), Some("WBX123456"));
+    }
+
+    #[test]
+    fn rejects_non_positive_engine_displacement() {
+        let rejected = |value: f64| {
+            CarFields::validate("Octavia".to_string(), 2020, None, None, Some(value), None).is_err()
+        };
+        assert!(rejected(0.0));
+        assert!(rejected(-1.6));
+        assert!(rejected(f64::NAN));
+    }
+}
+
+#[cfg(test)]
+mod delete_tests {
+    use super::*;
+    use crate::database::test_support::{count, pool, seed_client_with_order};
+
+    #[test]
+    fn refuses_to_delete_a_car_that_has_work_orders() {
+        tauri::async_runtime::block_on(async {
+            let pool = pool().await;
+            seed_client_with_order(&pool).await;
+
+            let error = delete_car_guarded(&pool, 1)
+                .await
+                .expect_err("a car with orders is guarded");
+            assert!(matches!(error, AppError::Validation(_)));
+            assert_eq!(count(&pool, "cars").await, 1);
+
+            sqlx::query("DELETE FROM work_orders")
+                .execute(&pool)
+                .await
+                .expect("clear orders");
+            delete_car_guarded(&pool, 1)
+                .await
+                .expect("a car without orders can be deleted");
+
+            assert_eq!(count(&pool, "cars").await, 0);
+        });
     }
 }

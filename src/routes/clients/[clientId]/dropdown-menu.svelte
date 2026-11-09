@@ -57,6 +57,10 @@
     () => isDeleteDialogOpen,
   );
 
+  const deleteBlocked = $derived(
+    (deleteImpactQuery.data?.workOrderCount ?? 0) > 0,
+  );
+
   function describeDeleteImpact(impact: ClientDeleteImpact | undefined) {
     if (!impact) {
       return "Цю дію неможливо відмінити. Клієнта буде видалено безповоротно разом з усіма пов'язаними даними.";
@@ -202,7 +206,10 @@
   bind:open={isDeleteDialogOpen}
   onDelete={handleDelete}
   title="Видалити назавжди"
+  confirmDisabled={deleteBlocked || deleteImpactQuery.isPending}
   description={deleteImpactQuery.isPending
     ? "Підрахунок пов'язаних даних…"
-    : describeDeleteImpact(deleteImpactQuery.data)}
+    : deleteBlocked
+      ? "У клієнта є замовлення, тому видалити його не можна — разом з ним зникла б історія замовлень. Архівуйте клієнта: його можна буде відновити."
+      : describeDeleteImpact(deleteImpactQuery.data)}
 />

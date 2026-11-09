@@ -89,6 +89,10 @@
     return `Буде видалено: ${parts.join(", ")}. Цю дію неможливо відмінити.`;
   }
 
+  const deleteBlocked = $derived(
+    (deleteImpactQuery.data?.workOrderCount ?? 0) > 0,
+  );
+
   const vinTemplates = $derived(
     settingsState.settings?.vinLookupTemplates ?? [],
   );
@@ -271,7 +275,10 @@
   bind:open={isDeleteDialogOpen}
   onDelete={handleDelete}
   title="Видалити назавжди"
+  confirmDisabled={deleteBlocked || deleteImpactQuery.isPending}
   description={deleteImpactQuery.isPending
     ? "Підрахунок пов'язаних даних…"
-    : describeDeleteImpact(deleteImpactQuery.data)}
+    : deleteBlocked
+      ? "В автомобіля є замовлення, тому видалити його не можна — разом з ним зникла б історія замовлень. Архівуйте автомобіль: його можна буде відновити."
+      : describeDeleteImpact(deleteImpactQuery.data)}
 />

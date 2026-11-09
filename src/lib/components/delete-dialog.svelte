@@ -6,6 +6,8 @@
     title?: string;
     description?: string | null;
     confirmLabel?: string;
+    /** Set when the action is not available, the description should mention why. */
+    confirmDisabled?: boolean;
     actionVariant?: "default" | "destructive" | "warning";
     onDelete?: (() => void) | null;
     onOpenChange?: (open: boolean) => void;
@@ -16,6 +18,7 @@
     title = "Підтвердіть видалення",
     description,
     confirmLabel = "Видалити",
+    confirmDisabled = false,
     actionVariant = "destructive",
     onDelete,
     onOpenChange,
@@ -40,7 +43,9 @@
     <AlertDialog.Footer>
       <AlertDialog.Action
         variant={actionVariant}
+        disabled={confirmDisabled}
         onclick={() => {
+          if (confirmDisabled) return;
           open = false;
           onDelete?.();
         }}>{confirmLabel}</AlertDialog.Action

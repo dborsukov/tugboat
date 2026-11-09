@@ -12,7 +12,7 @@ use crate::{
     database::{
         cars::{dtos::CarDto, fetch_cars_list_by_client_id},
         clients::dtos::ClientDetailsDto,
-        utils::begin_immediate,
+        utils::{begin_immediate, optional_text, phone},
     },
     error::{AppError, AppResult},
     logging::Event,
@@ -57,8 +57,11 @@ fn compose_name(surname: &Option<String>, first_name: &str, patronymic: &Option<
     parts.join(" ")
 }
 
-fn payload_common_fields(payload: &ClientPayload) -> (ClientType, ClientBase) {
-    match payload {
+const MAX_EMAIL_LENGTH: usize = 200;
+const MAX_NOTES_LENGTH: usize = 2000;
+
+fn payload_common_fields(payload: &ClientPayload) -> AppResult<(ClientType, ClientBase)> {
+    let (client_type, mut base) = match payload {
         ClientPayload::Individual {
             surname,
             first_name,
@@ -108,7 +111,15 @@ fn payload_common_fields(payload: &ClientPayload) -> (ClientType, ClientBase) {
                 notes: notes.clone(),
             },
         ),
-    }
+    };
+
+    // The unique index on `clients.phone` compares raw text, so the command
+    // stores the canonical form instead of trusting the form's formatting.
+    base.phone = phone(base.phone)?;
+    base.email = optional_text(base.email, MAX_EMAIL_LENGTH, "Email")?;
+    base.notes = optional_text(base.notes, MAX_NOTES_LENGTH, "Нотатки")?;
+
+    Ok((client_type, base))
 }
 
 #[tauri::command]
@@ -331,7 +342,7 @@ pub async fn create_client(
 
     let mut tx = begin_immediate(&state.db_pool).await?;
 
-    let (client_type, base) = payload_common_fields(&payload);
+    let (client_type, base) = payload_common_fields(&payload)?;
 
     let client: Client = sqlx::query_as(
         r#"
@@ -393,7 +404,7 @@ pub async fn update_client(
 
     ensure_client_active(&mut *tx, id).await?;
 
-    let (client_type, base) = payload_common_fields(&payload);
+    let (client_type, base) = payload_common_fields(&payload)?;
 
     let client: Client = sqlx::query_as(
         r#"
@@ -453,15 +464,58 @@ pub async fn update_client(
 #[tauri::command]
 #[specta::specta]
 pub async fn delete_client(state: State<'_, crate::AppState>, id: i32) -> AppResult<()> {
+    delete_client_guarded(&state.db_pool, id).await
+}
+
+pub(crate) async fn delete_client_guarded(pool: &sqlx::Pool<Sqlite>, id: i32) -> AppResult<()> {
+    let mut tx = begin_immediate(pool).await?;
+
+    let work_orders: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM work_orders w
+         JOIN cars c ON c.id = w.car_id
+         WHERE c.client_id = $1",
+    )
+    .bind(id)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    if work_orders > 0 {
+        Event::new("client.delete")
+            .id(id)
+            .field("work_orders", work_orders)
+            .denied("has_work_orders");
+        tx.rollback().await?;
+        return Err(AppError::validation(format!(
+            "У клієнта {} {}. Архівуйте клієнта, щоб зберегти історію замовлень.",
+            work_orders,
+            crate::utils::plural(
+                work_orders as usize,
+                "замовлення",
+                "замовлення",
+                "замовлень"
+            ),
+        )));
+    }
+
+    let cars: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM cars WHERE client_id = $1")
+        .bind(id)
+        .fetch_one(&mut *tx)
+        .await?;
+
     let result = sqlx::query("DELETE FROM clients WHERE id = $1")
         .bind(id)
-        .execute(&state.db_pool)
+        .execute(&mut *tx)
         .await?;
     if result.rows_affected() == 0 {
+        tx.rollback().await?;
         return Err(AppError::client_not_found());
     }
 
-    Event::new("client.delete").id(id).ok();
+    tx.commit().await?;
+
+    // The client's cars go with it (no orders can be attached at this point),
+    // so the count is part of the record of what the delete removed.
+    Event::new("client.delete").id(id).field("cars", cars).ok();
 
     Ok(())
 }
@@ -887,4 +941,95 @@ where
     .await?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::database::test_support::{count, pool, seed_client_with_order};
+
+    #[test]
+    fn refuses_to_delete_a_client_whose_orders_would_be_cascaded() {
+        tauri::async_runtime::block_on(async {
+            let pool = pool().await;
+            seed_client_with_order(&pool).await;
+
+            let error = delete_client_guarded(&pool, 1)
+                .await
+                .expect_err("a client with orders is guarded");
+            assert!(matches!(error, AppError::Validation(_)));
+            assert_eq!(count(&pool, "clients").await, 1);
+            assert_eq!(count(&pool, "work_orders").await, 1);
+
+            // Once the history is gone the same delete is allowed.
+            sqlx::query("DELETE FROM work_orders")
+                .execute(&pool)
+                .await
+                .expect("clear orders");
+            delete_client_guarded(&pool, 1)
+                .await
+                .expect("a client without orders can be deleted");
+
+            assert_eq!(count(&pool, "clients").await, 0);
+            assert_eq!(count(&pool, "cars").await, 0);
+        });
+    }
+
+    #[test]
+    fn normalizes_an_individual_phone() {
+        let payload = ClientPayload::Individual {
+            surname: Some("Петренко".into()),
+            first_name: "Іван".into(),
+            patronymic: None,
+            phone: Some("+380 (67) 555-12-34".into()),
+            email: None,
+            notes: None,
+        };
+
+        let (client_type, base) = payload_common_fields(&payload).expect("valid client");
+        assert_eq!(client_type, ClientType::Individual);
+        assert_eq!(base.phone.as_deref(), Some("+380675551234"));
+    }
+
+    #[test]
+    fn rejects_an_individual_phone_without_a_country_code() {
+        let payload = ClientPayload::Individual {
+            surname: None,
+            first_name: "Іван".into(),
+            patronymic: None,
+            phone: Some("0675551234".into()),
+            email: None,
+            notes: None,
+        };
+
+        assert!(payload_common_fields(&payload).is_err());
+    }
+
+    #[test]
+    fn trims_email_and_notes_and_blanks_whitespace() {
+        let payload = ClientPayload::Individual {
+            surname: None,
+            first_name: "Іван".into(),
+            patronymic: None,
+            phone: None,
+            email: Some("  ivan@example.com  ".into()),
+            notes: Some("   ".into()),
+        };
+
+        let (_, base) = payload_common_fields(&payload).expect("valid client");
+        assert_eq!(base.email.as_deref(), Some("ivan@example.com"));
+        assert_eq!(base.notes, None);
+    }
+
+    #[test]
+    fn reports_a_missing_client() {
+        tauri::async_runtime::block_on(async {
+            let pool = pool().await;
+
+            let error = delete_client_guarded(&pool, 404)
+                .await
+                .expect_err("nothing to delete");
+            assert!(matches!(error, AppError::NotFound(_)));
+        });
+    }
 }

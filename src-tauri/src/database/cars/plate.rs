@@ -89,3 +89,51 @@ pub(crate) fn normalize_plate_fields(
 
     Ok((plate, plate_type, country, plate_search_key))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalizes_plate_text_to_written_form() {
+        assert_eq!(
+            normalize_plate_text("  ab   123 cd "),
+            Some("AB 123 CD".to_string())
+        );
+        assert_eq!(normalize_plate_text("   "), None);
+    }
+
+    #[test]
+    fn search_key_keeps_only_letters_and_digits() {
+        assert_eq!(plate_search_key("АВ 1234 СЕ"), "AB1234CE");
+        assert_eq!(plate_search_key("ab-123"), "AB123");
+    }
+
+    #[test]
+    fn foreign_plate_requires_a_two_letter_country() {
+        assert!(normalize_plate_fields(PlateType::Foreign, Some("b 123".into()), None).is_err());
+        assert!(normalize_plate_fields(
+            PlateType::Foreign,
+            Some("b 123".into()),
+            Some("deu".into())
+        )
+        .is_err());
+
+        let (plate, _, country, key) =
+            normalize_plate_fields(PlateType::Foreign, Some("b 123".into()), Some("de".into()))
+                .expect("valid foreign plate");
+        assert_eq!(plate.as_deref(), Some("B 123"));
+        assert_eq!(country.as_deref(), Some("DE"));
+        assert_eq!(key.as_deref(), Some("B123"));
+    }
+
+    #[test]
+    fn domestic_plate_drops_the_country() {
+        let (_, plate_type, country, _) =
+            normalize_plate_fields(PlateType::Ua, Some("аа 1234 іа".into()), Some("ua".into()))
+                .expect("valid plate");
+
+        assert_eq!(plate_type, PlateType::Ua);
+        assert_eq!(country, None);
+    }
+}
