@@ -38,6 +38,14 @@ repos:
         files: ^src-tauri/
         pass_filenames: false
 
+      # Migrations are covered too since the schema constraint test reads the SQL.
+      - id: cargo-test
+        name: cargo test
+        entry: cargo test --manifest-path=src-tauri/Cargo.toml
+        language: system
+        files: ^src-tauri/(src/|migrations/)
+        pass_filenames: false
+
       - id: cargo-sort
         name: "cargo sort"
         entry: cargo sort src-tauri/Cargo.toml
@@ -69,6 +77,13 @@ repos:
       - id: svelte-typecheck
         name: "svelte-check"
         entry: npx svelte-check --tsconfig ./tsconfig.json
+        language: system
+        files: ^src/
+        pass_filenames: false
+
+      - id: frontend-test
+        name: "vitest"
+        entry: npx vitest run
         language: system
         files: ^src/
         pass_filenames: false

@@ -1058,3 +1058,25 @@ pub async fn reopen_vat_period(state: State<'_, AppState>, month: String) -> App
     Event::new("vat.reopen_period").id(&month).ok();
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn standard_rate_must_be_within_one_hundred() {
+        assert!(validate_rate_and_scheme(Decimal::from(20), VatScheme::Standard).is_ok());
+        assert!(validate_rate_and_scheme(Decimal::ZERO, VatScheme::Standard).is_ok());
+        assert!(validate_rate_and_scheme(Decimal::from(101), VatScheme::Standard).is_err());
+        assert!(validate_rate_and_scheme(Decimal::from(-1), VatScheme::Standard).is_err());
+    }
+
+    #[test]
+    fn preferential_schemes_require_a_zero_rate() {
+        assert!(validate_rate_and_scheme(Decimal::ZERO, VatScheme::Exempt).is_ok());
+        assert!(validate_rate_and_scheme(Decimal::ZERO, VatScheme::Zero).is_ok());
+        assert!(validate_rate_and_scheme(Decimal::ZERO, VatScheme::Export).is_ok());
+        assert!(validate_rate_and_scheme(Decimal::from(20), VatScheme::Exempt).is_err());
+        assert!(validate_rate_and_scheme(Decimal::from(20), VatScheme::Export).is_err());
+    }
+}

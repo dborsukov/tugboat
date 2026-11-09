@@ -856,3 +856,37 @@ where
     .fetch_optional(executor)
     .await?)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn amount_cannot_be_negative() {
+        assert!(validate_amount(Decimal::from(-1)).is_err());
+        assert!(validate_amount(Decimal::ZERO).is_ok());
+    }
+
+    #[test]
+    fn date_must_be_a_real_calendar_day() {
+        assert!(validate_date("2026-02-30").is_err());
+        assert!(validate_date("2026-2-3").is_err());
+        assert!(validate_date("2026-02-28").is_ok());
+    }
+
+    #[test]
+    fn description_is_trimmed_and_required() {
+        assert!(validate_description("   ").is_err());
+        assert_eq!(
+            validate_description("  заміна оливи  ").expect("valid description"),
+            "заміна оливи"
+        );
+    }
+
+    #[test]
+    fn vat_rate_must_be_within_one_hundred() {
+        assert!(validate_vat_rate(Decimal::from(-1)).is_err());
+        assert!(validate_vat_rate(Decimal::from(101)).is_err());
+        assert!(validate_vat_rate(Decimal::from(20)).is_ok());
+    }
+}
