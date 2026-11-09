@@ -253,7 +253,7 @@
       <div class="app-name">Папай CRM</div>
       <div class="spinner"></div>
     </div>
-    <div class="version">v0.1.0</div>
+    <div class="version" data-version></div>
     <script>
       (() => {
         const reveal = () => {
@@ -273,6 +273,16 @@
         if (document.readyState === "complete") reveal();
         else window.addEventListener("load", reveal);
       })();
+    </script>
+    <script>
+      window.__TAURI__?.core
+        ?.invoke("get_app_version")
+        .then((version) => {
+          if (typeof version !== "string") return;
+          const target = document.querySelector("[data-version]");
+          if (target) target.textContent = `v${version}`;
+        })
+        .catch(() => {});
     </script>
   </body>
 </html>

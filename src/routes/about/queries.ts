@@ -15,3 +15,12 @@ export function versionQueryOptions() {
 export function createVersionQuery() {
   return createQuery<string>(() => versionQueryOptions());
 }
+
+export function createCommitQuery() {
+  return createQuery<string>(() => ({
+    queryKey: [...keys.version, "commit"],
+    queryFn: () => commands.getAppBuildCommit(),
+    staleTime: Infinity,
+    gcTime: Infinity,
+  }));
+}

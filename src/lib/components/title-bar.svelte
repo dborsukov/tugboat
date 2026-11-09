@@ -193,11 +193,11 @@
     const win = new WebviewWindow("about", {
       url: "/about",
       title: "Про застосунок",
-      width: 340,
-      height: 420,
+      width: 260,
+      height: 400,
       center: true,
       resizable: false,
-      decorations: false,
+      decorations: isMacOS,
       visible: false,
     });
     // If the About page ever fails to boot, don't leave the

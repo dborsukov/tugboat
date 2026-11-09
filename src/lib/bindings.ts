@@ -184,8 +184,12 @@ export const commands = {
 	/**  A month of expenses, and the month before it. */
 	fetchExpenseSummary: (month: DaySpan, previousMonth: DaySpan) => typedError<ExpenseSummary, AppError>(__TAURI_INVOKE("fetch_expense_summary", { month, previousMonth })),
 	getAppVersion: () => __TAURI_INVOKE<string>("get_app_version"),
+	/**  The commit the running binary was built from, for the About window. */
+	getAppBuildCommit: () => __TAURI_INVOKE<string>("get_app_build_commit"),
 	openLogsDir: () => typedError<null, AppError>(__TAURI_INVOKE("open_logs_dir")),
 	logDiagnostics: () => typedError<string, AppError>(__TAURI_INVOKE("log_diagnostics")),
+	/**  Writes the same report straight to the system clipboard. */
+	copyDiagnostics: () => typedError<null, AppError>(__TAURI_INVOKE("copy_diagnostics")),
 	/**
 	 *  Shows the main window, restores its geometry, and drops the splash screen.
 	 * 

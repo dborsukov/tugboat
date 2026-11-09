@@ -1,6 +1,6 @@
 //! Three files live in [`log_dir`]:
 //!
-//! - `app.log` — lifecycle, warnings, errors, slow operations.
+//! - `app.log` — lifecycle, warnings, errors and timings.
 //! - `audit.log` — business events, target [`AUDIT_TARGET`], written by [`Event`].
 //! - `panic.log` — crashes, appended by [`install_panic_hook`] without goingnthrough the logger.
 
@@ -270,7 +270,24 @@ pub fn open_logs_dir(app: AppHandle) -> AppResult<()> {
 
 #[tauri::command]
 #[specta::specta]
-pub fn log_diagnostics(state: State<'_, AppState>) -> AppResult<String> {
+pub async fn log_diagnostics(state: State<'_, AppState>) -> AppResult<String> {
+    Ok(diagnostics_report(state.inner()).await)
+}
+
+/// Writes the same report straight to the system clipboard.
+#[tauri::command]
+#[specta::specta]
+pub async fn copy_diagnostics(app: AppHandle, state: State<'_, AppState>) -> AppResult<()> {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+
+    let report = diagnostics_report(state.inner()).await;
+
+    app.clipboard()
+        .write_text(report)
+        .map_err(|error| AppError::Generic(format!("Не вдалося скопіювати діагностику: {error}")))
+}
+
+async fn diagnostics_report(state: &AppState) -> String {
     const AUDIT_TAIL_LINES: usize = 100;
     const APP_TAIL_LINES: usize = 250;
 
@@ -284,9 +301,30 @@ pub fn log_diagnostics(state: State<'_, AppState>) -> AppResult<String> {
         Err(_) => format!("{}: відсутній", path.display()),
     };
 
+    let db = state.data_dir.join("main.db");
+    let wal = state.data_dir.join("main.db-wal");
+
+    // Both are best effort: diagnostics must still be produced when the
+    // database is the thing that is broken.
+    let migrations: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM _sqlx_migrations")
+        .fetch_one(&state.db_pool)
+        .await
+        .unwrap_or(0);
+    let timezone = crate::database::settings::fetch_settings_from_pool(&state.db_pool)
+        .await
+        .map(|settings| settings.timezone)
+        .unwrap_or_else(|_| "невідомо".to_string());
+
+    let commit = env!("POPEYE_BUILD_COMMIT");
+    let version = if commit == "unknown" {
+        state.version.clone()
+    } else {
+        format!("{} [{commit}]", state.version)
+    };
+
     let mut report = format!(
-        "Папай CRM {version}\nbuild={build}\nos={os} arch={arch}\nдані={data}\nжурнали={logs}\n{app}\n{audit}\n{panic}\nротацій: {rotated}\n",
-        version = state.version,
+        "Папай CRM {version}\nbuild={build}\nos={os} arch={arch}\nдані={data}\nжурнали={logs}\nбаза: {db}\nwal: {wal}\nміграцій: {migrations}\nчасовий пояс: {timezone}\n{app}\n{audit}\n{panic}\nротацій: {rotated}\n",
+        version = version,
         build = if cfg!(debug_assertions) {
             "debug"
         } else {
@@ -300,13 +338,15 @@ pub fn log_diagnostics(state: State<'_, AppState>) -> AppResult<String> {
         audit = describe(&audit),
         panic = describe(&panic),
         rotated = rotated_count(&dir),
+        db = describe(&db),
+        wal = describe(&wal),
     );
 
     push_tail(&mut report, "app.log", &app, APP_TAIL_LINES);
     push_tail(&mut report, "audit.log", &audit, AUDIT_TAIL_LINES);
     push_tail(&mut report, "panic.log", &panic, 20);
 
-    Ok(report)
+    report
 }
 
 fn push_tail(report: &mut String, label: &str, path: &Path, max_lines: usize) {

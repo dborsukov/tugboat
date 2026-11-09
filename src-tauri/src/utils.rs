@@ -2,8 +2,8 @@ use tauri::State;
 
 #[tauri::command]
 #[specta::specta]
-pub fn get_app_version(state: State<'_, crate::AppState>) -> &'static str {
-    state.version
+pub fn get_app_version(state: State<'_, crate::AppState>) -> String {
+    state.version.clone()
 }
 
 /// A file name safe to hand to a save dialog: path separators and other
@@ -45,4 +45,11 @@ pub(crate) fn plural(
     } else {
         many
     }
+}
+
+/// The commit the running binary was built from, for the About window.
+#[tauri::command]
+#[specta::specta]
+pub fn get_app_build_commit() -> String {
+    env!("POPEYE_BUILD_COMMIT").to_string()
 }

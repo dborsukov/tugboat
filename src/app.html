@@ -148,8 +148,10 @@
     <script>
       if (document.documentElement.dataset.platform === "macos") {
         const appWindow = window.__TAURI__?.window?.getCurrentWindow?.();
-        appWindow?.show?.();
-        appWindow?.setFocus?.();
+        if (appWindow?.label === "main") {
+          appWindow.show?.();
+          appWindow.setFocus?.();
+        }
       }
     </script>
   </body>

@@ -30,7 +30,9 @@ use crate::{
 pub struct AppState {
     pub data_dir: PathBuf,
     pub db_pool: Pool<Sqlite>,
-    pub version: &'static str,
+    /// The version Tauri compares updates against, not `CARGO_PKG_VERSION` because
+    /// `tauri.conf.json` overrides the package version.
+    pub version: String,
 }
 
 pub fn specta_builder() -> Builder<tauri::Wry> {
@@ -179,8 +181,10 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         database::recent::clear_recent_items,
         database::analytics::fetch_expense_summary,
         utils::get_app_version,
+        utils::get_app_build_commit,
         logging::open_logs_dir,
         logging::log_diagnostics,
+        logging::copy_diagnostics,
         window_geometry::reveal_window
     ])
 }
@@ -245,9 +249,10 @@ pub fn run() {
             let log_dir = logging::log_dir();
             logging::init(app.handle(), &log_dir)?;
 
+            let version = app.package_info().version.to_string();
+
             log::info!(
-                "Запуск PopeyeCRM {} | build={} | os={} arch={} | дані={} | журнали={}",
-                env!("CARGO_PKG_VERSION"),
+                "Запуск PopeyeCRM {version} | build={} | os={} arch={} | дані={} | журнали={}",
                 if cfg!(debug_assertions) {
                     "debug"
                 } else {
@@ -338,7 +343,7 @@ async fn start(handle: &AppHandle, app_dir: PathBuf, started: Instant) -> AppRes
     handle.manage(AppState {
         data_dir: app_dir,
         db_pool,
-        version: env!("CARGO_PKG_VERSION"),
+        version: handle.package_info().version.to_string(),
     });
 
     let appstate = handle.state::<AppState>();
