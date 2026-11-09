@@ -56,7 +56,7 @@ CREATE TABLE cars (
     client_id INTEGER NOT NULL,
     brand_id INTEGER NOT NULL,
     model TEXT NOT NULL,
-    year INTEGER NOT NULL,
+    year INTEGER NOT NULL CHECK (year BETWEEN 1900 AND 2100),
     license_plate TEXT,
     plate_type TEXT NOT NULL DEFAULT 'ua' CHECK (
         plate_type IN (
@@ -72,7 +72,10 @@ CREATE TABLE cars (
     plate_search_key TEXT,
     vin TEXT,
     engine_code TEXT,
-    engine_displacement REAL,
+    engine_displacement REAL CHECK (
+        engine_displacement IS NULL
+        OR engine_displacement > 0
+    ),
     fuel_type TEXT,
     drive_type TEXT,
     notes TEXT,
@@ -85,10 +88,12 @@ CREATE TABLE cars (
 CREATE TABLE services (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     code TEXT,
+    code_key TEXT,
     name TEXT NOT NULL,
-    price_type TEXT NOT NULL,
-    fixed_price TEXT NOT NULL DEFAULT '0',
-    labor_hours TEXT NOT NULL DEFAULT "1.0",
+    name_key TEXT NOT NULL,
+    price_type TEXT NOT NULL CHECK (price_type IN ('hourly', 'fixed')),
+    fixed_price TEXT NOT NULL DEFAULT '0' CHECK (fixed_price NOT LIKE '-%'),
+    labor_hours TEXT NOT NULL DEFAULT '1.0' CHECK (labor_hours NOT LIKE '-%'),
     archived_at TEXT
 );
 
@@ -103,15 +108,23 @@ CREATE TABLE expense_categories (
 CREATE TABLE expenses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT NOT NULL,
-    amount TEXT NOT NULL,
+    amount TEXT NOT NULL CHECK (amount NOT LIKE '-%'),
     description TEXT NOT NULL,
     category_id INTEGER REFERENCES expense_categories (id) ON DELETE SET NULL,
     payment_method TEXT,
     created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
     archived_at TEXT,
-    vat_rate TEXT NOT NULL DEFAULT '0',
+    vat_rate TEXT NOT NULL DEFAULT '0' CHECK (vat_rate NOT LIKE '-%'),
     price_includes_vat INTEGER NOT NULL DEFAULT 1,
-    vat_scheme TEXT NOT NULL DEFAULT 'standard',
+    vat_scheme TEXT NOT NULL DEFAULT 'standard' CHECK (
+        vat_scheme IN (
+            'standard',
+            'zero',
+            'exempt',
+            'not_object',
+            'export'
+        )
+    ),
     supplier_name TEXT,
     supplier_code TEXT,
     invoice_number TEXT,
@@ -131,8 +144,11 @@ CREATE TABLE workers (
 CREATE TABLE work_orders (
     id TEXT PRIMARY KEY,
     car_id INTEGER NOT NULL,
-    odometer_in INTEGER NOT NULL,
-    odometer_out INTEGER,
+    odometer_in INTEGER NOT NULL CHECK (odometer_in >= 0),
+    odometer_out INTEGER CHECK (
+        odometer_out IS NULL
+        OR odometer_out >= 0
+    ),
     description TEXT,
     notes TEXT,
     condition_report TEXT,
@@ -145,11 +161,11 @@ CREATE TABLE work_orders (
     driver_first_name TEXT,
     driver_patronymic TEXT,
     driver_phone TEXT,
-    rate TEXT NOT NULL DEFAULT "0",
-    labor_cost_type TEXT NOT NULL,
-    labor_cost_value TEXT NOT NULL DEFAULT "0",
-    discount_type TEXT NOT NULL,
-    discount_value TEXT NOT NULL DEFAULT "0",
+    rate TEXT NOT NULL DEFAULT '0' CHECK (rate NOT LIKE '-%'),
+    labor_cost_type TEXT NOT NULL CHECK (labor_cost_type IN ('hourly', 'percentage')),
+    labor_cost_value TEXT NOT NULL DEFAULT '0' CHECK (labor_cost_value NOT LIKE '-%'),
+    discount_type TEXT NOT NULL CHECK (discount_type IN ('none', 'fixed', 'percentage')),
+    discount_value TEXT NOT NULL DEFAULT '0' CHECK (discount_value NOT LIKE '-%'),
     created_at TEXT NOT NULL DEFAULT (strftime ('%Y-%m-%dT%H:%M:%SZ', 'now')),
     started_at TEXT,
     completed_at TEXT,
@@ -158,9 +174,17 @@ CREATE TABLE work_orders (
     tax_invoice_number TEXT,
     tax_invoice_date TEXT,
     exemption_code TEXT,
-    vat_rate TEXT NOT NULL DEFAULT "0",
+    vat_rate TEXT NOT NULL DEFAULT '0' CHECK (vat_rate NOT LIKE '-%'),
     prices_include_vat INTEGER NOT NULL DEFAULT 1,
-    vat_scheme TEXT NOT NULL DEFAULT 'standard',
+    vat_scheme TEXT NOT NULL DEFAULT 'standard' CHECK (
+        vat_scheme IN (
+            'standard',
+            'zero',
+            'exempt',
+            'not_object',
+            'export'
+        )
+    ),
     archived_at TEXT,
     worker_id INTEGER REFERENCES workers (id) ON DELETE SET NULL,
     FOREIGN KEY (car_id) REFERENCES cars (id) ON DELETE CASCADE,
@@ -173,16 +197,28 @@ CREATE TABLE labor_items (
     work_order_id TEXT NOT NULL,
     code TEXT,
     name TEXT NOT NULL,
-    price_type TEXT NOT NULL,
-    fixed_price TEXT NOT NULL DEFAULT '0',
-    labor_hours TEXT NOT NULL DEFAULT "1.0",
-    discount_type TEXT NOT NULL,
-    discount_value TEXT NOT NULL DEFAULT "0",
+    price_type TEXT NOT NULL CHECK (price_type IN ('hourly', 'fixed')),
+    fixed_price TEXT NOT NULL DEFAULT '0' CHECK (fixed_price NOT LIKE '-%'),
+    labor_hours TEXT NOT NULL DEFAULT '1.0' CHECK (labor_hours NOT LIKE '-%'),
+    discount_type TEXT NOT NULL CHECK (discount_type IN ('none', 'fixed', 'percentage')),
+    discount_value TEXT NOT NULL DEFAULT '0' CHECK (discount_value NOT LIKE '-%'),
     is_free INTEGER NOT NULL DEFAULT 0,
     position INTEGER NOT NULL DEFAULT 0,
     -- NULL means the order's rate and treatment.
-    vat_rate TEXT,
-    vat_scheme TEXT,
+    vat_rate TEXT CHECK (
+        vat_rate IS NULL
+        OR vat_rate NOT LIKE '-%'
+    ),
+    vat_scheme TEXT CHECK (
+        vat_scheme IS NULL
+        OR vat_scheme IN (
+            'standard',
+            'zero',
+            'exempt',
+            'not_object',
+            'export'
+        )
+    ),
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE,
     FOREIGN KEY (service_id) REFERENCES services (id) ON DELETE SET NULL
 );
@@ -193,24 +229,44 @@ CREATE TABLE part_items (
     status TEXT NOT NULL,
     code TEXT,
     name TEXT NOT NULL,
-    quantity TEXT NOT NULL DEFAULT "1.0",
+    quantity TEXT NOT NULL DEFAULT '1.0' CHECK (quantity NOT LIKE '-%'),
     unit_type TEXT,
     unit_key TEXT CHECK (
         unit_key IS NULL
         OR unit_key IN ('pcs', 'set', 'pair', 'l', 'kg', 'g', 'm', 'pack')
     ),
-    base_cost TEXT NOT NULL DEFAULT "0",
-    markup TEXT NOT NULL DEFAULT "0",
-    discount_type TEXT NOT NULL,
-    discount_value TEXT NOT NULL DEFAULT "0",
+    base_cost TEXT NOT NULL DEFAULT '0' CHECK (base_cost NOT LIKE '-%'),
+    markup TEXT NOT NULL DEFAULT '0' CHECK (markup NOT LIKE '-%'),
+    discount_type TEXT NOT NULL CHECK (discount_type IN ('none', 'fixed', 'percentage')),
+    discount_value TEXT NOT NULL DEFAULT '0' CHECK (discount_value NOT LIKE '-%'),
     is_free INTEGER NOT NULL DEFAULT 0,
     position INTEGER NOT NULL DEFAULT 0,
     -- NULL means the order's rate and treatment.
-    vat_rate TEXT,
-    vat_scheme TEXT,
-    purchase_vat_rate TEXT NOT NULL DEFAULT '0',
+    vat_rate TEXT CHECK (
+        vat_rate IS NULL
+        OR vat_rate NOT LIKE '-%'
+    ),
+    vat_scheme TEXT CHECK (
+        vat_scheme IS NULL
+        OR vat_scheme IN (
+            'standard',
+            'zero',
+            'exempt',
+            'not_object',
+            'export'
+        )
+    ),
+    purchase_vat_rate TEXT NOT NULL DEFAULT '0' CHECK (purchase_vat_rate NOT LIKE '-%'),
     purchase_price_includes_vat INTEGER NOT NULL DEFAULT 1,
-    purchase_scheme TEXT NOT NULL DEFAULT 'standard',
+    purchase_scheme TEXT NOT NULL DEFAULT 'standard' CHECK (
+        purchase_scheme IN (
+            'standard',
+            'zero',
+            'exempt',
+            'not_object',
+            'export'
+        )
+    ),
     supplier_name TEXT,
     supplier_code TEXT,
     invoice_number TEXT,
@@ -218,8 +274,7 @@ CREATE TABLE part_items (
     vat_credited INTEGER NOT NULL DEFAULT 0,
     supplier TEXT,
     supplier_order_id TEXT,
-    provided_by TEXT NOT NULL DEFAULT 'shop'
-    CHECK (provided_by IN ('shop', 'customer')),
+    provided_by TEXT NOT NULL DEFAULT 'shop' CHECK (provided_by IN ('shop', 'customer')),
     FOREIGN KEY (work_order_id) REFERENCES work_orders (id) ON DELETE CASCADE,
     CHECK ((unit_type IS NULL) <> (unit_key IS NULL))
 );
@@ -273,7 +328,9 @@ CREATE TABLE vat_entries (
     counterparty_code TEXT,
     counterparty_vat_payer INTEGER NOT NULL DEFAULT 0,
     base TEXT NOT NULL,
-    rate TEXT NOT NULL,
+    -- A reversal row carries a negative base and amount, so only the rate can
+    -- be asserted unsigned here.
+    rate TEXT NOT NULL CHECK (rate NOT LIKE '-%'),
     amount TEXT NOT NULL,
     scheme TEXT NOT NULL DEFAULT 'standard' CHECK (
         scheme IN (
@@ -407,6 +464,12 @@ CREATE INDEX idx_cars_archived_at ON cars (archived_at);
 CREATE INDEX idx_work_orders_archived_at ON work_orders (archived_at);
 
 CREATE INDEX idx_services_archived_at ON services (archived_at);
+
+CREATE UNIQUE INDEX idx_services_name_key ON services (name_key);
+
+CREATE UNIQUE INDEX idx_services_code_key ON services (code_key)
+WHERE
+    code_key IS NOT NULL;
 
 CREATE INDEX idx_workers_is_active ON workers (is_active);
 
