@@ -224,8 +224,11 @@ pub fn run() {
                 let _ = window.set_focus();
             }
         }))
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(specta_builder.invoke_handler())
         .setup(move |app| {
             specta_builder.mount_events(app);
@@ -488,4 +491,45 @@ fn macos_window_chrome(
             TRAFFIC_LIGHT_INSET_X_PT,
             traffic_light_y,
         ))
+}
+
+#[cfg(test)]
+mod tests {
+    use tauri::utils::config::{Config, Csp};
+
+    #[test]
+    fn production_csp_is_configured() {
+        let raw = include_str!("../tauri.conf.json");
+        let config: Config = serde_json::from_str(raw).expect("tauri.conf.json parses");
+
+        let csp = config
+            .app
+            .security
+            .csp
+            .expect("app.security.csp must be set");
+
+        let directives = match csp {
+            Csp::DirectiveMap(directives) => directives,
+            Csp::Policy(policy) => panic!("expected a directive map, got policy {policy}"),
+        };
+
+        for directive in ["default-src", "script-src", "style-src", "connect-src"] {
+            assert!(
+                directives.contains_key(directive),
+                "csp is missing {directive}"
+            );
+        }
+
+        // Tauri injects nonces into style-src, which makes 'unsafe-inline' inert.
+        // Two bundled libraries append <style> at runtime, so modification of
+        // that directive has to stay off for the inline sources to apply.
+        assert!(
+            config
+                .app
+                .security
+                .dangerous_disable_asset_csp_modification
+                .can_modify("script-src"),
+            "script-src must keep Tauri's hash injection"
+        );
+    }
 }

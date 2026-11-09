@@ -32,6 +32,7 @@
   import { recentItemsVersion } from "$lib/recent-items";
   import { navHistory } from "$lib/states/nav-history.svelte";
   import { settingsState } from "$lib/states/settings.svelte";
+  import { checkForUpdates } from "$lib/updates";
 
   let { children } = $props();
   const queryClient = new QueryClient({
@@ -135,6 +136,9 @@
       // can stay behind the splash screen, so leave a trace.
       logCommandFailure("boot.revealWindow", error);
     }
+
+    // After the window is up, never before
+    setTimeout(() => void checkForUpdates({ silent: true }), 3_000);
   }
 </script>
 
