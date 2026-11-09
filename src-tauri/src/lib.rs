@@ -371,13 +371,24 @@ fn window_config(handle: &AppHandle, label: &str) -> AppResult<tauri::utils::con
         .ok_or_else(|| AppError::Generic(format!("У конфігурації немає вікна «{label}»")))
 }
 
+trait HardenedWebview {
+    fn dev_webview(self) -> Self;
+}
+
+impl<'a> HardenedWebview for WebviewWindowBuilder<'a, tauri::Wry, AppHandle> {
+    fn dev_webview(self) -> Self {
+        self.devtools(cfg!(debug_assertions))
+            .zoom_hotkeys_enabled(false)
+    }
+}
+
 /// Creates the splash screen window on the platforms that use one.
 #[cfg(not(target_os = "macos"))]
 fn open_splash_window(handle: &AppHandle) -> AppResult<()> {
     let config = window_config(handle, "splashscreen")?;
 
     WebviewWindowBuilder::from_config(handle, &config)
-        .and_then(|builder| builder.build())
+        .and_then(|builder| builder.dev_webview().build())
         .map_err(|e| AppError::Generic(format!("Не вдалося створити вікно заставки: {e}")))?;
 
     Ok(())
@@ -395,7 +406,8 @@ fn open_main_window(handle: &AppHandle, ui_scale: f64, theme: ThemeMode) -> AppR
 
     let builder = WebviewWindowBuilder::from_config(handle, &config)
         .map_err(|e| AppError::Generic(format!("Не вдалося створити головне вікно: {e}")))?
-        .initialization_script(boot_script(ui_scale));
+        .initialization_script(boot_script(ui_scale))
+        .dev_webview();
 
     #[cfg(target_os = "macos")]
     let builder = macos_window_chrome(builder, ui_scale);

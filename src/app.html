@@ -129,6 +129,42 @@
         } catch {}
       })();
     </script>
+    <script>
+      // Keeps the packaged app from behaving like a browser: no context menu,
+      // no reload, devtools or view-source shortcuts. This is a guard against
+      // accidents, not a security boundary.
+      (() => {
+        const isBrowserShortcut = (event) => {
+          if (event.key === "F5" || event.key === "F12") return true;
+
+          const modifier = event.ctrlKey || event.metaKey;
+          if (!modifier) return false;
+
+          const key = event.key.toLowerCase();
+          // Reload and view-source.
+          if (key === "r" || key === "u") return true;
+          // Devtools on Windows/Linux (Ctrl+Shift) and macOS (Cmd+Option).
+          if (event.shiftKey && ["r", "i", "j", "c"].includes(key)) return true;
+          return event.altKey && ["i", "j", "c"].includes(key);
+        };
+
+        window.addEventListener(
+          "contextmenu",
+          (event) => event.preventDefault(),
+          { capture: true },
+        );
+
+        window.addEventListener(
+          "keydown",
+          (event) => {
+            if (!isBrowserShortcut(event)) return;
+            event.preventDefault();
+            event.stopPropagation();
+          },
+          { capture: true },
+        );
+      })();
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">
