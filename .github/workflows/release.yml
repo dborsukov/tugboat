@@ -98,17 +98,24 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      # The runner's Homebrew paths can shadow the rustup shim, in which case
-      # `rustup target add` installs into a toolchain the build never uses. This
-      # action pins the rustup toolchain and installs the target into it.
-      - uses: dtolnay/rust-toolchain@stable
+      # Homebrew's Rust can precede the rustup-managed toolchain on the runner's
+      # PATH; a target added through the Homebrew rustup is invisible to the
+      # cargo the build runs, which is how the x64 job kept failing while the
+      # arm64 job passed.
+      - name: Install the macOS Rust target
         if: matrix.platform == 'macos-latest'
-        with:
-          targets: ${{ matrix.target }}
-
-      - name: Show the installed Rust targets
-        if: matrix.platform == 'macos-latest'
-        run: rustup target list --installed
+        run: |
+          if [ -x "$HOME/.cargo/bin/rustup" ]; then
+            export PATH="$HOME/.cargo/bin:$PATH"
+          else
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --default-toolchain stable --profile minimal
+          fi
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          command -v rustup cargo
+          rustup show
+          rustup target add "${{ matrix.target }}"
+          rustup target list --installed
 
       - uses: actions/cache@v6
         with:
