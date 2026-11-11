@@ -105,12 +105,14 @@ jobs:
       - name: Install the macOS Rust target
         if: matrix.platform == 'macos-latest'
         run: |
-          if [ -x "$HOME/.cargo/bin/rustup" ]; then
-            export PATH="$HOME/.cargo/bin:$PATH"
-          else
+          if [ ! -x "$HOME/.cargo/bin/rustup" ]; then
+            # The image ships a Homebrew Rust whose cargo is not the rustup
+            # toolchain, and the installer refuses to coexist unless told to.
+            export RUSTUP_INIT_SKIP_PATH_CHECK=yes
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
               | sh -s -- -y --default-toolchain stable --profile minimal
           fi
+          export PATH="$HOME/.cargo/bin:$PATH"
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           command -v rustup cargo
           rustup show
