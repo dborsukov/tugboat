@@ -7,7 +7,7 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "dev": "vite dev",
-    "prepare": "svelte-kit sync && cargo sort --version || cargo install cargo-sort && pre-commit install",
+    "prepare": "svelte-kit sync && node scripts/dev-prepare.mjs",
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",

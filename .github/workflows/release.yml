@@ -21,7 +21,16 @@ jobs:
     name: Preflight
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+
+      - name: Release notes exist
+        shell: bash
+        run: |
+          file=".github/release-notes/${GITHUB_REF_NAME}.md"
+          if [ ! -f "$file" ]; then
+            echo "::error::Missing $file. Add the notes for this tag next to the version bump."
+            exit 1
+          fi
 
       - name: Tag matches the app version
         shell: bash
@@ -47,7 +56,7 @@ jobs:
         shell: bash
         run: |
           if grep -q "REPLACE_WITH_UPDATER_PUBLIC_KEY" src-tauri/tauri.conf.json; then
-            echo "::error::tauri.conf.json still carries the placeholder updater pubkey. An app released this way can never update itself — see docs/releasing.md."
+            echo "::error::tauri.conf.json still carries the placeholder updater pubkey. An app released this way can never update itself."
             exit 1
           fi
 
@@ -61,10 +70,10 @@ jobs:
       matrix:
         include:
           - name: macos-arm64
-            platform: macos-latest
+            platform: macos-15
             args: --target aarch64-apple-darwin
           - name: macos-x64
-            platform: macos-latest
+            platform: macos-15-intel
             args: --target x86_64-apple-darwin
           - name: linux-x64
             platform: ubuntu-22.04
@@ -74,10 +83,12 @@ jobs:
             args: ""
     runs-on: ${{ matrix.platform }}
     env:
-      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      # An empty secret still exports an empty variable, and the bundler treats
+      # a present APPLE_CERTIFICATE as a certificate to import, so gate on the
+      # secret itself instead of relying on the value being non-empty.
+      HAS_APPLE_CERT: ${{ secrets.APPLE_CERTIFICATE != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install Linux dependencies
         if: startsWith(matrix.platform, 'ubuntu')
@@ -85,20 +96,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 11
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
 
-      - name: Install macOS targets
-        if: matrix.platform == 'macos-latest'
-        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
-
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/registry
@@ -109,10 +116,12 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      # Only runs when the signing secrets are configured, unsigned build will get a Gatekeeper warning.
+      # Only runs when the signing secrets are configured
       - name: Import the Apple signing certificate
-        if: matrix.platform == 'macos-latest' && env.APPLE_CERTIFICATE != ''
+        if: startsWith(matrix.platform, 'macos') && env.HAS_APPLE_CERT == 'true'
         env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
           echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
@@ -126,23 +135,46 @@ jobs:
             -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
           rm certificate.p12
 
+      - name: Export the Apple signing identity
+        if: startsWith(matrix.platform, 'macos') && env.HAS_APPLE_CERT == 'true'
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          {
+            printf 'APPLE_SIGNING_IDENTITY=%s\n' "$APPLE_SIGNING_IDENTITY"
+            printf 'APPLE_ID=%s\n' "$APPLE_ID"
+            printf 'APPLE_PASSWORD=%s\n' "$APPLE_PASSWORD"
+            printf 'APPLE_TEAM_ID=%s\n' "$APPLE_TEAM_ID"
+          } >> "$GITHUB_ENV"
+
+      - name: Read the release notes
+        id: notes
+        shell: bash
+        run: |
+          file=".github/release-notes/${GITHUB_REF_NAME}.md"
+          if [ ! -f "$file" ]; then
+            echo "::error::Missing $file"
+            exit 1
+          fi
+          delimiter="NOTES_${RANDOM}${RANDOM}"
+          {
+            echo "body<<$delimiter"
+            cat "$file"
+            echo "$delimiter"
+          } >> "$GITHUB_OUTPUT"
+
       - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: PopeyeCRM ${{ github.ref_name }}
-          releaseBody: |
-            Дистрибутиви для Windows, macOS і Linux.
-
-            Застосунок оновлюється сам із найновішого релізу — файл `latest.json`
-            внизу цієї сторінки описує пакети оновлень.
+          releaseBody: ${{ steps.notes.outputs.body }}
           # Draft first to avoid serving incomplete builds through latest.json
           releaseDraft: true
           prerelease: false

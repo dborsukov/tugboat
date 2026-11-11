@@ -8,6 +8,7 @@
     QueryClientProvider,
   } from "@tanstack/svelte-query";
   import { SvelteQueryDevtools } from "@tanstack/svelte-query-devtools";
+  import { listen } from "@tauri-apps/api/event";
   import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
   import { ModeWatcher } from "mode-watcher";
   import { onMount } from "svelte";
@@ -26,13 +27,14 @@
   import SetupIssueDialog from "$lib/components/setup-issue-dialog.svelte";
   import TitleBar from "$lib/components/title-bar.svelte";
   import UiScaleApplier from "$lib/components/ui-scale-applier.svelte";
+  import UpdateDialog from "$lib/components/update-dialog.svelte";
 
   import { commands } from "$lib/bindings";
   import { logAppEvent, logCommandFailure } from "$lib/log";
   import { recentItemsVersion } from "$lib/recent-items";
   import { navHistory } from "$lib/states/nav-history.svelte";
   import { settingsState } from "$lib/states/settings.svelte";
-  import { checkForUpdates } from "$lib/updates";
+  import { updateState } from "$lib/states/update.svelte";
 
   let { children } = $props();
   const queryClient = new QueryClient({
@@ -100,6 +102,12 @@
       return;
     }
 
+    // The About window asks for the update dialog by event, because each
+    // webview has its own JS context and the updater resource cannot cross it.
+    const unlisten = listen("update-requested", () => {
+      void updateState.check({ silent: false });
+    });
+
     const deadline = Date.now() + BOOT_LOADER_TIMEOUT_MS;
     const waitForSettings = () => {
       if (settingsState.settings !== null) {
@@ -116,6 +124,10 @@
       setTimeout(waitForSettings, 50);
     };
     waitForSettings();
+
+    return () => {
+      void unlisten.then((stop) => stop());
+    };
   });
 
   async function startHandOff() {
@@ -138,7 +150,7 @@
     }
 
     // After the window is up, never before
-    setTimeout(() => void checkForUpdates({ silent: true }), 3_000);
+    setTimeout(() => void updateState.check({ silent: true }), 3_000);
   }
 </script>
 
@@ -152,6 +164,7 @@
   <UiScaleApplier />
   <Toaster position="bottom-center" richColors />
   <SetupIssueDialog />
+  <UpdateDialog />
 
   {#if isStandaloneWindow}
     <!-- No titlebar in standalone windows, set overlay inset to zero -->

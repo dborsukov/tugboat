@@ -11,7 +11,7 @@
 
   import { commands } from "$lib/bindings";
   import { isMacOS } from "$lib/platform";
-  import { checkForUpdates } from "$lib/updates";
+  import { requestUpdateCheck } from "$lib/updates";
 
   import { createCommitQuery, createVersionQuery } from "./queries";
 
@@ -123,7 +123,7 @@
         class="w-full"
         variant="outline"
         size="sm"
-        onclick={() => void checkForUpdates({ silent: false })}
+        onclick={() => void requestUpdateCheck()}
       >
         Перевірити оновлення
       </Button>
