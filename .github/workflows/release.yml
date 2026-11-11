@@ -60,13 +60,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # macos-15 is arm64 and macos-15-intel is x64: build each on its own
+          # architecture instead of cross-compiling and installing a target.
           - name: macos-arm64
-            platform: macos-latest
-            target: aarch64-apple-darwin
+            platform: macos-15
             args: --target aarch64-apple-darwin
           - name: macos-x64
-            platform: macos-latest
-            target: x86_64-apple-darwin
+            platform: macos-15-intel
             args: --target x86_64-apple-darwin
           - name: linux-x64
             platform: ubuntu-22.04
@@ -98,27 +98,6 @@ jobs:
           node-version: 24
           cache: pnpm
 
-      # Homebrew's Rust can precede the rustup-managed toolchain on the runner's
-      # PATH; a target added through the Homebrew rustup is invisible to the
-      # cargo the build runs, which is how the x64 job kept failing while the
-      # arm64 job passed.
-      - name: Install the macOS Rust target
-        if: matrix.platform == 'macos-latest'
-        run: |
-          if [ ! -x "$HOME/.cargo/bin/rustup" ]; then
-            # The image ships a Homebrew Rust whose cargo is not the rustup
-            # toolchain, and the installer refuses to coexist unless told to.
-            export RUSTUP_INIT_SKIP_PATH_CHECK=yes
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-              | sh -s -- -y --default-toolchain stable --profile minimal
-          fi
-          export PATH="$HOME/.cargo/bin:$PATH"
-          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-          command -v rustup cargo
-          rustup show
-          rustup target add "${{ matrix.target }}"
-          rustup target list --installed
-
       - uses: actions/cache@v6
         with:
           path: |
@@ -133,7 +112,7 @@ jobs:
       # Only runs when the signing secrets are configured; without them the app
       # is signed ad hoc and macOS shows the usual Gatekeeper warning.
       - name: Import the Apple signing certificate
-        if: matrix.platform == 'macos-latest' && env.HAS_APPLE_CERT == 'true'
+        if: startsWith(matrix.platform, 'macos') && env.HAS_APPLE_CERT == 'true'
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -151,7 +130,7 @@ jobs:
           rm certificate.p12
 
       - name: Export the Apple signing identity
-        if: matrix.platform == 'macos-latest' && env.HAS_APPLE_CERT == 'true'
+        if: startsWith(matrix.platform, 'macos') && env.HAS_APPLE_CERT == 'true'
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
