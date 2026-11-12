@@ -252,7 +252,8 @@ pub fn run() {
             let version = app.package_info().version.to_string();
 
             log::info!(
-                "Запуск PopeyeCRM {version} | build={} | os={} arch={} | дані={} | журнали={}",
+                "Запуск {} {version} | build={} | os={} arch={} | дані={} | журнали={}",
+                crate::utils::brand_name(),
                 if cfg!(debug_assertions) {
                     "debug"
                 } else {
@@ -273,7 +274,7 @@ pub fn run() {
                     handle
                         .dialog()
                         .message(error.to_string())
-                        .title("Папай CRM — помилка запуску")
+                        .title(format!("{} — помилка запуску", crate::utils::brand_name()))
                         .blocking_show();
                     handle.exit(1);
                 }
@@ -388,7 +389,12 @@ fn open_splash_window(handle: &AppHandle) -> AppResult<()> {
     let config = window_config(handle, "splashscreen")?;
 
     WebviewWindowBuilder::from_config(handle, &config)
-        .and_then(|builder| builder.dev_webview().build())
+        .and_then(|builder| {
+            builder
+                .dev_webview()
+                .title(crate::utils::brand_name())
+                .build()
+        })
         .map_err(|e| AppError::Generic(format!("Не вдалося створити вікно заставки: {e}")))?;
 
     Ok(())
@@ -407,7 +413,8 @@ fn open_main_window(handle: &AppHandle, ui_scale: f64, theme: ThemeMode) -> AppR
     let builder = WebviewWindowBuilder::from_config(handle, &config)
         .map_err(|e| AppError::Generic(format!("Не вдалося створити головне вікно: {e}")))?
         .initialization_script(boot_script(ui_scale))
-        .dev_webview();
+        .dev_webview()
+        .title(crate::utils::brand_name());
 
     #[cfg(target_os = "macos")]
     let builder = macos_window_chrome(builder, ui_scale);
@@ -481,7 +488,7 @@ const TRAFFIC_LIGHT_INSET_X_PT: f64 = 12.0;
 /// being guessed from the user agent or waited for from the settings query.
 fn boot_script(ui_scale: f64) -> String {
     format!(
-        "window.__POPEYE_BOOT__ = {{ platform: \"{}\", uiScale: {} }};",
+        "window.__TUGBOAT_BOOT__ = {{ platform: \"{}\", uiScale: {} }};",
         std::env::consts::OS,
         ui_scale
     )

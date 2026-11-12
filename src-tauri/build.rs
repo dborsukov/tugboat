@@ -16,7 +16,7 @@ fn emit_commit() {
         }
     }
 
-    println!("cargo:rustc-env=POPEYE_BUILD_COMMIT={}", commit());
+    println!("cargo:rustc-env=TUGBOAT_BUILD_COMMIT={}", commit());
 }
 
 fn commit() -> String {

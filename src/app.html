@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <link rel="icon" href="%sveltekit.assets%/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Папай CRM</title>
+    <title>Tugboat</title>
     <!-- Pre-boot styles -->
     <style>
       html,
@@ -63,17 +63,12 @@
       .boot-tile {
         width: 92px;
         height: 92px;
-        border-radius: 24px;
-        background: linear-gradient(145deg, #4a4380, #332d5e);
-        box-shadow:
-          inset 0 1px 0 rgba(255, 255, 255, 0.14),
-          0 6px 18px rgba(64, 57, 110, 0.28);
         display: grid;
         place-items: center;
       }
       .boot-tile img {
-        width: 62px;
-        height: 62px;
+        width: 92px;
+        height: 92px;
         display: block;
       }
       .boot-name {
@@ -114,7 +109,7 @@
         } catch {}
 
         try {
-          const boot = window.__POPEYE_BOOT__ ?? {};
+          const boot = window.__TUGBOAT_BOOT__ ?? {};
           const userAgent = navigator.userAgent;
           const platform =
             boot.platform ??
@@ -171,15 +166,25 @@
     <div id="boot-loader">
       <div class="boot-tile">
         <img
-          src="%sveltekit.assets%/popeye.svg"
+          src="%sveltekit.assets%/tugboat.png"
           alt=""
-          width="62"
-          height="62"
+          width="92"
+          height="92"
         />
       </div>
-      <div class="boot-name">Папай CRM</div>
+      <div class="boot-name">Tugboat</div>
       <div class="boot-spinner"></div>
     </div>
+    <script>
+      // Name follows the system language
+      (() => {
+        const uk = (navigator.language ?? "").toLowerCase().startsWith("uk");
+        const name = uk ? "Буксир" : "Tugboat";
+        document.title = name;
+        const label = document.querySelector(".boot-name");
+        if (label) label.textContent = name;
+      })();
+    </script>
     <div style="display: contents">%sveltekit.body%</div>
     <script>
       if (document.documentElement.dataset.platform === "macos") {

@@ -7,9 +7,8 @@
 
   import { Button } from "$lib/components/ui/button";
 
-  import PopeyeIcon from "$lib/components/icons/popeye.svelte";
-
   import { commands } from "$lib/bindings";
+  import { brandName } from "$lib/brand";
   import { isMacOS } from "$lib/platform";
   import { requestUpdateCheck } from "$lib/updates";
 
@@ -96,14 +95,9 @@
   <main
     class="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center"
   >
-    <div
-      class="flex size-24 items-center justify-center rounded-2xl"
-      style="background: linear-gradient(145deg, #4a4380, #332d5e); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 6px 18px rgba(64, 57, 110, 0.28);"
-    >
-      <PopeyeIcon class="size-16" />
-    </div>
+    <img src="/tugboat.png" alt="" class="size-28" />
     <div class="flex flex-col gap-0.5">
-      <h1 class="text-lg font-semibold">Папай CRM</h1>
+      <h1 class="text-lg font-semibold">{brandName()}</h1>
       <p class="text-sm text-muted-foreground">Версія {versionLabel}</p>
     </div>
 

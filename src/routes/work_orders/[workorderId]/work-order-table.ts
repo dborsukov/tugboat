@@ -2,7 +2,7 @@ import Big from "big.js";
 
 import type { DiscountType } from "$lib/bindings";
 
-export const PURCHASE_COLUMN_KEY = "popeye.work-order.purchase-column";
+export const PURCHASE_COLUMN_KEY = "tugboat.work-order.purchase-column";
 
 const numberFormat = new Intl.NumberFormat("uk-UA", {
   minimumFractionDigits: 2,

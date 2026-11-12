@@ -19,7 +19,7 @@ use crate::{
 };
 
 /// Must match `identifier` in `tauri.conf.json`.
-const IDENTIFIER: &str = "com.popeye.crm";
+const IDENTIFIER: &str = "com.tugboat.crm";
 
 /// Target used by [`Event`].
 pub const AUDIT_TARGET: &str = "audit";
@@ -33,11 +33,11 @@ pub fn log_dir() -> PathBuf {
         .join("logs")
 }
 
-/// `POPEYE_LOG=trace|debug|info|warn|error|off` overrides the built-in default.
+/// `TUGBOAT_LOG=trace|debug|info|warn|error|off` overrides the built-in default.
 fn requested_level() -> log::LevelFilter {
     use log::LevelFilter;
 
-    match std::env::var("POPEYE_LOG").ok().as_deref() {
+    match std::env::var("TUGBOAT_LOG").ok().as_deref() {
         Some("trace") => LevelFilter::Trace,
         Some("debug") => LevelFilter::Debug,
         Some("info") => LevelFilter::Info,
@@ -46,7 +46,7 @@ fn requested_level() -> log::LevelFilter {
         Some("off") => LevelFilter::Off,
         Some(other) => {
             // logger is not registered yet
-            eprintln!("POPEYE_LOG={other:?} is not a log level, using the default");
+            eprintln!("TUGBOAT_LOG={other:?} is not a log level, using the default");
             default_level()
         }
         None => default_level(),
@@ -315,7 +315,7 @@ async fn diagnostics_report(state: &AppState) -> String {
         .map(|settings| settings.timezone)
         .unwrap_or_else(|_| "невідомо".to_string());
 
-    let commit = env!("POPEYE_BUILD_COMMIT");
+    let commit = env!("TUGBOAT_BUILD_COMMIT");
     let version = if commit == "unknown" {
         state.version.clone()
     } else {
@@ -323,7 +323,8 @@ async fn diagnostics_report(state: &AppState) -> String {
     };
 
     let mut report = format!(
-        "Папай CRM {version}\nbuild={build}\nos={os} arch={arch}\nдані={data}\nжурнали={logs}\nбаза: {db}\nwal: {wal}\nміграцій: {migrations}\nчасовий пояс: {timezone}\n{app}\n{audit}\n{panic}\nротацій: {rotated}\n",
+        "{} {version}\nbuild={build}\nos={os} arch={arch}\nдані={data}\nжурнали={logs}\nбаза: {db}\nwal: {wal}\nміграцій: {migrations}\nчасовий пояс: {timezone}\n{app}\n{audit}\n{panic}\nротацій: {rotated}\n",
+        crate::utils::brand_name(),
         version = version,
         build = if cfg!(debug_assertions) {
             "debug"

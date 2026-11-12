@@ -13,6 +13,7 @@
   import { Button } from "$lib/components/ui/button/index.js";
   import * as Dialog from "$lib/components/ui/dialog/index.js";
 
+  import { brandName } from "$lib/brand";
   import {
     parseChangelog,
     plainChangelog,
@@ -57,7 +58,7 @@
   const description = $derived.by(() => {
     switch (updateState.phase) {
       case "available":
-        return `Папай CRM ${updateState.version} готовий до встановлення`;
+        return `${brandName()} ${updateState.version} готовий до встановлення`;
       case "downloading":
         return "Не закривайте застосунок, поки триває завантаження";
       case "installing":

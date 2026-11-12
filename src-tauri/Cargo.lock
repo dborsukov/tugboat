@@ -4142,41 +4142,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "popeyecrm"
-version = "0.1.0"
-dependencies = [
- "blake3",
- "chrono",
- "chrono-tz",
- "dirs 6.0.0",
- "log",
- "num2words",
- "rust_decimal",
- "rust_xlsxwriter",
- "serde",
- "serde_json",
- "specta",
- "specta-typescript",
- "sqlx",
- "tauri",
- "tauri-build",
- "tauri-plugin-clipboard-manager",
- "tauri-plugin-dialog",
- "tauri-plugin-log",
- "tauri-plugin-opener",
- "tauri-plugin-process",
- "tauri-plugin-single-instance",
- "tauri-plugin-updater",
- "tauri-specta",
- "thiserror 2.0.18",
- "typst",
- "typst-assets",
- "typst-layout",
- "typst-pdf",
- "typst-render",
-]
-
-[[package]]
 name = "portable-atomic"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5854,6 +5819,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sys-locale"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8eab9a99a024a169fe8a903cf9d4a3b3601109bcc13bd9e3c6fff259138626c4"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "system-configuration"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6818,6 +6792,42 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d2df906b07856748fa3f6e0ad0cbaa047052d4a7dd609e231c4f72cee8c36f31"
 dependencies = [
  "core_maths",
+]
+
+[[package]]
+name = "tugboat"
+version = "0.1.0"
+dependencies = [
+ "blake3",
+ "chrono",
+ "chrono-tz",
+ "dirs 6.0.0",
+ "log",
+ "num2words",
+ "rust_decimal",
+ "rust_xlsxwriter",
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "sqlx",
+ "sys-locale",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-clipboard-manager",
+ "tauri-plugin-dialog",
+ "tauri-plugin-log",
+ "tauri-plugin-opener",
+ "tauri-plugin-process",
+ "tauri-plugin-single-instance",
+ "tauri-plugin-updater",
+ "tauri-specta",
+ "thiserror 2.0.18",
+ "typst",
+ "typst-assets",
+ "typst-layout",
+ "typst-pdf",
+ "typst-render",
 ]
 
 [[package]]

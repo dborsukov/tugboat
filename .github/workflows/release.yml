@@ -173,7 +173,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: PopeyeCRM ${{ github.ref_name }}
+          releaseName: Tugboat ${{ github.ref_name }}
           releaseBody: ${{ steps.notes.outputs.body }}
           # Draft first to avoid serving incomplete builds through latest.json
           releaseDraft: true

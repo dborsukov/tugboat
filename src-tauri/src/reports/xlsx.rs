@@ -33,7 +33,6 @@ const FOOTER: &str = "&L&\"Arial,Regular\"&8 Фінансовий звіт&C&\"A
 
 const NOTE_MISSING_PARTS_COST: &str = "Закупівельну ціну запчастин не вказано в замовленні. Валовий дохід по цьому замовленню завищено.";
 const NOTE_MISSING_LABOR_COST: &str = "Собівартість робіт не визначено: для погодинної собівартості в замовленні є роботи з фіксованою ціною. Валовий дохід по цьому замовленню завищено.";
-const NOTE_AUTHOR: &str = "Папай CRM";
 
 const ORDERS_NOTE: &str = "Собівартість роботи — вартість робіт за нарядом, запчастин — закупівельна ціна. Якщо собівартість не вказано, валовий дохід по замовленню завищено (позначено жовтим).";
 const ORDERS_TITLE: &str = "Замовлення, оплачені за період";
@@ -798,7 +797,8 @@ fn draw_orders(
             }
             None => {
                 worksheet.write_string_with_format(row, 9, "не вказано", money_format)?;
-                let note = Note::new(NOTE_MISSING_LABOR_COST).set_author(NOTE_AUTHOR);
+                let note =
+                    Note::new(NOTE_MISSING_LABOR_COST).set_author(crate::utils::brand_name());
                 worksheet.insert_note(row, 9, &note)?;
             }
         }
@@ -809,7 +809,8 @@ fn draw_orders(
             }
             None => {
                 worksheet.write_string_with_format(row, 10, "не вказано", money_format)?;
-                let note = Note::new(NOTE_MISSING_PARTS_COST).set_author(NOTE_AUTHOR);
+                let note =
+                    Note::new(NOTE_MISSING_PARTS_COST).set_author(crate::utils::brand_name());
                 worksheet.insert_note(row, 10, &note)?;
             }
         }

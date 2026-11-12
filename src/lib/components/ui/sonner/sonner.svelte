@@ -33,7 +33,7 @@
   type TimedToastType = keyof typeof TOAST_DURATIONS;
 
   const DURATION_DEFAULTS_APPLIED = Symbol.for(
-    "popeye-crm.toast-duration-defaults",
+    "tugboat-crm.toast-duration-defaults",
   );
 
   if (!Reflect.has(toast, DURATION_DEFAULTS_APPLIED)) {

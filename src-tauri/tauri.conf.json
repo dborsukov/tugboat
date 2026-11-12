@@ -4,7 +4,7 @@
   "app": {
     "windows": [
       {
-        "title": "Папай CRM",
+        "title": "Tugboat",
         "width": 1280,
         "height": 720,
         "decorations": false,
@@ -15,7 +15,7 @@
       },
       {
         "label": "splashscreen",
-        "title": "Папай CRM",
+        "title": "Tugboat",
         "url": "splashscreen.html",
         "width": 420,
         "height": 300,
@@ -64,7 +64,19 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "resources": {
+      "infoplist/en.lproj/InfoPlist.strings": "en.lproj/InfoPlist.strings",
+      "infoplist/uk.lproj/InfoPlist.strings": "uk.lproj/InfoPlist.strings"
+    },
+    "linux": {
+      "deb": {
+        "desktopTemplate": "linux/tugboat.desktop"
+      },
+      "rpm": {
+        "desktopTemplate": "linux/tugboat.desktop"
+      }
+    }
   },
   "plugins": {
     "updater": {
@@ -77,6 +89,6 @@
       }
     }
   },
-  "identifier": "com.popeye.crm",
-  "productName": "popeyecrm"
+  "identifier": "com.tugboat.crm",
+  "productName": "Tugboat"
 }

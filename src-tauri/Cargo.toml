@@ -1,5 +1,5 @@
 [package]
-name = "popeyecrm"
+name = "tugboat"
 version = "0.1.0"
 authors = ["Denis Borsukov"]
 edition = "2021"
@@ -8,7 +8,7 @@ edition = "2021"
 # The `_lib` suffix may seem redundant but it is necessary
 # to make the lib name unique and wouldn't conflict with the bin name.
 # This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
-name = "popeyecrm_lib"
+name = "tugboat_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
@@ -31,6 +31,7 @@ sqlx = { version = "0.8", features = [
     "chrono",
     "migrate",
 ] }
+sys-locale = "0.3"
 tauri = { version = "2", features = [] }
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-dialog = "2"

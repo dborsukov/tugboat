@@ -51,5 +51,13 @@ pub(crate) fn plural(
 #[tauri::command]
 #[specta::specta]
 pub fn get_app_build_commit() -> String {
-    env!("POPEYE_BUILD_COMMIT").to_string()
+    env!("TUGBOAT_BUILD_COMMIT").to_string()
+}
+
+/// The user-facing product name for the current system language.
+pub fn brand_name() -> &'static str {
+    match sys_locale::get_locale() {
+        Some(locale) if locale.to_lowercase().starts_with("uk") => "Буксир",
+        _ => "Tugboat",
+    }
 }
