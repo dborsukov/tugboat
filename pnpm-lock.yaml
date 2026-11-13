@@ -97,8 +97,8 @@ importers:
         specifier: ^25.9.1
         version: 25.9.1
       bits-ui:
-        specifier: ^2.18.1
-        version: 2.18.1(@internationalized/date@3.12.2)(@sveltejs/kit@2.62.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.57.1)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)(typescript@5.6.3)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)
+        specifier: ^2.21.0
+        version: 2.21.0(@internationalized/date@3.12.2)(@sveltejs/kit@2.62.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.57.1)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)(typescript@5.6.3)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -439,11 +439,20 @@ packages:
   '@floating-ui/core@1.7.5':
     resolution: {integrity: sha512-1Ih4WTWyw0+lKyFMcBHGbb5U5FtuHJuujoyyr5zTaWS5EYMeT6Jb2AuDeftsCsEuchO+mM2ij5+q9crhydzLhQ==}
 
+  '@floating-ui/core@1.8.0':
+    resolution: {integrity: sha512-0CIZ5itps/8x7BG8dEIhs53BvCUH2PCoogtakwRTut+Arm58sJooJ0AuZhLw2HJYIR5cMLNPBSS728sPho2khQ==}
+
   '@floating-ui/dom@1.7.6':
     resolution: {integrity: sha512-9gZSAI5XM36880PPMm//9dfiEngYoC6Am2izES1FF406YFsjvyBMmeJ2g4SAju3xWwtuynNRFL2s9hgxpLI5SQ==}
 
+  '@floating-ui/dom@1.8.0':
+    resolution: {integrity: sha512-yXSrzeHZBTZadLOlfyhCkJHNeLJnHRnRInwdZ40L7ZiaAtrBwoYlsDrX3v5zB1Utk7CLfzcOVnVVWoXEky7Ceg==}
+
   '@floating-ui/utils@0.2.11':
     resolution: {integrity: sha512-RiB/yIh78pcIxl6lLMG0CgBXAZ2Y0eVHqMPYugu+9U0AeT6YBeiJpf7lbdJNIugFP5SIjwNRgo4DhR1Qxi26Gg==}
+
+  '@floating-ui/utils@0.2.12':
+    resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
 
   '@fontsource-variable/inter@5.2.8':
     resolution: {integrity: sha512-kOfP2D+ykbcX/P3IFnokOhVRNoTozo5/JxhAIVYLpea/UBmCQ/YWPBfWIDuBImXX/15KH+eKh4xpEUyS2sQQGQ==}
@@ -1113,8 +1122,8 @@ packages:
   big.js@7.0.1:
     resolution: {integrity: sha512-iFgV784tD8kq4ccF1xtNMZnXeZzVuXWWM+ERFzKQjv+A5G9HC8CY3DuV45vgzFFcW+u2tIvmF95+AzWgs6BjCg==}
 
-  bits-ui@2.18.1:
-    resolution: {integrity: sha512-KkemzKFH4T3gt3H+P86JcnAWExjByv/6vlwjm/BoCwTPHu03yiCdxbghdJLvFReQTe0acCAiRcKfmixxD6XvlA==}
+  bits-ui@2.21.0:
+    resolution: {integrity: sha512-kfJonux4r+XOnqGCBQaqFfhRUvDbuZQgyjXADfk0/QJGc8LlQchkrGc6rCd+ldo1EixCJEXlM7znKVIUtuf7OQ==}
     engines: {node: '>=20'}
     peerDependencies:
       '@internationalized/date': ^3.8.1
@@ -1969,8 +1978,8 @@ packages:
     peerDependencies:
       svelte: ^5.0.0
 
-  svelte-toolbelt@0.10.6:
-    resolution: {integrity: sha512-YWuX+RE+CnWYx09yseAe4ZVMM7e7GRFZM6OYWpBKOb++s+SQ8RBIMMe+Bs/CznBMc0QPLjr+vDBxTAkozXsFXQ==}
+  svelte-toolbelt@0.10.7:
+    resolution: {integrity: sha512-gjuUVEEpo38UJCeI1ssE3NxG31tYENczPTcTGTXf4338qAQNdR9I1oAEbQY0KQFmbdUojNIhHuRNix7ThwFNxQ==}
     engines: {node: '>=18', pnpm: '>=8.7.0'}
     peerDependencies:
       svelte: ^5.30.2
@@ -1997,8 +2006,8 @@ packages:
       '@sveltejs/kit': 1.x || 2.x
       svelte: 3.x || 4.x || >=5.0.0-next.51
 
-  tabbable@6.4.0:
-    resolution: {integrity: sha512-05PUHKSNE8ou2dwIxTngl4EzcnsCDZGJ/iCLtDflR/SHB/ny14rXc+qU5P4mG9JkusiV7EivzY9Mhm55AzAvCg==}
+  tabbable@6.5.1:
+    resolution: {integrity: sha512-dMCuwDUY6Noz3zVKLefBC4wq+aJV20yc7vWmM7uTNGwtQSFF5kX7OUIUsxuVajz/bdt5Xqdah3/0NLjth+cM5A==}
 
   tailwind-merge@3.6.0:
     resolution: {integrity: sha512-uxL7qAVQriqRQPAyK3pj66VqskWqoZ37PW94jwOTwNfq/z9oyu1V+eqrZqtR2+fCiXdYOZe/Modt8GtvqNzu+w==}
@@ -2474,12 +2483,23 @@ snapshots:
     dependencies:
       '@floating-ui/utils': 0.2.11
 
+  '@floating-ui/core@1.8.0':
+    dependencies:
+      '@floating-ui/utils': 0.2.12
+
   '@floating-ui/dom@1.7.6':
     dependencies:
       '@floating-ui/core': 1.7.5
       '@floating-ui/utils': 0.2.11
 
+  '@floating-ui/dom@1.8.0':
+    dependencies:
+      '@floating-ui/core': 1.8.0
+      '@floating-ui/utils': 0.2.12
+
   '@floating-ui/utils@0.2.11': {}
+
+  '@floating-ui/utils@0.2.12': {}
 
   '@fontsource-variable/inter@5.2.8': {}
 
@@ -3049,16 +3069,16 @@ snapshots:
 
   big.js@7.0.1: {}
 
-  bits-ui@2.18.1(@internationalized/date@3.12.2)(@sveltejs/kit@2.62.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.57.1)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)(typescript@5.6.3)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1):
+  bits-ui@2.21.0(@internationalized/date@3.12.2)(@sveltejs/kit@2.62.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.57.1)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)(typescript@5.6.3)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1):
     dependencies:
-      '@floating-ui/core': 1.7.5
-      '@floating-ui/dom': 1.7.6
+      '@floating-ui/core': 1.8.0
+      '@floating-ui/dom': 1.8.0
       '@internationalized/date': 3.12.2
       esm-env: 1.2.2
       runed: 0.35.1(@sveltejs/kit@2.62.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.57.1)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)(typescript@5.6.3)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)
       svelte: 5.57.1
-      svelte-toolbelt: 0.10.6(@sveltejs/kit@2.62.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.57.1)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)(typescript@5.6.3)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)
-      tabbable: 6.4.0
+      svelte-toolbelt: 0.10.7(@sveltejs/kit@2.62.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.57.1)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)(typescript@5.6.3)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)
+      tabbable: 6.5.1
     transitivePeerDependencies:
       - '@sveltejs/kit'
 
@@ -3903,7 +3923,7 @@ snapshots:
       libphonenumber-js: 1.13.9
       svelte: 5.57.1
 
-  svelte-toolbelt@0.10.6(@sveltejs/kit@2.62.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.57.1)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)(typescript@5.6.3)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1):
+  svelte-toolbelt@0.10.7(@sveltejs/kit@2.62.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.57.1)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)(typescript@5.6.3)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1):
     dependencies:
       clsx: 2.1.1
       runed: 0.35.1(@sveltejs/kit@2.62.0(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.57.1)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)(typescript@5.6.3)(vite@6.4.5(@types/node@25.9.1)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.0)))(svelte@5.57.1)
@@ -3973,7 +3993,7 @@ snapshots:
       - '@types/json-schema'
       - typescript
 
-  tabbable@6.4.0: {}
+  tabbable@6.5.1: {}
 
   tailwind-merge@3.6.0: {}
 
