@@ -35,6 +35,11 @@
   import { navHistory } from "$lib/states/nav-history.svelte";
   import { settingsState } from "$lib/states/settings.svelte";
   import { updateState } from "$lib/states/update.svelte";
+  import {
+    UPDATE_CHECK_REQUEST,
+    UPDATE_SHOW_REQUEST,
+    UPDATE_STATUS_REQUEST,
+  } from "$lib/update-status";
 
   let { children } = $props();
   const queryClient = new QueryClient({
@@ -102,10 +107,17 @@
       return;
     }
 
-    // The About window asks for the update dialog by event, because each
-    // webview has its own JS context and the updater resource cannot cross it.
-    const unlisten = listen("update-requested", () => {
-      void updateState.check({ silent: false });
+    // The About window mirrors the update state through these events: the main
+    // window owns the updater resource and the dialog.
+    const unlistenStatus = listen(UPDATE_STATUS_REQUEST, () => {
+      updateState.broadcast();
+    });
+    const unlistenCheck = listen(UPDATE_CHECK_REQUEST, () => {
+      void updateState.manualCheck({ notify: false });
+    });
+    const unlistenShow = listen(UPDATE_SHOW_REQUEST, () => {
+      updateState.showAvailable();
+      appWindow.setFocus().catch(() => {});
     });
 
     const deadline = Date.now() + BOOT_LOADER_TIMEOUT_MS;
@@ -126,7 +138,9 @@
     waitForSettings();
 
     return () => {
-      void unlisten.then((stop) => stop());
+      for (const pending of [unlistenStatus, unlistenCheck, unlistenShow]) {
+        void pending.then((stop) => stop());
+      }
     };
   });
 

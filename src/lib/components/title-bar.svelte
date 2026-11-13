@@ -20,11 +20,15 @@
   import SquareIcon from "@lucide/svelte/icons/square";
   import XIcon from "@lucide/svelte/icons/x";
 
+  import ShortcutKbd from "$lib/components/shortcut-kbd.svelte";
+
+  import { copyDiagnostics, openLogs } from "$lib/app-actions";
   import { type ThemeMode } from "$lib/bindings";
   import { isMacOS } from "$lib/platform";
   import { navHistory } from "$lib/states/nav-history.svelte";
   import { privacyState } from "$lib/states/privacy.svelte";
   import { settingsState } from "$lib/states/settings.svelte";
+  import { updateState } from "$lib/states/update.svelte";
   import { cn } from "$lib/utils.js";
 
   import {
@@ -33,7 +37,6 @@
   } from "../../routes/settings/queries";
   import { Button, buttonVariants } from "./ui/button";
   import * as DropdownMenu from "./ui/dropdown-menu/index.js";
-  import { Kbd, KbdGroup } from "./ui/kbd";
   import { useSidebar } from "./ui/sidebar";
 
   let isMaximized = $state(false);
@@ -193,8 +196,8 @@
     const win = new WebviewWindow("about", {
       url: "/about",
       title: "Про застосунок",
-      width: 260,
-      height: 400,
+      width: 276,
+      height: 340,
       center: true,
       resizable: false,
       decorations: isMacOS,
@@ -246,11 +249,7 @@
       >
         <DropdownMenu.Item onSelect={() => goto("/settings")}>
           Налаштування
-          <KbdGroup class="ml-auto">
-            <Kbd>Ctrl</Kbd>
-            <span class="text-xs text-muted-foreground">+</span>
-            <Kbd>,</Kbd>
-          </KbdGroup>
+          <ShortcutKbd keys={["Ctrl", ","]} />
         </DropdownMenu.Item>
 
         <DropdownMenu.Separator />
@@ -260,11 +259,7 @@
           <DropdownMenu.SubContent class="w-max whitespace-nowrap p-1">
             <DropdownMenu.Item onSelect={toggleTheme}>
               Перемкнути тему
-              <KbdGroup class="ml-auto">
-                <Kbd>Ctrl</Kbd>
-                <span class="text-xs text-muted-foreground">+</span>
-                <Kbd>T</Kbd>
-              </KbdGroup>
+              <ShortcutKbd keys={["Ctrl", "T"]} />
             </DropdownMenu.Item>
             <DropdownMenu.Separator />
             <DropdownMenu.CheckboxItem
@@ -296,33 +291,21 @@
               disabled={uiScale >= MAX_UI_SCALE}
             >
               Збільшити
-              <KbdGroup class="ml-auto">
-                <Kbd>Ctrl</Kbd>
-                <span class="text-xs text-muted-foreground">+</span>
-                <Kbd>+</Kbd>
-              </KbdGroup>
+              <ShortcutKbd keys={["Ctrl", "+"]} />
             </DropdownMenu.Item>
             <DropdownMenu.Item
               onSelect={() => applyUiScale(uiScale - UI_SCALE_STEP)}
               disabled={uiScale <= MIN_UI_SCALE}
             >
               Зменшити
-              <KbdGroup class="ml-auto">
-                <Kbd>Ctrl</Kbd>
-                <span class="text-xs text-muted-foreground">+</span>
-                <Kbd>-</Kbd>
-              </KbdGroup>
+              <ShortcutKbd keys={["Ctrl", "-"]} />
             </DropdownMenu.Item>
             <DropdownMenu.Item
               onSelect={() => applyUiScale(1)}
               disabled={Math.abs(uiScale - 1) < 0.001}
             >
               Скинути
-              <KbdGroup class="ml-auto">
-                <Kbd>Ctrl</Kbd>
-                <span class="text-xs text-muted-foreground">+</span>
-                <Kbd>0</Kbd>
-              </KbdGroup>
+              <ShortcutKbd keys={["Ctrl", "0"]} />
             </DropdownMenu.Item>
             <DropdownMenu.Separator />
             {#each UI_SCALE_PRESETS as preset (preset)}
@@ -344,13 +327,9 @@
               onCheckedChange={privacyState.toggleAll}
             >
               {privacyState.allHidden ? "Показати все" : "Приховати все"}
-              <KbdGroup class="ml-auto">
-                <Kbd>Ctrl</Kbd>
-                <span class="text-xs text-muted-foreground">+</span>
-                <Kbd>Shift</Kbd>
-                <span class="text-xs text-muted-foreground">+</span>
-                <Kbd>{privacyState.allHidden ? "S" : "H"}</Kbd>
-              </KbdGroup>
+              <ShortcutKbd
+                keys={["Ctrl", "Shift", privacyState.allHidden ? "S" : "H"]}
+              />
             </DropdownMenu.CheckboxItem>
             <DropdownMenu.Separator />
             <DropdownMenu.CheckboxItem
@@ -370,24 +349,38 @@
           </DropdownMenu.SubContent>
         </DropdownMenu.Sub>
 
+        <DropdownMenu.Separator />
+
+        <DropdownMenu.Item
+          disabled={updateState.phase === "checking"}
+          onSelect={() => void updateState.manualCheck()}
+        >
+          {updateState.phase === "checking"
+            ? "Перевірка…"
+            : "Перевірити оновлення…"}
+        </DropdownMenu.Item>
+
         <DropdownMenu.Sub>
-          <DropdownMenu.SubTrigger>Довідка</DropdownMenu.SubTrigger>
+          <DropdownMenu.SubTrigger>Підтримка</DropdownMenu.SubTrigger>
           <DropdownMenu.SubContent class="w-max whitespace-nowrap p-1">
-            <DropdownMenu.Item onSelect={openAboutWindow}>
-              Про застосунок
+            <DropdownMenu.Item onSelect={() => void openLogs()}>
+              Відкрити журнали
+            </DropdownMenu.Item>
+            <DropdownMenu.Item onSelect={() => void copyDiagnostics()}>
+              Скопіювати діагностику
             </DropdownMenu.Item>
           </DropdownMenu.SubContent>
         </DropdownMenu.Sub>
+
+        <DropdownMenu.Item onSelect={() => void openAboutWindow()}>
+          Про застосунок
+        </DropdownMenu.Item>
 
         <DropdownMenu.Separator />
 
         <DropdownMenu.Item onSelect={() => appWindow.close()}>
           Вийти
-          <KbdGroup class="ml-auto">
-            <Kbd>Ctrl</Kbd>
-            <span class="text-xs text-muted-foreground">+</span>
-            <Kbd>Q</Kbd>
-          </KbdGroup>
+          <ShortcutKbd keys={["Ctrl", "Q"]} />
         </DropdownMenu.Item>
       </DropdownMenu.Content>
     </DropdownMenu.Root>

@@ -185,6 +185,7 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         logging::open_logs_dir,
         logging::log_diagnostics,
         logging::copy_diagnostics,
+        logging::copy_text,
         window_geometry::reveal_window
     ])
 }

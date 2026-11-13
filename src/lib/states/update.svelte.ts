@@ -1,3 +1,4 @@
+import { emit } from "@tauri-apps/api/event";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
@@ -6,6 +7,7 @@ import { toast } from "svelte-sonner";
 import { dev } from "$app/environment";
 
 import { logAppEvent } from "$lib/log";
+import { UPDATE_STATUS_EVENT, type UpdateStatus } from "$lib/update-status";
 
 /**
  * The in-app update flow.
@@ -43,6 +45,12 @@ function describeFailure(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
+function isMissingRelease(message: string) {
+  return message.includes(
+    "Could not fetch a valid release JSON from the remote",
+  );
+}
+
 function readJson<T>(key: string): T | null {
   try {
     const raw = localStorage.getItem(key);
@@ -71,6 +79,12 @@ class UpdateStore {
   speed = $state<number | null>(null);
   error = $state<string | null>(null);
   restartIn = $state(0);
+  /** The outcome of the last check in this session, shared with About. */
+  lastCheck = $state<{
+    state: "up-to-date" | "available" | "error";
+    version?: string;
+    at: number;
+  } | null>(null);
 
   #update: Update | null = null;
   /** Bumped on cancel so an in-flight download stops updating the UI. */
@@ -96,9 +110,32 @@ class UpdateStore {
     return Math.max(0, (this.total - this.downloaded) / this.speed);
   }
 
-  async check({ silent = true } = {}) {
+  /** A snapshot both windows can render. */
+  snapshot(): UpdateStatus {
+    if (this.phase === "checking") return { state: "checking" };
+
+    const last = this.lastCheck;
+    if (!last) return { state: "idle" };
+    if (last.state === "available") {
+      return {
+        state: "available",
+        version: last.version ?? this.version,
+        checkedAt: last.at,
+      };
+    }
+    return { state: last.state, checkedAt: last.at };
+  }
+
+  broadcast() {
+    void emit(UPDATE_STATUS_EVENT, this.snapshot());
+  }
+
+  async check({
+    silent = true,
+    notify = !silent,
+  }: { silent?: boolean; notify?: boolean } = {}) {
     if (dev || !isRunningInTauri()) {
-      if (!silent) {
+      if (notify) {
         toast.info("Оновлення доступні лише у зібраному застосунку", {
           position: "bottom-left",
         });
@@ -107,19 +144,40 @@ class UpdateStore {
     }
 
     // Never interrupt a download or a pending restart with another check.
-    if (this.phase !== "idle" && this.phase !== "error") return;
+    if (this.phase !== "idle" && this.phase !== "error") {
+      this.broadcast();
+      return;
+    }
 
     this.phase = "checking";
+    this.broadcast();
 
     let found: Update | null;
     try {
       found = await check();
     } catch (error) {
+      const message = describeFailure(error);
+      void this.#update?.close();
+      this.#update = null;
       this.phase = "idle";
-      logAppEvent("update.check_failed", { error: describeFailure(error) });
-      if (!silent) {
-        toast.error("Не вдалося перевірити оновлення", {
-          description: describeFailure(error),
+
+      if (isMissingRelease(message)) {
+        this.lastCheck = { state: "up-to-date", at: Date.now() };
+        this.broadcast();
+        logAppEvent("update.no_release", { error: message });
+        if (notify) {
+          toast.success("Встановлено актуальну версію", {
+            position: "bottom-left",
+          });
+        }
+        return;
+      }
+
+      this.lastCheck = { state: "error", at: Date.now() };
+      this.broadcast();
+      logAppEvent("update.check_failed", { error: message });
+      if (notify) {
+        toast.error("Не вдалося перевірити оновлення. Перевірте підключення.", {
           position: "bottom-left",
         });
       }
@@ -127,24 +185,22 @@ class UpdateStore {
     }
 
     if (!found) {
+      void this.#update?.close();
+      this.#update = null;
       this.phase = "idle";
+      this.lastCheck = { state: "up-to-date", at: Date.now() };
+      this.broadcast();
       logAppEvent("update.up_to_date");
-      if (!silent) {
-        toast.success("У вас встановлена найновіша версія", {
+      if (notify) {
+        toast.success("Встановлено актуальну версію", {
           position: "bottom-left",
         });
       }
       return;
     }
 
-    // The silent boot check respects "skip this version" and "remind me later", an explicit check always triggers.
-    if (silent && this.#isDismissed(found.version)) {
-      void found.close();
-      this.phase = "idle";
-      logAppEvent("update.dismissed_by_preference", { version: found.version });
-      return;
-    }
-
+    const checkedAt = Date.now();
+    void this.#update?.close();
     this.#update = found;
     this.currentVersion = found.currentVersion;
     this.version = found.version;
@@ -152,9 +208,45 @@ class UpdateStore {
     this.body = found.body?.trim() || null;
     this.error = null;
     this.#resetProgress();
+    this.lastCheck = {
+      state: "available",
+      version: found.version,
+      at: checkedAt,
+    };
+
+    if (silent && this.#isDismissed(found.version)) {
+      this.phase = "idle";
+      this.broadcast();
+      logAppEvent("update.dismissed_by_preference", { version: found.version });
+      return;
+    }
+
     this.#clearRemindTimer();
     this.phase = "available";
+    this.broadcast();
     logAppEvent("update.available", { version: found.version });
+  }
+
+  /** Menu and About share this entry point for an explicit check. */
+  async manualCheck({ notify = true } = {}) {
+    if (this.phase === "checking") {
+      this.broadcast();
+      return;
+    }
+    if (this.phase !== "idle" && this.phase !== "error") {
+      this.broadcast();
+      return;
+    }
+    await this.check({ silent: false, notify });
+  }
+
+  /** Reopens the dialog for an update found earlier in this session. */
+  showAvailable(): boolean {
+    if (!this.#update) return false;
+    this.error = null;
+    this.#resetProgress();
+    this.phase = "available";
+    return true;
   }
 
   async downloadNow() {
@@ -225,10 +317,8 @@ class UpdateStore {
   cancel() {
     if (this.phase !== "downloading" && this.phase !== "error") return;
     this.#generation += 1;
-    void this.#update?.close();
-    this.#update = null;
-    this.phase = "idle";
-    this.#resetProgress();
+    // Keep the update resource: About can still offer to open the dialog.
+    this.#hide();
     logAppEvent("update.cancelled", { version: this.version });
   }
 
@@ -236,7 +326,7 @@ class UpdateStore {
     writeJson(SKIPPED_VERSION_KEY, this.version);
     this.#clearRemindTimer();
     logAppEvent("update.skipped", { version: this.version });
-    this.close();
+    this.#hide();
   }
 
   remindLater() {
@@ -248,7 +338,14 @@ class UpdateStore {
     });
     logAppEvent("update.reminded", { version: this.version });
     this.#scheduleRemindRecheck();
-    this.close();
+    this.#hide();
+  }
+
+  /** Hides the dialog but keeps the update, so About can reopen it. */
+  #hide() {
+    this.#clearRestartTimer();
+    this.phase = "idle";
+    this.#resetProgress();
   }
 
   /** Closing the dialog without a choice */

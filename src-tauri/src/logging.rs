@@ -274,6 +274,17 @@ pub async fn log_diagnostics(state: State<'_, AppState>) -> AppResult<String> {
     Ok(diagnostics_report(state.inner()).await)
 }
 
+/// Writes arbitrary text to the system clipboard.
+#[tauri::command]
+#[specta::specta]
+pub fn copy_text(app: AppHandle, text: String) -> AppResult<()> {
+    use tauri_plugin_clipboard_manager::ClipboardExt;
+
+    app.clipboard()
+        .write_text(text)
+        .map_err(|error| AppError::Generic(format!("Не вдалося скопіювати текст: {error}")))
+}
+
 /// Writes the same report straight to the system clipboard.
 #[tauri::command]
 #[specta::specta]

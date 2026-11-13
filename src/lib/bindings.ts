@@ -190,6 +190,7 @@ export const commands = {
 	logDiagnostics: () => typedError<string, AppError>(__TAURI_INVOKE("log_diagnostics")),
 	/**  Writes the same report straight to the system clipboard. */
 	copyDiagnostics: () => typedError<null, AppError>(__TAURI_INVOKE("copy_diagnostics")),
+	copyText: (text: string) => typedError<null, AppError>(__TAURI_INVOKE("copy_text", { text })),
 	/**
 	 *  Shows the main window, restores its geometry, and drops the splash screen.
 	 * 
