@@ -150,4 +150,20 @@ export const settingsSearchIndex: SettingsSearchItem[] = [
       "витрати категорія категорії витрат фінанси колір кольори паливо оренда зарплата expense category finance",
     hint: "Фінанси",
   },
+  {
+    id: "settings-backup-auto",
+    route: "/settings/backups",
+    label: "Автоматичні резервні копії",
+    keywords:
+      "резервна копія резервні копії бекап backup автозбереження розклад інтервал збереження даних",
+    hint: "Резервні копії",
+  },
+  {
+    id: "settings-backup-folder",
+    route: "/settings/backups",
+    label: "Тека для копій",
+    keywords:
+      "тека папка резервні копії backup folder icloud google drive dropbox onedrive хмара синхронізація",
+    hint: "Резервні копії",
+  },
 ];

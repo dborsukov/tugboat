@@ -6,6 +6,7 @@ import { toast } from "svelte-sonner";
 
 import { dev } from "$app/environment";
 
+import { commands } from "$lib/bindings";
 import { logAppEvent } from "$lib/log";
 import { UPDATE_STATUS_EVENT, type UpdateStatus } from "$lib/update-status";
 
@@ -285,6 +286,16 @@ class UpdateStore {
 
     if (generation !== this.#generation) return;
     this.phase = "installing";
+
+    // Keep a copy of the current data before the new version replaces the app.
+    try {
+      const backup = await commands.createBackup();
+      if (backup.status === "error") {
+        logAppEvent("update.backup_failed", { error: backup.error.message });
+      }
+    } catch (error) {
+      logAppEvent("update.backup_failed", { error: describeFailure(error) });
+    }
 
     try {
       await update.install();

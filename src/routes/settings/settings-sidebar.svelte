@@ -1,6 +1,7 @@
 <script lang="ts">
   import { page } from "$app/state";
 
+  import ArchiveRestoreIcon from "@lucide/svelte/icons/archive-restore";
   import BriefcaseBusinessIcon from "@lucide/svelte/icons/briefcase-business";
   import CarIcon from "@lucide/svelte/icons/car";
   import LandmarkIcon from "@lucide/svelte/icons/landmark";
@@ -13,6 +14,7 @@
 
   import SetupDot from "$lib/components/setup-dot.svelte";
 
+  import { backupAttention } from "$lib/states/backup-attention.svelte";
   import { getSetupIssues } from "$lib/states/setup-issues";
 
   import SettingsSearchResults from "./settings-search-results.svelte";
@@ -50,6 +52,11 @@
       url: "/settings/finance",
       icon: LandmarkIcon,
     },
+    {
+      title: "Резервні копії",
+      url: "/settings/backups",
+      icon: ArchiveRestoreIcon,
+    },
   ]);
 </script>
 
@@ -78,14 +85,18 @@
         <Sidebar.Menu>
           {#each settings_menu as item (item.title)}
             {@const active = page.url.pathname.startsWith(item.url)}
+            {@const backupAlert =
+              item.url === "/settings/backups" &&
+              backupAttention.needsAttention}
             <Sidebar.MenuItem>
               <Sidebar.MenuButton isActive={active}>
                 {#snippet child({ props })}
                   <a href={item.url} {...props}>
                     <item.icon />
                     <span class="min-w-0 flex-1 truncate">{item.title}</span>
-                    {#if hasIssue(item.url)}
+                    {#if hasIssue(item.url) || backupAlert}
                       <SetupDot
+                        label="Потрібна увага"
                         class="ring-2 {active
                           ? 'ring-sidebar-accent'
                           : 'ring-sidebar group-hover/menu-button:ring-sidebar-accent'}"

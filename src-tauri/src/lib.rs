@@ -12,6 +12,7 @@ use tauri::{utils::config::Color, AppHandle, Manager, WebviewWindowBuilder};
 use tauri_plugin_dialog::DialogExt;
 use tauri_specta::{collect_commands, Builder};
 
+pub mod backup;
 pub mod database;
 pub mod documents;
 pub mod error;
@@ -186,6 +187,15 @@ pub fn specta_builder() -> Builder<tauri::Wry> {
         logging::log_diagnostics,
         logging::copy_diagnostics,
         logging::copy_text,
+        backup::get_backup_overview,
+        backup::set_backup_settings,
+        backup::create_backup,
+        backup::list_backups,
+        backup::run_scheduled_backup,
+        backup::stage_restore_backup,
+        backup::stage_restore_file,
+        backup::inspect_backup_file,
+        backup::open_backups_dir,
         window_geometry::reveal_window
     ])
 }
@@ -206,6 +216,13 @@ fn export_bindings(specta_builder: &tauri_specta::Builder<tauri::Wry>) {
     if let Err(error) = fs::rename(&staging, target) {
         eprintln!("Не вдалося замінити src/lib/bindings.ts: {error}");
     }
+}
+
+#[cfg(all(test, debug_assertions))]
+#[test]
+#[ignore = "regenerates src/lib/bindings.ts"]
+fn write_bindings() {
+    export_bindings(&specta_builder());
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -298,6 +315,11 @@ pub fn run() {
 async fn start(handle: &AppHandle, app_dir: PathBuf, started: Instant) -> AppResult<()> {
     open_splash_window(handle)?;
 
+    if backup::apply_pending_restore(&app_dir).await? {
+        log::info!("Застосовано відкладене відновлення з резервної копії");
+    }
+
+    let version = handle.package_info().version.to_string();
     let db_path = app_dir.join("main.db");
     let options = SqliteConnectOptions::new()
         .filename(db_path)
@@ -314,12 +336,17 @@ async fn start(handle: &AppHandle, app_dir: PathBuf, started: Instant) -> AppRes
         .await
         .map_err(|e| AppError::Migration(format!("Не вдалося підключитися до бази даних: {e}")))?;
 
-    sqlx::migrate!("./migrations")
-        .run(&db_pool)
-        .await
-        .map_err(|e| {
-            AppError::Migration(format!("Не вдалося застосувати міграції бази даних: {e}"))
-        })?;
+    let migrator = sqlx::migrate!("./migrations");
+    if backup::has_pending_migrations(&db_pool, &migrator).await {
+        if let Err(error) =
+            backup::create_pre_migration(&db_pool, &app_dir, &version, Some(handle)).await
+        {
+            log::warn!("Не вдалося створити резервну копію перед міграцією: {error}");
+        }
+    }
+    migrator.run(&db_pool).await.map_err(|e| {
+        AppError::Migration(format!("Не вдалося застосувати міграції бази даних: {e}"))
+    })?;
 
     let applied: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM _sqlx_migrations")
         .fetch_one(&db_pool)
@@ -345,7 +372,7 @@ async fn start(handle: &AppHandle, app_dir: PathBuf, started: Instant) -> AppRes
     handle.manage(AppState {
         data_dir: app_dir,
         db_pool,
-        version: handle.package_info().version.to_string(),
+        version,
     });
 
     let appstate = handle.state::<AppState>();

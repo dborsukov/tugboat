@@ -34,6 +34,7 @@
     createRecentItemsQuery,
     recentItemsVersion,
   } from "$lib/recent-items";
+  import { backupAttention } from "$lib/states/backup-attention.svelte";
   import { quickOrder } from "$lib/states/quick-order.svelte";
   import { settingsState } from "$lib/states/settings.svelte";
   import { getSetupIssues } from "$lib/states/setup-issues";
@@ -505,8 +506,9 @@
               <a href={item.url} {...props}>
                 <item.icon />
                 <span>{item.title}</span>
-                {#if item.url === "/settings" && hasSetupIssues}
+                {#if item.url === "/settings" && (hasSetupIssues || backupAttention.needsAttention)}
                   <SetupDot
+                    label="Потрібна увага"
                     class="ml-auto ring-2 {active
                       ? 'ring-sidebar-accent'
                       : 'ring-sidebar group-hover/menu-button:ring-sidebar-accent'} group-data-[collapsible=icon]:hidden"

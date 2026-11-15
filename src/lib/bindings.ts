@@ -190,7 +190,26 @@ export const commands = {
 	logDiagnostics: () => typedError<string, AppError>(__TAURI_INVOKE("log_diagnostics")),
 	/**  Writes the same report straight to the system clipboard. */
 	copyDiagnostics: () => typedError<null, AppError>(__TAURI_INVOKE("copy_diagnostics")),
+	/**  Writes arbitrary text to the system clipboard. */
 	copyText: (text: string) => typedError<null, AppError>(__TAURI_INVOKE("copy_text", { text })),
+	getBackupOverview: () => typedError<BackupOverview, AppError>(__TAURI_INVOKE("get_backup_overview")),
+	setBackupSettings: (settings: BackupSettings) => typedError<BackupSettings, AppError>(__TAURI_INVOKE("set_backup_settings", { settings })),
+	createBackup: () => typedError<BackupInfo, AppError>(__TAURI_INVOKE("create_backup")),
+	listBackups: () => typedError<BackupInfo[], AppError>(__TAURI_INVOKE("list_backups")),
+	runScheduledBackup: () => typedError<{
+	fileName: string,
+	createdAt: string,
+	kind: BackupKind,
+	sizeBytes: number | null,
+	appVersion: string,
+	schemaVersion: number | null,
+	/**  True when the backup comes from a newer app or schema */
+	isNewer: boolean,
+} | null, AppError>(__TAURI_INVOKE("run_scheduled_backup")),
+	stageRestoreBackup: (fileName: string) => typedError<null, AppError>(__TAURI_INVOKE("stage_restore_backup", { fileName })),
+	stageRestoreFile: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("stage_restore_file", { path })),
+	inspectBackupFile: (path: string) => typedError<BackupInfo, AppError>(__TAURI_INVOKE("inspect_backup_file", { path })),
+	openBackupsDir: () => typedError<null, AppError>(__TAURI_INVOKE("open_backups_dir")),
 	/**
 	 *  Shows the main window, restores its geometry, and drops the splash screen.
 	 * 
@@ -265,6 +284,42 @@ export type AppSettings_Serialize = {
 	defaultPhoneCountryCode: string,
 	companyInfo: CompanyInfo | null,
 	dashboardLayout: DashboardLayout_Serialize,
+};
+
+export type BackupInfo = {
+	fileName: string,
+	createdAt: string,
+	kind: BackupKind,
+	sizeBytes: number | null,
+	appVersion: string,
+	schemaVersion: number | null,
+	/**  True when the backup comes from a newer app or schema */
+	isNewer: boolean,
+};
+
+export type BackupKind = "manual" | "scheduled" | "preMigration" | "preUpdate" | "preRestore";
+
+export type BackupOverview = {
+	settings: BackupSettings,
+	effectiveFolder: string,
+	backups: BackupInfo[],
+	status: BackupStatus,
+	folderAvailable: boolean,
+	currentAppVersion: string,
+	currentSchemaVersion: number | null,
+};
+
+export type BackupSettings = {
+	enabled?: boolean,
+	folder?: string | null,
+	intervalHours?: number,
+	retention?: number,
+};
+
+export type BackupStatus = {
+	running: boolean,
+	lastAttemptAt: string | null,
+	lastError: string | null,
 };
 
 export type Car = {

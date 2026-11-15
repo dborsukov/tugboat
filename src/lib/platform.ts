@@ -16,3 +16,5 @@ function detectPlatform(): Platform {
 export const platform: Platform = detectPlatform();
 
 export const isMacOS = platform === "macos";
+export const isWindows = platform === "windows";
+export const isLinux = platform === "linux";

@@ -32,6 +32,7 @@
   import { commands } from "$lib/bindings";
   import { logAppEvent, logCommandFailure } from "$lib/log";
   import { recentItemsVersion } from "$lib/recent-items";
+  import { backupAttention } from "$lib/states/backup-attention.svelte";
   import { navHistory } from "$lib/states/nav-history.svelte";
   import { settingsState } from "$lib/states/settings.svelte";
   import { updateState } from "$lib/states/update.svelte";
@@ -120,6 +121,25 @@
       appWindow.setFocus().catch(() => {});
     });
 
+    const runScheduledBackup = () => {
+      void commands.runScheduledBackup().then((result) => {
+        if (result.status === "error") {
+          console.warn(
+            "Не вдалося створити резервну копію:",
+            result.error.message,
+          );
+        }
+      });
+    };
+    const backupStartup = setTimeout(runScheduledBackup, 10_000);
+    const backupTimer = setInterval(runScheduledBackup, 60 * 60 * 1000);
+
+    void backupAttention.init();
+    const attentionTimer = setInterval(
+      () => void backupAttention.refresh(),
+      30 * 60 * 1000,
+    );
+
     const deadline = Date.now() + BOOT_LOADER_TIMEOUT_MS;
     const waitForSettings = () => {
       if (settingsState.settings !== null) {
@@ -141,6 +161,10 @@
       for (const pending of [unlistenStatus, unlistenCheck, unlistenShow]) {
         void pending.then((stop) => stop());
       }
+      clearTimeout(backupStartup);
+      clearInterval(backupTimer);
+      backupAttention.destroy();
+      clearInterval(attentionTimer);
     };
   });
 

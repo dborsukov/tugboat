@@ -42,10 +42,12 @@ tauri-plugin-single-instance = "2"
 tauri-plugin-updater = "2"
 tauri-specta = { version = "=2.0.0-rc.25", features = ["derive", "typescript"] }
 thiserror = "2.0.18"
+tokio = { version = "1", features = ["sync"] }
 typst = "0.15.1"
 typst-assets = { version = "0.15.1", features = ["fonts"] }
 typst-layout = "0.15.1"
 typst-pdf = "0.15.1"
+zip = "7"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
