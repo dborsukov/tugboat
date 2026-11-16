@@ -96,7 +96,9 @@
     if (!force && size === lastSize) return;
 
     lastSize = size;
-    void appWindow.setSize(new LogicalSize(width, height));
+    void appWindow.setSize(new LogicalSize(width, height)).catch((error) => {
+      console.error("Не вдалося змінити розмір вікна «Про застосунок»", error);
+    });
   }
 
   function onKeydown(event: KeyboardEvent) {
