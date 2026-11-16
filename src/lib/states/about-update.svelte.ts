@@ -1,4 +1,7 @@
 import { emit, listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { toast } from "svelte-sonner";
+
+import { dev } from "$app/environment";
 
 import {
   UPDATE_CHECK_REQUEST,
@@ -33,6 +36,12 @@ class AboutUpdate {
   }
 
   check() {
+    if (dev) {
+      toast.info("Оновлення доступні лише у зібраному застосунку", {
+        position: "bottom-left",
+      });
+      return;
+    }
     if (this.status.state === "checking") return;
     // Show the spinner immediately, the main window confirms with a broadcast.
     this.status = { state: "checking" };

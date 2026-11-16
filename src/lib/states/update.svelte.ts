@@ -141,6 +141,7 @@ class UpdateStore {
           position: "bottom-left",
         });
       }
+      this.broadcast();
       return;
     }
 
