@@ -6926,6 +6926,7 @@ dependencies = [
  "typst-layout",
  "typst-pdf",
  "typst-render",
+ "windows 0.61.3",
  "zip 7.2.0",
 ]
 

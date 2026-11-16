@@ -198,7 +198,8 @@
     onOpenAutoFocus={(event) => {
       event.preventDefault();
       requestAnimationFrame(() => {
-        if (!cardEl) return;
+        // Never pull focus into the app from a silent boot check if window is not focused already.
+        if (!cardEl || !document.hasFocus()) return;
         cardEl.tabIndex = -1;
         cardEl.focus();
       });

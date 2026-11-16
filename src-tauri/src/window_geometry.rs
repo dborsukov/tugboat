@@ -77,6 +77,10 @@ const CORRECTION_DELAY: Duration = Duration::from_millis(150);
 #[derive(Default)]
 struct Revealed(AtomicBool);
 
+/// Set when a maximized window is revealed while the app is in the background.
+/// The focus handler applies the maximize once the user actually focuses it.
+static PENDING_MAXIMIZE: AtomicBool = AtomicBool::new(false);
+
 /// The last geometry seen while the window was not maximised, held in memory.
 /// Maximising is not atomic. The window is moved and resized to the monitor size
 /// before `is_maximized()` starts returning true, so those events carry the
@@ -136,18 +140,38 @@ pub fn reveal_main_window(app: &AppHandle) -> AppResult<()> {
 
     log::debug!("Показ головного вікна, геометрію вже відновлено: {revealed}");
 
-    window.show()?;
-
     if revealed {
-        window.set_focus()?;
-
+        // The boot hand-off (or the watchdog) already revealed the window.
+        // Showing or focusing it again here steals focus from the user.
         return Ok(());
     }
 
+    // Only take focus when the app was already active.
+    #[cfg(target_os = "windows")]
+    let app_is_active = app
+        .webview_windows()
+        .values()
+        .any(|window| window.is_focused().unwrap_or(false));
+    #[cfg(not(target_os = "windows"))]
+    let app_is_active = true;
+
+    #[cfg(target_os = "windows")]
+    if app_is_active {
+        window.show()?;
+    } else {
+        show_without_activating(&window)?;
+    }
+    #[cfg(not(target_os = "windows"))]
+    window.show()?;
+
     if let Some(saved) = saved_geometry(app) {
         if on_an_available_monitor(&window, saved) {
-            if let Err(error) = apply_geometry(&window, saved) {
+            if let Err(error) = apply_geometry(&window, saved, app_is_active) {
                 log::warn!("Не вдалося відновити геометрію вікна: {error}");
+            }
+
+            if saved.maximized && !app_is_active {
+                maximize_when_active(&window)?;
             }
 
             // No more corrections for maximized windows
@@ -159,16 +183,46 @@ pub fn reveal_main_window(app: &AppHandle) -> AppResult<()> {
             log::info!("Збережене положення вікна поза доступними екранами, використовую типове");
 
             if saved.maximized {
-                if let Err(error) = window.maximize() {
-                    log::warn!("Не вдалося розгорнути вікно: {error}");
+                if app_is_active {
+                    if let Err(error) = window.maximize() {
+                        log::warn!("Не вдалося розгорнути вікно: {error}");
+                    }
+                } else {
+                    maximize_when_active(&window)?;
                 }
             }
         }
     }
 
-    window.set_focus()?;
+    if app_is_active {
+        window.set_focus()?;
+    }
 
     Ok(())
+}
+
+/// Shows the window without taking foreground focus. `show()` uses `SW_SHOW`,
+/// which activates the window, a background launch must not do that.
+#[cfg(target_os = "windows")]
+fn show_without_activating(window: &WebviewWindow) -> tauri::Result<()> {
+    use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWNOACTIVATE};
+
+    let hwnd = window.hwnd()?;
+
+    // SAFETY: `hwnd` is the live HWND of this window.
+    let _ = unsafe { ShowWindow(hwnd, SW_SHOWNOACTIVATE) };
+    Ok(())
+}
+
+/// Maximizes now if the window has already been focused, otherwise defers it
+/// to the focus handler so a background reveal never activates the app.
+fn maximize_when_active(window: &WebviewWindow) -> tauri::Result<()> {
+    if window.is_focused().unwrap_or(false) {
+        window.maximize()
+    } else {
+        PENDING_MAXIMIZE.store(true, Ordering::SeqCst);
+        Ok(())
+    }
 }
 
 /// Whether any part of `saved` lands on a monitor that is currently attached.
@@ -192,7 +246,11 @@ fn on_an_available_monitor(window: &WebviewWindow, saved: SavedGeometry) -> bool
 }
 
 /// Moves and resizes the window to `saved`, best effort.
-fn apply_geometry(window: &WebviewWindow, saved: SavedGeometry) -> tauri::Result<()> {
+fn apply_geometry(
+    window: &WebviewWindow,
+    saved: SavedGeometry,
+    allow_maximize: bool,
+) -> tauri::Result<()> {
     log::debug!("Застосовую геометрію вікна: {saved:?}");
 
     window.set_position(PhysicalPosition::new(saved.x, saved.y))?;
@@ -204,7 +262,7 @@ fn apply_geometry(window: &WebviewWindow, saved: SavedGeometry) -> tauri::Result
         saved.height.saturating_sub(frame_height),
     ))?;
 
-    if saved.maximized {
+    if saved.maximized && allow_maximize {
         window.maximize()?;
     }
 
@@ -254,7 +312,7 @@ fn verify_geometry(app: AppHandle, saved: SavedGeometry) {
                 attempt + 1
             );
 
-            if let Err(error) = apply_geometry(&window, saved) {
+            if let Err(error) = apply_geometry(&window, saved, false) {
                 log::warn!("Не вдалося скоригувати геометрію вікна: {error}");
             }
         });
@@ -276,6 +334,17 @@ pub fn track_window(window: &WebviewWindow) {
     app.manage(Revealed::default());
 
     window.on_window_event(move |event| {
+        if matches!(event, WindowEvent::Focused(true)) {
+            if PENDING_MAXIMIZE.swap(false, Ordering::SeqCst) {
+                if let Some(window) = app.get_webview_window(MAIN_WINDOW) {
+                    if let Err(error) = window.maximize() {
+                        log::warn!("Не вдалося розгорнути вікно після фокуса: {error}");
+                    }
+                }
+            }
+            return;
+        }
+
         if !matches!(
             event,
             WindowEvent::Moved(_) | WindowEvent::Resized(_) | WindowEvent::CloseRequested { .. }

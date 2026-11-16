@@ -83,7 +83,7 @@
     aboutUpdate.check();
   }
 
-  function fitWindow() {
+  function fitWindow(force = false) {
     const element = contentEl;
     if (!element) return;
 
@@ -93,7 +93,7 @@
     const width = Math.ceil(rect.width) + 36;
     const height = Math.ceil(rect.height) + 36 + (isMacOS ? 0 : 36);
     const size = `${width}x${height}`;
-    if (size === lastSize) return;
+    if (!force && size === lastSize) return;
 
     lastSize = size;
     void appWindow.setSize(new LogicalSize(width, height));
@@ -106,14 +106,16 @@
   $effect(() => {
     void status;
     void versionText;
-    requestAnimationFrame(fitWindow);
+    requestAnimationFrame(() => fitWindow());
   });
 
   $effect(() => {
     const element = contentEl;
     if (!element) return;
 
-    const observer = new ResizeObserver(() => requestAnimationFrame(fitWindow));
+    const observer = new ResizeObserver(() =>
+      requestAnimationFrame(() => fitWindow()),
+    );
     observer.observe(element);
     return () => observer.disconnect();
   });
@@ -123,14 +125,18 @@
     void aboutUpdate.init();
 
     requestAnimationFrame(() => {
-      fitWindow();
-      requestAnimationFrame(() => {
-        appWindow
-          .show()
-          .then(() => appWindow.setFocus().catch(() => {}))
-          .then(() => updateButton?.focus())
-          .catch(() => {});
-      });
+      appWindow
+        .show()
+        .then(() => {
+          appWindow.setFocus().catch(() => {});
+          updateButton?.focus();
+
+          // Resize only while the window is visible. On Windows tao measures
+          // the frame of a hidden undecorated window incorrectly, which loses
+          // the bottom padding.
+          requestAnimationFrame(() => fitWindow(true));
+        })
+        .catch(() => {});
     });
 
     return () => {
